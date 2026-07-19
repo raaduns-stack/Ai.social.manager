@@ -235,18 +235,7 @@ export default function AISuggestions() {
                   <span>{copiedId === card.id ? 'Copied!' : 'Copy'}</span>
                 </Button>
               </div>
-
-              {/* Right Primary Actions */}
-              <div className="flex items-center gap-2">
-                <Button variant="outline" size="sm" className="gap-1 bg-surface font-semibold text-xs h-9">
-                  <Edit3 size={14} />
-                  <span>Edit</span>
-                </Button>
-                <Button variant="primary" size="sm" className="gap-1 font-semibold text-xs h-9">
-                  <CalendarDays size={14} />
-                  <span>Schedule</span>
-                </Button>
-              </div>
+              
             </div>
           </Card>
         ))}
