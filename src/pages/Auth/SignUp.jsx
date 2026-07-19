@@ -207,41 +207,6 @@ export default function SignUp() {
         </Button>
       </form>
 
-      {/* Alternative Social Logins */}
-      <div className="relative py-4">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t border-border"></span>
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-surface px-4 text-ink-muted font-medium tracking-widest">
-            Or continue with
-          </span>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          className="bg-surface hover:bg-canvas flex items-center justify-center gap-2"
-        >
-          <img
-            alt="Google Logo"
-            className="w-5 h-5"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCVUKtkwVQ_GGAxiN4Gzosyww1VovstWpIt3wCCCpuVY-IEIzZoM8AapKv5XueQqe62n-uDLDgNn0aeQVcKskKFB-1XkkysyjZO_vLtaD0UshmQjFQ9ffni1X0fRgB-OYLQKWwI56pVdumeCg_PTdvBgJeL03GOgvk_GgukOXnj9BM0Xoqe5B8A6skJw48H6yUydTSfHur1e1vN_y4b4cB9BA1aAtQXeHay7pGM-IIDb9mFy4k8JLiiE4kzRakzaHB52lnKeFCKv5zS"
-          />
-          <span className="text-sm font-medium text-ink">Google</span>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="bg-surface hover:bg-canvas flex items-center justify-center gap-2"
-        >
-          <Terminal size={18} className="text-ink" />
-          <span className="text-sm font-medium text-ink">GitHub</span>
-        </Button>
-      </div>
-
       {/* Footer Link */}
       <footer className="text-center pt-2">
         <p className="text-sm text-ink-muted">
