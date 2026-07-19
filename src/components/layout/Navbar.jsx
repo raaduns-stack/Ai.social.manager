@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Bell, Search } from 'lucide-react'
 import Avatar from '../ui/Avatar'
 
@@ -18,7 +19,8 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
       </div>
 
       <div className="flex items-center gap-4">
-        <button
+        <Link
+          to="/dashboard/notifications"
           aria-label="Notifications"
           className="relative rounded-control p-2 text-ink-muted hover:bg-canvas hover:text-ink"
         >
@@ -28,7 +30,7 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
               {notificationCount}
             </span>
           )}
-        </button>
+        </Link>
         <Avatar name={user.name} />
       </div>
     </header>
