@@ -24,7 +24,7 @@ export default function Billing() {
   const [paymentMethod, setPaymentMethod] = useState({
     type: 'Visa',
     ending: '4242',
-    expiry: '12/2025',
+    expiry: '12/2028',
     cardholder: 'Alex Rivera',
   })
 
@@ -56,7 +56,7 @@ export default function Billing() {
       name: 'Pro Plan',
       price: '$49',
       billingCycle: '/mo',
-      nextBill: 'Nov 12, 2026',
+      nextBill: 'Aug 20, 2026',
       storageUsed: 85.4,
       storageTotal: 100,
       storageUnit: 'GB',
@@ -71,7 +71,7 @@ export default function Billing() {
       name: 'Elite Plan',
       price: '$99',
       billingCycle: '/mo',
-      nextBill: 'Nov 12, 2026',
+      nextBill: 'Aug 20, 2026',
       storageUsed: 85.4,
       storageTotal: 500,
       storageUnit: 'GB',
@@ -103,14 +103,14 @@ export default function Billing() {
 
   // Mock invoice data
   const mockInvoices = [
-    { id: 'INV-9283-21', date: 'Oct 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-8142-05', date: 'Sep 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-7091-88', date: 'Aug 12, 2023', amount: '$49.00', status: 'Processing' },
-    { id: 'INV-6012-44', date: 'Jul 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-5002-12', date: 'Jun 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-4890-09', date: 'May 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-3211-77', date: 'Apr 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-2041-32', date: 'Mar 12, 2023', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-9283-21', date: 'Jul 12, 2026', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-8142-05', date: 'Jun 12, 2026', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-7091-88', date: 'May 12, 2026', amount: '$49.00', status: 'Processing' },
+    { id: 'INV-6012-44', date: 'Apr 12, 2026', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-5002-12', date: 'Mar 12, 2026', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-4890-09', date: 'Feb 12, 2026', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-3211-77', date: 'Jan 12, 2026', amount: '$49.00', status: 'Paid' },
+    { id: 'INV-2041-32', date: 'Dec 12, 2025', amount: '$49.00', status: 'Paid' },
   ]
 
   // Pagination calculations

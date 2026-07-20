@@ -25,7 +25,7 @@ const initialNotifications = [
     category: 'Today',
     type: 'success', // check_circle
     title: 'Post Successfully Published',
-    description: 'Your campaign "Summer Vibes 2024" has been successfully posted to Instagram and LinkedIn. Engagement tracking is now live.',
+    description: 'Your campaign "Summer Vibes 2026" has been successfully posted to Instagram and LinkedIn. Engagement tracking is now live.',
     time: '2 mins ago',
     unread: true,
   },
@@ -52,7 +52,7 @@ const initialNotifications = [
     category: 'Yesterday',
     type: 'billing', // credit card
     title: 'Monthly Invoice Ready',
-    description: 'Your invoice for the billing period June 2024 is now available for download in your billing dashboard.',
+    description: 'Your invoice for the billing period June 2026 is now available for download in your billing dashboard.',
     time: 'Yesterday, 4:20 PM',
     unread: false,
   },
@@ -71,7 +71,7 @@ const initialNotifications = [
     type: 'success_read', // check_circle gray
     title: 'Campaign "Growth Hack" Finished',
     description: 'Your 7-day scheduled campaign has concluded. Total reach increased by 24% across all connected platforms.',
-    time: 'May 15, 2024',
+    time: 'July 15, 2026',
     unread: false,
   },
 ]

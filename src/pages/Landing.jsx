@@ -304,7 +304,7 @@ export default function Landing() {
               <p className="text-xs text-ink-muted">The next generation of social media management powered by advanced AI.</p>
             </div>
             <div className="flex items-center gap-6">
-              <p className="text-xs text-ink-muted">© 2024 AI Social Media Manager. All rights reserved.</p>
+              <p className="text-xs text-ink-muted">© 2026 AI Social Media Manager. All rights reserved.</p>
               <div className="flex gap-4">
                 <a className="text-ink-muted hover:text-primary transition-colors" href="#">
                   <span className="material-symbols-outlined text-[20px]">share</span>

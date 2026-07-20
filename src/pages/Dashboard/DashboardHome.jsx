@@ -18,7 +18,7 @@ export default function DashboardHome() {
         action={
           <div className="flex items-center gap-2 bg-surface border border-border px-3 py-1.5 rounded-control text-ink-muted shadow-soft">
             <Calendar size={18} />
-            <span className="text-sm font-medium">October 24, 2023</span>
+            <span className="text-sm font-medium">July 20, 2026</span>
           </div>
         }
       />
@@ -45,7 +45,7 @@ export default function DashboardHome() {
         <div className="flex flex-col sm:flex-row items-center gap-4 z-10 shrink-0">
           <div className="text-center sm:text-right">
             <p className="text-xs text-ink-muted font-medium">Next billing cycle</p>
-            <p className="text-sm font-semibold text-primary mt-0.5">Nov 12, 2023</p>
+            <p className="text-sm font-semibold text-primary mt-0.5">Aug 20, 2026</p>
           </div>
           <Button variant="primary">Manage Plan</Button>
         </div>
@@ -195,7 +195,7 @@ export default function DashboardHome() {
                     <span className="text-xs text-ink-muted">10m ago</span>
                   </div>
                   <p className="text-sm text-ink-muted truncate md:whitespace-normal">
-                    "Product Update: October" scheduled for Instagram and Twitter for tomorrow at 10:00 AM.
+                    "Product Update: July" scheduled for Instagram and Twitter for tomorrow at 10:00 AM.
                   </p>
                 </div>
               </div>
@@ -255,7 +255,7 @@ export default function DashboardHome() {
                   <div>
                     <p className="text-sm font-semibold text-ink">Weekly Report Ready</p>
                     <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-                      Your social performance report for Oct 15-22 is now available for download.
+                      Your social performance report for Jul 13-20 is now available for download.
                     </p>
                     <Button variant="ghost" className="mt-3 text-primary hover:text-primary-700 hover:bg-transparent font-semibold p-0 h-auto">
                       View Report
