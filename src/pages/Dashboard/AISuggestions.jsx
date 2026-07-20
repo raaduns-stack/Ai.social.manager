@@ -35,7 +35,7 @@ const initialSuggestions = [
     caption:
       "Efficiency isn't just about doing more; it's about doing what matters. Check out these 5 automation hacks that saved our team 20+ hours a week. Which one are you trying first? 👇",
     hashtags: ['#productivity', '#SaaS', '#WorkflowAutomation', '#TechTips', '#GrowthHacks'],
-    scheduledDate: 'Oct 28, 2024',
+    scheduledDate: 'Jul 24, 2026',
     image:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuAleUQStKWP_nrPLhcPgKO1wb_6LbpZM2WcZRJkvqSNyOd-4d16FY3P2EwbkP_FP3Wt33EZeXgjELG-2ONDt-4UJobjnV5my8HB9QsvMP3rQ2AVhomrZux2ECKmXz8SSap3un_SuaqzTlkCxSeJeYuA_e_an2mmozXi8MShxo5flHnQP1rRkQd1ygbWn21cg1wttdiGBBorf956x22nx9OgxLRR6xXSk08b9mBoJVweYkYugFLIoIcqlBDx0ynqSg_Ze5a6BKFYi37e',
   },
@@ -51,7 +51,7 @@ const initialSuggestions = [
     caption:
       "AI isn't replacing creators; it's empowering them. 🚀 We analyzed the latest engagement data—here's what you need to know about the current shift in content strategies.",
     hashtags: ['#AI', '#ContentStrategy', '#SocialMediaTrends', '#Innovation'],
-    scheduledDate: 'Nov 02, 2024',
+    scheduledDate: 'Jul 25, 2026',
     image:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA_TCW9MEojrE-BVdB2cDHKN5mDcDIhpWmOLM-Eeqd5HoAgBCuWLG1DNh0dBUbQY-aIQuy5a3lb0rgNETGnXEo_82iclQQErWtGuj6szlBxWHMXa3rYZw8P2kmj-vtvXZcDTCtH9V5dGNXAozRoyQmhT5YSJ5EOHT6irpuQLqmCluQSwe_BJ03fT-X6RLtbTWweu1Cn71E5CPFzCIN3lqSs0Dl8RQTWa2QOoQMioxx8dEWMMjxjDCUHbef7JwRhGwdBcZOm4zTYnmw0',
   },
@@ -67,7 +67,7 @@ const initialSuggestions = [
     caption:
       "Behind every 'perfect' post is a whole lot of chaos. ☕️ Tag someone who needs to see the unedited version of building a startup!",
     hashtags: ['#BTS', '#StartupLife', '#BehindTheScenes', '#Authenticity', '#CreativeProcess'],
-    scheduledDate: 'Nov 05, 2024',
+    scheduledDate: 'Jul 26, 2026',
     image:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuARceeh-SFmrFXtS95KOcl1SGU9LL-7Qa2gITQvzfQJ2o_5uuVCvYrQpAcKr-lA2eSVhohBWn488izPgZT8M7210K1KIinBIw8XiTHtJE71LmRcwcTI-BGAYfqb_gcYgfuMcquZE_cYGhNbaicqyWXV4k6Xsim0Ts957E5XF51nIsEbJeHrdKeNsiUwc6M10jRs2ygLwFOyh49V_GUaxuuGsNaxR-Ju_eYXFB7-LUHPhAJQ9gnA81Z5R6lLAOF9-GdZjZ_vWScZBxHD',
   },
@@ -81,9 +81,9 @@ const initialSuggestions = [
     description:
       'A deep-dive text post for LinkedIn arguing for high-intent quality content over high-frequency posting.',
     caption:
-      "Stop chasing the algorithm and start chasing your audience's needs. 🎯 In 2024, one 'perfect' post is worth 100 'good enough' ones. Here is why focus is your new superpower.",
+      "Stop chasing the algorithm and start chasing your audience's needs. 🎯 In 2026, one 'perfect' post is worth 100 'good enough' ones. Here is why focus is your new superpower.",
     hashtags: ['#LinkedInTips', '#ThoughtLeadership', '#MarketingStrategy', '#Focus'],
-    scheduledDate: 'Nov 10, 2024',
+    scheduledDate: 'Jul 28, 2026',
     image:
       'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=600&q=80',
   },
@@ -99,7 +99,7 @@ const initialSuggestions = [
     caption:
       'Turn raw data into real ROI. 📊 Our latest dashboard update gives you real-time insights with zero noise.',
     hashtags: ['#SocialMediaTools', '#Analytics', '#MarketingTech', '#Growth'],
-    scheduledDate: 'Nov 12, 2024',
+    scheduledDate: 'Jul 29, 2026',
     image:
       'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=600&q=80',
   },
@@ -115,7 +115,7 @@ const initialSuggestions = [
     caption:
       'B2B social distribution is changing fast. Here are 3 non-obvious lessons we learned from publishing 500+ posts across accounts this quarter.',
     hashtags: ['#B2BMarketing', '#GrowthStrategy', '#ContentMarketing'],
-    scheduledDate: 'Nov 15, 2024',
+    scheduledDate: 'Jul 30, 2026',
     image:
       'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80',
   },

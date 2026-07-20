@@ -97,7 +97,7 @@ export default function ForgotPassword() {
 
       {/* Bottom Copyright */}
       <div className="text-center text-xs text-ink-muted/60 pt-4 border-t border-border/60">
-        <span>© 2024 SocialPulse AI</span>
+        <span>© 2026 SocialPulse AI</span>
       </div>
     </div>
   )
