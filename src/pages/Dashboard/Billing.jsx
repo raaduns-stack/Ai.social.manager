@@ -18,7 +18,7 @@ import {
 
 export default function Billing() {
   // State for active plan
-  const [activePlan, setActivePlan] = useState('Pro') // 'Pro' | 'Elite' | 'Enterprise'
+const [activePlan, setActivePlan] = useState('Free') // 'Pro' | 'Elite' | 'Enterprise'
 
   // State for payment method
   const [paymentMethod, setPaymentMethod] = useState({
@@ -50,68 +50,150 @@ export default function Billing() {
   const [supportMessage, setSupportMessage] = useState('')
   const [supportSubmitted, setSupportSubmitted] = useState(false)
 
-  // Plan limits metadata depending on active plan
-  const planDetails = {
-    Pro: {
-      name: 'Pro Plan',
-      price: '$49',
-      billingCycle: '/mo',
-      nextBill: 'Nov 12, 2026',
-      storageUsed: 85.4,
-      storageTotal: 100,
-      storageUnit: 'GB',
-      storagePercentage: 85,
-      seatsUsed: 4,
-      seatsTotal: 5,
-      aiWordsUsed: 42,
-      aiWordsTotal: 50,
-      description: 'Ideal for growing social media teams.',
-    },
-    Elite: {
-      name: 'Elite Plan',
-      price: '$99',
-      billingCycle: '/mo',
-      nextBill: 'Nov 12, 2026',
-      storageUsed: 85.4,
-      storageTotal: 500,
-      storageUnit: 'GB',
-      storagePercentage: 17,
-      seatsUsed: 4,
-      seatsTotal: 20,
-      aiWordsUsed: 42,
-      aiWordsTotal: 200,
-      description: 'Perfect for larger organizations and power users.',
-    },
-    Enterprise: {
-      name: 'Enterprise Plan',
-      price: 'Custom',
-      billingCycle: '',
-      nextBill: 'N/A (Annual billing)',
-      storageUsed: 85.4,
-      storageTotal: 1000, // mock represented as 1TB
-      storageUnit: 'GB',
-      storagePercentage: 8,
-      seatsUsed: 4,
-      seatsTotal: 100, // custom high number
-      aiWordsUsed: 42,
-      aiWordsTotal: 1000, // custom high number
-      description: 'Dedicated account manager, and custom contract terms.',
-    },
-  }
+ // Plan limits metadata depending on active plan
+const planDetails = {
+  Free: {
+    name: "Free Plan",
+    price: "₦0",
+    billingCycle: "/month",
+    nextBill: "No Billing",
+    description: "Perfect for individuals getting started.",
 
-  const currentPlanInfo = planDetails[activePlan]
+    storageUsed: 1,
+    storageTotal: 5,
+    storagePercentage: 20,
+
+    seatsUsed: 1,
+    seatsTotal: 1,
+
+    aiWordsUsed: 5,
+    aiWordsTotal: 10,
+
+    features: [
+      "1 Social Channel",
+      "1 AI Generated Post",
+      "Basic Dashboard",
+      "Community Support",
+    ],
+  },
+
+  Starter: {
+    name: "Starter Spark",
+    price: "₦30,000",
+    billingCycle: "/month",
+    nextBill: "20 Aug 2026",
+    description: "Perfect for small businesses starting to grow.",
+
+    storageUsed: 12,
+    storageTotal: 50,
+    storagePercentage: 24,
+
+    seatsUsed: 3,
+    seatsTotal: 5,
+
+    aiWordsUsed: 30,
+    aiWordsTotal: 50,
+
+    features: [
+      "Social Media Audit (2 platforms)",
+      "Page Revamp",
+      "20 Custom Posts",
+      "Basic Strategy",
+      "Monthly Report",
+    ],
+  },
+
+  Growth: {
+    name: "Growth Package",
+    price: "₦100,000",
+    billingCycle: "/month",
+    nextBill: "20 Aug 2026",
+    description: "Ideal for growing businesses and brands.",
+
+    storageUsed: 45,
+    storageTotal: 100,
+    storagePercentage: 45,
+
+    seatsUsed: 6,
+    seatsTotal: 10,
+
+    aiWordsUsed: 75,
+    aiWordsTotal: 100,
+
+    features: [
+      "Everything in Starter",
+      "Brand Identity Development",
+      "3 Social Platforms",
+      "Content Calendar",
+      "Lead Generation",
+    ],
+  },
+
+  Brand: {
+    name: "Brand Domination",
+    price: "₦150,000",
+    billingCycle: "/month",
+    nextBill: "20 Aug 2026",
+    description: "Designed for established brands that need maximum growth.",
+
+    storageUsed: 120,
+    storageTotal: 200,
+    storagePercentage: 60,
+
+    seatsUsed: 12,
+    seatsTotal: 20,
+
+    aiWordsUsed: 180,
+    aiWordsTotal: 250,
+
+    features: [
+      "Everything in Growth",
+      "4 Platforms",
+      "30 Content Pieces",
+      "Growth Strategy",
+      "Ads Management",
+    ],
+  },
+
+  Enterprise: {
+    name: "Enterprise",
+    price: "Custom",
+    billingCycle: "",
+    nextBill: "Custom Contract",
+    description: "Tailored solutions for large organizations.",
+
+    storageUsed: 250,
+    storageTotal: 500,
+    storagePercentage: 50,
+
+    seatsUsed: 35,
+    seatsTotal: 100,
+
+    aiWordsUsed: 450,
+    aiWordsTotal: 1000,
+
+    features: [
+      "Unlimited Storage",
+      "Unlimited AI",
+      "Dedicated Account Manager",
+      "Custom Integrations",
+    ],
+  },
+}
+
+const currentPlanInfo = planDetails[activePlan]
 
   // Mock invoice data
   const mockInvoices = [
-    { id: 'INV-9283-21', date: 'Oct 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-8142-05', date: 'Sep 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-7091-88', date: 'Aug 12, 2023', amount: '$49.00', status: 'Processing' },
-    { id: 'INV-6012-44', date: 'Jul 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-5002-12', date: 'Jun 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-4890-09', date: 'May 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-3211-77', date: 'Apr 12, 2023', amount: '$49.00', status: 'Paid' },
-    { id: 'INV-2041-32', date: 'Mar 12, 2023', amount: '$49.00', status: 'Paid' },
-  ]
+  { id: 'INV-9283-21', date: 'Oct 12, 2023', amount: '₦30,000', status: 'Paid' },
+  { id: 'INV-8142-05', date: 'Sep 12, 2023', amount: '₦30,000', status: 'Paid' },
+  { id: 'INV-7091-88', date: 'Aug 12, 2023', amount: '₦100,000', status: 'Processing' },
+  { id: 'INV-6012-44', date: 'Jul 12, 2023', amount: '₦100,000', status: 'Paid' },
+  { id: 'INV-5002-12', date: 'Jun 12, 2023', amount: '₦150,000', status: 'Paid' },
+  { id: 'INV-4890-09', date: 'May 12, 2023', amount: '₦150,000', status: 'Paid' },
+  { id: 'INV-3211-77', date: 'Apr 12, 2023', amount: '₦30,000', status: 'Paid' },
+  { id: 'INV-2041-32', date: 'Mar 12, 2023', amount: '₦30,000', status: 'Paid' },
+]
 
   // Pagination calculations
   const itemsPerPage = 4
@@ -228,45 +310,40 @@ export default function Billing() {
                 </div>
               </div>
 
-              {/* Progress metrics */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-6 border-y border-border">
-                <div>
-                  <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Storage</p>
-                  <div className="mt-2">
-                    <div className="flex justify-between text-xs font-medium mb-1">
-                      <span>{currentPlanInfo.storageUsed} GB of {currentPlanInfo.storageTotal} GB</span>
-                      <span>{currentPlanInfo.storagePercentage}%</span>
+                            {/* Plan Features */}
+              <div className="py-6 border-y border-border">
+                <h4 className="text-sm font-semibold text-ink mb-4">
+                  What's Included
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {currentPlanInfo.features.map((feature) => (
+                    <div key={feature} className="flex items-center gap-2">
+                      <CheckCircle2
+                        size={16}
+                        className="text-green-500"
+                      />
+                      <span className="text-sm text-ink">
+                        {feature}
+                      </span>
                     </div>
-                    <div className="w-full bg-canvas h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-primary h-full rounded-full transition-all duration-500"
-                        style={{ width: `${currentPlanInfo.storagePercentage}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Team Seats</p>
-                  <p className="text-lg font-semibold text-ink mt-2">
-                    {currentPlanInfo.seatsUsed}{' '}
-                    <span className="text-ink-muted text-sm font-normal">/ {currentPlanInfo.seatsTotal} Seats used</span>
-                  </p>
-                </div>
-                <div>
-                  <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">AI Words</p>
-                  <p className="text-lg font-semibold text-ink mt-2">
-                    {currentPlanInfo.aiWordsUsed}k{' '}
-                    <span className="text-ink-muted text-sm font-normal">/ {currentPlanInfo.aiWordsTotal}k used</span>
-                  </p>
+                  ))}
                 </div>
               </div>
             </div>
 
             <div className="flex gap-4 mt-6">
-              <Button variant="primary" onClick={() => setIsManagePlanModalOpen(true)}>
+              <Button
+                variant="primary"
+                onClick={() => setIsManagePlanModalOpen(true)}
+              >
                 Manage Plan
               </Button>
-              <Button variant="outline" onClick={() => setIsManagePlanModalOpen(true)}>
+
+              <Button
+                variant="outline"
+                onClick={() => setIsManagePlanModalOpen(true)}
+              >
                 View Plan Details
               </Button>
             </div>
@@ -278,7 +355,10 @@ export default function Billing() {
           {/* Payment Method Card */}
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-semibold text-ink">Payment Method</h3>
+              <h3 className="text-sm font-semibold text-ink">
+                Payment Method
+              </h3>
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -288,17 +368,22 @@ export default function Billing() {
                 Edit
               </Button>
             </div>
+
             <div className="flex items-center gap-4 bg-canvas p-4 rounded-control border border-border">
               <div className="w-12 h-8 bg-surface rounded flex items-center justify-center border border-border">
                 <CreditCard className="text-ink-muted w-6 h-6" />
               </div>
+
               <div>
                 <p className="text-sm font-semibold text-ink">
                   {paymentMethod.type} ending in {paymentMethod.ending}
                 </p>
-                <p className="text-xs text-ink-muted">Expires {paymentMethod.expiry}</p>
+                <p className="text-xs text-ink-muted">
+                  Expires {paymentMethod.expiry}
+                </p>
               </div>
             </div>
+
             <p className="text-xs text-ink-muted mt-4 flex items-center gap-1.5">
               <Lock size={12} className="text-ink-muted" />
               Secure encrypted payments
@@ -320,7 +405,7 @@ export default function Billing() {
               </div>
               <Button
                 className="w-full bg-white text-primary-700 hover:bg-primary-50 hover:text-primary font-semibold border-0 py-2 shadow-soft hover:shadow-hover"
-                onClick={() => triggerUpgradeFlow('Enterprise')}
+              onClick={() => triggerUpgradeFlow('Brand')}
               >
                 Talk to Sales
               </Button>
@@ -332,107 +417,103 @@ export default function Billing() {
       {/* Change Your Plan Section */}
       <div className="mt-8">
         <h3 className="text-lg font-bold text-ink mb-6">Change Your Plan</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Elite Plan Card */}
-          <Card
-            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
-              activePlan === 'Elite' ? 'border-2 border-primary' : 'border-border'
-            }`}
-          >
-            {activePlan === 'Elite' && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-                Current Plan
-              </div>
-            )}
-            {activePlan !== 'Elite' && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-                Recommended
-              </div>
-            )}
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-lg font-bold text-ink">Elite Plan</h4>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">$99</p>
-                  <p className="text-xs text-ink-muted">per month</p>
-                </div>
-              </div>
-              <ul className="space-y-3 mb-6">
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Unlimited AI Generations
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Advanced Analytics Dashboard
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Priority 24/7 Support
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Up to 20 Team Seats
-                </li>
-              </ul>
-            </div>
-            <Button
-              className="w-full font-semibold"
-              variant={activePlan === 'Elite' ? 'outline' : 'primary'}
-              disabled={activePlan === 'Elite'}
-              onClick={() => triggerUpgradeFlow('Elite')}
-            >
-              {activePlan === 'Elite' ? 'Active' : 'Upgrade Now'}
-            </Button>
-          </Card>
+         {/* Starter Plan Card */}
+<Card
+  className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
+    activePlan === 'Starter' ? 'border-2 border-primary' : 'border-border'
+  }`}
+>
+  {activePlan === 'Starter' && (
+    <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
+      Current Plan
+    </div>
+  )}
+
+  <div>
+    <div className="flex justify-between items-center mb-6">
+      <h4 className="text-lg font-bold text-ink">Starter Spark</h4>
+
+      <div className="text-right">
+        <p className="text-2xl font-bold text-primary">₦30,000</p>
+        <p className="text-xs text-ink-muted">per month</p>
+      </div>
+    </div>
+
+    <ul className="space-y-3 mb-6">
+      {planDetails.Starter.features.map((feature) => (
+        <li key={feature} className="flex items-center gap-2 text-sm text-ink">
+          <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+          {feature}
+        </li>
+      ))}
+    </ul>
+  </div>
+
+  <Button
+    className="w-full font-semibold"
+    variant={activePlan === 'Starter' ? 'outline' : 'primary'}
+    disabled={activePlan === 'Starter'}
+    onClick={() => triggerUpgradeFlow('Starter')}
+  >
+    {activePlan === 'Starter' ? 'Active' : 'Choose Plan'}
+  </Button>
+</Card>
 
           {/* Enterprise Card */}
-          <Card
-            className={`p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 hover:border-primary ${
-              activePlan === 'Enterprise' ? 'border-2 border-primary' : 'border-border'
-            }`}
-          >
-            {activePlan === 'Enterprise' && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-                Current Plan
-              </div>
-            )}
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-lg font-bold text-ink">Enterprise</h4>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-ink">Custom</p>
-                  <p className="text-xs text-ink-muted">tailored solutions</p>
-                </div>
-              </div>
-              <ul className="space-y-3 mb-6">
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  White-label Reporting
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  SAML/SSO Single Sign-on
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Dedicated Account Manager
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Custom Contract Terms
-                </li>
-              </ul>
-            </div>
-            <Button
-              className="w-full"
-              variant="outline"
-              onClick={() => triggerUpgradeFlow('Enterprise')}
-              disabled={activePlan === 'Enterprise'}
-            >
-              {activePlan === 'Enterprise' ? 'Active' : 'Contact Sales'}
-            </Button>
-          </Card>
+          {/* Brand Domination Card */}
+<Card
+  className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 hover:border-primary ${
+    activePlan === 'Brand'
+      ? 'border-2 border-primary'
+      : 'border-border'
+  }`}
+>
+  {activePlan === 'Brand' && (
+    <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
+      Current Plan
+    </div>
+  )}
+
+  <div>
+    <div className="flex justify-between items-center mb-6">
+      <h4 className="text-lg font-bold text-ink">Brand Domination</h4>
+      <div className="text-right">
+        <p className="text-2xl font-bold text-primary">₦150,000</p>
+        <p className="text-xs text-ink-muted">per month</p>
+      </div>
+    </div>
+
+    <ul className="space-y-3 mb-6">
+      <li className="flex items-center gap-2 text-sm text-ink">
+        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+        Everything in Growth
+      </li>
+      <li className="flex items-center gap-2 text-sm text-ink">
+        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+        4 Social Platforms
+      </li>
+      <li className="flex items-center gap-2 text-sm text-ink">
+        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+        30 Content Pieces Monthly
+      </li>
+      <li className="flex items-center gap-2 text-sm text-ink">
+        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+        Ads Management & Growth Strategy
+      </li>
+    </ul>
+  </div>
+
+  <Button
+    className="w-full"
+    variant={activePlan === 'Brand' ? 'outline' : 'primary'}
+    onClick={() => triggerUpgradeFlow('Brand')}
+    disabled={activePlan === 'Brand'}
+  >
+    {activePlan === 'Brand' ? 'Active' : 'Upgrade Now'}
+  </Button>
+</Card>
         </div>
       </div>
 
@@ -445,7 +526,7 @@ export default function Billing() {
             size="sm"
             onClick={() => alert('Exporting all invoice data as CSV...')}
           >
-            Export History
+            Export Invoices
           </Button>
         </div>
         <Card className="overflow-hidden">
@@ -473,7 +554,7 @@ export default function Billing() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <button
-                        onClick={() => alert(`Downloading invoice ${invoice.id}...`)}
+                        onClick={() => alert(`Downloading invoice ${invoice.id}`)}
                         className="text-ink-muted hover:text-primary transition-colors cursor-pointer"
                         title="Download Invoice"
                       >
@@ -525,7 +606,7 @@ export default function Billing() {
             required
             value={supportSubject}
             onChange={(e) => setSupportSubject(e.target.value)}
-            placeholder="e.g. Question about my last invoice"
+            placeholder="e.g. Question about my last subscription"
           />
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-ink">Message</label>

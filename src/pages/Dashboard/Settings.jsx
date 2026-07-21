@@ -45,6 +45,92 @@ const NOTIFICATION_PREFS = [
 ]
 
 // ---------------------------------------------------------------------------
+// Country codes with flags
+// ---------------------------------------------------------------------------
+const COUNTRIES = [
+  { code: 'US', dialCode: '+1',   flag: '🇺🇸', name: 'United States' },
+  { code: 'GB', dialCode: '+44',  flag: '🇬🇧', name: 'United Kingdom' },
+  { code: 'CA', dialCode: '+1',   flag: '🇨🇦', name: 'Canada' },
+  { code: 'AU', dialCode: '+61',  flag: '🇦🇺', name: 'Australia' },
+  { code: 'DE', dialCode: '+49',  flag: '🇩🇪', name: 'Germany' },
+  { code: 'FR', dialCode: '+33',  flag: '🇫🇷', name: 'France' },
+  { code: 'IN', dialCode: '+91',  flag: '🇮🇳', name: 'India' },
+  { code: 'JP', dialCode: '+81',  flag: '🇯🇵', name: 'Japan' },
+  { code: 'BR', dialCode: '+55',  flag: '🇧🇷', name: 'Brazil' },
+  { code: 'MX', dialCode: '+52',  flag: '🇲🇽', name: 'Mexico' },
+  { code: 'ZA', dialCode: '+27',  flag: '🇿🇦', name: 'South Africa' },
+  { code: 'NG', dialCode: '+234', flag: '🇳🇬', name: 'Nigeria' },
+  { code: 'KE', dialCode: '+254', flag: '🇰🇪', name: 'Kenya' },
+  { code: 'GH', dialCode: '+233', flag: '🇬🇭', name: 'Ghana' },
+  { code: 'AE', dialCode: '+971', flag: '🇦🇪', name: 'UAE' },
+  { code: 'SG', dialCode: '+65',  flag: '🇸🇬', name: 'Singapore' },
+  { code: 'NL', dialCode: '+31',  flag: '🇳🇱', name: 'Netherlands' },
+  { code: 'ES', dialCode: '+34',  flag: '🇪🇸', name: 'Spain' },
+  { code: 'IT', dialCode: '+39',  flag: '🇮🇹', name: 'Italy' },
+  { code: 'SE', dialCode: '+46',  flag: '🇸🇪', name: 'Sweden' },
+  { code: 'NO', dialCode: '+47',  flag: '🇳🇴', name: 'Norway' },
+  { code: 'CH', dialCode: '+41',  flag: '🇨🇭', name: 'Switzerland' },
+  { code: 'PL', dialCode: '+48',  flag: '🇵🇱', name: 'Poland' },
+  { code: 'NZ', dialCode: '+64',  flag: '🇳🇿', name: 'New Zealand' },
+  { code: 'AR', dialCode: '+54',  flag: '🇦🇷', name: 'Argentina' },
+  { code: 'CO', dialCode: '+57',  flag: '🇨🇴', name: 'Colombia' },
+  { code: 'PH', dialCode: '+63',  flag: '🇵🇭', name: 'Philippines' },
+  { code: 'PK', dialCode: '+92',  flag: '🇵🇰', name: 'Pakistan' },
+  { code: 'BD', dialCode: '+880', flag: '🇧🇩', name: 'Bangladesh' },
+  { code: 'EG', dialCode: '+20',  flag: '🇪🇬', name: 'Egypt' },
+]
+
+// ---------------------------------------------------------------------------
+// Phone Input with country selector
+// ---------------------------------------------------------------------------
+function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      {label && (
+        <label htmlFor={id} className="text-xs font-medium text-ink">
+          {label}
+        </label>
+      )}
+      <div
+        style={{ borderRadius: '8px', border: '1px solid var(--color-border)' }}
+        className="flex h-10 bg-surface overflow-hidden focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500"
+      >
+        {/* Country selector */}
+        <div className="relative flex-shrink-0 border-r border-border">
+          <select
+            aria-label="Country code"
+            value={countryCode}
+            onChange={(e) => onCountryChange(e.target.value)}
+            className="h-full appearance-none bg-transparent pl-3 pr-6 text-sm text-ink focus:outline-none cursor-pointer"
+            style={{ minWidth: '84px' }}
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c.code} value={c.code}>
+                {c.flag} {c.dialCode}
+              </option>
+            ))}
+          </select>
+          {/* Custom chevron */}
+          <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-muted text-[10px]">
+            ▾
+          </span>
+        </div>
+
+        {/* Number input */}
+        <input
+          id={id}
+          type="tel"
+          value={value}
+          onChange={onChange}
+          placeholder="(555) 123-4567"
+          className="flex-1 bg-transparent px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Toggle Switch
 // ---------------------------------------------------------------------------
 function Toggle({ id, checked, onChange }) {
@@ -86,6 +172,12 @@ function SettingsSection({ label, description, children }) {
   )
 }
 
+// Shared field style — 1px border, 8px border-radius
+const fieldCls =
+  'h-10 bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
+const fieldStyle = { borderRadius: '8px', border: '1px solid var(--color-border)' }
+const textareaStyle = { borderRadius: '8px', border: '1px solid var(--color-border)' }
+
 // ---------------------------------------------------------------------------
 // Tab panels
 // ---------------------------------------------------------------------------
@@ -96,14 +188,39 @@ function CompanyInfoTab() {
     'A forward-thinking management firm leveraging artificial intelligence to streamline social media workflows for high-growth startups.'
   )
   const [email, setEmail] = useState('contact@socialai.pro')
-  const [phone, setPhone] = useState('+1 (555) 123-4567')
+  // Phone split into country + number
+  const [phoneCountry, setPhoneCountry] = useState('US')
+  const [phoneNumber, setPhoneNumber] = useState('(555) 123-4567')
+  // Business location
+  const [location, setLocation] = useState('')
+  // URLs
   const [website, setWebsite] = useState('https://socialai.pro')
+  const [businessWebsite, setBusinessWebsite] = useState('')
+  const [competitorUrls, setCompetitorUrls] = useState('')
+  const [competitorSocials, setCompetitorSocials] = useState('')
+
   const [saved, setSaved] = useState(false)
 
   const handleSave = (e) => {
     e.preventDefault()
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleDiscard = () => {
+    setBusinessName('SocialAI Pro')
+    setIndustry('Technology & SaaS')
+    setDescription(
+      'A forward-thinking management firm leveraging artificial intelligence to streamline social media workflows for high-growth startups.'
+    )
+    setEmail('contact@socialai.pro')
+    setPhoneCountry('US')
+    setPhoneNumber('(555) 123-4567')
+    setLocation('')
+    setWebsite('https://socialai.pro')
+    setBusinessWebsite('')
+    setCompetitorUrls('')
+    setCompetitorSocials('')
   }
 
   return (
@@ -124,7 +241,8 @@ function CompanyInfoTab() {
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className={fieldCls}
+                style={fieldStyle}
               />
             </div>
 
@@ -136,7 +254,8 @@ function CompanyInfoTab() {
                 id="industry"
                 value={industry}
                 onChange={(e) => setIndustry(e.target.value)}
-                className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                className={fieldCls}
+                style={fieldStyle}
               >
                 <option>Technology &amp; SaaS</option>
                 <option>Marketing Agency</option>
@@ -154,7 +273,8 @@ function CompanyInfoTab() {
                 rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                className="bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                style={textareaStyle}
               />
             </div>
           </form>
@@ -166,57 +286,146 @@ function CompanyInfoTab() {
         label="Contact Details"
         description="How our support team and your partners reach the organization."
       >
-        <div className="space-y-4">
-          <Card className="p-6">
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Official Email"
+        <Card className="p-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Official Email */}
+              <div className="flex flex-col gap-1.5">
+                <label htmlFor="official-email" className="text-xs font-medium text-ink">
+                  Official Email
+                </label>
+                <input
                   id="official-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                />
-                <Input
-                  label="Phone Number"
-                  id="phone-number"
-                  type="text"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  className={fieldCls}
+                  style={fieldStyle}
                 />
               </div>
-              <Input
-                label="Website URL"
+
+              {/* Phone Number with country selector */}
+              <PhoneInput
+                id="phone-number"
+                label="Phone Number"
+                countryCode={phoneCountry}
+                onCountryChange={setPhoneCountry}
+                value={phoneNumber}
+                onChange={(e) => setPhoneNumber(e.target.value)}
+              />
+            </div>
+
+            {/* Business Location */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="business-location" className="text-xs font-medium text-ink">
+                Business Location
+              </label>
+              <input
+                id="business-location"
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="e.g. New York, NY, USA"
+                className={fieldCls}
+                style={fieldStyle}
+              />
+            </div>
+
+            {/* Website URL */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="website-url" className="text-xs font-medium text-ink">
+                Website URL
+              </label>
+              <input
                 id="website-url"
                 type="url"
                 value={website}
                 onChange={(e) => setWebsite(e.target.value)}
+                placeholder="https://yourwebsite.com"
+                className={fieldCls}
+                style={fieldStyle}
               />
             </div>
-          </Card>
-
-          <div className="flex justify-end gap-3">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setBusinessName('SocialAI Pro')
-                setIndustry('Technology & SaaS')
-                setDescription(
-                  'A forward-thinking management firm leveraging artificial intelligence to streamline social media workflows for high-growth startups.'
-                )
-                setEmail('contact@socialai.pro')
-                setPhone('+1 (555) 123-4567')
-                setWebsite('https://socialai.pro')
-              }}
-            >
-              Discard
-            </Button>
-            <Button variant="primary" onClick={handleSave}>
-              {saved ? '✓ Saved!' : 'Save Changes'}
-            </Button>
           </div>
-        </div>
+        </Card>
       </SettingsSection>
+
+      {/* AI Context — Competitor & Online Presence */}
+      <SettingsSection
+        label="AI Context"
+        description="These details help the AI generate more relevant and competitive content tailored to your market."
+      >
+        <Card className="p-6">
+          <div className="space-y-4">
+            {/* Business Website URL */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="business-website-url" className="text-xs font-medium text-ink">
+                Business Website URL
+              </label>
+              <input
+                id="business-website-url"
+                type="url"
+                value={businessWebsite}
+                onChange={(e) => setBusinessWebsite(e.target.value)}
+                placeholder="https://yourbusiness.com"
+                className={fieldCls}
+                style={fieldStyle}
+              />
+              <p className="text-[11px] text-ink-muted leading-relaxed">
+                The AI will use this to understand your brand voice and offerings.
+              </p>
+            </div>
+
+            {/* Competitor Website URLs */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="competitor-urls" className="text-xs font-medium text-ink">
+                Competitor Website URLs
+              </label>
+              <textarea
+                id="competitor-urls"
+                rows={3}
+                value={competitorUrls}
+                onChange={(e) => setCompetitorUrls(e.target.value)}
+                placeholder="https://competitor1.com, https://competitor2.com"
+                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                style={fieldStyle}
+              />
+              <p className="text-[11px] text-ink-muted leading-relaxed">
+                Separate multiple URLs with commas. The AI uses these for competitive positioning.
+              </p>
+            </div>
+
+            {/* Competitor Social Media Links */}
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="competitor-socials" className="text-xs font-medium text-ink">
+                Competitor Social Media Links
+              </label>
+              <textarea
+                id="competitor-socials"
+                rows={3}
+                value={competitorSocials}
+                onChange={(e) => setCompetitorSocials(e.target.value)}
+                placeholder="https://twitter.com/competitor, https://instagram.com/competitor"
+                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                style={fieldStyle}
+              />
+              <p className="text-[11px] text-ink-muted leading-relaxed">
+                Separate multiple links with commas. Helps the AI benchmark your social strategy.
+              </p>
+            </div>
+          </div>
+        </Card>
+      </SettingsSection>
+
+      {/* Save / Discard */}
+      <div className="flex justify-end gap-3">
+        <Button variant="outline" onClick={handleDiscard}>
+          Discard
+        </Button>
+        <Button variant="primary" onClick={handleSave}>
+          {saved ? '✓ Saved!' : 'Save Changes'}
+        </Button>
+      </div>
     </div>
   )
 }
