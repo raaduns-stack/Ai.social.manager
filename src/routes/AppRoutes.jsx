@@ -31,6 +31,7 @@ import Billing from '../pages/Dashboard/Billing'
 import Support from '../pages/Dashboard/Support'
 import Notifications from '../pages/Dashboard/Notifications'
 import Settings from '../pages/Dashboard/Settings'
+import AdminRoutes from './AdminRoutes'
 
 /**
  * Central route map. This mirrors the 20-prompt Stitch sequence 1:1 —
@@ -75,6 +76,9 @@ export default function AppRoutes() {
         <Route path="notifications" element={<Notifications />} />
         <Route path="settings" element={<Settings />} />
       </Route>
+
+      {/* Admin Panel */}
+      <Route path="/admin/*" element={<AdminRoutes />} />
     </Routes>
   )
 }
