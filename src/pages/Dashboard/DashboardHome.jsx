@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Calendar,
   Award,
@@ -54,9 +55,9 @@ const METRICS_BY_PERIOD = {
 }
 
 const PERIOD_OPTIONS = [
-  { value: 'day', label: 'Previous Day' },
-  { value: 'week', label: 'Previous Week' },
-  { value: 'month', label: 'Previous Month' },
+  { value: 'day', label: 'Daily' },
+  { value: 'week', label: 'Weekly' },
+  { value: 'month', label: 'Monthly' },
 ]
 
 // ---------------------------------------------------------------------------
@@ -214,13 +215,12 @@ function DatePicker({ selectedDate, onSelectDate }) {
                 <button
                   key={day}
                   onClick={() => handleSelectDay(day)}
-                  className={`w-9 h-9 mx-auto flex items-center justify-center text-sm rounded-full transition-colors ${
-                    isSelected
+                  className={`w-9 h-9 mx-auto flex items-center justify-center text-sm rounded-full transition-colors ${isSelected
                       ? 'bg-primary text-white font-semibold'
                       : isToday
-                      ? 'text-primary font-semibold hover:bg-primary-50'
-                      : 'text-ink hover:bg-canvas'
-                  }`}
+                        ? 'text-primary font-semibold hover:bg-primary-50'
+                        : 'text-ink hover:bg-canvas'
+                    }`}
                 >
                   {day}
                 </button>
@@ -251,6 +251,7 @@ function DatePicker({ selectedDate, onSelectDate }) {
  * Renders inside DashboardLayout.
  */
 export default function DashboardHome() {
+
   // Header calendar filter — defaults to the design's original date
   const [selectedDate, setSelectedDate] = useState(new Date(2023, 9, 24)) // Oct 24, 2023
 
@@ -259,13 +260,31 @@ export default function DashboardHome() {
   const metrics = METRICS_BY_PERIOD[period]
 
   // Business info onboarding banner — dismissible, and auto-hides once complete
-  const [businessInfoComplete, setBusinessInfoComplete] = useState(false)
+  const [businessInfoComplete, setBusinessInfoComplete] = useState(() => {
+    return localStorage.getItem('businessInfoComplete') === 'true'
+  })
   const [bannerDismissed, setBannerDismissed] = useState(false)
   const showBusinessBanner = !businessInfoComplete && !bannerDismissed
+  const navigate = useNavigate()
 
+  const handleCompleteBusinessProfile = () => {
+    navigate('/dashboard/settings')
+  }
   // Activity section tabs — only one tab's content shows at a time
   const [activityTab, setActivityTab] = useState('recent') // 'recent' | 'posts'
+  useEffect(() => {
+    const checkBusinessProfile = () => {
+      setBusinessInfoComplete(
+        localStorage.getItem('businessInfoComplete') === 'true'
+      )
+    }
 
+    checkBusinessProfile()
+
+    window.addEventListener('focus', checkBusinessProfile)
+
+    return () => window.removeEventListener('focus', checkBusinessProfile)
+  }, [])
   return (
     <div className="space-y-6">
       {/* Header Section */}
@@ -291,7 +310,11 @@ export default function DashboardHome() {
           </div>
           <div className="flex items-center gap-2 shrink-0">
             {/* Wire this up to your real onboarding flow/route */}
-            <Button variant="primary" size="sm" onClick={() => setBusinessInfoComplete(true)}>
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={handleCompleteBusinessProfile}
+            >
               Complete Now
             </Button>
             <button
@@ -487,21 +510,19 @@ export default function DashboardHome() {
             <div className="px-6 py-4 border-b border-border bg-surface flex items-center gap-6">
               <button
                 onClick={() => setActivityTab('recent')}
-                className={`text-sm font-semibold pb-1 border-b-2 -mb-4 transition-colors ${
-                  activityTab === 'recent'
+                className={`text-sm font-semibold pb-1 border-b-2 -mb-4 transition-colors ${activityTab === 'recent'
                     ? 'text-primary border-primary'
                     : 'text-ink-muted border-transparent hover:text-ink'
-                }`}
+                  }`}
               >
                 Recent Activity
               </button>
               <button
                 onClick={() => setActivityTab('posts')}
-                className={`text-sm font-semibold pb-1 border-b-2 -mb-4 transition-colors ${
-                  activityTab === 'posts'
+                className={`text-sm font-semibold pb-1 border-b-2 -mb-4 transition-colors ${activityTab === 'posts'
                     ? 'text-primary border-primary'
                     : 'text-ink-muted border-transparent hover:text-ink'
-                }`}
+                  }`}
               >
                 Post Activity
               </button>
@@ -522,37 +543,37 @@ export default function DashboardHome() {
                 </div>
               </div>
 
-                <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
-                  <div className="mt-1 w-8 h-8 rounded-full bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
-                    <Sparkles size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-sm font-medium text-ink">AI Suggestion Generated</p>
-                      <span className="text-xs text-ink-muted">2h ago</span>
-                    </div>
-                    <p className="text-sm text-ink-muted truncate md:whitespace-normal">
-                      New caption ideas and optimal posting times calculated for your LinkedIn campaign.
-                    </p>
-                  </div>
+              <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
+                <div className="mt-1 w-8 h-8 rounded-full bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
+                  <Sparkles size={16} />
                 </div>
-
-                <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
-                  <div className="mt-1 w-8 h-8 rounded-full bg-canvas text-ink-muted flex items-center justify-center shrink-0">
-                    <MessageSquare size={16} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm font-medium text-ink">AI Suggestion Generated</p>
+                    <span className="text-xs text-ink-muted">2h ago</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-sm font-medium text-ink">New Comment Received</p>
-                      <span className="text-xs text-ink-muted">5h ago</span>
-                    </div>
-                    <p className="text-sm text-ink-muted truncate md:whitespace-normal">
-                      A user commented "Love this update!" on your most recent Instagram Reel.
-                    </p>
-                  </div>
+                  <p className="text-sm text-ink-muted truncate md:whitespace-normal">
+                    New caption ideas and optimal posting times calculated for your LinkedIn campaign.
+                  </p>
                 </div>
               </div>
-            
+
+              <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
+                <div className="mt-1 w-8 h-8 rounded-full bg-canvas text-ink-muted flex items-center justify-center shrink-0">
+                  <MessageSquare size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm font-medium text-ink">New Comment Received</p>
+                    <span className="text-xs text-ink-muted">5h ago</span>
+                  </div>
+                  <p className="text-sm text-ink-muted truncate md:whitespace-normal">
+                    A user commented "Love this update!" on your most recent Instagram Reel.
+                  </p>
+                </div>
+              </div>
+            </div>
+
 
             {/* Post Activity tab content */}
             {activityTab === 'posts' && (

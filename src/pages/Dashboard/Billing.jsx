@@ -18,7 +18,7 @@ import {
 
 export default function Billing() {
   // State for active plan
-const [activePlan, setActivePlan] = useState('Free') // 'Pro' | 'Elite' | 'Enterprise'
+  const [activePlan, setActivePlan] = useState('Free') // 'Free' | 'Starter' | 'Growth' | 'Brand'
 
   // State for payment method
   const [paymentMethod, setPaymentMethod] = useState({
@@ -50,150 +50,164 @@ const [activePlan, setActivePlan] = useState('Free') // 'Pro' | 'Elite' | 'Enter
   const [supportMessage, setSupportMessage] = useState('')
   const [supportSubmitted, setSupportSubmitted] = useState(false)
 
- // Plan limits metadata depending on active plan
-const planDetails = {
-  Free: {
-    name: "Free Plan",
-    price: "₦0",
-    billingCycle: "/month",
-    nextBill: "No Billing",
-    description: "Perfect for individuals getting started.",
+  // Plan limits metadata depending on active plan
+  const planDetails = {
+    Free: {
+      name: "Free Plan",
+      tagline: "Perfect for trying Whitebox",
+      price: "₦0",
+      billingCycle: "/month",
+      nextBill: "No Billing",
+      description: "Perfect for trying Whitebox",
 
-    storageUsed: 1,
-    storageTotal: 5,
-    storagePercentage: 20,
+      socialAccountsUsed: 1,
+      socialAccountsTotal: 1,
 
-    seatsUsed: 1,
-    seatsTotal: 1,
+      teamSeatsUsed: 1,
+      teamSeatsTotal: 1,
 
-    aiWordsUsed: 5,
-    aiWordsTotal: 10,
+      aiPostsUsed: 2,
+      aiPostsTotal: 5,
 
-    features: [
-      "1 Social Channel",
-      "1 AI Generated Post",
-      "Basic Dashboard",
-      "Community Support",
-    ],
-  },
+      features: [
+        "Connect 1 social media account",
+        "Generate 5 AI posts per month",
+        "AI-generated caption + hashtags",
+        "Basic AI image generation",
+        "Content preview",
+        "Basic analytics",
+        "AI/WhatsApp Support",
+      ],
+    },
 
-  Starter: {
-    name: "Starter Spark",
-    price: "₦30,000",
-    billingCycle: "/month",
-    nextBill: "20 Aug 2026",
-    description: "Perfect for small businesses starting to grow.",
+    Starter: {
+      name: "Starter",
+      tagline: "For small businesses starting their online presence",
+      price: "₦30,000",
+      billingCycle: "/month",
+      nextBill: "20 Aug 2026",
+      description: "For small businesses starting their online presence",
 
-    storageUsed: 12,
-    storageTotal: 50,
-    storagePercentage: 24,
+      socialAccountsUsed: 2,
+      socialAccountsTotal: 3,
 
-    seatsUsed: 3,
-    seatsTotal: 5,
+      teamSeatsUsed: 1,
+      teamSeatsTotal: 1,
 
-    aiWordsUsed: 30,
-    aiWordsTotal: 50,
+      aiPostsUsed: 12,
+      aiPostsTotal: 30,
 
-    features: [
-      "Social Media Audit (2 platforms)",
-      "Page Revamp",
-      "20 Custom Posts",
-      "Basic Strategy",
-      "Monthly Report",
-    ],
-  },
+      features: [
+        "Everything in Free, plus:",
+        "Connect 3 social media accounts",
+        "30 AI-generated posts/month",
+        "AI-generated captions",
+        "AI-generated hashtags",
+        "AI-generated images",
+        "Content Calendar",
+        "Post Scheduling",
+        "Upload Brand Assets",
+        "Basic Analytics Dashboard",
+        "AI Content Suggestions",
+        "AI/WhatsApp Support",
+      ],
+    },
 
-  Growth: {
-    name: "Growth Package",
-    price: "₦100,000",
-    billingCycle: "/month",
-    nextBill: "20 Aug 2026",
-    description: "Ideal for growing businesses and brands.",
+    Growth: {
+      name: "Growth",
+      tagline: "For businesses serious about growth",
+      price: "₦100,000",
+      billingCycle: "/month",
+      nextBill: "20 Aug 2026",
+      description: "For businesses serious about growth",
+      recommended: true,
 
-    storageUsed: 45,
-    storageTotal: 100,
-    storagePercentage: 45,
+      socialAccountsUsed: 4,
+      socialAccountsTotal: 7,
 
-    seatsUsed: 6,
-    seatsTotal: 10,
+      teamSeatsUsed: 3,
+      teamSeatsTotal: 5,
 
-    aiWordsUsed: 75,
-    aiWordsTotal: 100,
+      aiPostsUsed: 60,
+      aiPostsTotal: 150,
 
-    features: [
-      "Everything in Starter",
-      "Brand Identity Development",
-      "3 Social Platforms",
-      "Content Calendar",
-      "Lead Generation",
-    ],
-  },
+      features: [
+        "Everything in Starter, plus:",
+        "Connect 7 social media accounts",
+        "150 AI-generated posts/month (Fair Use)",
+        "Advanced AI Image Generation",
+        "AI Content Calendar",
+        "Competitor Analysis",
+        "Competitor Website Analysis",
+        "AI Content Improvement Suggestions",
+        "Performance Insights",
+        "Weekly Reports",
+        "Team Members (up to 5)",
+        "Priority AI Generation",
+        "Content Approval Workflow",
+        "Advanced Analytics",
+        "AI/WhatsApp Support",
+      ],
+      bonusFeatures: [
+        "Monthly AI Strategy Report",
+        "Early access to new features",
+      ],
+    },
 
-  Brand: {
-    name: "Brand Domination",
-    price: "₦150,000",
-    billingCycle: "/month",
-    nextBill: "20 Aug 2026",
-    description: "Designed for established brands that need maximum growth.",
+    Brand: {
+      name: "Brand Domination",
+      tagline: "Built for brands that want to automate everything",
+      price: "₦150,000",
+      billingCycle: "/month",
+      nextBill: "20 Aug 2026",
+      description: "Built for brands that want to automate everything",
+      enterpriseTier: true,
 
-    storageUsed: 120,
-    storageTotal: 200,
-    storagePercentage: 60,
+      socialAccountsUsed: 6,
+      socialAccountsTotal: 15,
 
-    seatsUsed: 12,
-    seatsTotal: 20,
+      teamSeatsUsed: 8,
+      teamSeatsTotal: "Unlimited",
 
-    aiWordsUsed: 180,
-    aiWordsTotal: 250,
+      aiPostsUsed: 90,
+      aiPostsTotal: 300,
 
-    features: [
-      "Everything in Growth",
-      "4 Platforms",
-      "30 Content Pieces",
-      "Growth Strategy",
-      "Ads Management",
-    ],
-  },
+      features: [
+        "Everything in Growth, plus:",
+        "Connect 15 social media accounts",
+        "Unlimited Team Members",
+        "300 AI-generated posts/month (Fair Use)",
+        "AI Marketing Strategy",
+        "AI Campaign Planner",
+        "AI Seasonal Campaign Suggestions",
+        "Advanced Competitor Intelligence",
+        "Multi-location Business Support",
+        "Multiple Brand Management",
+        "Dedicated Account Manager",
+        "Feature Request Priority",
+        "Custom AI Workflows",
+        "AI/WhatsApp Support",
+      ],
+      bonusFeatures: [
+        "Dedicated Success Manager",
+        "Beta Features Access",
+      ],
+    },
+  }
 
-  Enterprise: {
-    name: "Enterprise",
-    price: "Custom",
-    billingCycle: "",
-    nextBill: "Custom Contract",
-    description: "Tailored solutions for large organizations.",
-
-    storageUsed: 250,
-    storageTotal: 500,
-    storagePercentage: 50,
-
-    seatsUsed: 35,
-    seatsTotal: 100,
-
-    aiWordsUsed: 450,
-    aiWordsTotal: 1000,
-
-    features: [
-      "Unlimited Storage",
-      "Unlimited AI",
-      "Dedicated Account Manager",
-      "Custom Integrations",
-    ],
-  },
-}
-
-const currentPlanInfo = planDetails[activePlan]
+  const currentPlanInfo = planDetails[activePlan]
 
   // Mock invoice data
   const mockInvoices = [
-  { id: 'INV-9283-21', date: 'Oct 12, 2023', amount: '₦30,000', status: 'Paid' },
-  { id: 'INV-8142-05', date: 'Sep 12, 2023', amount: '₦30,000', status: 'Paid' },
-  { id: 'INV-7091-88', date: 'Aug 12, 2023', amount: '₦100,000', status: 'Processing' },
-  { id: 'INV-6012-44', date: 'Jul 12, 2023', amount: '₦100,000', status: 'Paid' },
-  { id: 'INV-5002-12', date: 'Jun 12, 2023', amount: '₦150,000', status: 'Paid' },
-  { id: 'INV-4890-09', date: 'May 12, 2023', amount: '₦150,000', status: 'Paid' },
-  { id: 'INV-3211-77', date: 'Apr 12, 2023', amount: '₦30,000', status: 'Paid' },
-  { id: 'INV-2041-32', date: 'Mar 12, 2023', amount: '₦30,000', status: 'Paid' },
-]
+    { id: 'INV-9283-21', date: 'Oct 12, 2023', amount: '₦30,000', status: 'Paid' },
+    { id: 'INV-8142-05', date: 'Sep 12, 2023', amount: '₦30,000', status: 'Paid' },
+    { id: 'INV-7091-88', date: 'Aug 12, 2023', amount: '₦100,000', status: 'Processing' },
+    { id: 'INV-6012-44', date: 'Jul 12, 2023', amount: '₦100,000', status: 'Paid' },
+    { id: 'INV-5002-12', date: 'Jun 12, 2023', amount: '₦150,000', status: 'Paid' },
+    { id: 'INV-4890-09', date: 'May 12, 2023', amount: '₦150,000', status: 'Paid' },
+    { id: 'INV-3211-77', date: 'Apr 12, 2023', amount: '₦30,000', status: 'Paid' },
+    { id: 'INV-2041-32', date: 'Mar 12, 2023', amount: '₦30,000', status: 'Paid' },
+  ]
 
   // Pagination calculations
   const itemsPerPage = 4
@@ -269,6 +283,9 @@ const currentPlanInfo = planDetails[activePlan]
     setIsUpgradeModalOpen(true)
   }
 
+  // Order in which plan cards render in the "Change Your Plan" grid
+  const planOrder = ['Free', 'Starter', 'Growth', 'Brand']
+
   return (
     <div className="space-y-6">
       {/* Page Header Section */}
@@ -299,7 +316,7 @@ const currentPlanInfo = planDetails[activePlan]
                     Active Subscription
                   </Badge>
                   <h3 className="text-xl font-bold text-ink">{currentPlanInfo.name}</h3>
-                  <p className="text-sm text-ink-muted">{currentPlanInfo.description}</p>
+                  <p className="text-sm text-ink-muted">{currentPlanInfo.tagline}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-3xl font-bold text-ink">
@@ -310,7 +327,7 @@ const currentPlanInfo = planDetails[activePlan]
                 </div>
               </div>
 
-                            {/* Plan Features */}
+              {/* Plan Features */}
               <div className="py-6 border-y border-border">
                 <h4 className="text-sm font-semibold text-ink mb-4">
                   What's Included
@@ -329,6 +346,22 @@ const currentPlanInfo = planDetails[activePlan]
                     </div>
                   ))}
                 </div>
+
+                {currentPlanInfo.bonusFeatures && (
+                  <div className="mt-4 pt-4 border-t border-dashed border-border">
+                    <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-3">
+                      Bonus
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {currentPlanInfo.bonusFeatures.map((feature) => (
+                        <div key={feature} className="flex items-center gap-2">
+                          <Sparkles size={16} className="text-primary" />
+                          <span className="text-sm text-ink">{feature}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -405,7 +438,7 @@ const currentPlanInfo = planDetails[activePlan]
               </div>
               <Button
                 className="w-full bg-white text-primary-700 hover:bg-primary-50 hover:text-primary font-semibold border-0 py-2 shadow-soft hover:shadow-hover"
-              onClick={() => triggerUpgradeFlow('Brand')}
+                onClick={() => setIsSupportModalOpen(true)}
               >
                 Talk to Sales
               </Button>
@@ -414,147 +447,76 @@ const currentPlanInfo = planDetails[activePlan]
         </div>
       </div>
 
-      
       {/* Change Your Plan Section */}
       <div className="mt-8">
         <h3 className="text-lg font-bold text-ink mb-6">Change Your Plan</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Starter Plan Card */}
-          <Card
-            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
-              activePlan === 'Starter' ? 'border-2 border-primary' : 'border-border'
-            }`}
-          >
-            {activePlan === 'Starter' && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-                Current Plan
-              </div>
-            )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {planOrder.map((planKey) => {
+            const plan = planDetails[planKey]
+            const isCurrent = activePlan === planKey
 
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-lg font-bold text-ink">Starter Spark</h4>
+            return (
+              <Card
+                key={planKey}
+                className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${isCurrent ? 'border-2 border-primary' : 'border-border'
+                  }`}
+              >
+                {isCurrent ? (
+                  <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
+                    Current Plan
+                  </div>
+                ) : plan.recommended ? (
+                  <div className="absolute top-0 right-0 bg-accent text-white px-4 py-1 rounded-bl-card text-xs font-semibold flex items-center gap-1">
+                    <Sparkles size={12} />
+                    Recommended
+                  </div>
+                ) : null}
 
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">₦30,000</p>
-                  <p className="text-xs text-ink-muted">per month</p>
+                <div>
+                  <div className="flex justify-between items-start mb-2">
+                    <h4 className="text-lg font-bold text-ink">
+                      {plan.name}
+                      {plan.enterpriseTier && (
+                        <span className="ml-2 text-[10px] font-semibold text-ink-muted uppercase tracking-wider align-middle">
+                          Enterprise
+                        </span>
+                      )}
+                    </h4>
+                  </div>
+                  <p className="text-xs text-ink-muted mb-4">{plan.tagline}</p>
+
+                  <div className="mb-6">
+                    <p className="text-2xl font-bold text-primary">{plan.price}</p>
+                    <p className="text-xs text-ink-muted">{plan.price === '₦0' ? 'free forever' : 'per month'}</p>
+                  </div>
+
+                  <ul className="space-y-3 mb-6">
+                    {plan.features.map((feature) => (
+                      <li key={feature} className="flex items-start gap-2 text-sm text-ink">
+                        {feature.endsWith(', plus:') ? (
+                          <span className="text-ink-muted italic">{feature}</span>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={16} className="text-accent fill-accent-50 mt-0.5 shrink-0" />
+                            <span>{feature}</span>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
-              </div>
 
-              <ul className="space-y-3 mb-6">
-                {planDetails.Starter.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm text-ink">
-                    <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Button
-              className="w-full font-semibold"
-              variant={activePlan === 'Starter' ? 'outline' : 'primary'}
-              disabled={activePlan === 'Starter'}
-              onClick={() => triggerUpgradeFlow('Starter')}
-            >
-              {activePlan === 'Starter' ? 'Active' : 'Choose Plan'}
-            </Button>
-          </Card>
-
-          {/* Growth Package Card — was missing after the merge */}
-          <Card
-            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
-              activePlan === 'Growth' ? 'border-2 border-primary' : 'border-border'
-            }`}
-          >
-            {activePlan === 'Growth' && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-                Current Plan
-              </div>
-            )}
-
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-lg font-bold text-ink">Growth Package</h4>
-
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">₦100,000</p>
-                  <p className="text-xs text-ink-muted">per month</p>
-                </div>
-              </div>
-
-              <ul className="space-y-3 mb-6">
-                {planDetails.Growth.features.map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm text-ink">
-                    <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <Button
-              className="w-full font-semibold"
-              variant={activePlan === 'Growth' ? 'outline' : 'primary'}
-              disabled={activePlan === 'Growth'}
-              onClick={() => triggerUpgradeFlow('Growth')}
-            >
-              {activePlan === 'Growth' ? 'Active' : 'Choose Plan'}
-            </Button>
-          </Card>
-
-          {/* Brand Domination Card */}
-          <Card
-            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 hover:border-primary ${
-              activePlan === 'Brand'
-                ? 'border-2 border-primary'
-                : 'border-border'
-            }`}
-          >
-            {activePlan === 'Brand' && (
-              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-                Current Plan
-              </div>
-            )}
-
-            <div>
-              <div className="flex justify-between items-center mb-6">
-                <h4 className="text-lg font-bold text-ink">Brand Domination</h4>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-primary">₦150,000</p>
-                  <p className="text-xs text-ink-muted">per month</p>
-                </div>
-              </div>
-
-              <ul className="space-y-3 mb-6">
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Everything in Growth
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  4 Social Platforms
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  30 Content Pieces Monthly
-                </li>
-                <li className="flex items-center gap-2 text-sm text-ink">
-                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-                  Ads Management & Growth Strategy
-                </li>
-              </ul>
-            </div>
-
-            <Button
-              className="w-full"
-              variant={activePlan === 'Brand' ? 'outline' : 'primary'}
-              onClick={() => triggerUpgradeFlow('Brand')}
-              disabled={activePlan === 'Brand'}
-            >
-              {activePlan === 'Brand' ? 'Active' : 'Upgrade Now'}
-            </Button>
-          </Card>
+                <Button
+                  className="w-full font-semibold"
+                  variant={isCurrent ? 'outline' : 'primary'}
+                  disabled={isCurrent}
+                  onClick={() => triggerUpgradeFlow(planKey)}
+                >
+                  {isCurrent ? 'Active' : 'Choose Plan'}
+                </Button>
+              </Card>
+            )
+          })}
         </div>
       </div>
 
@@ -752,16 +714,16 @@ const currentPlanInfo = planDetails[activePlan]
             <h4 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-2">Usage Limits</h4>
             <div className="space-y-2">
               <div className="flex justify-between text-sm text-ink">
-                <span>Storage</span>
-                <span>{currentPlanInfo.storageUsed} / {currentPlanInfo.storageTotal} GB</span>
+                <span>Social Accounts Connected</span>
+                <span>{currentPlanInfo.socialAccountsUsed} / {currentPlanInfo.socialAccountsTotal}</span>
               </div>
               <div className="flex justify-between text-sm text-ink">
                 <span>Team Seats</span>
-                <span>{currentPlanInfo.seatsUsed} / {currentPlanInfo.seatsTotal}</span>
+                <span>{currentPlanInfo.teamSeatsUsed} / {currentPlanInfo.teamSeatsTotal}</span>
               </div>
               <div className="flex justify-between text-sm text-ink">
-                <span>AI Words</span>
-                <span>{currentPlanInfo.aiWordsUsed}k / {currentPlanInfo.aiWordsTotal}k</span>
+                <span>AI Posts</span>
+                <span>{currentPlanInfo.aiPostsUsed} / {currentPlanInfo.aiPostsTotal}</span>
               </div>
             </div>
           </div>
@@ -777,60 +739,45 @@ const currentPlanInfo = planDetails[activePlan]
       <Modal
         open={isUpgradeModalOpen}
         onClose={() => setIsUpgradeModalOpen(false)}
-        title={selectedUpgradePlan === 'Enterprise' ? 'Contact Sales' : 'Upgrade Plan'}
+        title="Change Plan"
       >
-        {selectedUpgradePlan === 'Enterprise' ? (
-          <div className="space-y-4">
-            <p className="text-sm text-ink-muted">
-              You are requesting information on the Enterprise plan. A sales representative will contact you at your registered email <strong>alex@socialai.com</strong> to discuss custom terms, SAML/SSO configuration, and dedicated support.
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => setIsUpgradeModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  setIsUpgradeModalOpen(false);
-                  alert('Sales request submitted! We will email you shortly.');
-                }}
-              >
-                Submit Request
-              </Button>
+        <div className="space-y-4">
+          <p className="text-sm text-ink-muted">
+            Are you sure you want to switch your subscription to the <strong>{selectedUpgradePlan ? planDetails[selectedUpgradePlan].name : ''}</strong> plan?
+          </p>
+          <div className="bg-canvas p-4 rounded-control border border-border space-y-2">
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-muted">New Monthly Price:</span>
+              <span className="font-semibold text-ink">
+                {selectedUpgradePlan ? planDetails[selectedUpgradePlan].price : ''}
+                {selectedUpgradePlan && planDetails[selectedUpgradePlan].price !== '₦0' ? '/mo' : ''}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-muted">Social Accounts:</span>
+              <span className="font-semibold text-ink">
+                {selectedUpgradePlan ? planDetails[selectedUpgradePlan].socialAccountsTotal : ''}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-ink-muted">AI Posts / month:</span>
+              <span className="font-semibold text-ink">
+                {selectedUpgradePlan ? planDetails[selectedUpgradePlan].aiPostsTotal : ''}
+              </span>
             </div>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <p className="text-sm text-ink-muted">
-              Are you sure you want to upgrade your subscription to the <strong>{selectedUpgradePlan} Plan</strong>?
-            </p>
-            <div className="bg-canvas p-4 rounded-control border border-border space-y-2">
-              <div className="flex justify-between text-sm">
-                <span className="text-ink-muted">New Monthly Price:</span>
-                <span className="font-semibold text-ink">
-                  {selectedUpgradePlan ? planDetails[selectedUpgradePlan].price : ''}/mo
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-ink-muted">Storage Limit:</span>
-                <span className="font-semibold text-ink">
-                  {selectedUpgradePlan ? planDetails[selectedUpgradePlan].storageTotal : ''} GB
-                </span>
-              </div>
-            </div>
-            <p className="text-xs text-ink-muted italic">
-              * Note: The new card details on file ({paymentMethod.type} ending in {paymentMethod.ending}) will be billed automatically starting today. Pro-rated differences will apply to your current billing cycle.
-            </p>
-            <div className="flex justify-end gap-3 pt-2">
-              <Button variant="outline" onClick={() => setIsUpgradeModalOpen(false)}>
-                Cancel
-              </Button>
-              <Button variant="primary" onClick={handleUpgradeConfirm}>
-                Confirm Upgrade
-              </Button>
-            </div>
+          <p className="text-xs text-ink-muted italic">
+            * Note: The card on file ({paymentMethod.type} ending in {paymentMethod.ending}) will be billed automatically starting today. Pro-rated differences will apply to your current billing cycle.
+          </p>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button variant="outline" onClick={() => setIsUpgradeModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" onClick={handleUpgradeConfirm}>
+              Confirm Change
+            </Button>
           </div>
-        )}
+        </div>
       </Modal>
     </div>
   )
