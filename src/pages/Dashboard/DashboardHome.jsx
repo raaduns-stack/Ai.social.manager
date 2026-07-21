@@ -327,7 +327,7 @@ export default function DashboardHome() {
         <div className="flex flex-col sm:flex-row items-center gap-4 z-10 shrink-0">
           <div className="text-center sm:text-right">
             <p className="text-xs text-ink-muted font-medium">Next billing cycle</p>
-            <p className="text-sm font-semibold text-primary mt-0.5">Nov 12, 2023</p>
+            <p className="text-sm font-semibold text-primary mt-0.5">Aug 20, 2026</p>
           </div>
           <Button variant="primary">Manage Plan</Button>
         </div>
@@ -506,24 +506,21 @@ export default function DashboardHome() {
                 Post Activity
               </button>
             </div>
-
-            {/* Recent Activity tab content */}
-            {activityTab === 'recent' && (
-              <div className="divide-y divide-border">
-                <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
-                  <div className="mt-1 w-8 h-8 rounded-full bg-primary/10 text-primary-600 flex items-center justify-center shrink-0">
-                    <Calendar size={16} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex justify-between items-center mb-1">
-                      <p className="text-sm font-medium text-ink">Post Scheduled</p>
-                      <span className="text-xs text-ink-muted">10m ago</span>
-                    </div>
-                    <p className="text-sm text-ink-muted truncate md:whitespace-normal">
-                      "Product Update: October" scheduled for Instagram and Twitter for tomorrow at 10:00 AM.
-                    </p>
-                  </div>
+            <div className="divide-y divide-border">
+              <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
+                <div className="mt-1 w-8 h-8 rounded-full bg-primary/10 text-primary-600 flex items-center justify-center shrink-0">
+                  <Calendar size={16} />
                 </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <p className="text-sm font-medium text-ink">Post Scheduled</p>
+                    <span className="text-xs text-ink-muted">10m ago</span>
+                  </div>
+                  <p className="text-sm text-ink-muted truncate md:whitespace-normal">
+                    "Product Update: October" scheduled for Instagram and Twitter for tomorrow at 10:00 AM.
+                  </p>
+                </div>
+              </div>
 
                 <div className="p-6 hover:bg-canvas transition-colors flex items-start gap-4">
                   <div className="mt-1 w-8 h-8 rounded-full bg-accent-50 text-accent-600 flex items-center justify-center shrink-0">
@@ -555,7 +552,7 @@ export default function DashboardHome() {
                   </div>
                 </div>
               </div>
-            )}
+            
 
             {/* Post Activity tab content */}
             {activityTab === 'posts' && (
@@ -610,7 +607,7 @@ export default function DashboardHome() {
                   <div>
                     <p className="text-sm font-semibold text-ink">Weekly Report Ready</p>
                     <p className="text-xs text-ink-muted mt-1 leading-relaxed">
-                      Your social performance report for Oct 15-22 is now available for download.
+                      Your social performance report for Jul 13-20 is now available for download.
                     </p>
                     <Button variant="ghost" className="mt-3 text-primary hover:text-primary-700 hover:bg-transparent font-semibold p-0 h-auto">
                       View Report

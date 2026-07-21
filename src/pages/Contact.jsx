@@ -253,7 +253,7 @@ export default function Contact() {
             </div>
             <div className="flex items-center gap-6">
               <p className="text-xs text-ink-muted">
-                © 2024 AI Social Media Manager. All rights reserved.
+                © 2026 AI Social Media Manager. All rights reserved.
               </p>
               <div className="flex gap-4">
                 <a className="text-ink-muted hover:text-primary transition-colors" href="#">

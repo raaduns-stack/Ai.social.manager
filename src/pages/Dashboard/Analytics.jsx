@@ -54,7 +54,7 @@ const barData = [
 const topPosts = [
   {
     id: 1,
-    title: '10 Tips for Mastering AI Workflows in 2024',
+    title: '10 Tips for Mastering AI Workflows in 2026',
     subtitle: 'Posted 2 days ago • Instagram',
     likes: '1.2K',
     er: '8.4%',

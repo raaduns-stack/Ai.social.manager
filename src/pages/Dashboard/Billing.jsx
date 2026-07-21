@@ -414,106 +414,147 @@ const currentPlanInfo = planDetails[activePlan]
         </div>
       </div>
 
+      
       {/* Change Your Plan Section */}
       <div className="mt-8">
         <h3 className="text-lg font-bold text-ink mb-6">Change Your Plan</h3>
-<div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Elite Plan Card */}
-         {/* Starter Plan Card */}
-<Card
-  className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
-    activePlan === 'Starter' ? 'border-2 border-primary' : 'border-border'
-  }`}
->
-  {activePlan === 'Starter' && (
-    <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-      Current Plan
-    </div>
-  )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Starter Plan Card */}
+          <Card
+            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
+              activePlan === 'Starter' ? 'border-2 border-primary' : 'border-border'
+            }`}
+          >
+            {activePlan === 'Starter' && (
+              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
+                Current Plan
+              </div>
+            )}
 
-  <div>
-    <div className="flex justify-between items-center mb-6">
-      <h4 className="text-lg font-bold text-ink">Starter Spark</h4>
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-lg font-bold text-ink">Starter Spark</h4>
 
-      <div className="text-right">
-        <p className="text-2xl font-bold text-primary">₦30,000</p>
-        <p className="text-xs text-ink-muted">per month</p>
-      </div>
-    </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">₦30,000</p>
+                  <p className="text-xs text-ink-muted">per month</p>
+                </div>
+              </div>
 
-    <ul className="space-y-3 mb-6">
-      {planDetails.Starter.features.map((feature) => (
-        <li key={feature} className="flex items-center gap-2 text-sm text-ink">
-          <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-          {feature}
-        </li>
-      ))}
-    </ul>
-  </div>
+              <ul className="space-y-3 mb-6">
+                {planDetails.Starter.features.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-ink">
+                    <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
 
-  <Button
-    className="w-full font-semibold"
-    variant={activePlan === 'Starter' ? 'outline' : 'primary'}
-    disabled={activePlan === 'Starter'}
-    onClick={() => triggerUpgradeFlow('Starter')}
-  >
-    {activePlan === 'Starter' ? 'Active' : 'Choose Plan'}
-  </Button>
-</Card>
+            <Button
+              className="w-full font-semibold"
+              variant={activePlan === 'Starter' ? 'outline' : 'primary'}
+              disabled={activePlan === 'Starter'}
+              onClick={() => triggerUpgradeFlow('Starter')}
+            >
+              {activePlan === 'Starter' ? 'Active' : 'Choose Plan'}
+            </Button>
+          </Card>
 
-          {/* Enterprise Card */}
+          {/* Growth Package Card — was missing after the merge */}
+          <Card
+            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
+              activePlan === 'Growth' ? 'border-2 border-primary' : 'border-border'
+            }`}
+          >
+            {activePlan === 'Growth' && (
+              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
+                Current Plan
+              </div>
+            )}
+
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-lg font-bold text-ink">Growth Package</h4>
+
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">₦100,000</p>
+                  <p className="text-xs text-ink-muted">per month</p>
+                </div>
+              </div>
+
+              <ul className="space-y-3 mb-6">
+                {planDetails.Growth.features.map((feature) => (
+                  <li key={feature} className="flex items-center gap-2 text-sm text-ink">
+                    <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <Button
+              className="w-full font-semibold"
+              variant={activePlan === 'Growth' ? 'outline' : 'primary'}
+              disabled={activePlan === 'Growth'}
+              onClick={() => triggerUpgradeFlow('Growth')}
+            >
+              {activePlan === 'Growth' ? 'Active' : 'Choose Plan'}
+            </Button>
+          </Card>
+
           {/* Brand Domination Card */}
-<Card
-  className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 hover:border-primary ${
-    activePlan === 'Brand'
-      ? 'border-2 border-primary'
-      : 'border-border'
-  }`}
->
-  {activePlan === 'Brand' && (
-    <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
-      Current Plan
-    </div>
-  )}
+          <Card
+            className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 hover:border-primary ${
+              activePlan === 'Brand'
+                ? 'border-2 border-primary'
+                : 'border-border'
+            }`}
+          >
+            {activePlan === 'Brand' && (
+              <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-card text-xs font-semibold">
+                Current Plan
+              </div>
+            )}
 
-  <div>
-    <div className="flex justify-between items-center mb-6">
-      <h4 className="text-lg font-bold text-ink">Brand Domination</h4>
-      <div className="text-right">
-        <p className="text-2xl font-bold text-primary">₦150,000</p>
-        <p className="text-xs text-ink-muted">per month</p>
-      </div>
-    </div>
+            <div>
+              <div className="flex justify-between items-center mb-6">
+                <h4 className="text-lg font-bold text-ink">Brand Domination</h4>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-primary">₦150,000</p>
+                  <p className="text-xs text-ink-muted">per month</p>
+                </div>
+              </div>
 
-    <ul className="space-y-3 mb-6">
-      <li className="flex items-center gap-2 text-sm text-ink">
-        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-        Everything in Growth
-      </li>
-      <li className="flex items-center gap-2 text-sm text-ink">
-        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-        4 Social Platforms
-      </li>
-      <li className="flex items-center gap-2 text-sm text-ink">
-        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-        30 Content Pieces Monthly
-      </li>
-      <li className="flex items-center gap-2 text-sm text-ink">
-        <CheckCircle2 size={16} className="text-accent fill-accent-50" />
-        Ads Management & Growth Strategy
-      </li>
-    </ul>
-  </div>
+              <ul className="space-y-3 mb-6">
+                <li className="flex items-center gap-2 text-sm text-ink">
+                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+                  Everything in Growth
+                </li>
+                <li className="flex items-center gap-2 text-sm text-ink">
+                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+                  4 Social Platforms
+                </li>
+                <li className="flex items-center gap-2 text-sm text-ink">
+                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+                  30 Content Pieces Monthly
+                </li>
+                <li className="flex items-center gap-2 text-sm text-ink">
+                  <CheckCircle2 size={16} className="text-accent fill-accent-50" />
+                  Ads Management & Growth Strategy
+                </li>
+              </ul>
+            </div>
 
-  <Button
-    className="w-full"
-    variant={activePlan === 'Brand' ? 'outline' : 'primary'}
-    onClick={() => triggerUpgradeFlow('Brand')}
-    disabled={activePlan === 'Brand'}
-  >
-    {activePlan === 'Brand' ? 'Active' : 'Upgrade Now'}
-  </Button>
-</Card>
+            <Button
+              className="w-full"
+              variant={activePlan === 'Brand' ? 'outline' : 'primary'}
+              onClick={() => triggerUpgradeFlow('Brand')}
+              disabled={activePlan === 'Brand'}
+            >
+              {activePlan === 'Brand' ? 'Active' : 'Upgrade Now'}
+            </Button>
+          </Card>
         </div>
       </div>
 
