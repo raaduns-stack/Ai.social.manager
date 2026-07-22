@@ -32,20 +32,6 @@ pascal        treasure
 
 ## 2. One-Time Setup (do this once, together, on Friday morning)
 
-### Step 3 — Push this starter project to GitHub
-Whoever is setting up runs this **inside the project folder** (where `package.json` lives):
-
-```bash
-git init
-git add .
-git commit -m "chore: initial project setup with folder structure and shared components"
-git branch -M main
-git remote add origin https://github.com/YOUR-USERNAME/ai-social-media-portal.git
-git push -u origin main
-```
-
-Replace the URL with your actual repo URL (copy it from the green "Code" button on GitHub).
-
 ### Step 4 — Create `develop`, `pascal`, and `treasure` branches
 Still in the terminal:
 

@@ -3,7 +3,9 @@ import { Link } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
-
+import heroMockup from '../assets/hero-dashboard-mockup.png'
+import analytics from '../assets/analytics.png'
+import teamPhoto from '../assets/team-collaboration.png'
 export default function Landing() {
   useEffect(() => {
     // Dynamically append the Material Symbols font style sheet
@@ -117,7 +119,7 @@ export default function Landing() {
               <img
                 className="w-full h-full object-cover"
                 alt="Enterprise Social Analytics Dashboard"
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuDca1O6qlLJSFsp9tAFbwx7LbtxIm-eiPai54UkjXcMafgwKj9tLsAT0G94XX4cfVmOzVvVIUkNc1aFvXXgu2ZJhw7liOdL9Qbjj-4DEFSGlsHJLg-Kgu_LmDHt-Jddi7Nmh34dr40TwGIrrD3ZJO5JYy_4Lqu0b794wKs-LNTpcpu51flvjN8dETeYDl9XedS58-NSZj92H08YkjQ53MfRYRwJo7418zDmongmtiHL9Dz1eqDd59gLIo23vL3veZwGyzh9BgvZH0IE"
+                src={heroMockup}
               />
             </div>
           </div>
@@ -191,7 +193,7 @@ export default function Landing() {
                 <img
                   className="w-full h-full object-cover aspect-[4/3]"
                   alt="Analytics ROI visualization"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEXAmJd6kiGnhy0Y0MjC_1b3IPYjgfzPbdfSXw24vgm9bmrSd0bWUX2KnrBIXXwX2Ku0LK6vpbhq0WEKIlqDOQui3GpFvzliG0r7GwHb_RzLG1uwnkWwwxpeFQavEdhbFq4A1jidO0XgZ7bdLAZWclePQJbrutcL070s9RuNcgoZqFb57pjpgRD2nAbr0VA0BhQhAmxRwlgSU_ZpeU7jYt-aimwWmj-6aDR_tZtjVhat4zDO_rqPZxDxIPUUShO3G_kLzwgsd16hSR"
+                  src={analytics}
                 />
               </div>
             </div>
@@ -202,7 +204,7 @@ export default function Landing() {
                 <img
                   className="w-full h-full object-cover aspect-[4/3]"
                   alt="Team collaboration calendar"
-                  src="https://lh3.googleusercontent.com/aida-public/AB6AXuD86SHQdD_wbAs2S13SXljwqgwo43k-gZD1BQ0Z_bqqqX8aT4RqU6QKCGGfN3Ua_gNRXSBd5jCqgxlXZky3uHJ4uEjKN5WR-psv9MQ4yvW8B3umv-4BaDXvfYFBgtVvtbtU9l1YP9nU80bB2UYt4GJd1tadmQeNQn4-4A3aEXD0TgU7D65W3Drpsy3HwZSODa-g3gWKJXkJWe0z6gm0I0M0Urq_l4Y6rZOuCjH9JZFHASG6bLhE2h_MyjjH1UvlAiYFXU-OQyaxzCo1"
+                  src={teamPhoto}
                 />
               </div>
               <div className="pl-0 lg:pl-8">
@@ -302,7 +304,7 @@ export default function Landing() {
               <p className="text-xs text-ink-muted">The next generation of social media management powered by advanced AI.</p>
             </div>
             <div className="flex items-center gap-6">
-              <p className="text-xs text-ink-muted">© 2024 AI Social Media Manager. All rights reserved.</p>
+              <p className="text-xs text-ink-muted">© 2026 AI Social Media Manager. All rights reserved.</p>
               <div className="flex gap-4">
                 <a className="text-ink-muted hover:text-primary transition-colors" href="#">
                   <span className="material-symbols-outlined text-[20px]">share</span>
