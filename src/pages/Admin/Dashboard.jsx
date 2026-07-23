@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   Users,
   CreditCard,
@@ -14,6 +15,7 @@ import {
   AlertCircle,
   Settings,
   CheckCircle,
+  Link2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -34,6 +36,12 @@ const METRICS_BY_TIMEFRAME = {
     registrations: '18',
     registrationsChange: '5.4%',
     registrationsTrend: 'down',
+    connectedAccounts: '1,240',
+    connectedAccountsChange: '+0.5%',
+    connectedAccountsTrend: 'up',
+    aiContent: '4,850',
+    aiContentChange: '+5.4%',
+    aiContentTrend: 'up',
     scheduled: '180',
     success: '124',
     failed: '2',
@@ -58,6 +66,12 @@ const METRICS_BY_TIMEFRAME = {
     registrations: '432',
     registrationsChange: '2.4%',
     registrationsTrend: 'down',
+    connectedAccounts: '1,254',
+    connectedAccountsChange: '+3.1%',
+    connectedAccountsTrend: 'up',
+    aiContent: '32,410',
+    aiContentChange: '+12.4%',
+    aiContentTrend: 'up',
     scheduled: '1,240',
     success: '856',
     failed: '24',
@@ -82,6 +96,12 @@ const METRICS_BY_TIMEFRAME = {
     registrations: '1,894',
     registrationsChange: '3.1%',
     registrationsTrend: 'up',
+    connectedAccounts: '1,380',
+    connectedAccountsChange: '+8.5%',
+    connectedAccountsTrend: 'up',
+    aiContent: '142,900',
+    aiContentChange: '+22.8%',
+    aiContentTrend: 'up',
     scheduled: '5,420',
     success: '3,890',
     failed: '112',
@@ -218,6 +238,20 @@ export default function Dashboard() {
       trend: metrics.registrationsTrend,
       icon: UserPlus,
     },
+    {
+      title: 'Connected Accounts',
+      value: metrics.connectedAccounts,
+      change: metrics.connectedAccountsChange,
+      trend: metrics.connectedAccountsTrend,
+      icon: Link2,
+    },
+    {
+      title: 'AI Content Generated',
+      value: metrics.aiContent,
+      change: metrics.aiContentChange,
+      trend: metrics.aiContentTrend,
+      icon: Sparkles,
+    },
   ]
 
   const timeframes = ['Day', 'Week', 'Month']
@@ -241,20 +275,32 @@ export default function Dashboard() {
       <PageHeader
         title="Overview"
         action={
-          <div className="bg-canvas border border-border rounded-full p-1 flex items-center shadow-soft">
-            {timeframes.map((tf) => (
-              <button
-                key={tf}
-                onClick={() => setTimeframe(tf)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                  timeframe === tf
-                    ? 'bg-primary text-white shadow-soft font-bold'
-                    : 'text-ink-muted hover:text-ink'
-                }`}
-              >
-                {tf}
-              </button>
-            ))}
+          <div className="flex flex-col sm:flex-row items-center gap-4">
+            <div className="bg-canvas border border-border rounded-full p-1 flex items-center shadow-soft">
+              {timeframes.map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => setTimeframe(tf)}
+                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
+                    timeframe === tf
+                      ? 'bg-primary text-white shadow-soft font-bold'
+                      : 'text-ink-muted hover:text-ink'
+                  }`}
+                >
+                  {tf}
+                </button>
+              ))}
+            </div>
+            <Button
+              as={Link}
+              to="/admin/analytics"
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span>View Full Analytics</span>
+            </Button>
           </div>
         }
       />
@@ -262,7 +308,7 @@ export default function Dashboard() {
       {/* Dismissible Info Banner */}
      
       {/* Stat Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {stats.map((stat) => {
           const Icon = stat.icon
           return (
@@ -388,8 +434,8 @@ export default function Dashboard() {
                       : 'bg-primary-100 hover:bg-primary'
                   } ${hClass}`}
                 >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-ink text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                    {metrics.barValues[idx]}
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-ink text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 font-mono">
+                    ₦{metrics.barValues[idx]}
                   </div>
                 </div>
               ))}
@@ -406,7 +452,7 @@ export default function Dashboard() {
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-ink-muted">Annual Goal</span>
-              <span className="text-ink font-semibold">$1.2M</span>
+              <span className="text-ink font-semibold">₦15M</span>
             </div>
           </div>
         </Card>
