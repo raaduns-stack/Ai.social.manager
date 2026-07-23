@@ -32,7 +32,7 @@ const MOCK_USER_PROFILES = {
     email: 'amaka.obi@example.com',
     phone: '+234 801 234 5678',
     status: 'Active',
-    plan: 'Enterprise',
+    plan: 'Brand Domination',
     manager: 'Sarah Connor',
     managerInitials: 'SC',
     joinedDate: 'Oct 12, 2023',
@@ -41,7 +41,7 @@ const MOCK_USER_PROFILES = {
     activities: [
       {
         id: 1,
-        title: 'Subscribed to Enterprise Monthly',
+        title: 'Subscribed to Brand Domination Monthly',
         description: 'Billing cycle successfully updated to premium tier.',
         time: 'Just now',
         icon: CreditCard,
@@ -82,13 +82,13 @@ const MOCK_USER_PROFILES = {
     ],
     subscription: {
       billingCycle: 'Monthly',
-      price: '$299/mo',
+      price: '₦150,000/month',
       nextRenewal: 'Nov 12, 2026',
       paymentMethod: 'Visa ending in 4242',
       invoices: [
-        { id: 'INV-2026-004', date: 'Oct 12, 2026', amount: '$299.00', status: 'Paid' },
-        { id: 'INV-2026-003', date: 'Sep 12, 2026', amount: '$299.00', status: 'Paid' },
-        { id: 'INV-2026-002', date: 'Aug 12, 2026', amount: '$299.00', status: 'Paid' },
+        { id: 'INV-2026-004', date: 'Oct 12, 2026', amount: '₦150,000', status: 'Paid' },
+        { id: 'INV-2026-003', date: 'Sep 12, 2026', amount: '₦150,000', status: 'Paid' },
+        { id: 'INV-2026-002', date: 'Aug 12, 2026', amount: '₦150,000', status: 'Paid' },
       ],
     },
     accounts: [
@@ -102,6 +102,13 @@ const MOCK_USER_PROFILES = {
       { id: '8210', subject: 'Custom Template Request', status: 'Closed', date: 'Nov 15, 2023' },
     ],
   },
+}
+
+const PLAN_PRICES = {
+  'Free': '₦0/month',
+  'Starter': '₦30,000/month',
+  'Growth': '₦100,000/month',
+  'Brand Domination': '₦150,000/month'
 }
 
 export default function UserDetail() {
@@ -131,12 +138,23 @@ export default function UserDetail() {
 
   const handleEditSubmit = (e) => {
     e.preventDefault()
+    const newPrice = PLAN_PRICES[editForm.plan] || '₦0/month'
+    const newAmount = newPrice.split('/')[0]
+    
     setUser((prev) => ({
       ...prev,
       ...editForm,
       managerInitials: editForm.manager
         ? editForm.manager.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
         : '',
+      subscription: {
+        ...prev.subscription,
+        price: newPrice,
+        invoices: prev.subscription.invoices.map((inv, idx) => ({
+          ...inv,
+          amount: idx === 0 ? newAmount : inv.amount
+        }))
+      }
     }))
     setIsEditModalOpen(false)
   }
@@ -536,8 +554,9 @@ export default function UserDetail() {
               className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
             >
               <option value="Free">Free</option>
-              <option value="Pro">Pro</option>
-              <option value="Enterprise">Enterprise</option>
+              <option value="Starter">Starter</option>
+              <option value="Growth">Growth</option>
+              <option value="Brand Domination">Brand Domination</option>
             </select>
           </div>
           <Input
