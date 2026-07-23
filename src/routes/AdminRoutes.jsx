@@ -22,6 +22,7 @@ import AdminDashboard from "../pages/Admin/Dashboard";
 import AdminUsers from "../pages/Admin/Users";
 import AdminUserDetail from "../pages/Admin/UserDetail";
 import AdminContentCalendar from "../pages/Admin/ContentCalendar";
+import UserContentCalendar from "../pages/Admin/UserContentCalendar";
 import AdminAIContent from "../pages/Admin/AIContent";
 import AdminNotifications from "../pages/Admin/Notifications";
 import AdminAuditLogs from "../pages/Admin/AuditLogs";
@@ -62,6 +63,7 @@ export default function AdminRoutes() {
           {/* User Management (Pascal) */}
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:userId" element={<AdminUserDetail />} />
+          <Route path="users/:userId/calendar" element={<UserContentCalendar />} />
 
           {/* Content Calendar + AI Content (Pascal) */}
           <Route path="calendar" element={<AdminContentCalendar />} />

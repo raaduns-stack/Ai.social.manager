@@ -17,6 +17,7 @@ import {
   ShieldAlert,
   Edit,
   Trash2,
+  Calendar,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -112,7 +113,8 @@ const PLAN_PRICES = {
 }
 
 export default function UserDetail() {
-  const { id } = useParams()
+  const { userId } = useParams()
+  const id = userId
   const navigate = useNavigate()
   
   // Lookup user by ID, fallback to Amaka Obi (id = 1)
@@ -235,6 +237,15 @@ export default function UserDetail() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            as={Link}
+            to={`/admin/users/${user.id}/calendar`}
+            variant="outline"
+            className="text-xs h-9 px-4 font-semibold text-primary border-primary/20 hover:bg-primary-50 gap-1.5 flex items-center"
+          >
+            <Calendar size={14} />
+            <span>Content Calendar</span>
+          </Button>
           <Button
             variant="outline"
             className="text-xs h-9 px-4 font-semibold"
