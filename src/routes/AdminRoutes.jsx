@@ -37,6 +37,7 @@ import AdminSettings from "../pages/Admin/Settings";
 
 // --- Auth (shared) ---
 import AdminLogin from "../pages/Admin/AdminLogin";
+import AdminForgotPassword from "../pages/Admin/AdminForgotPassword";
 import NotFound from "../pages/NotFound";
 
 export default function AdminRoutes() {
@@ -45,6 +46,7 @@ export default function AdminRoutes() {
       <Routes>
         {/* Admin auth screens sit OUTSIDE AdminLayout (no sidebar) */}
         <Route path="login" element={<AdminLogin />} />
+        <Route path="forgot-password" element={<AdminForgotPassword />} />
 
         {/* Everything else sits inside the admin shell (sidebar + navbar) */}
         <Route
