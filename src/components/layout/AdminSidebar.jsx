@@ -21,6 +21,7 @@ import {
   Headset,
   Cog,
   Wallet, // 👈 ADDED
+  UserCheck,
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -54,6 +55,7 @@ const NAV_SECTIONS = [
     items: [
       { label: "AI Configuration", to: "/admin/ai-config", icon: Cog },
       { label: "Support Center", to: "/admin/support", icon: Headset },
+      { label: "Staff Directory", to: "/admin/staff", icon: UserCheck },
       { label: "Notifications", to: "/admin/notifications", icon: Bell },
       { label: "Audit Logs", to: "/admin/logs", icon: ScrollText },
       { label: "Settings", to: "/admin/settings", icon: Settings2 },

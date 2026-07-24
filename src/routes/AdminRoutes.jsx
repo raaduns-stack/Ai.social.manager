@@ -22,9 +22,15 @@ import AdminDashboard from "../pages/Admin/Dashboard";
 import AdminUsers from "../pages/Admin/Users";
 import AdminUserDetail from "../pages/Admin/UserDetail";
 import AdminContentCalendar from "../pages/Admin/ContentCalendar";
+import UserContentCalendar from "../pages/Admin/UserContentCalendar";
 import AdminAIContent from "../pages/Admin/AIContent";
 import AdminNotifications from "../pages/Admin/Notifications";
 import AdminAuditLogs from "../pages/Admin/AuditLogs";
+import StaffDashboard from "../pages/Admin/staff/StaffDashboard";
+import ManageStaff from "../pages/Admin/staff/ManageStaff";
+import RolesPermissions from "../pages/Admin/staff/RolesPermissions";
+import LoginHistory from "../pages/Admin/staff/LoginHistory";
+import ActivityLogs from "../pages/Admin/staff/ActivityLogs";
 
 // --- Treasure's pages ---
 import AdminBilling from "../pages/Admin/Billing";
@@ -38,6 +44,7 @@ import AdminSettings from "../pages/Admin/Settings";
 
 // --- Auth (shared) ---
 import AdminLogin from "../pages/Admin/AdminLogin";
+import AdminForgotPassword from "../pages/Admin/AdminForgotPassword";
 import NotFound from "../pages/NotFound";
 
 export default function AdminRoutes() {
@@ -46,6 +53,7 @@ export default function AdminRoutes() {
       <Routes>
         {/* Admin auth screens sit OUTSIDE AdminLayout (no sidebar) */}
         <Route path="login" element={<AdminLogin />} />
+        <Route path="forgot-password" element={<AdminForgotPassword />} />
 
         {/* Everything else sits inside the admin shell (sidebar + navbar) */}
         <Route
@@ -61,6 +69,7 @@ export default function AdminRoutes() {
           {/* User Management (Pascal) */}
           <Route path="users" element={<AdminUsers />} />
           <Route path="users/:userId" element={<AdminUserDetail />} />
+          <Route path="users/:userId/calendar" element={<UserContentCalendar />} />
 
           {/* Content Calendar + AI Content (Pascal) */}
           <Route path="calendar" element={<AdminContentCalendar />} />
@@ -69,6 +78,11 @@ export default function AdminRoutes() {
           {/* Notifications + Audit Logs (Pascal) */}
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="logs" element={<AdminAuditLogs />} />
+          <Route path="staff" element={<StaffDashboard />} />
+          <Route path="staff/manage" element={<ManageStaff />} />
+          <Route path="staff/roles-permissions" element={<RolesPermissions />} />
+          <Route path="staff/login-history" element={<LoginHistory />} />
+          <Route path="staff/activity-logs" element={<ActivityLogs />} />
 
           {/* Billing + Social Accounts + Uploads (Treasure) */}
           <Route path="billing" element={<AdminBilling />} />

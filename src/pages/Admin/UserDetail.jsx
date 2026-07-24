@@ -17,6 +17,8 @@ import {
   ShieldAlert,
   Edit,
   Trash2,
+  Calendar,
+  Sparkles,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -24,6 +26,7 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import AISettingsModal from '../../components/ai/AISettingsModal'
 
 const MOCK_USER_PROFILES = {
   '1': {
@@ -32,7 +35,7 @@ const MOCK_USER_PROFILES = {
     email: 'amaka.obi@example.com',
     phone: '+234 801 234 5678',
     status: 'Active',
-    plan: 'Enterprise',
+    plan: 'Brand Domination',
     manager: 'Sarah Connor',
     managerInitials: 'SC',
     joinedDate: 'Oct 12, 2023',
@@ -41,7 +44,7 @@ const MOCK_USER_PROFILES = {
     activities: [
       {
         id: 1,
-        title: 'Subscribed to Enterprise Monthly',
+        title: 'Subscribed to Brand Domination Monthly',
         description: 'Billing cycle successfully updated to premium tier.',
         time: 'Just now',
         icon: CreditCard,
@@ -82,13 +85,13 @@ const MOCK_USER_PROFILES = {
     ],
     subscription: {
       billingCycle: 'Monthly',
-      price: '$299/mo',
+      price: '₦150,000/month',
       nextRenewal: 'Nov 12, 2026',
       paymentMethod: 'Visa ending in 4242',
       invoices: [
-        { id: 'INV-2026-004', date: 'Oct 12, 2026', amount: '$299.00', status: 'Paid' },
-        { id: 'INV-2026-003', date: 'Sep 12, 2026', amount: '$299.00', status: 'Paid' },
-        { id: 'INV-2026-002', date: 'Aug 12, 2026', amount: '$299.00', status: 'Paid' },
+        { id: 'INV-2026-004', date: 'Oct 12, 2026', amount: '₦150,000', status: 'Paid' },
+        { id: 'INV-2026-003', date: 'Sep 12, 2026', amount: '₦150,000', status: 'Paid' },
+        { id: 'INV-2026-002', date: 'Aug 12, 2026', amount: '₦150,000', status: 'Paid' },
       ],
     },
     accounts: [
@@ -104,8 +107,16 @@ const MOCK_USER_PROFILES = {
   },
 }
 
+const PLAN_PRICES = {
+  'Free': '₦0/month',
+  'Starter': '₦30,000/month',
+  'Growth': '₦100,000/month',
+  'Brand Domination': '₦150,000/month'
+}
+
 export default function UserDetail() {
-  const { id } = useParams()
+  const { userId } = useParams()
+  const id = userId
   const navigate = useNavigate()
   
   // Lookup user by ID, fallback to Amaka Obi (id = 1)
@@ -120,6 +131,51 @@ export default function UserDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false)
+
+  const [userPlatforms, setUserPlatforms] = useState([
+    {
+      key: 'linkedin',
+      label: 'LinkedIn',
+      globalPrompt: `Generate professional LinkedIn content.
+Always use a business tone.
+Maximum 250 words.
+Include CTA.`,
+      customerPrompt: 'Always mention our premium products. Use British English.',
+    },
+    {
+      key: 'twitter',
+      label: 'X/Twitter',
+      globalPrompt: `Generate engaging tweets/X posts.
+Keep it concise and punchy.
+Maximum 280 characters.
+Use 1-2 relevant hashtags.`,
+      customerPrompt: 'Focus on technology innovation. Use a bold, active voice.',
+    },
+    {
+      key: 'facebook',
+      label: 'Facebook',
+      globalPrompt: `Generate friendly and social Facebook posts.
+Encourage user engagement or comments.
+Keep tone conversational.
+Include a link description.`,
+      customerPrompt: 'Promote local community involvement and family values.',
+    },
+    {
+      key: 'instagram',
+      label: 'Instagram',
+      globalPrompt: `Generate catchy captions for Instagram posts.
+Start with a strong hook line.
+Maximum 150 words.
+Include a clean list of hashtags at the end.`,
+      customerPrompt: 'Highlight aesthetic values, use friendly emojis, write in lower case.',
+    },
+  ])
+
+  const handleSaveAISettings = (updatedPlatforms) => {
+    setUserPlatforms(updatedPlatforms)
+    console.log('Saved AI settings for user:', updatedPlatforms)
+  }
 
   const [editForm, setEditForm] = useState({
     name: user.name,
@@ -131,12 +187,23 @@ export default function UserDetail() {
 
   const handleEditSubmit = (e) => {
     e.preventDefault()
+    const newPrice = PLAN_PRICES[editForm.plan] || '₦0/month'
+    const newAmount = newPrice.split('/')[0]
+    
     setUser((prev) => ({
       ...prev,
       ...editForm,
       managerInitials: editForm.manager
         ? editForm.manager.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
         : '',
+      subscription: {
+        ...prev.subscription,
+        price: newPrice,
+        invoices: prev.subscription.invoices.map((inv, idx) => ({
+          ...inv,
+          amount: idx === 0 ? newAmount : inv.amount
+        }))
+      }
     }))
     setIsEditModalOpen(false)
   }
@@ -217,6 +284,23 @@ export default function UserDetail() {
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            as={Link}
+            to={`/admin/users/${user.id}/calendar`}
+            variant="outline"
+            className="text-xs h-9 px-4 font-semibold text-primary border-primary/20 hover:bg-primary-50 gap-1.5 flex items-center"
+          >
+            <Calendar size={14} />
+            <span>Content Calendar</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="text-xs h-9 px-4 font-semibold text-primary border-primary/20 hover:bg-primary-50 gap-1.5 flex items-center"
+            onClick={() => setIsAISettingsOpen(true)}
+          >
+            <Sparkles size={14} />
+            <span>AI Content Settings</span>
+          </Button>
           <Button
             variant="outline"
             className="text-xs h-9 px-4 font-semibold"
@@ -536,8 +620,9 @@ export default function UserDetail() {
               className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
             >
               <option value="Free">Free</option>
-              <option value="Pro">Pro</option>
-              <option value="Enterprise">Enterprise</option>
+              <option value="Starter">Starter</option>
+              <option value="Growth">Growth</option>
+              <option value="Brand Domination">Brand Domination</option>
             </select>
           </div>
           <Input
@@ -600,6 +685,14 @@ export default function UserDetail() {
           </div>
         </div>
       </Modal>
+
+      <AISettingsModal
+        isOpen={isAISettingsOpen}
+        onClose={() => setIsAISettingsOpen(false)}
+        customerName={user.name}
+        platforms={userPlatforms}
+        onSave={handleSaveAISettings}
+      />
     </div>
   )
 }
