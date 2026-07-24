@@ -18,6 +18,7 @@ import {
   Edit,
   Trash2,
   Calendar,
+  Sparkles,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -25,6 +26,7 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import AISettingsModal from '../../components/ai/AISettingsModal'
 
 const MOCK_USER_PROFILES = {
   '1': {
@@ -129,6 +131,51 @@ export default function UserDetail() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
+  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false)
+
+  const [userPlatforms, setUserPlatforms] = useState([
+    {
+      key: 'linkedin',
+      label: 'LinkedIn',
+      globalPrompt: `Generate professional LinkedIn content.
+Always use a business tone.
+Maximum 250 words.
+Include CTA.`,
+      customerPrompt: 'Always mention our premium products. Use British English.',
+    },
+    {
+      key: 'twitter',
+      label: 'X/Twitter',
+      globalPrompt: `Generate engaging tweets/X posts.
+Keep it concise and punchy.
+Maximum 280 characters.
+Use 1-2 relevant hashtags.`,
+      customerPrompt: 'Focus on technology innovation. Use a bold, active voice.',
+    },
+    {
+      key: 'facebook',
+      label: 'Facebook',
+      globalPrompt: `Generate friendly and social Facebook posts.
+Encourage user engagement or comments.
+Keep tone conversational.
+Include a link description.`,
+      customerPrompt: 'Promote local community involvement and family values.',
+    },
+    {
+      key: 'instagram',
+      label: 'Instagram',
+      globalPrompt: `Generate catchy captions for Instagram posts.
+Start with a strong hook line.
+Maximum 150 words.
+Include a clean list of hashtags at the end.`,
+      customerPrompt: 'Highlight aesthetic values, use friendly emojis, write in lower case.',
+    },
+  ])
+
+  const handleSaveAISettings = (updatedPlatforms) => {
+    setUserPlatforms(updatedPlatforms)
+    console.log('Saved AI settings for user:', updatedPlatforms)
+  }
 
   const [editForm, setEditForm] = useState({
     name: user.name,
@@ -245,6 +292,14 @@ export default function UserDetail() {
           >
             <Calendar size={14} />
             <span>Content Calendar</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="text-xs h-9 px-4 font-semibold text-primary border-primary/20 hover:bg-primary-50 gap-1.5 flex items-center"
+            onClick={() => setIsAISettingsOpen(true)}
+          >
+            <Sparkles size={14} />
+            <span>AI Content Settings</span>
           </Button>
           <Button
             variant="outline"
@@ -630,6 +685,14 @@ export default function UserDetail() {
           </div>
         </div>
       </Modal>
+
+      <AISettingsModal
+        isOpen={isAISettingsOpen}
+        onClose={() => setIsAISettingsOpen(false)}
+        customerName={user.name}
+        platforms={userPlatforms}
+        onSave={handleSaveAISettings}
+      />
     </div>
   )
 }
