@@ -8,20 +8,12 @@ import {
   Smile,
   Image,
   Send,
-  Plus,
-  ChevronRight,
   User,
-  Clock,
-  AlertCircle,
-  CheckCircle2,
   Inbox,
-  Loader2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
-import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import EmptyState from '../../components/ui/EmptyState'
 import { cn } from '../../utils/cn'
@@ -96,18 +88,12 @@ const INITIAL_TICKETS = [
 ]
 
 export default function Support() {
+  const [statusTab, setStatusTab] = useState('Open Tickets') // 'Open Tickets' | 'Pending Tickets' | 'Closed Tickets'
   const [activeChannel, setActiveChannel] = useState('tickets') // 'tickets' | 'chat' | 'whatsapp'
   const [tickets, setTickets] = useState(INITIAL_TICKETS)
   const [activeTicketId, setActiveTicketId] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [replyText, setReplyText] = useState('')
-
-  // New ticket form states
-  const [showNewTicketModal, setShowNewTicketModal] = useState(false)
-  const [newCustomerName, setNewCustomerName] = useState('')
-  const [newSubject, setNewSubject] = useState('')
-  const [newPriority, setNewPriority] = useState('Medium')
-  const [newDescription, setNewDescription] = useState('')
 
   // Archive modal state
   const [showArchiveModal, setShowArchiveModal] = useState(false)
@@ -115,7 +101,33 @@ export default function Support() {
   // Message scroll reference
   const messageEndRef = useRef(null)
 
+  // Filtered tickets based on search query AND status tab
+  const filteredTickets = tickets.filter((t) => {
+    const matchesSearch =
+      t.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      t.preview.toLowerCase().includes(searchQuery.toLowerCase())
+
+    let matchesStatus = false
+    if (statusTab === 'Open Tickets') {
+      matchesStatus = t.status === 'Open'
+    } else if (statusTab === 'Pending Tickets') {
+      matchesStatus = t.status === 'Pending'
+    } else if (statusTab === 'Closed Tickets') {
+      matchesStatus = t.status === 'Closed' || t.status === 'Resolved'
+    }
+
+    return matchesSearch && matchesStatus
+  })
+
   const activeTicket = tickets.find((t) => t.id === activeTicketId)
+
+  // Auto-select first ticket in active status tab if activeTicketId is not in filtered list
+  useEffect(() => {
+    if (filteredTickets.length > 0 && !filteredTickets.some((t) => t.id === activeTicketId)) {
+      setActiveTicketId(filteredTickets[0].id)
+    }
+  }, [statusTab, searchQuery, tickets])
 
   // Scroll to bottom on load/update of messages
   const scrollToBottom = () => {
@@ -127,14 +139,6 @@ export default function Support() {
       scrollToBottom()
     }
   }, [activeTicket?.messages, activeChannel, activeTicketId])
-
-  // Filtered tickets based on search query
-  const filteredTickets = tickets.filter(
-    (t) =>
-      t.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.preview.toLowerCase().includes(searchQuery.toLowerCase())
-  )
 
   const handleSendMessage = () => {
     if (!replyText.trim() || !activeTicketId) return
@@ -173,39 +177,6 @@ export default function Support() {
     }
   }
 
-  const handleCreateTicket = (e) => {
-    e.preventDefault()
-    if (!newCustomerName.trim() || !newSubject.trim() || !newDescription.trim()) return
-
-    const newTicket = {
-      id: Date.now(),
-      customer: newCustomerName.trim(),
-      status: 'Open',
-      subject: newSubject.trim(),
-      preview: newDescription.trim(),
-      priority: newPriority,
-      time: 'Just now',
-      messages: [
-        {
-          sender: 'customer',
-          name: newCustomerName.trim(),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: newDescription.trim(),
-        },
-      ],
-    }
-
-    setTickets([newTicket, ...tickets])
-    setActiveTicketId(newTicket.id)
-    setShowNewTicketModal(false)
-
-    // Reset fields
-    setNewCustomerName('')
-    setNewSubject('')
-    setNewPriority('Medium')
-    setNewDescription('')
-  }
-
   const handleArchiveTicket = () => {
     setTickets((prevTickets) =>
       prevTickets.map((t) => {
@@ -226,6 +197,7 @@ export default function Support() {
       case 'Pending':
         return 'warning'
       case 'Resolved':
+      case 'Closed':
         return 'success'
       default:
         return 'neutral'
@@ -246,6 +218,17 @@ export default function Support() {
     }
   }
 
+  const TABS = ['Open Tickets', 'Pending Tickets', 'Closed Tickets']
+
+  const getTabCount = (tabName) => {
+    return tickets.filter((t) => {
+      if (tabName === 'Open Tickets') return t.status === 'Open'
+      if (tabName === 'Pending Tickets') return t.status === 'Pending'
+      if (tabName === 'Closed Tickets') return t.status === 'Closed' || t.status === 'Resolved'
+      return false
+    }).length
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-112px)]">
       {/* Page Header */}
@@ -253,13 +236,32 @@ export default function Support() {
         <PageHeader
           title="Support Center"
           description="Manage client issues, live chat queries, and system assistance."
-          action={
-            <Button variant="primary" onClick={() => setShowNewTicketModal(true)} className="flex items-center gap-2">
-              <Plus size={16} />
-              <span>New Ticket</span>
-            </Button>
-          }
         />
+      </div>
+
+      {/* Top Status Tabs */}
+      <div className="flex border-b border-border mb-4 shrink-0">
+        {TABS.map((tab) => {
+          const isActive = statusTab === tab
+          const count = getTabCount(tab)
+          return (
+            <button
+              key={tab}
+              onClick={() => setStatusTab(tab)}
+              className={cn(
+                "px-4 py-2.5 font-semibold text-sm border-b-2 transition-colors flex items-center gap-2 -mb-px",
+                isActive
+                  ? "border-primary text-primary"
+                  : "border-transparent text-ink-muted hover:text-ink hover:border-border"
+              )}
+            >
+              <span>{tab}</span>
+              <Badge tone={isActive ? 'primary' : 'neutral'} className="text-xs px-2 py-0.5">
+                {count}
+              </Badge>
+            </button>
+          )
+        })}
       </div>
 
       {/* Main Support Panel Workspace */}
@@ -268,7 +270,7 @@ export default function Support() {
         {/* Left Panel: Ticket List */}
         <div className="w-[320px] md:w-[380px] flex flex-col border-r border-border bg-surface overflow-hidden shrink-0">
           
-          {/* Sub-Navigation Tabs */}
+          {/* Sub-Navigation Tabs & Search */}
           <div className="px-6 pt-4 border-b border-border bg-canvas">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-ink">Support Hub</h2>
@@ -356,8 +358,8 @@ export default function Support() {
                 })
               ) : (
                 <div className="p-8 text-center text-ink-muted">
-                  <p className="text-xs font-semibold">No tickets found</p>
-                  <p className="text-[11px] mt-1">Try broadening your search criteria.</p>
+                  <p className="text-xs font-semibold">No {statusTab.toLowerCase()} found</p>
+                  <p className="text-[11px] mt-1">Try broadening your search or switching tabs.</p>
                 </div>
               )
             ) : (
@@ -372,7 +374,7 @@ export default function Support() {
 
         {/* Right Panel: Chat Thread or Channel Empty State */}
         {activeChannel === 'tickets' ? (
-          activeTicket ? (
+          activeTicket && filteredTickets.some(t => t.id === activeTicket.id) ? (
             <div className="flex-1 flex flex-col bg-canvas overflow-hidden">
               
               {/* Active Ticket Header */}
@@ -436,7 +438,8 @@ export default function Support() {
                       </div>
                     </div>
                   )
-                })}
+                })
+                }
                 <div ref={messageEndRef} />
               </div>
 
@@ -483,7 +486,7 @@ export default function Support() {
               <EmptyState
                 icon={<Inbox size={48} className="text-ink-muted" />}
                 title="No Ticket Selected"
-                description="Select a support ticket from the list to view history and draft responses."
+                description="Select a ticket from the active tab list to view history and draft responses."
               />
             </div>
           )
@@ -503,61 +506,6 @@ export default function Support() {
         )}
       </div>
 
-      {/* New Ticket Modal */}
-      <Modal
-        open={showNewTicketModal}
-        onClose={() => setShowNewTicketModal(false)}
-        title="Create New Support Ticket"
-      >
-        <form onSubmit={handleCreateTicket} className="space-y-4">
-          <Input
-            label="Customer Name"
-            value={newCustomerName}
-            onChange={(e) => setNewCustomerName(e.target.value)}
-            required
-            placeholder="e.g. John Doe"
-          />
-          <Input
-            label="Subject / Topic"
-            value={newSubject}
-            onChange={(e) => setNewSubject(e.target.value)}
-            required
-            placeholder="e.g. Can't access invoice dashboard"
-          />
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-ink">Priority</label>
-            <select
-              value={newPriority}
-              onChange={(e) => setNewPriority(e.target.value)}
-              className="h-10 w-full rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="High">High</option>
-              <option value="Medium">Medium</option>
-              <option value="Low">Low</option>
-            </select>
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-ink">Description / Initial Message</label>
-            <textarea
-              value={newDescription}
-              onChange={(e) => setNewDescription(e.target.value)}
-              rows={3}
-              required
-              placeholder="Describe the client's inquiry..."
-              className="w-full rounded-control border border-border bg-surface p-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            />
-          </div>
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" type="button" onClick={() => setShowNewTicketModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              Submit Ticket
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
       {/* Archive Modal Confirmation */}
       <Modal
         open={showArchiveModal}
@@ -566,7 +514,7 @@ export default function Support() {
       >
         <div className="space-y-4">
           <p className="text-sm text-ink-muted leading-relaxed">
-            Are you sure you want to mark this ticket as <strong>Resolved</strong> and archive the thread? You can still browse it in filtered audit lists.
+            Are you sure you want to mark this ticket as <strong>Resolved</strong> and archive the thread? It will move to the Closed Tickets tab.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <Button variant="outline" onClick={() => setShowArchiveModal(false)}>

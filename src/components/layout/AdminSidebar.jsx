@@ -20,6 +20,7 @@ import {
   Settings2,
   Headset,
   Cog,
+  Wallet, // 👈 ADDED
   ChevronsLeft,
   ChevronsRight,
 } from "lucide-react";
@@ -43,6 +44,7 @@ const NAV_SECTIONS = [
     items: [
       { label: "Billing", to: "/admin/billing", icon: CreditCard },
       { label: "Social Accounts", to: "/admin/social-accounts", icon: Share2 },
+      { label: "Money Management", to: "/admin/money-management", icon: Wallet },
       { label: "Uploads", to: "/admin/uploads", icon: UploadCloud },
       { label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
     ],
@@ -64,14 +66,12 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`shrink-0 border-r border-[#E5E7EB] bg-white py-6 transition-all ${
-        collapsed ? "w-16 px-2" : "w-64 px-4"
-      }`}
+      className={`shrink-0 border-r border-[#E5E7EB] bg-white py-6 transition-all ${collapsed ? "w-16 px-2" : "w-64 px-4"
+        }`}
     >
       <div
-        className={`mb-8 flex items-center px-2 text-lg font-semibold text-[#111827] ${
-          collapsed ? "justify-center" : "justify-between"
-        }`}
+        className={`mb-8 flex items-center px-2 text-lg font-semibold text-[#111827] ${collapsed ? "justify-center" : "justify-between"
+          }`}
       >
         {!collapsed && <span>Admin Panel</span>}
         <button
@@ -97,10 +97,9 @@ export default function AdminSidebar() {
                 to={to}
                 title={collapsed ? label : undefined}
                 className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${
-                    isActive
-                      ? "bg-[#4F46E5]/10 text-[#4F46E5] font-medium"
-                      : "text-[#111827] hover:bg-[#F9FAFB]"
+                  `flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${isActive
+                    ? "bg-[#4F46E5]/10 text-[#4F46E5] font-medium"
+                    : "text-[#111827] hover:bg-[#F9FAFB]"
                   } ${collapsed ? "justify-center" : ""}`
                 }
               >

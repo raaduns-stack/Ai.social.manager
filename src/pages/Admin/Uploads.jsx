@@ -98,7 +98,7 @@ const INITIAL_UPLOADS = [
 
 const CATEGORIES = [
   "Business Assets",
-  "Logos",
+  "Brand Assets",
   "Staff",
   "Office View",
   "Products",
