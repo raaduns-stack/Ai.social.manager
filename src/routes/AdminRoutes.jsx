@@ -27,6 +27,10 @@ import AdminAIContent from "../pages/Admin/AIContent";
 import AdminNotifications from "../pages/Admin/Notifications";
 import AdminAuditLogs from "../pages/Admin/AuditLogs";
 import StaffDashboard from "../pages/Admin/staff/StaffDashboard";
+import ManageStaff from "../pages/Admin/staff/ManageStaff";
+import RolesPermissions from "../pages/Admin/staff/RolesPermissions";
+import LoginHistory from "../pages/Admin/staff/LoginHistory";
+import ActivityLogs from "../pages/Admin/staff/ActivityLogs";
 
 // --- Treasure's pages ---
 import AdminBilling from "../pages/Admin/Billing";
@@ -75,6 +79,10 @@ export default function AdminRoutes() {
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="logs" element={<AdminAuditLogs />} />
           <Route path="staff" element={<StaffDashboard />} />
+          <Route path="staff/manage" element={<ManageStaff />} />
+          <Route path="staff/roles-permissions" element={<RolesPermissions />} />
+          <Route path="staff/login-history" element={<LoginHistory />} />
+          <Route path="staff/activity-logs" element={<ActivityLogs />} />
 
           {/* Billing + Social Accounts + Uploads (Treasure) */}
           <Route path="billing" element={<AdminBilling />} />
