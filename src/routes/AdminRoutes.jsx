@@ -26,6 +26,7 @@ import UserContentCalendar from "../pages/Admin/UserContentCalendar";
 import AdminAIContent from "../pages/Admin/AIContent";
 import AdminNotifications from "../pages/Admin/Notifications";
 import AdminAuditLogs from "../pages/Admin/AuditLogs";
+import StaffDashboard from "../pages/Admin/staff/StaffDashboard";
 
 // --- Treasure's pages ---
 import AdminBilling from "../pages/Admin/Billing";
@@ -73,6 +74,7 @@ export default function AdminRoutes() {
           {/* Notifications + Audit Logs (Pascal) */}
           <Route path="notifications" element={<AdminNotifications />} />
           <Route path="logs" element={<AdminAuditLogs />} />
+          <Route path="staff" element={<StaffDashboard />} />
 
           {/* Billing + Social Accounts + Uploads (Treasure) */}
           <Route path="billing" element={<AdminBilling />} />
