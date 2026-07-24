@@ -1,137 +1,106 @@
 import { useState, useMemo } from 'react'
-import { Link } from 'react-router-dom'
-import {
-  Search,
-  Calendar,
-  ChevronRight,
-  User,
-} from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { format, addDays, startOfWeek, endOfWeek } from 'date-fns'
 import PageHeader from '../../components/layout/PageHeader'
-import Card from '../../components/ui/Card'
-import Badge from '../../components/ui/Badge'
-import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
-import DataTable from '../../components/ui/DataTable'
+import WeekDayCard from '../../components/calendar/WeekDayCard'
+import ViewAllCustomersModal from '../../components/calendar/ViewAllCustomersModal'
 
-const CUSTOMERS = [
-  { id: 1, name: 'Amaka Obi', email: 'amaka.obi@example.com', plan: 'Brand Domination', status: 'Active' },
-  { id: 2, name: 'Lena Dubois', email: 'l.dubois@creative.io', plan: 'Starter', status: 'Suspended' },
-  { id: 3, name: 'David Chen', email: 'david.chen@freelance.org', plan: 'Free', status: 'Expired' },
-  { id: 4, name: 'Sasha Kovic', email: 's.kovic@agencymedia.com', plan: 'Starter', status: 'Active' },
-  { id: 5, name: 'Marcus Thorne', email: 'm.thorne@globalnet.co', plan: 'Growth', status: 'Suspended' },
-  { id: 6, name: 'Julia Peters', email: 'julia.p@personal.blog', plan: 'Free', status: 'Active' },
-  { id: 7, name: 'Alex Rivera', email: 'alex.rivera@enterprise.com', plan: 'Brand Domination', status: 'Active' },
+const MOCK_CUSTOMERS_POOL = [
+  { id: 1, businessName: 'Amaka Obi', avatarUrl: '', postCount: 3 },
+  { id: 2, businessName: 'Lena Dubois', avatarUrl: '', postCount: 1 },
+  { id: 3, businessName: 'David Chen', avatarUrl: '', postCount: 5 },
+  { id: 4, businessName: 'Sasha Kovic', avatarUrl: '', postCount: 2 },
+  { id: 5, businessName: 'Marcus Thorne', avatarUrl: '', postCount: 4 },
+  { id: 6, businessName: 'Julia Peters', avatarUrl: '', postCount: 6 },
+  { id: 7, businessName: 'Alex Rivera', avatarUrl: '', postCount: 1 },
+  { id: 8, businessName: 'TechNova Ltd', avatarUrl: '', postCount: 8 },
+  { id: 9, businessName: 'John Clothing', avatarUrl: '', postCount: 3 },
+  { id: 10, businessName: 'EcoBites Meal Prep', avatarUrl: '', postCount: 2 },
+  { id: 11, businessName: 'Apex Law Partners', avatarUrl: '', postCount: 4 },
+  { id: 12, businessName: 'Velocity Sports', avatarUrl: '', postCount: 5 },
+  { id: 13, businessName: 'Luxe Beauty Spa', avatarUrl: '', postCount: 7 },
+  { id: 14, businessName: 'Quantum Dev Agency', avatarUrl: '', postCount: 1 },
 ]
 
 export default function ContentCalendar() {
-  const [searchTerm, setSearchTerm] = useState('')
+  const navigate = useNavigate()
+  const [selectedDayModal, setSelectedDayModal] = useState(null)
 
-  const filteredCustomers = useMemo(() => {
-    return CUSTOMERS.filter((customer) => {
-      const nameMatch = customer.name.toLowerCase().includes(searchTerm.toLowerCase())
-      const emailMatch = customer.email.toLowerCase().includes(searchTerm.toLowerCase())
-      return nameMatch || emailMatch
+  const today = useMemo(() => new Date(), [])
+
+  // Subtitle showing current week range (e.g. "Jul 27 – Aug 2, 2026")
+  const weekSubtitle = useMemo(() => {
+    const monday = startOfWeek(today, { weekStartsOn: 1 })
+    const sunday = endOfWeek(today, { weekStartsOn: 1 })
+    return `${format(monday, 'MMM d')} – ${format(sunday, 'MMM d, yyyy')}`
+  }, [today])
+
+  // Compute 7 days starting from today with mock customers
+  const days = useMemo(() => {
+    return Array.from({ length: 7 }).map((_, index) => {
+      const dateObj = addDays(today, index)
+      
+      // Vary mock customer count depending on index
+      let dayCustomers = []
+      if (index === 0) {
+        dayCustomers = MOCK_CUSTOMERS_POOL.slice(0, 3)
+      } else if (index === 1) {
+        dayCustomers = []
+      } else if (index === 2) {
+        dayCustomers = MOCK_CUSTOMERS_POOL.slice(0, 8)
+      } else if (index === 3) {
+        dayCustomers = MOCK_CUSTOMERS_POOL
+      } else if (index === 4) {
+        dayCustomers = MOCK_CUSTOMERS_POOL.slice(3, 4)
+      } else if (index === 5) {
+        dayCustomers = MOCK_CUSTOMERS_POOL.slice(5, 9)
+      } else if (index === 6) {
+        dayCustomers = []
+      }
+
+      return {
+        dayLabel: format(dateObj, 'EEEE'),
+        dateStr: format(dateObj, 'MMM d'),
+        customers: dayCustomers,
+      }
     })
-  }, [searchTerm])
+  }, [today])
 
-  const columns = [
-    {
-      key: 'name',
-      label: 'Customer',
-      render: (row) => (
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-full bg-primary-50 text-primary flex items-center justify-center font-bold text-xs shrink-0">
-            {row.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
-          </div>
-          <div>
-            <h4 className="font-semibold text-ink text-sm leading-none mb-1">{row.name}</h4>
-            <span className="text-[10px] text-ink-muted block md:hidden">{row.email}</span>
-          </div>
-        </div>
-      ),
-    },
-    {
-      key: 'email',
-      label: 'Email',
-      className: 'hidden md:table-cell',
-      render: (row) => <span className="text-ink-muted font-medium">{row.email}</span>,
-    },
-    {
-      key: 'plan',
-      label: 'Subscription Tier',
-      render: (row) => {
-        let tone = 'neutral'
-        if (row.plan === 'Brand Domination') tone = 'primary'
-        if (row.plan === 'Growth') tone = 'success'
-        if (row.plan === 'Starter') tone = 'warning'
-        return (
-          <Badge tone={tone} className="uppercase tracking-wider text-[10px] font-bold">
-            {row.plan}
-          </Badge>
-        )
-      },
-    },
-    {
-      key: 'status',
-      label: 'Status',
-      render: (row) => {
-        let tone = 'neutral'
-        if (row.status === 'Active') tone = 'success'
-        if (row.status === 'Suspended') tone = 'danger'
-        if (row.status === 'Expired') tone = 'warning'
-        return (
-          <Badge tone={tone} className="uppercase tracking-wider text-[10px] font-semibold">
-            {row.status}
-          </Badge>
-        )
-      },
-    },
-    {
-      key: 'actions',
-      label: '',
-      className: 'text-right',
-      render: (row) => (
-        <Button
-          as={Link}
-          to={`/admin/users/${row.id}/calendar`}
-          variant="outline"
-          size="sm"
-          className="text-primary border-primary/20 hover:bg-primary-50 font-semibold gap-1.5 h-8 text-xs inline-flex items-center"
-        >
-          <Calendar size={13} />
-          <span>View Calendar</span>
-        </Button>
-      ),
-    },
-  ]
+  const handleCustomerClick = (customerId) => {
+    navigate(`/admin/users/${customerId}/calendar`)
+  }
 
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Content Calendars"
-        description="Select a customer from the directory below to view and manage their content calendar queue."
+        title="Content Calendar"
+        description={weekSubtitle}
       />
 
-      <Card className="p-6 space-y-6">
-        {/* Search controls */}
-        <div className="relative max-w-md">
-          <Search size={16} className="absolute left-3 top-3 text-ink-muted" />
-          <Input
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder="Search by customer name or email..."
-            className="pl-9"
+      {/* Grid of 7 weekday cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-6 items-stretch">
+        {days.map((day, index) => (
+          <WeekDayCard
+            key={day.dayLabel}
+            dayLabel={day.dayLabel}
+            date={day.dateStr}
+            isToday={index === 0}
+            customers={day.customers}
+            maxVisible={6}
+            onCustomerClick={handleCustomerClick}
+            onViewAllClick={() => setSelectedDayModal(day)}
           />
-        </div>
+        ))}
+      </div>
 
-        {/* Data Table */}
-        <DataTable
-          columns={columns}
-          data={filteredCustomers}
-          pageSize={10}
-          emptyMessage="No customers found matching your search term."
-        />
-      </Card>
+      {/* Modal detail for "View All" */}
+      <ViewAllCustomersModal
+        isOpen={!!selectedDayModal}
+        onClose={() => setSelectedDayModal(null)}
+        dayLabel={selectedDayModal?.dayLabel || ''}
+        customers={selectedDayModal?.customers || []}
+        onCustomerClick={handleCustomerClick}
+      />
     </div>
   )
 }
