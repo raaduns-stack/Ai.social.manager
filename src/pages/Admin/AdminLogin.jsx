@@ -78,9 +78,8 @@ export default function AdminLogin() {
                 value={form.email}
                 onChange={handleChange("email")}
                 placeholder="you@raaduns.com"
-                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${
-                  errors.email ? "border-[#EF4444]" : "border-[#E5E7EB]"
-                }`}
+                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${errors.email ? "border-[#EF4444]" : "border-[#E5E7EB]"
+                  }`}
               />
             </div>
             {errors.email && (
@@ -107,9 +106,8 @@ export default function AdminLogin() {
                 value={form.password}
                 onChange={handleChange("password")}
                 placeholder="••••••••"
-                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${
-                  errors.password ? "border-[#EF4444]" : "border-[#E5E7EB]"
-                }`}
+                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${errors.password ? "border-[#EF4444]" : "border-[#E5E7EB]"
+                  }`}
               />
             </div>
             {errors.password && (

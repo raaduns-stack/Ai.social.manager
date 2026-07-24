@@ -57,10 +57,10 @@ const INITIAL_SUBSCRIPTIONS = [
     customerName: "Emeka Nwosu",
     email: "emeka.nwosu@example.com",
     avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuCs_Fv69L2F84b92q_7MjTMtFkAzgesBLTS6kYE_gLe57WIW6s5t4CdQqz8PyDvanxSp3wyBQEubyQ-FJh_MkzTaVBKTr3bk-dsqt5qSlR9guu_WZdgjRcwQq5l2f0DMK7yMSiMMknLQdJVoD0rWA1XbL0OCy-86q1I0F6RBuW1sjEzQ1-t_j_-cRomLDPJ25FUALC89HKYSy4c-9XOhsX2DPie-AtIK40bDeQpbs5jKVk1QuzuUMmoByj5hMCqwlucdJylAtp9N726",
-    plan: "Basic",
+    plan: "Starter",
     status: "active",
     renewsOn: "Oct 30, 2023",
-    amount: 5000,
+    amount: 10000,
   },
   {
     id: "sub_4",
@@ -85,15 +85,48 @@ const INITIAL_SUBSCRIPTIONS = [
 ]
 
 const INITIAL_PLANS = [
-  { id: "plan_basic", name: "Basic", price: 5000, billingCycle: "monthly", channels: 3, posts: 30 },
-  { id: "plan_pro", name: "Pro", price: 12500, billingCycle: "monthly", channels: 8, posts: 150 },
-  { id: "plan_enterprise", name: "Enterprise", price: 45000, billingCycle: "monthly", channels: 25, posts: 1000 },
+  {
+    id: "plan_basic",
+    name: "Starter",
+    priceMonthly: 10000,
+    priceYearly: 100000,
+    discountPrice: 8000,
+    channels: 3,
+    posts: 10,
+    features: ["Facebook", "Instagram"],
+    imagePosting: true,
+    videoPosting: false
+  },
+  {
+    id: "plan_pro",
+    name: "Pro",
+    priceMonthly: 12500,
+    priceYearly: 120000,
+    discountPrice: null,
+    channels: 8,
+    posts: 35,
+    features: ["Facebook", "Instagram", "X (Twitter)", "LinkedIn"],
+    imagePosting: true,
+    videoPosting: true
+  },
+  {
+    id: "plan_enterprise",
+    name: "Enterprise",
+    priceMonthly: 45000,
+    priceYearly: 450000,
+    discountPrice: null,
+    channels: 25,
+    posts: 250,
+    features: ["Facebook", "Instagram", "X (Twitter)", "LinkedIn", "TikTok"],
+    imagePosting: true,
+    videoPosting: true
+  },
 ]
 
 const INITIAL_PAYMENTS = [
   { id: "pay_1", customerName: "Oluwaseun Adeyemi", plan: "Enterprise", amount: 45000, date: "Oct 28, 2023", method: "Card", status: "verified" },
   { id: "pay_2", customerName: "Chidinma Okafor", plan: "Pro", amount: 12500, date: "Nov 12, 2023", method: "Bank Transfer", status: "pending" },
-  { id: "pay_3", customerName: "Emeka Nwosu", plan: "Basic", amount: 5000, date: "Oct 30, 2023", method: "Card", status: "verified" },
+  { id: "pay_3", customerName: "Emeka Nwosu", plan: "Starter", amount: 10000, date: "Oct 30, 2023", method: "Card", status: "verified" },
   { id: "pay_4", customerName: "Tunde Bakare", plan: "Pro", amount: 12500, date: "Oct 15, 2023", method: "Card", status: "verified" },
   { id: "pay_5", customerName: "Ifeanyi Obi", plan: "Enterprise", amount: 45000, date: "Nov 22, 2023", method: "Card", status: "verified" },
 ]
@@ -117,12 +150,19 @@ export default function Billing() {
 
   const [createModalOpen, setCreateModalOpen] = useState(false)
   const [editingPlan, setEditingPlan] = useState(null)
+  const [modalTopTab, setModalTopTab] = useState('create') // 'create' | 'edit'
+  const [modalInnerTab, setModalInnerTab] = useState('details') // 'details' | 'features'
+  const [selectedPlanToEditId, setSelectedPlanToEditId] = useState('')
   const [planForm, setPlanForm] = useState({
     name: '',
-    price: '',
-    billingCycle: 'monthly',
+    priceMonthly: '',
+    priceYearly: '',
+    discountPrice: '',
     channels: '',
     posts: '',
+    features: [],
+    imagePosting: false,
+    videoPosting: false,
   })
 
   // Pagination (Dummy for demo purposes, showing matching subset)
@@ -182,24 +222,37 @@ export default function Billing() {
 
   const handleOpenCreateModal = () => {
     setEditingPlan(null)
+    setModalTopTab('create')
+    setModalInnerTab('details')
     setPlanForm({
       name: '',
-      price: '',
-      billingCycle: 'monthly',
+      priceMonthly: '',
+      priceYearly: '',
+      discountPrice: '',
       channels: '',
       posts: '',
+      features: [],
+      imagePosting: false,
+      videoPosting: false,
     })
     setCreateModalOpen(true)
   }
 
   const handleOpenEditModal = (plan) => {
     setEditingPlan(plan)
+    setModalTopTab('edit')
+    setModalInnerTab('details')
+    setSelectedPlanToEditId(plan.id)
     setPlanForm({
       name: plan.name,
-      price: String(plan.price),
-      billingCycle: plan.billingCycle,
+      priceMonthly: String(plan.priceMonthly || plan.price || 0),
+      priceYearly: String(plan.priceYearly || 0),
+      discountPrice: plan.discountPrice ? String(plan.discountPrice) : '',
       channels: String(plan.channels),
       posts: String(plan.posts),
+      features: plan.features || [],
+      imagePosting: !!plan.imagePosting,
+      videoPosting: !!plan.videoPosting,
     })
     setCreateModalOpen(true)
   }
@@ -207,17 +260,23 @@ export default function Billing() {
   const handleSavePlan = (e) => {
     e.preventDefault()
 
+    const targetId = modalTopTab === 'edit' ? selectedPlanToEditId : `plan_${Date.now()}`
+
     const newPlanData = {
-      id: editingPlan ? editingPlan.id : `plan_${Date.now()}`,
+      id: targetId,
       name: planForm.name,
-      price: Number(planForm.price) || 0,
-      billingCycle: planForm.billingCycle,
+      priceMonthly: Number(planForm.priceMonthly) || 0,
+      priceYearly: Number(planForm.priceYearly) || 0,
+      discountPrice: planForm.discountPrice ? Number(planForm.discountPrice) : null,
       channels: Number(planForm.channels) || 0,
       posts: Number(planForm.posts) || 0,
+      features: planForm.features,
+      imagePosting: planForm.imagePosting,
+      videoPosting: planForm.videoPosting,
     }
 
-    if (editingPlan) {
-      setPlans(prev => prev.map(p => p.id === editingPlan.id ? newPlanData : p))
+    if (modalTopTab === 'edit') {
+      setPlans(prev => prev.map(p => p.id === targetId ? newPlanData : p))
     } else {
       setPlans(prev => [...prev, newPlanData])
     }
@@ -383,11 +442,24 @@ export default function Billing() {
                         Active
                       </Badge>
                     </div>
-                    <div className="mb-6">
-                      <span className="text-3xl font-bold text-ink">
-                        ₦{Number(plan.price).toLocaleString()}
-                      </span>
-                      <span className="text-sm text-ink-muted capitalize"> / {plan.billingCycle}</span>
+                    <div className="mb-6 space-y-1">
+                      <div>
+                        <span className="text-2xl font-bold text-ink">
+                          ₦{Number(plan.discountPrice || plan.priceMonthly || plan.price || 0).toLocaleString()}
+                        </span>
+                        <span className="text-sm text-ink-muted"> / month</span>
+                        {plan.discountPrice && (
+                          <span className="ml-2 text-xs text-ink-muted line-through">
+                            ₦{Number(plan.priceMonthly || plan.price || 0).toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+                      <div>
+                        <span className="text-sm font-semibold text-ink-muted">
+                          ₦{Number(plan.priceYearly || 0).toLocaleString()}
+                        </span>
+                        <span className="text-xs text-ink-muted"> / year</span>
+                      </div>
                     </div>
                     <ul className="space-y-3 mb-6 text-sm text-ink-muted">
                       <li className="flex items-center gap-2">
@@ -396,11 +468,19 @@ export default function Billing() {
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        {plan.posts} Scheduled Posts / month
+                        {plan.posts} Scheduled Posts / week
                       </li>
                       <li className="flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-primary" />
-                        Full AI Content Analytics
+                        Platforms: <span className="font-medium text-ink">{plan.features && plan.features.length > 0 ? plan.features.join(' + ') : 'None'}</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        Image Posting: <span className="font-medium text-ink">{plan.imagePosting ? 'Enabled' : 'Disabled'}</span>
+                      </li>
+                      <li className="flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        Video Posting: <span className="font-medium text-ink">{plan.videoPosting ? 'Enabled' : 'Disabled'}</span>
                       </li>
                     </ul>
                   </div>
@@ -644,70 +724,243 @@ export default function Billing() {
       <Modal
         open={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
-        title={editingPlan ? "Edit Pricing Plan" : "Create New Pricing Plan"}
+        title={modalTopTab === 'edit' ? "Edit Pricing Plan" : "Create New Pricing Plan"}
       >
-        <form onSubmit={handleSavePlan} className="space-y-4">
-          <Input
-            label="Plan Name"
-            placeholder="e.g. Starter, Premium"
-            value={planForm.name}
-            onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
-            required
-          />
-
-          <Input
-            label="Price per Cycle (₦)"
-            type="number"
-            placeholder="e.g. 15000"
-            value={planForm.price}
-            onChange={(e) => setPlanForm({ ...planForm, price: e.target.value })}
-            required
-          />
-
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-ink">Billing Cycle</label>
-            <select
-              value={planForm.billingCycle}
-              onChange={(e) => setPlanForm({ ...planForm, billingCycle: e.target.value })}
-              className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="monthly">Monthly</option>
-              <option value="yearly">Yearly</option>
-            </select>
+        <div className="space-y-4">
+          {/* Top-Level Tabs */}
+          <div className="flex border-b border-border mb-4">
+            {['create', 'edit'].map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => {
+                  setModalTopTab(tab)
+                  setModalInnerTab('details')
+                  if (tab === 'create') {
+                    setEditingPlan(null)
+                    setPlanForm({
+                      name: '',
+                      priceMonthly: '',
+                      priceYearly: '',
+                      discountPrice: '',
+                      channels: '',
+                      posts: '',
+                      features: [],
+                      imagePosting: false,
+                      videoPosting: false,
+                    })
+                  } else {
+                    const firstPlan = plans[0] || null
+                    setSelectedPlanToEditId(firstPlan ? firstPlan.id : '')
+                    if (firstPlan) {
+                      setEditingPlan(firstPlan)
+                      setPlanForm({
+                        name: firstPlan.name,
+                        priceMonthly: String(firstPlan.priceMonthly || firstPlan.price || 0),
+                        priceYearly: String(firstPlan.priceYearly || 0),
+                        discountPrice: firstPlan.discountPrice ? String(firstPlan.discountPrice) : '',
+                        channels: String(firstPlan.channels || 0),
+                        posts: String(firstPlan.posts || 0),
+                        features: firstPlan.features || [],
+                        imagePosting: !!firstPlan.imagePosting,
+                        videoPosting: !!firstPlan.videoPosting,
+                      })
+                    }
+                  }
+                }}
+                className={cn(
+                  "flex-1 pb-2 text-center text-sm font-semibold border-b-2 capitalize",
+                  modalTopTab === tab
+                    ? "text-primary border-primary"
+                    : "text-ink-muted border-transparent hover:text-ink"
+                )}
+              >
+                {tab === 'create' ? 'Create Plan' : 'Edit Plan'}
+              </button>
+            ))}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Social Channels"
-              type="number"
-              placeholder="e.g. 5"
-              value={planForm.channels}
-              onChange={(e) => setPlanForm({ ...planForm, channels: e.target.value })}
-              required
-            />
-            <Input
-              label="Posts per Month"
-              type="number"
-              placeholder="e.g. 150"
-              value={planForm.posts}
-              onChange={(e) => setPlanForm({ ...planForm, posts: e.target.value })}
-              required
-            />
+          {/* Edit Plan Dropdown Selection */}
+          {modalTopTab === 'edit' && (
+            <div className="flex flex-col gap-1.5 mb-4">
+              <label className="text-xs font-semibold text-ink-muted uppercase">Select Plan to Edit</label>
+              <select
+                value={selectedPlanToEditId}
+                onChange={(e) => {
+                  const selectedId = e.target.value
+                  setSelectedPlanToEditId(selectedId)
+                  const plan = plans.find(p => p.id === selectedId)
+                  if (plan) {
+                    setEditingPlan(plan)
+                    setPlanForm({
+                      name: plan.name,
+                      priceMonthly: String(plan.priceMonthly || plan.price || 0),
+                      priceYearly: String(plan.priceYearly || 0),
+                      discountPrice: plan.discountPrice ? String(plan.discountPrice) : '',
+                      channels: String(plan.channels || 0),
+                      posts: String(plan.posts || 0),
+                      features: plan.features || [],
+                      imagePosting: !!plan.imagePosting,
+                      videoPosting: !!plan.videoPosting,
+                    })
+                  }
+                }}
+                className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
+              >
+                {plans.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Inner Tabs */}
+          <div className="flex bg-canvas p-1 rounded-control border border-border mb-4">
+            {['details', 'features'].map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setModalInnerTab(tab)}
+                className={cn(
+                  "flex-1 py-1.5 text-center text-xs font-semibold rounded-control transition-all",
+                  modalInnerTab === tab
+                    ? "bg-surface text-ink shadow-soft font-bold"
+                    : "text-ink-muted hover:text-ink"
+                )}
+              >
+                {tab === 'details' ? 'Plan Details' : 'Plan Features'}
+              </button>
+            ))}
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
-            <Button
-              variant="outline"
-              type="button"
-              onClick={() => setCreateModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              {editingPlan ? "Save Changes" : "Create Plan"}
-            </Button>
-          </div>
-        </form>
+          <form onSubmit={handleSavePlan} className="space-y-4">
+            {modalInnerTab === 'details' ? (
+              <div className="space-y-4 animate-in fade-in duration-200">
+                <Input
+                  label="Plan Name"
+                  placeholder="e.g. Starter, Premium"
+                  value={planForm.name}
+                  onChange={(e) => setPlanForm({ ...planForm, name: e.target.value })}
+                  required
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Monthly Price (₦)"
+                    type="number"
+                    placeholder="e.g. 10000"
+                    value={planForm.priceMonthly}
+                    onChange={(e) => setPlanForm({ ...planForm, priceMonthly: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Yearly Price (₦)"
+                    type="number"
+                    placeholder="e.g. 100000"
+                    value={planForm.priceYearly}
+                    onChange={(e) => setPlanForm({ ...planForm, priceYearly: e.target.value })}
+                    required
+                  />
+                </div>
+
+                <Input
+                  label="Discount Price (₦) - Optional"
+                  type="number"
+                  placeholder="e.g. 8000"
+                  value={planForm.discountPrice}
+                  onChange={(e) => setPlanForm({ ...planForm, discountPrice: e.target.value })}
+                />
+
+                <div className="grid grid-cols-2 gap-4">
+                  <Input
+                    label="Social Channels"
+                    type="number"
+                    placeholder="e.g. 5"
+                    value={planForm.channels}
+                    onChange={(e) => setPlanForm({ ...planForm, channels: e.target.value })}
+                    required
+                  />
+                  <Input
+                    label="Posts per Week"
+                    type="number"
+                    placeholder="e.g. 10"
+                    value={planForm.posts}
+                    onChange={(e) => setPlanForm({ ...planForm, posts: e.target.value })}
+                    required
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-5 animate-in fade-in duration-200">
+                {/* Platform modules */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink">Feature Modules</label>
+                  <p className="text-xs text-ink-muted -mt-1 mb-1">Select the social channels included in this subscription tier.</p>
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-canvas rounded-control border border-border">
+                    {['Facebook', 'Instagram', 'X (Twitter)', 'LinkedIn', 'TikTok'].map((feature) => {
+                      const isChecked = planForm.features.includes(feature)
+                      return (
+                        <label key={feature} className="flex items-center gap-2 text-sm text-ink cursor-pointer select-none">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {
+                              const updatedFeatures = isChecked
+                                ? planForm.features.filter(f => f !== feature)
+                                : [...planForm.features, feature]
+                              setPlanForm({ ...planForm, features: updatedFeatures })
+                            }}
+                            className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                          />
+                          {feature}
+                        </label>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* Media posting permissions */}
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-medium text-ink">Posting Permissions</label>
+                  <p className="text-xs text-ink-muted -mt-1 mb-1">Determine the media types users are allowed to schedule.</p>
+                  <div className="flex flex-col gap-3 p-3 bg-canvas rounded-control border border-border">
+                    <label className="flex items-center gap-2 text-sm text-ink cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={planForm.imagePosting}
+                        onChange={(e) => setPlanForm({ ...planForm, imagePosting: e.target.checked })}
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                      />
+                      Enable Image Posting
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-ink cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={planForm.videoPosting}
+                        onChange={(e) => setPlanForm({ ...planForm, videoPosting: e.target.checked })}
+                        className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                      />
+                      Enable Video Posting
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+              <Button
+                variant="outline"
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button variant="primary" type="submit">
+                {modalTopTab === 'edit' ? "Save Changes" : "Save Plan"}
+              </Button>
+            </div>
+          </form>
+        </div>
       </Modal>
 
       {/* -------------------------------------------------------------------------

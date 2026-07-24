@@ -29,6 +29,7 @@ import AdminAuditLogs from "../pages/Admin/AuditLogs";
 
 // --- Treasure's pages ---
 import AdminBilling from "../pages/Admin/Billing";
+import AdminMoneyManagement from "../pages/Dashboard/MoneyManagement";
 import AdminSocialAccounts from "../pages/Admin/SocialAccounts";
 import AdminUploads from "../pages/Admin/Uploads";
 import AdminAnalytics from "../pages/Admin/Analytics";
@@ -77,6 +78,9 @@ export default function AdminRoutes() {
           <Route path="billing" element={<AdminBilling />} />
           <Route path="social-accounts" element={<AdminSocialAccounts />} />
           <Route path="uploads" element={<AdminUploads />} />
+
+          {/* Money Management (Treasure) */}
+          <Route path="money-management" element={<AdminMoneyManagement />} />
 
           {/* Analytics + AI Config (Treasure) */}
           <Route path="analytics" element={<AdminAnalytics />} />
