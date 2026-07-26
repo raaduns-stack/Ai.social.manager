@@ -28,6 +28,7 @@ import ContentCalendar from '../pages/Dashboard/ContentCalendar'
 import Uploads from '../pages/Dashboard/Uploads'
 import AISuggestions from '../pages/Dashboard/AISuggestions'
 import Billing from '../pages/Dashboard/Billing'
+import AdminMoneyManagement from "../pages/Dashboard/MoneyManagement"; // 👈 FIXED: correct folder
 import Support from '../pages/Dashboard/Support'
 import Notifications from '../pages/Dashboard/Notifications'
 import Settings from '../pages/Dashboard/Settings'

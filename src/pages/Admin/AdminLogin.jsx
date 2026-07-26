@@ -6,7 +6,7 @@
  * to login) on success.
  */
 import { useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { useAdminAuth } from "../../context/AdminAuthContext";
 import { Loader2, Lock, Mail } from "lucide-react";
 
@@ -78,9 +78,8 @@ export default function AdminLogin() {
                 value={form.email}
                 onChange={handleChange("email")}
                 placeholder="you@raaduns.com"
-                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${
-                  errors.email ? "border-[#EF4444]" : "border-[#E5E7EB]"
-                }`}
+                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${errors.email ? "border-[#EF4444]" : "border-[#E5E7EB]"
+                  }`}
               />
             </div>
             {errors.email && (
@@ -89,9 +88,17 @@ export default function AdminLogin() {
           </div>
 
           <div>
-            <label className="mb-1 block text-sm font-medium text-[#111827]">
-              Password
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-[#111827]">
+                Password
+              </label>
+              <Link
+                to="/admin/forgot-password"
+                className="text-xs text-[#4F46E5] hover:underline font-medium"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <div className="relative">
               <Lock size={16} className="absolute left-3 top-2.5 text-[#6B7280]" />
               <input
@@ -99,9 +106,8 @@ export default function AdminLogin() {
                 value={form.password}
                 onChange={handleChange("password")}
                 placeholder="••••••••"
-                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${
-                  errors.password ? "border-[#EF4444]" : "border-[#E5E7EB]"
-                }`}
+                className={`w-full rounded-lg border px-9 py-2 text-sm outline-none ${errors.password ? "border-[#EF4444]" : "border-[#E5E7EB]"
+                  }`}
               />
             </div>
             {errors.password && (

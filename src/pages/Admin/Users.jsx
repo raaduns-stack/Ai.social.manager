@@ -17,7 +17,7 @@ const INITIAL_USERS = [
     id: 1,
     name: 'Alex Rivera',
     email: 'alex.rivera@enterprise.com',
-    plan: 'Enterprise',
+    plan: 'Brand Domination',
     status: 'Active',
     manager: 'Sarah Connor',
     joinedDate: 'Oct 12, 2023',
@@ -27,7 +27,7 @@ const INITIAL_USERS = [
     id: 2,
     name: 'Lena Dubois',
     email: 'l.dubois@creative.io',
-    plan: 'Pro',
+    plan: 'Starter',
     status: 'Suspended',
     manager: 'Mike Vossen',
     joinedDate: 'Jan 05, 2024',
@@ -47,7 +47,7 @@ const INITIAL_USERS = [
     id: 4,
     name: 'Sasha Kovic',
     email: 's.kovic@agencymedia.com',
-    plan: 'Pro',
+    plan: 'Starter',
     status: 'Active',
     manager: 'Sarah Connor',
     joinedDate: 'Feb 14, 2024',
@@ -57,7 +57,7 @@ const INITIAL_USERS = [
     id: 5,
     name: 'Marcus Thorne',
     email: 'm.thorne@globalnet.co',
-    plan: 'Enterprise',
+    plan: 'Growth',
     status: 'Suspended',
     manager: 'Mike Vossen',
     joinedDate: 'Dec 01, 2023',
@@ -192,8 +192,9 @@ export default function Users() {
       label: 'Plan',
       render: (row) => {
         let tone = 'neutral'
-        if (row.plan === 'Enterprise') tone = 'primary'
-        if (row.plan === 'Pro') tone = 'success'
+        if (row.plan === 'Brand Domination') tone = 'primary'
+        if (row.plan === 'Growth') tone = 'success'
+        if (row.plan === 'Starter') tone = 'warning'
         return (
           <Badge tone={tone} className="uppercase tracking-wider text-[10px] font-bold">
             {row.plan}
@@ -318,8 +319,9 @@ export default function Users() {
           >
             <option value="">Plan: All</option>
             <option value="free">Free</option>
-            <option value="pro">Pro</option>
-            <option value="enterprise">Enterprise</option>
+            <option value="starter">Starter</option>
+            <option value="growth">Growth</option>
+            <option value="brand domination">Brand Domination</option>
           </select>
         </div>
       </div>
@@ -363,8 +365,9 @@ export default function Users() {
                 className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
               >
                 <option value="Free">Free</option>
-                <option value="Pro">Pro</option>
-                <option value="Enterprise">Enterprise</option>
+                <option value="Starter">Starter</option>
+                <option value="Growth">Growth</option>
+                <option value="Brand Domination">Brand Domination</option>
               </select>
             </div>
             <div className="flex flex-col gap-1.5">
