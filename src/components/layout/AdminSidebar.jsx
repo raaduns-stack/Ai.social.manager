@@ -24,6 +24,7 @@ import {
   UserCheck,
   ChevronsLeft,
   ChevronsRight,
+  Clock,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -55,7 +56,11 @@ const NAV_SECTIONS = [
     items: [
       { label: "AI Configuration", to: "/admin/ai-config", icon: Cog },
       { label: "Support Center", to: "/admin/support", icon: Headset },
-      { label: "Staff Directory", to: "/admin/staff", icon: UserCheck },
+      { label: "Staff Dashboard", to: "/admin/staff", icon: LayoutDashboard },
+      { label: "Manage Staff", to: "/admin/staff/manage", icon: UserCheck },
+      { label: "Roles & Permissions", to: "/admin/staff/roles-permissions", icon: Settings2 },
+      { label: "Login History", to: "/admin/staff/login-history", icon: Clock },
+      { label: "Activity Logs", to: "/admin/staff/activity-logs", icon: ScrollText },
       { label: "Notifications", to: "/admin/notifications", icon: Bell },
       { label: "Audit Logs", to: "/admin/logs", icon: ScrollText },
       { label: "Settings", to: "/admin/settings", icon: Settings2 },
