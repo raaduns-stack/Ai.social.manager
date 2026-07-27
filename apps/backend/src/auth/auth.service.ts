@@ -1,4 +1,10 @@
-import { ConflictException, Inject, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  InternalServerErrorException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -41,6 +47,22 @@ export class AuthService {
         role: 'client',
       })
       .returning();
+
+    // Auto-assign the free plan
+    const freePlan = await this.db.query.plans.findFirst({
+      where: eq(schema.plans.slug, 'free'),
+    });
+    if (!freePlan) {
+      throw new InternalServerErrorException(
+        'Free plan not found. Please seed a plan with slug "free" before accepting registrations.',
+      );
+    }
+
+    await this.db.insert(schema.subscriptions).values({
+      userId: user.id,
+      planId: freePlan.id,
+      status: 'active',
+    });
 
     return this.issueTokens(user);
   }

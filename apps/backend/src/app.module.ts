@@ -7,6 +7,8 @@ import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
+import { PlansModule } from './plans/plans.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -25,8 +27,10 @@ import { HealthController } from './health/health.controller';
     ]),
     DatabaseModule,
     AuthModule,
+    PlansModule,
+    SubscriptionsModule,
     // Next modules to add here as they're built:
-    // UsersModule, SubscriptionsModule, ContentCalendarModule, UploadsModule,
+    // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule, SupportModule
   ],
   controllers: [AppController, HealthController],
