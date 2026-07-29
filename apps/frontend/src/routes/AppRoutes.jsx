@@ -15,7 +15,12 @@ import Login from '../pages/Auth/Login'
 import SignUp from '../pages/Auth/SignUp'
 import ForgotPassword from '../pages/Auth/ForgotPassword'
 
-// Onboarding pages (mandatory billing gate — no free tier)
+// Onboarding pages
+import VerifyEmail from '../pages/Onboarding/VerifyEmail'
+import Welcome from '../pages/Onboarding/Welcome'
+import BusinessInfo from '../pages/Onboarding/BusinessInfo'
+import ConnectAccountsOnboarding from '../pages/Onboarding/ConnectAccountsOnboarding'
+import BrandVoiceOnboarding from '../pages/Onboarding/BrandVoiceOnboarding'
 import ChoosePlan from '../pages/Onboarding/ChoosePlan'
 import Payment from '../pages/Onboarding/Payment'
 import PaymentVerification from '../pages/Onboarding/PaymentVerification'
@@ -59,6 +64,11 @@ export default function AppRoutes() {
 
       {/* Onboarding / billing gate (centered, minimal-nav layout) */}
       <Route element={<OnboardingLayout />}>
+        <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/welcome" element={<Welcome />} />
+        <Route path="/setup/business" element={<BusinessInfo />} />
+        <Route path="/setup/connect-accounts" element={<ConnectAccountsOnboarding />} />
+        <Route path="/setup/brand-voice" element={<BrandVoiceOnboarding />} />
         <Route path="/choose-plan" element={<ChoosePlan />} />
         <Route path="/payment" element={<Payment />} />
         <Route path="/payment-verification" element={<PaymentVerification />} />
