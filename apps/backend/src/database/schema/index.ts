@@ -4,3 +4,5 @@
 export * from './users.schema';
 export * from './plans.schema';
 export * from './subscriptions.schema';
+export * from './payments.schema';
+export * from './invoices.schema';

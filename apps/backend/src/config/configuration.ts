@@ -21,6 +21,11 @@ export default () => ({
     openclawGatewayUrl: process.env.OPENCLAW_GATEWAY_URL,
   },
 
+  payments: {
+    flutterwaveSecretKey: process.env.FLUTTERWAVE_SECRET_KEY,
+    webhookSecretHash: process.env.FLUTTERWAVE_WEBHOOK_SECRET_HASH,
+  },
+
   redis: {
     url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   },

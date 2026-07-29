@@ -9,6 +9,8 @@ import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { PaymentsModule } from './payments/payments.module';
+import { InvoicesModule } from './invoices/invoices.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -29,6 +31,8 @@ import { HealthController } from './health/health.controller';
     AuthModule,
     PlansModule,
     SubscriptionsModule,
+    PaymentsModule,
+    InvoicesModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule, SupportModule
