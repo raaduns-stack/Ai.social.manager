@@ -23,7 +23,7 @@ export default function Welcome() {
           Congratulations, {name}!
         </h1>
         <p className="text-base text-ink-muted leading-relaxed">
-          Your account is fully activated. Now let's configure your workspace, connect your socials, and train your custom AI brand voice.
+          Your account is fully activated. Let's configure your business workspace and select a plan to get started.
         </p>
       </div>
 
@@ -33,15 +33,11 @@ export default function Welcome() {
           <ul className="space-y-3 text-sm text-ink-muted">
             <li className="flex items-center gap-2.5">
               <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">1</span>
-              <span>Input your business details & industry.</span>
+              <span>Input your business profile details & industry.</span>
             </li>
             <li className="flex items-center gap-2.5">
               <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">2</span>
-              <span>Link your social channels (Facebook, Instagram, etc.).</span>
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">3</span>
-              <span>Define your custom AI tone and brand voice persona.</span>
+              <span>Select your workspace subscription plan.</span>
             </li>
           </ul>
         </div>

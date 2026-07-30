@@ -37,7 +37,7 @@ export default function BusinessInfo() {
 
     setTimeout(() => {
       setLoading(false)
-      navigate('/setup/connect-accounts')
+      navigate('/choose-plan')
     }, 800)
   }
 
@@ -130,7 +130,7 @@ export default function BusinessInfo() {
               className="w-full font-semibold cursor-pointer"
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Next: Connect Channels'}
+              {loading ? 'Saving...' : 'Next: Choose Plan'}
             </Button>
           </div>
         </form>
