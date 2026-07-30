@@ -37,12 +37,21 @@ export default function ChoosePlan() {
 
   // Features list formatter matching plan tiers
   const getFeaturesList = (plan) => {
-    if (Array.isArray(plan.features)) return plan.features
-    if (plan.features && Array.isArray(plan.features.additional)) {
+    if (!plan) return []
+    let features = plan.features
+    if (typeof features === 'string') {
+      try {
+        features = JSON.parse(features)
+      } catch (e) {}
+    }
+
+    if (Array.isArray(features)) return features
+    
+    if (features && Array.isArray(features.additional)) {
       return [
-        `Connect ${plan.features.channels || 0} social accounts`,
-        `${plan.features.posts || 0} posts/month`,
-        ...plan.features.additional,
+        `Connect ${features.channels || 0} social accounts`,
+        `${features.posts || 0} posts/month`,
+        ...features.additional,
       ]
     }
 

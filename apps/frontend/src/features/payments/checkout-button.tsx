@@ -1,31 +1,43 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import Button from '../../components/ui/Button'
 import { initializePayment } from './payments-api'
+import ErrorBanner from '../../components/error-banner'
 
 export default function CheckoutButton({ planId, className, children = 'Choose Plan', variant = 'primary' }) {
+  const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState<any>(null)
 
   const handleCheckout = async () => {
     setLoading(true)
-    setError('')
+    setError(null)
     try {
       const response = await initializePayment(planId)
-      if (response && response.link) {
-        window.location.href = response.link
+      // Check both response.link and response.data.link
+      const link = (response as any)?.link || (response as any)?.data?.link
+      if (link) {
+        window.location.href = link
       } else {
-        throw new Error('No checkout link returned from server.')
+        throw new Error('No checkout link was returned from the server.')
       }
     } catch (err: any) {
-      console.error(err)
-      setError(err.message || 'Payment initialization failed. Please try again.')
+      console.error('Checkout error:', err)
+      const errorMessage = err?.response?.data?.message || err.message || 'Payment initialization failed.'
+      setError(new Error(errorMessage))
+      // Optional fallback: navigate to manual payment or dashboard
+      // navigate('/dashboard')
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="w-full">
+    <div className="w-full space-y-2">
+      {error && (
+        <ErrorBanner error={error} onDismiss={() => setError(null)} />
+      )}
+      
       <Button
         onClick={handleCheckout}
         disabled={loading}
@@ -44,7 +56,6 @@ export default function CheckoutButton({ planId, className, children = 'Choose P
           children
         )}
       </Button>
-      {error && <p className="text-[10px] text-danger mt-1.5 text-center">{error}</p>}
     </div>
   )
 }

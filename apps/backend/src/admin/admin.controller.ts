@@ -57,4 +57,10 @@ export class AdminController {
   getPayments() {
     return this.adminService.getPayments();
   }
+
+  @Post('plans/seed')
+  @ApiOperation({ summary: 'Seed canonical plans' })
+  seedPlans() {
+    return this.adminService.seedPlans();
+  }
 }

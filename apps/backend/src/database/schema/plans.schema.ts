@@ -8,7 +8,7 @@ export const plans = pgTable('plans', {
   slug: varchar('slug', { length: 100 }).notNull().unique(),
   price: integer('price').notNull().default(0), // in cents
   interval: planIntervalEnum('interval').notNull().default('monthly'),
-  features: json('features').$type<Record<string, unknown>>().default({}),
+  features: json('features').$type<string[]>().default([]),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
