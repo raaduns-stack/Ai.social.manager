@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronRight, Save, Lock, CheckCircle } from 'lucide-react'
+import Badge from '../../../components/ui/Badge'
 import PageHeader from '../../../components/layout/PageHeader'
 import Card from '../../../components/ui/Card'
 import Button from '../../../components/ui/Button'
@@ -98,6 +99,7 @@ export default function RolesPermissions() {
         </div>
 
         <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="Access Control Matrix"
           description="Configure module-level permissions for all system user roles."
         />

@@ -242,6 +242,7 @@ export default function SocialAccounts() {
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
         title="Connected Accounts"
         description="Manage third-party platform authorizations and status."
       />

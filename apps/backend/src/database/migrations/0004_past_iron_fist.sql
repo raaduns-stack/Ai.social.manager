@@ -1,0 +1,1 @@
+ALTER TABLE "plans" ALTER COLUMN "features" SET DEFAULT '[]'::json;

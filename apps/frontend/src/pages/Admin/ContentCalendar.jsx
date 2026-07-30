@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns'
+import Badge from '../../components/ui/Badge'
 import PageHeader from '../../components/layout/PageHeader'
 import WeekDayCard from '../../components/calendar/WeekDayCard'
 import ViewAllCustomersModal from '../../components/calendar/ViewAllCustomersModal'
@@ -77,6 +78,7 @@ export default function ContentCalendar() {
   return (
     <div className="w-full max-w-full overflow-hidden space-y-6 flex flex-col h-full">
       <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
         title="Content Calendar"
         description={weekSubtitle}
       />

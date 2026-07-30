@@ -1,6 +1,6 @@
 {
-  "id": "074577de-2218-40be-aacd-8b813085ad48",
-  "prevId": "adb0a1b1-f411-4620-bf01-130729a25c50",
+  "id": "743f8301-f50a-4bb4-a8fe-a001067fc370",
+  "prevId": "074577de-2218-40be-aacd-8b813085ad48",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -128,7 +128,7 @@
           "type": "json",
           "primaryKey": false,
           "notNull": false,
-          "default": "'{}'::json"
+          "default": "'[]'::json"
         },
         "is_active": {
           "name": "is_active",

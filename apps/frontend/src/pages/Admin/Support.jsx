@@ -234,6 +234,7 @@ export default function Support() {
       {/* Page Header */}
       <div className="mb-4">
         <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="Support Center"
           description="Manage client issues, live chat queries, and system assistance."
         />
