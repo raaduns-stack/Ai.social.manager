@@ -19,12 +19,14 @@ import {
 } from 'lucide-react'
 import { getMySubscription, cancelSubscription } from '../../features/subscriptions/subscriptions-api'
 import { getPlans } from '../../features/plans/plans-api'
+import { getInvoices } from '../../features/invoices/invoices-api'
 import ErrorBanner from '../../components/error-banner'
 import CheckoutButton from '../../features/payments/checkout-button'
 
 export default function Billing() {
   const [subscription, setSubscription] = useState(null)
   const [plans, setPlans] = useState([])
+  const [invoices, setInvoices] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
@@ -58,7 +60,7 @@ export default function Billing() {
   const [supportMessage, setSupportMessage] = useState('')
   const [supportSubmitted, setSupportSubmitted] = useState(false)
 
-  // Fetch subscription and plans on mount
+  // Fetch subscription, plans and invoices on mount
   useEffect(() => {
     async function loadData() {
       try {
@@ -66,7 +68,6 @@ export default function Billing() {
         setSubscription(sub)
       } catch (err) {
         console.error('Failed to load subscription:', err)
-        // If 404, we don't have an active subscription yet, which is fine
       }
       try {
         const fetchedPlans = await getPlans()
@@ -76,6 +77,12 @@ export default function Billing() {
       } catch (err) {
         console.error('Failed to load plans:', err)
         setError(err)
+      }
+      try {
+        const fetchedInvoices = await getInvoices()
+        setInvoices(fetchedInvoices)
+      } catch (err) {
+        console.error('Failed to load invoices:', err)
       } finally {
         setLoading(false)
       }
@@ -169,18 +176,10 @@ export default function Billing() {
 
   const activePlanFeatures = getFeaturesList(activePlanSlug)
 
-  // Mock invoice data
-  const mockInvoices = [
-    { id: 'INV-9283-21', date: 'Oct 12, 2023', amount: '₦30,000', status: 'Paid' },
-    { id: 'INV-8142-05', date: 'Sep 12, 2023', amount: '₦30,000', status: 'Paid' },
-    { id: 'INV-7091-88', date: 'Aug 12, 2023', amount: '₦100,000', status: 'Processing' },
-    { id: 'INV-6012-44', date: 'Jul 12, 2023', amount: '₦100,000', status: 'Paid' },
-  ]
-
   // Pagination calculations
   const itemsPerPage = 4
-  const totalPages = Math.ceil(mockInvoices.length / itemsPerPage)
-  const paginatedInvoices = mockInvoices.slice(
+  const totalPages = Math.ceil(invoices.length / itemsPerPage) || 1
+  const paginatedInvoices = invoices.slice(
     currentPage * itemsPerPage,
     (currentPage + 1) * itemsPerPage
   )
@@ -481,33 +480,42 @@ export default function Billing() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">
-                    {paginatedInvoices.map((invoice) => (
-                      <tr key={invoice.id} className="hover:bg-canvas transition-colors">
-                        <td className="px-6 py-4 text-sm text-ink">{invoice.date}</td>
-                        <td className="px-6 py-4 text-sm font-medium text-ink">{invoice.id}</td>
-                        <td className="px-6 py-4 text-sm text-ink">{invoice.amount}</td>
-                        <td className="px-6 py-4">
-                          <Badge tone={invoice.status === 'Paid' ? 'success' : 'neutral'}>
-                            {invoice.status}
-                          </Badge>
-                        </td>
-                        <td className="px-6 py-4 text-right">
-                          <button
-                            onClick={() => alert(`Downloading invoice ${invoice.id}`)}
-                            className="text-ink-muted hover:text-primary transition-colors cursor-pointer"
-                            title="Download Invoice"
-                          >
-                            <Download size={16} />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {paginatedInvoices.map((invoice) => {
+                      const displayStatus = invoice.status === 'paid' ? 'Paid' : 'Failed'
+                      const dateStr = new Date(invoice.issuedAt).toLocaleDateString('en-NG', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })
+
+                      return (
+                        <tr key={invoice.id} className="hover:bg-canvas transition-colors">
+                          <td className="px-6 py-4 text-sm text-ink">{dateStr}</td>
+                          <td className="px-6 py-4 text-sm font-medium text-ink">{invoice.invoiceNumber}</td>
+                          <td className="px-6 py-4 text-sm text-ink">{formatPrice(invoice.amount)}</td>
+                          <td className="px-6 py-4">
+                            <Badge tone={displayStatus === 'Paid' ? 'success' : 'neutral'}>
+                              {displayStatus}
+                            </Badge>
+                          </td>
+                          <td className="px-6 py-4 text-right">
+                            <button
+                              onClick={() => alert(`Downloading invoice ${invoice.invoiceNumber}`)}
+                              className="text-ink-muted hover:text-primary transition-colors cursor-pointer"
+                              title="Download Invoice"
+                            >
+                              <Download size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
               <div className="px-6 py-4 bg-canvas flex justify-between items-center border-t border-border">
                 <p className="text-xs text-ink-muted">
-                  Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, mockInvoices.length)} of {mockInvoices.length} invoices
+                  Showing {currentPage * itemsPerPage + 1} to {Math.min((currentPage + 1) * itemsPerPage, invoices.length)} of {invoices.length} invoices
                 </p>
                 <div className="flex gap-2">
                   <Button
