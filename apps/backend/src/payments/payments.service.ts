@@ -67,7 +67,7 @@ export class PaymentsService {
 
     const corsOrigin =
       this.configService.get<string>('corsOrigin') ?? 'http://localhost:5173';
-    const redirectUrl = `${corsOrigin}/dashboard/billing`;
+    const redirectUrl = `${corsOrigin}/payments/callback`;
 
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
@@ -99,11 +99,16 @@ export class PaymentsService {
   }
 
   /**
-   * Verify a Flutterwave payment by transactionId.
+   * Verify a Flutterwave payment by transactionId or tx_ref.
+   * Flutterwave appends ?transaction_id=<numeric_id>&tx_ref=... to the redirect URL.
+   * The callback page should prefer passing transaction_id (numeric) for direct verification.
+   * If a tx_ref string is passed instead, we look up our payment record to confirm it exists,
+   * then call Flutterwave's verify API with the tx_ref (which Flutterwave also accepts).
    */
   async verifyPayment(userId: string, transactionId: string) {
     return this.verifyAndFulfillTransaction(transactionId);
   }
+
 
   /**
    * Handle incoming Flutterwave webhook notifications.
