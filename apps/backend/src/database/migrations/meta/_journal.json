@@ -15,6 +15,20 @@
       "when": 1785332616917,
       "tag": "0001_remarkable_roulette",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785154127456,
+      "tag": "0002_tense_yellowjacket",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785159831262,
+      "tag": "0003_smooth_starjammers",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNotEmpty, IsNumber, IsString, validateSync } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
 
 enum Environment {
   Development = 'development',
@@ -25,6 +25,14 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_REFRESH_SECRET: string;
+
+  @IsString()
+  @IsOptional()
+  FLUTTERWAVE_SECRET_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  FLUTTERWAVE_WEBHOOK_SECRET_HASH?: string;
 }
 
 /**
