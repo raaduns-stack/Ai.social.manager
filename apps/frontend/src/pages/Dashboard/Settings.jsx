@@ -5,6 +5,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import { Info, ShieldCheck } from 'lucide-react'
+import BrandVoiceForm from '../../components/BrandVoiceForm'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -198,11 +199,16 @@ function CompanyInfoTab() {
   const [businessWebsite, setBusinessWebsite] = useState('')
   const [competitorUrls, setCompetitorUrls] = useState('')
   const [competitorSocials, setCompetitorSocials] = useState('')
+  const [brandVoice, setBrandVoice] = useState({
+    tone: 'Professional',
+    targetAudience: 'Tech startups, digital agencies',
+    writingStyle: 'Conversational',
+  })
 
   const [saved, setSaved] = useState(false)
 
   const handleSave = (e) => {
-    e.preventDefault()
+    if (e && e.preventDefault) e.preventDefault()
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
@@ -221,6 +227,11 @@ function CompanyInfoTab() {
     setBusinessWebsite('')
     setCompetitorUrls('')
     setCompetitorSocials('')
+    setBrandVoice({
+      tone: 'Professional',
+      targetAudience: 'Tech startups, digital agencies',
+      writingStyle: 'Conversational',
+    })
   }
 
   return (
@@ -414,6 +425,23 @@ function CompanyInfoTab() {
               </p>
             </div>
           </div>
+        </Card>
+      </SettingsSection>
+
+      {/* Brand Voice Section */}
+      <SettingsSection
+        label="Brand Voice"
+        description="Configure target audience and style guidelines for AI content generation."
+      >
+        <Card className="p-6">
+          <BrandVoiceForm
+            initialValues={brandVoice}
+            onSubmit={(updated) => {
+              setBrandVoice(updated)
+              handleSave()
+            }}
+            buttonText={saved ? '✓ Saved!' : 'Save Brand Voice'}
+          />
         </Card>
       </SettingsSection>
 

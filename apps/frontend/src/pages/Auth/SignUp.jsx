@@ -1,12 +1,18 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ArrowRight, Terminal } from 'lucide-react'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import { useAuth } from '../../context/AuthContext'
+import ErrorBanner from '../../components/error-banner'
 
 /**
  * SignUp page component converted from Stitch-generated HTML design.
  */
 export default function SignUp() {
+  const { register } = useAuth()
+  const navigate = useNavigate()
+
   const [formData, setFormData] = useState({
     fullName: '',
     companyName: '',
@@ -18,6 +24,8 @@ export default function SignUp() {
 
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [apiError, setApiError] = useState(null)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -34,7 +42,7 @@ export default function SignUp() {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const newErrors = {}
 
@@ -62,8 +70,17 @@ export default function SignUp() {
       return
     }
 
-    console.log('Registration submitted:', formData)
-    // Perform authentication logic here
+    setLoading(true)
+    setApiError(null)
+
+    try {
+      await register(formData.email, formData.password, formData.fullName, formData.companyName)
+      navigate('/verify-email')
+    } catch (err) {
+      setApiError(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -77,6 +94,10 @@ export default function SignUp() {
           Join 2,000+ marketing teams using AI to drive growth.
         </p>
       </div>
+
+      {apiError && (
+        <ErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
+      )}
 
       {/* Form */}
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -200,9 +221,10 @@ export default function SignUp() {
           type="submit"
           variant="primary"
           size="lg"
-          className="w-full font-bold shadow-soft flex items-center justify-center gap-2"
+          className="w-full font-bold shadow-soft flex items-center justify-center gap-2 cursor-pointer"
+          disabled={loading}
         >
-          Create Account
+          {loading ? 'Creating Account...' : 'Create Account'}
           <ArrowRight size={18} />
         </Button>
       </form>

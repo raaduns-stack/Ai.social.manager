@@ -1,12 +1,18 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Terminal, Sparkles } from 'lucide-react'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
+import { useAuth } from '../../context/AuthContext'
+import ErrorBanner from '../../components/error-banner'
 
 /**
  * Login page component converted from Stitch-generated HTML design.
  */
 export default function Login() {
+  const { login } = useAuth()
+  const navigate = useNavigate()
+  
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -15,6 +21,8 @@ export default function Login() {
 
   const [errors, setErrors] = useState({})
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [apiError, setApiError] = useState(null)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -31,7 +39,7 @@ export default function Login() {
     }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const newErrors = {}
 
@@ -49,8 +57,17 @@ export default function Login() {
       return
     }
 
-    console.log('Login submitted:', formData)
-    // Perform authentication logic here
+    setLoading(true)
+    setApiError(null)
+
+    try {
+      await login(formData.email, formData.password)
+      navigate('/dashboard')
+    } catch (err) {
+      setApiError(err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -72,6 +89,10 @@ export default function Login() {
           </p>
         </div>
       </div>
+
+      {apiError && (
+        <ErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
+      )}
 
       {/* Form */}
       <form className="space-y-6" onSubmit={handleSubmit}>
@@ -142,9 +163,10 @@ export default function Login() {
           type="submit"
           variant="primary"
           size="lg"
-          className="w-full font-bold shadow-soft flex items-center justify-center gap-2"
+          className="w-full font-bold shadow-soft flex items-center justify-center gap-2 cursor-pointer"
+          disabled={loading}
         >
-          Log In
+          {loading ? 'Logging in...' : 'Log In'}
         </Button>
       </form>
 

@@ -1,19 +1,5 @@
-CREATE TYPE "public"."user_role" AS ENUM('client', 'designer', 'reviewer', 'account_manager', 'super_admin');--> statement-breakpoint
 CREATE TYPE "public"."plan_interval" AS ENUM('monthly', 'yearly');--> statement-breakpoint
 CREATE TYPE "public"."subscription_status" AS ENUM('active', 'pending', 'cancelled', 'expired');--> statement-breakpoint
-CREATE TABLE "users" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"email" varchar(255) NOT NULL,
-	"password_hash" varchar(255) NOT NULL,
-	"full_name" varchar(255) NOT NULL,
-	"business_name" varchar(255),
-	"role" "user_role" DEFAULT 'client' NOT NULL,
-	"is_active" boolean DEFAULT true NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "users_email_unique" UNIQUE("email")
-);
---> statement-breakpoint
 CREATE TABLE "plans" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"name" varchar(100) NOT NULL,
