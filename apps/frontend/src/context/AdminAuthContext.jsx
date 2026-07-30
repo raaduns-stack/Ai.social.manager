@@ -8,16 +8,11 @@
  * Wrap AdminRoutes with <AdminAuthProvider> once, at the top level.
  */
 import { createContext, useContext, useEffect, useState } from "react";
+import apiClient from "../lib/api-client";
 
 const AdminAuthContext = createContext(null);
 
 const STORAGE_KEY = "admin_session";
-
-// Mock admin accounts — stand-in for a real backend user table.
-const MOCK_ADMINS = [
-  { email: "pascal@raaduns.com", password: "admin123", name: "Pascal", role: "Admin" },
-  { email: "treasure@raaduns.com", password: "admin123", name: "Treasure", role: "Admin" },
-];
 
 export function AdminAuthProvider({ children }) {
   const [admin, setAdmin] = useState(null);
@@ -37,21 +32,33 @@ export function AdminAuthProvider({ children }) {
   }, []);
 
   const login = async (email, password) => {
-    // Simulated network delay so the login button's loading state has something to show
-    await new Promise((r) => setTimeout(r, 500));
+    try {
+      const response = await apiClient.post("/auth/login", { email, password });
+      const { user, accessToken, refreshToken } = response.data;
 
-    const match = MOCK_ADMINS.find(
-      (a) => a.email.toLowerCase() === email.toLowerCase() && a.password === password
-    );
+      const ADMIN_ELIGIBLE_ROLES = ["account_manager", "super_admin", "designer", "reviewer"];
+      if (!ADMIN_ELIGIBLE_ROLES.includes(user.role)) {
+        return {
+          success: false,
+          error: "Access denied. You do not have administrator privileges.",
+        };
+      }
 
-    if (!match) {
-      return { success: false, error: "Invalid email or password." };
+      const session = {
+        email: user.email,
+        name: user.fullName,
+        role: user.role,
+        accessToken,
+        refreshToken,
+      };
+
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+      setAdmin(session);
+      return { success: true };
+    } catch (err) {
+      const errorMessage = err.message || "Invalid email or password.";
+      return { success: false, error: errorMessage };
     }
-
-    const session = { email: match.email, name: match.name, role: match.role };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    setAdmin(session);
-    return { success: true };
   };
 
   const logout = () => {
