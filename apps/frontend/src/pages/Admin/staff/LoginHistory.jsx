@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Search, ChevronRight } from 'lucide-react'
+import Badge from '../../../components/ui/Badge'
 import PageHeader from '../../../components/layout/PageHeader'
 import Input from '../../../components/ui/Input'
 import LogTable from '../../../components/staff/LogTable'
@@ -157,6 +158,7 @@ export default function LoginHistory() {
         </div>
 
         <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="Audit Authentication Logs"
           description="View recent staff dashboard access attempts, authentication channels, and geographic origins."
         />

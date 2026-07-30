@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Filter, ChevronRight } from 'lucide-react'
+import Badge from '../../../components/ui/Badge'
 import PageHeader from '../../../components/layout/PageHeader'
 import LogTable from '../../../components/staff/LogTable'
 
@@ -130,6 +131,7 @@ export default function ActivityLogs() {
         </div>
 
         <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="System Activity Audit Trails"
           description="Track administrative operations, platform changes, and content moderation activities."
         />

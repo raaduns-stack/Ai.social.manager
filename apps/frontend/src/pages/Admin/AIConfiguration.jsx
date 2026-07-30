@@ -9,6 +9,7 @@ import {
   CheckCircle,
   Info,
 } from 'lucide-react'
+import Badge from '../../components/ui/Badge'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -91,6 +92,7 @@ export default function AIConfiguration() {
           <span className="text-primary font-semibold">AI Settings</span>
         </div>
         <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="Global AI Content Settings"
           description="Configure the default baseline prompt templates used for content generation across all customers."
         />

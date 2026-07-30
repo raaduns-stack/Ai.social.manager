@@ -97,6 +97,7 @@ export default function AuditLogs() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
           <PageHeader
+        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
             title="Audit Logs"
             description="Track and review all administrative and system-level actions across the platform."
           />

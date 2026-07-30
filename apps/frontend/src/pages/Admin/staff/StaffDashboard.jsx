@@ -1,4 +1,5 @@
 import { Users, UserCheck, UserX, Clock, ChevronRight } from 'lucide-react'
+import Badge from '../../../components/ui/Badge'
 import PageHeader from '../../../components/layout/PageHeader'
 import StatsCard from '../../../components/ui/StatsCard'
 import Card from '../../../components/ui/Card'
