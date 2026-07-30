@@ -14,11 +14,21 @@ import {
   ChevronRight,
   HelpCircle,
   Sparkles,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react'
+import { getMySubscription, cancelSubscription } from '../../features/subscriptions/subscriptions-api'
+import { getPlans } from '../../features/plans/plans-api'
+import ErrorBanner from '../../components/error-banner'
+import CheckoutButton from '../../features/payments/checkout-button'
 
 export default function Billing() {
-  // State for active plan
-  const [activePlan, setActivePlan] = useState('Free') // 'Free' | 'Starter' | 'Growth' | 'Brand'
+  const [subscription, setSubscription] = useState(null)
+  const [plans, setPlans] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   // State for payment method
   const [paymentMethod, setPaymentMethod] = useState({
@@ -37,6 +47,46 @@ export default function Billing() {
   const [isManagePlanModalOpen, setIsManagePlanModalOpen] = useState(false)
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
   const [selectedUpgradePlan, setSelectedUpgradePlan] = useState(null)
+
+  // Fetch subscription and plans on mount
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const sub = await getMySubscription()
+        setSubscription(sub)
+      } catch (err) {
+        console.error('Failed to load subscription:', err)
+        // If 404, we might not have a subscription yet, which is fine
+      }
+      try {
+        const fetchedPlans = await getPlans()
+        const order = { free: 0, starter: 1, growth: 2, enterprise: 3 }
+        const sorted = [...fetchedPlans].sort((a, b) => (order[a.slug] ?? 99) - (order[b.slug] ?? 99))
+        setPlans(sorted)
+      } catch (err) {
+        console.error('Failed to load plans:', err)
+        setError(err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    loadData()
+  }, [])
+
+  const handleCancelSub = async () => {
+    setCancelling(true)
+    try {
+      await cancelSubscription()
+      const sub = await getMySubscription()
+      setSubscription(sub)
+      setIsCancelModalOpen(false)
+      alert('Subscription cancelled successfully.')
+    } catch (err: any) {
+      alert(err.message || 'Failed to cancel subscription.')
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   // Edit payment card form state
   const [cardholderName, setCardholderName] = useState(paymentMethod.cardholder)

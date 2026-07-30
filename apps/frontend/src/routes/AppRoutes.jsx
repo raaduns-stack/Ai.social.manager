@@ -22,6 +22,7 @@ import BusinessInfo from '../pages/Onboarding/BusinessInfo'
 import ChoosePlan from '../pages/Onboarding/ChoosePlan'
 import Payment from '../pages/Onboarding/Payment'
 import PaymentVerification from '../pages/Onboarding/PaymentVerification'
+import PaymentCallbackPage from '../features/payments/payment-callback-page'
 
 // Dashboard pages
 import DashboardHome from '../pages/Dashboard/DashboardHome'
@@ -59,6 +60,9 @@ export default function AppRoutes() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
       </Route>
+
+      {/* Payment Callback standalone page */}
+      <Route path="/payments/callback" element={<PaymentCallbackPage />} />
 
       {/* Onboarding / billing gate (centered, minimal-nav layout) */}
       <Route element={<OnboardingLayout />}>
