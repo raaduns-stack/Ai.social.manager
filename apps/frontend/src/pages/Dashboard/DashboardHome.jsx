@@ -23,6 +23,8 @@ import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Loader from '../../components/ui/Loader'
+import { getMyDashboardSummary } from '../../features/dashboard/dashboard-api'
 
 // ---------------------------------------------------------------------------
 // Data — metrics change depending on the selected period filter
@@ -272,6 +274,27 @@ export default function DashboardHome() {
   }
   // Activity section tabs — only one tab's content shows at a time
   const [activityTab, setActivityTab] = useState('recent') // 'recent' | 'posts'
+
+  // Summary states for active subscription widget
+  const [summary, setSummary] = useState(null)
+  const [loadingSummary, setLoadingSummary] = useState(true)
+  const [summaryError, setSummaryError] = useState(null)
+
+  useEffect(() => {
+    async function fetchSummary() {
+      try {
+        const data = await getMyDashboardSummary()
+        setSummary(data)
+      } catch (err) {
+        console.error('Failed to load dashboard summary:', err)
+        setSummaryError('Failed to load active plan details.')
+      } finally {
+        setLoadingSummary(false)
+      }
+    }
+    fetchSummary()
+  }, [])
+
   useEffect(() => {
     const checkBusinessProfile = () => {
       setBusinessInfoComplete(
@@ -329,32 +352,51 @@ export default function DashboardHome() {
       )}
 
       {/* Subscription Status Card */}
-      <Card className="relative p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-primary-100 overflow-hidden bg-primary/5 shadow-soft">
-        {/* Background Decorative Star */}
-        <div className="absolute right-0 top-0 w-32 h-full opacity-5 pointer-events-none flex items-center justify-center">
-          <Star className="text-primary-600 fill-current" size={120} />
-        </div>
+      {loadingSummary ? (
+        <Card className="p-6 flex items-center justify-center border-primary-100 bg-primary/5 min-h-[96px] shadow-soft">
+          <Loader size={24} label="Fetching workspace subscription..." />
+        </Card>
+      ) : summaryError ? (
+        <Card className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4 border-red-200 bg-red-50/50 shadow-soft">
+          <div className="flex items-center gap-3 text-red-600">
+            <Award size={24} />
+            <div>
+              <p className="text-sm font-semibold text-ink">Unable to fetch plan status</p>
+              <p className="text-xs text-ink-muted mt-0.5">{summaryError}</p>
+            </div>
+          </div>
+          <Button variant="primary" onClick={() => navigate('/dashboard/billing')}>
+            Go to Billing
+          </Button>
+        </Card>
+      ) : (
+        <Card className="relative p-6 flex flex-col md:flex-row items-center justify-between gap-6 border-primary-100 overflow-hidden bg-primary/5 shadow-soft">
+          {/* Background Decorative Star */}
+          <div className="absolute right-0 top-0 w-32 h-full opacity-5 pointer-events-none flex items-center justify-center">
+            <Star className="text-primary-600 fill-current" size={120} />
+          </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-6 z-10 text-center sm:text-left">
-          <div className="w-12 h-12 bg-primary-100 text-primary-700 rounded-card flex items-center justify-center shrink-0">
-            <Award size={28} className="fill-current" />
+          <div className="flex flex-col sm:flex-row items-center gap-6 z-10 text-center sm:text-left">
+            <div className="w-12 h-12 bg-primary-100 text-primary-700 rounded-card flex items-center justify-center shrink-0">
+              <Award size={28} className="fill-current" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-ink">
+                {summary?.activeSubscription?.planName || 'Free Plan'} Active
+              </h3>
+              <p className="text-sm text-ink-muted mt-1">
+                Your workspace status is <span className="capitalize font-semibold text-primary">{summary?.activeSubscription?.status}</span>. You have access to AI suggestions and multi-channel scheduling.
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-ink">Pro Plan Active</h3>
-            <p className="text-sm text-ink-muted mt-1">
-              Your workspace has full access to AI content generation and multi-channel scheduling.
-            </p>
-          </div>
-        </div>
 
-        <div className="flex flex-col sm:flex-row items-center gap-4 z-10 shrink-0">
-          <div className="text-center sm:text-right">
-            <p className="text-xs text-ink-muted font-medium">Next billing cycle</p>
-            <p className="text-sm font-semibold text-primary mt-0.5">Aug 20, 2026</p>
+          <div className="flex flex-col sm:flex-row items-center gap-4 z-10 shrink-0">
+            <Button variant="primary" onClick={() => navigate('/dashboard/billing')}>
+              Manage Plan
+            </Button>
           </div>
-          <Button variant="primary">Manage Plan</Button>
-        </div>
-      </Card>
+        </Card>
+      )}
 
       {/* Dashboard Period Filter */}
       <div className="flex items-center justify-between">
