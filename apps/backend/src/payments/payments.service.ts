@@ -224,7 +224,7 @@ export class PaymentsService {
       })
       .where(eq(schema.payments.id, payment.id));
 
-    // Activate the subscription if available
+    // Activate the subscription
     if (payment.subscriptionId) {
       const plan = payment.planId
         ? await this.plansService.findById(payment.planId)
@@ -253,16 +253,47 @@ export class PaymentsService {
           ),
         );
 
-      // Activate pending subscription
+      // Activate the pending subscription and ensure planId is correct
       await this.db
         .update(schema.subscriptions)
         .set({
           status: 'active',
+          planId: payment.planId ?? undefined, // sync planId (null → undefined for Drizzle)
           currentPeriodStart: startDate,
           currentPeriodEnd: endDate,
           updatedAt: new Date(),
         })
         .where(eq(schema.subscriptions.id, payment.subscriptionId));
+    } else if (payment.planId) {
+      // Fallback: no subscriptionId on payment — upsert subscription directly
+      const plan = await this.plansService.findById(payment.planId);
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      if (plan?.interval === 'yearly') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+
+      // Expire any existing active subscription for this user
+      await this.db
+        .update(schema.subscriptions)
+        .set({ status: 'expired', updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.subscriptions.userId, payment.userId),
+            eq(schema.subscriptions.status, 'active'),
+          ),
+        );
+
+      // Insert a fresh active subscription
+      await this.db.insert(schema.subscriptions).values({
+        userId: payment.userId,
+        planId: payment.planId,
+        status: 'active',
+        currentPeriodStart: startDate,
+        currentPeriodEnd: endDate,
+      });
     }
 
     // Automatically create an invoice record

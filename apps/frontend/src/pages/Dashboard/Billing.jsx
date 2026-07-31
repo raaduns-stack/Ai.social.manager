@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -24,6 +25,7 @@ import ErrorBanner from '../../components/error-banner'
 import CheckoutButton from '../../features/payments/checkout-button'
 
 export default function Billing() {
+  const location = useLocation()
   const [subscription, setSubscription] = useState(null)
   const [plans, setPlans] = useState([])
   const [invoices, setInvoices] = useState([])
@@ -88,7 +90,9 @@ export default function Billing() {
       }
     }
     loadData()
-  }, [])
+  // location.key changes every time React Router navigates to this page,
+  // ensuring we never display stale plan data after returning from /payments/callback
+  }, [location.key])
 
   const handleCancelSub = async () => {
     setCancelling(true)
