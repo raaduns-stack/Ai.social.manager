@@ -1,13 +1,12 @@
 import { pgTable, uuid, varchar, timestamp, pgEnum, boolean } from 'drizzle-orm/pg-core';
+import { UserRole } from '../../common/enums/roles.enum';
 
-// Matches the roles referenced across the customer/admin feature docs:
-// Client accounts, plus internal staff roles.
-export const userRoleEnum = pgEnum('user_role', [
-  'client',
-  'designer',
-  'reviewer',
-  'account_manager',
-  'super_admin',
+export const roleEnum = pgEnum('role', [
+  UserRole.USER,
+  UserRole.SUPER_ADMIN,
+  UserRole.ACCOUNT_MANAGER,
+  UserRole.REVIEWER,
+  UserRole.DESIGNER,
 ]);
 
 export const users = pgTable('users', {
@@ -16,7 +15,7 @@ export const users = pgTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   fullName: varchar('full_name', { length: 255 }).notNull(),
   businessName: varchar('business_name', { length: 255 }),
-  role: userRoleEnum('role').notNull().default('client'),
+  role: roleEnum('role').notNull().default(UserRole.USER),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

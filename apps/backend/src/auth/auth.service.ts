@@ -15,6 +15,8 @@ import * as schema from '../database/schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 
+import { UserRole } from '../common/enums/roles.enum';
+
 type Database = PostgresJsDatabase<typeof schema>;
 
 const SALT_ROUNDS = 10;
@@ -44,7 +46,7 @@ export class AuthService {
         passwordHash,
         fullName: dto.fullName,
         businessName: dto.businessName,
-        role: 'client',
+        role: UserRole.USER,
       })
       .returning();
 

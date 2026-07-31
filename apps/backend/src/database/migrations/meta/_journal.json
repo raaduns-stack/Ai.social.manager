@@ -36,6 +36,20 @@
       "when": 1785420921209,
       "tag": "0004_past_iron_fist",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785502779999,
+      "tag": "0005_tiresome_millenium_guard",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785502805353,
+      "tag": "0006_fair_maginty",
+      "breakpoints": true
     }
   ]
 }
