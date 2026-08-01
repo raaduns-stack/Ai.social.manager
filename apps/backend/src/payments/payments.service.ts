@@ -65,9 +65,11 @@ export class PaymentsService {
       this.configService.get<string>('payments.flutterwaveSecretKey') ||
       process.env.FLUTTERWAVE_SECRET_KEY;
 
-    const corsOrigin =
-      this.configService.get<string>('corsOrigin') ?? 'http://localhost:5173';
-    const redirectUrl = `${corsOrigin}/dashboard/billing`;
+    const frontendUrl =
+      this.configService.get<string>('frontendUrl') ??
+      this.configService.get<string>('corsOrigin') ??
+      'http://localhost:5173';
+    const redirectUrl = `${frontendUrl}/payments/callback`;
 
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
