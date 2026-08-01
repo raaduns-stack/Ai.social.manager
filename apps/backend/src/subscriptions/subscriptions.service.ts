@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -16,16 +16,31 @@ export class SubscriptionsService {
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
   ) {}
 
-  /** Return the logged-in user's current subscription with plan details. */
+  /** Return the logged-in user's current active subscription with plan details. */
   async findByUserId(userId: string) {
-    const subscription = await this.db.query.subscriptions.findFirst({
+    // First try to find an active subscription (most recently updated wins)
+    const active = await this.db.query.subscriptions.findFirst({
+      where: and(
+        eq(schema.subscriptions.userId, userId),
+        eq(schema.subscriptions.status, 'active'),
+      ),
+      with: { plan: true },
+      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+    });
+
+    if (active) return active;
+
+    // Fall back to any subscription for this user so billing page never hard-errors
+    const fallback = await this.db.query.subscriptions.findFirst({
       where: eq(schema.subscriptions.userId, userId),
       with: { plan: true },
+      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
     });
-    if (!subscription) {
+
+    if (!fallback) {
       throw new NotFoundException('No subscription found for this user');
     }
-    return subscription;
+    return fallback;
   }
 
   /** Create a new "pending" subscription (activated later by Payments module). */

@@ -22,7 +22,7 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  ) { }
 
   /**
    * Initialize a Flutterwave payment for a plan subscription.
@@ -65,11 +65,9 @@ export class PaymentsService {
       this.configService.get<string>('payments.flutterwaveSecretKey') ||
       process.env.FLUTTERWAVE_SECRET_KEY;
 
-    const frontendUrl =
-      this.configService.get<string>('frontendUrl') ??
-      this.configService.get<string>('corsOrigin') ??
-      'http://localhost:5173';
-    const redirectUrl = `${frontendUrl}/payments/callback`;
+    const corsOrigin =
+      this.configService.get<string>('corsOrigin') ?? 'http://localhost:5173';
+    const redirectUrl = `${corsOrigin}/payments/callback`;
 
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
       method: 'POST',
@@ -101,11 +99,16 @@ export class PaymentsService {
   }
 
   /**
-   * Verify a Flutterwave payment by transactionId.
+   * Verify a Flutterwave payment by transactionId or tx_ref.
+   * Flutterwave appends ?transaction_id=<numeric_id>&tx_ref=... to the redirect URL.
+   * The callback page should prefer passing transaction_id (numeric) for direct verification.
+   * If a tx_ref string is passed instead, we look up our payment record to confirm it exists,
+   * then call Flutterwave's verify API with the tx_ref (which Flutterwave also accepts).
    */
   async verifyPayment(userId: string, transactionId: string) {
     return this.verifyAndFulfillTransaction(transactionId);
   }
+
 
   /**
    * Handle incoming Flutterwave webhook notifications.
@@ -221,7 +224,7 @@ export class PaymentsService {
       })
       .where(eq(schema.payments.id, payment.id));
 
-    // Activate the subscription if available
+    // Activate the subscription
     if (payment.subscriptionId) {
       const plan = payment.planId
         ? await this.plansService.findById(payment.planId)
@@ -250,16 +253,47 @@ export class PaymentsService {
           ),
         );
 
-      // Activate pending subscription
+      // Activate the pending subscription and ensure planId is correct
       await this.db
         .update(schema.subscriptions)
         .set({
           status: 'active',
+          planId: payment.planId ?? undefined, // sync planId (null → undefined for Drizzle)
           currentPeriodStart: startDate,
           currentPeriodEnd: endDate,
           updatedAt: new Date(),
         })
         .where(eq(schema.subscriptions.id, payment.subscriptionId));
+    } else if (payment.planId) {
+      // Fallback: no subscriptionId on payment — upsert subscription directly
+      const plan = await this.plansService.findById(payment.planId);
+      const startDate = new Date();
+      const endDate = new Date(startDate);
+      if (plan?.interval === 'yearly') {
+        endDate.setFullYear(endDate.getFullYear() + 1);
+      } else {
+        endDate.setMonth(endDate.getMonth() + 1);
+      }
+
+      // Expire any existing active subscription for this user
+      await this.db
+        .update(schema.subscriptions)
+        .set({ status: 'expired', updatedAt: new Date() })
+        .where(
+          and(
+            eq(schema.subscriptions.userId, payment.userId),
+            eq(schema.subscriptions.status, 'active'),
+          ),
+        );
+
+      // Insert a fresh active subscription
+      await this.db.insert(schema.subscriptions).values({
+        userId: payment.userId,
+        planId: payment.planId,
+        status: 'active',
+        currentPeriodStart: startDate,
+        currentPeriodEnd: endDate,
+      });
     }
 
     // Automatically create an invoice record
