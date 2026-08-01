@@ -4,7 +4,19 @@ import Button from '../../components/ui/Button'
 import { initializePayment } from './payments-api'
 import ErrorBanner from '../../components/error-banner'
 
-export default function CheckoutButton({ planId, className, children = 'Choose Plan', variant = 'primary' }) {
+interface CheckoutButtonProps {
+  planId: string;
+  className?: string;
+  children?: React.ReactNode;
+  variant?: string;
+}
+
+export default function CheckoutButton({
+  planId,
+  className,
+  children = 'Choose Plan',
+  variant = 'primary'
+}: CheckoutButtonProps) {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<any>(null)
