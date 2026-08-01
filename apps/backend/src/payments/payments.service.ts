@@ -22,7 +22,7 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  ) { }
 
   /**
    * Initialize a Flutterwave payment for a plan subscription.

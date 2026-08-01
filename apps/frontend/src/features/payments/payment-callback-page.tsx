@@ -52,7 +52,7 @@ export default function PaymentCallbackPage() {
           setStatus('failure')
           setMessage(
             response?.message ||
-              'We could not verify your payment transaction. Please contact support.'
+            'We could not verify your payment transaction. Please contact support.'
           )
         }
       } catch (err: any) {
