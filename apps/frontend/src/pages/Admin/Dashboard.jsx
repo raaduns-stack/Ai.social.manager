@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Users,
@@ -16,11 +16,14 @@ import {
   Settings,
   CheckCircle,
   Link2,
+  Star,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
+import Loader from '../../components/ui/Loader'
+import { getAdminDashboardSummary } from '../../features/admin/dashboard-api'
 
 const METRICS_BY_TIMEFRAME = {
   Day: {
@@ -203,58 +206,41 @@ const ACTIVITIES = {
 }
 
 export default function Dashboard() {
-  const [timeframe, setTimeframe] = useState('Week')
-  const [showBanner, setShowBanner] = useState(true)
+  const [period, setPeriod] = useState('weekly') // 'daily' | 'weekly' | 'monthly'
+  const [summaryData, setSummaryData] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('recent')
 
-  const metrics = METRICS_BY_TIMEFRAME[timeframe]
+  useEffect(() => {
+    async function fetchSummary() {
+      setIsLoading(true)
+      setError(null)
+      try {
+        const data = await getAdminDashboardSummary(period)
+        setSummaryData(data)
+      } catch (err) {
+        console.error('Failed to fetch admin summary:', err)
+        setError('Failed to load dashboard metrics.')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    fetchSummary()
+  }, [period])
 
-  const stats = [
-    {
-      title: 'Total Customers',
-      value: metrics.customers,
-      change: metrics.customersChange,
-      trend: metrics.customersTrend,
-      icon: Users,
-    },
-    {
-      title: 'Active Subscriptions',
-      value: metrics.activeSubs,
-      change: metrics.activeSubsChange,
-      trend: metrics.activeSubsTrend,
-      icon: CreditCard,
-    },
-    {
-      title: 'Published Posts',
-      value: metrics.posts,
-      change: metrics.postsChange,
-      trend: metrics.postsTrend,
-      icon: Send,
-    },
-    {
-      title: 'New Registrations',
-      value: metrics.registrations,
-      change: metrics.registrationsChange,
-      trend: metrics.registrationsTrend,
-      icon: UserPlus,
-    },
-    {
-      title: 'Connected Accounts',
-      value: metrics.connectedAccounts,
-      change: metrics.connectedAccountsChange,
-      trend: metrics.connectedAccountsTrend,
-      icon: Link2,
-    },
-    {
-      title: 'AI Content Generated',
-      value: metrics.aiContent,
-      change: metrics.aiContentChange,
-      trend: metrics.aiContentTrend,
-      icon: Sparkles,
-    },
-  ]
+  const timeframeKey = period === 'daily' ? 'Day' : period === 'monthly' ? 'Month' : 'Week'
+  const metrics = METRICS_BY_TIMEFRAME[timeframeKey]
 
-  const timeframes = ['Day', 'Week', 'Month']
+  const renderValue = (value) => {
+    if (isLoading) {
+      return <span className="animate-pulse text-primary-200 text-sm">Loading...</span>
+    }
+    if (error) {
+      return <span className="text-red-500 text-xs font-semibold">Error</span>
+    }
+    return value
+  }
 
   return (
     <div className="space-y-6">
@@ -277,17 +263,21 @@ export default function Dashboard() {
         action={
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="bg-canvas border border-border rounded-full p-1 flex items-center shadow-soft">
-              {timeframes.map((tf) => (
+              {[
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'monthly', label: 'Monthly' },
+              ].map((item) => (
                 <button
-                  key={tf}
-                  onClick={() => setTimeframe(tf)}
+                  key={item.value}
+                  onClick={() => setPeriod(item.value)}
                   className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    timeframe === tf
+                    period === item.value
                       ? 'bg-primary text-white shadow-soft font-bold'
                       : 'text-ink-muted hover:text-ink'
                   }`}
                 >
-                  {tf}
+                  {item.label}
                 </button>
               ))}
             </div>
@@ -305,47 +295,148 @@ export default function Dashboard() {
         }
       />
 
-      {/* Dismissible Info Banner */}
-     
       {/* Stat Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {stats.map((stat) => {
-          const Icon = stat.icon
-          return (
-            <Card key={stat.title} className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-              <div className="flex justify-between items-start mb-2">
-                <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                  {stat.title}
-                </span>
-                <Icon className="w-5 h-5 text-ink-muted/50" />
-              </div>
-              <div className="flex items-baseline justify-between">
-                <span className="text-2xl font-bold text-ink">{stat.value}</span>
-                <Badge
-                  tone={stat.trend === 'up' ? 'success' : stat.trend === 'down' ? 'danger' : 'neutral'}
-                  className="gap-1 font-semibold"
-                >
-                  {stat.trend === 'up' && <TrendingUp className="w-3.5 h-3.5" />}
-                  {stat.trend === 'down' && <TrendingDown className="w-3.5 h-3.5" />}
-                  <span>{stat.change}</span>
-                </Badge>
-              </div>
-            </Card>
-          )
-        })}
+        {/* Card 1: Total Customers (Live) */}
+        <Card className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Total Customers
+            </span>
+            <Users className="w-5 h-5 text-ink-muted/50" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-ink">
+              {renderValue(summaryData?.totalCustomers)}
+            </span>
+          </div>
+        </Card>
+
+        {/* Card 2: Active & Expired Subscriptions (Live) */}
+        <Card className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Subscriptions Status
+            </span>
+            <CreditCard className="w-5 h-5 text-ink-muted/50" />
+          </div>
+          <div className="flex flex-col justify-end mt-1">
+            <div className="flex items-baseline justify-between">
+              <span className="text-2xl font-bold text-ink">
+                {isLoading ? (
+                  <span className="animate-pulse text-primary-200 text-sm">Loading...</span>
+                ) : error ? (
+                  <span className="text-red-500 text-xs font-semibold">Error</span>
+                ) : (
+                  `${summaryData?.activeSubscriptions || 0} Active`
+                )}
+              </span>
+            </div>
+            {!isLoading && !error && (
+              <span className="text-xs text-ink-muted mt-1.5 font-medium block">
+                {summaryData?.expiredSubscriptions || 0} Expired Subscriptions
+              </span>
+            )}
+          </div>
+        </Card>
+
+        {/* Card 3: Published Posts (Mock with Dev Mode Badge) */}
+        <Card className="relative p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
+          <div className="absolute top-2 right-2 z-20">
+            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Dev Mode - Mock Data
+            </span>
+          </div>
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Published Posts
+            </span>
+            <Send className="w-5 h-5 text-ink-muted/50" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-ink">{metrics.posts}</span>
+            <Badge tone="neutral" className="gap-1 font-semibold">
+              <span>{metrics.postsChange}</span>
+            </Badge>
+          </div>
+        </Card>
+
+        {/* Card 4: New Registrations (Live) */}
+        <Card className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              New Registrations ({period})
+            </span>
+            <UserPlus className="w-5 h-5 text-ink-muted/50" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-ink">
+              {renderValue(summaryData?.newCustomersThisPeriod)}
+            </span>
+          </div>
+        </Card>
+
+        {/* Card 5: Connected Accounts (Mock with Dev Mode Badge) */}
+        <Card className="relative p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
+          <div className="absolute top-2 right-2 z-20">
+            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Dev Mode - Mock Data
+            </span>
+          </div>
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              Connected Accounts
+            </span>
+            <Link2 className="w-5 h-5 text-ink-muted/50" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-ink">{metrics.connectedAccounts}</span>
+            <Badge tone="success" className="gap-1 font-semibold">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>{metrics.connectedAccountsChange}</span>
+            </Badge>
+          </div>
+        </Card>
+
+        {/* Card 6: AI Content Generated (Mock with Dev Mode Badge) */}
+        <Card className="relative p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
+          <div className="absolute top-2 right-2 z-20">
+            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Dev Mode - Mock Data
+            </span>
+          </div>
+          <div className="flex justify-between items-start mb-2">
+            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
+              AI Content Generated
+            </span>
+            <Sparkles className="w-5 h-5 text-ink-muted/50" />
+          </div>
+          <div className="flex items-baseline justify-between">
+            <span className="text-2xl font-bold text-ink">{metrics.aiContent}</span>
+            <Badge tone="success" className="gap-1 font-semibold">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>{metrics.aiContentChange}</span>
+            </Badge>
+          </div>
+        </Card>
       </div>
 
       {/* Main Content: Two Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left (Wider): Publishing Activity Chart */}
-        <Card className="lg:col-span-2 p-6 flex flex-col justify-between">
+        <Card className="relative lg:col-span-2 p-6 flex flex-col justify-between">
+          <div className="absolute top-4 right-4 z-20">
+            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Dev Mode - Mock Data
+            </span>
+          </div>
           <div>
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="text-base font-semibold text-ink">Publishing Activity</h3>
                 <p className="text-xs text-ink-muted">Engagement across all platforms</p>
               </div>
-              <div className="flex gap-4">
+              <div className="flex gap-4 mr-24">
                 <div className="flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-full bg-primary" />
                   <span className="text-xs text-ink-muted font-medium">Success</span>
@@ -369,7 +460,7 @@ export default function Dashboard() {
               <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 800 250">
                 {/* Success Line */}
                 <path
-                  key={`success-${timeframe}`}
+                  key={`success-${period}`}
                   className="text-primary stroke-primary animated-path"
                   d={metrics.chartPathSuccess}
                   fill="none"
@@ -378,7 +469,7 @@ export default function Dashboard() {
                 />
                 {/* Scheduled Line */}
                 <path
-                  key={`scheduled-${timeframe}`}
+                  key={`scheduled-${period}`}
                   className="text-ink-muted/50 stroke-ink-muted animated-path"
                   d={metrics.chartPathScheduled}
                   fill="none"
@@ -414,20 +505,41 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        {/* Right (Narrower): Revenue Overview Card */}
-        <Card className="p-6 flex flex-col justify-between">
+        {/* Right (Narrower): Revenue Overview Card (Live Revenue, Chart Mocked) */}
+        <Card className="relative p-6 flex flex-col justify-between">
+          <div className="absolute top-4 right-4 z-20">
+            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Dev Mode - Chart Mocked
+            </span>
+          </div>
           <div>
             <div className="flex justify-between items-start mb-6">
-              <h3 className="text-base font-semibold text-ink">Revenue Overview</h3>
-              <button className="text-ink-muted hover:text-ink transition-colors">
+              <div>
+                <h3 className="text-base font-semibold text-ink">Revenue Overview</h3>
+                {isLoading ? (
+                  <div className="h-8 animate-pulse bg-primary/10 rounded w-32 mt-2" />
+                ) : error ? (
+                  <p className="text-xs text-red-500 font-semibold mt-2">{error}</p>
+                ) : (
+                  <div className="mt-1">
+                    <span className="text-3xl font-extrabold text-ink">
+                      ₦{Number(summaryData?.revenueThisPeriod || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] text-ink-muted block mt-0.5 capitalize font-medium">
+                      Total Successful Revenue ({period})
+                    </span>
+                  </div>
+                )}
+              </div>
+              <button className="text-ink-muted hover:text-ink transition-colors mr-28">
                 <MoreVertical className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex items-end gap-1.5 h-48 mb-6">
+            <div className="flex items-end gap-1.5 h-40 mb-6">
               {metrics.barHeights.map((hClass, idx) => (
                 <div
-                  key={`${timeframe}-${idx}`}
+                  key={`${period}-${idx}`}
                   className={`flex-grow rounded-t-sm cursor-pointer group relative transition-all duration-300 ${
                     idx === 3
                       ? 'bg-primary border-x border-primary-500'
@@ -459,7 +571,12 @@ export default function Dashboard() {
       </div>
 
       {/* Bottom Section: Tabs and Recent Activity */}
-      <Card className="overflow-hidden p-0">
+      <Card className="relative overflow-hidden p-0">
+        <div className="absolute top-4 right-4 z-20">
+          <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+            Dev Mode - Mock Data
+          </span>
+        </div>
         <div className="border-b border-border px-6 flex items-center gap-4">
           <button
             onClick={() => setActiveTab('recent')}
