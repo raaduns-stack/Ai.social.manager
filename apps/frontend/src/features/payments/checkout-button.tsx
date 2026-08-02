@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import Button from '../../components/ui/Button'
+import Button, { ButtonProps } from '../../components/ui/Button'
 import { initializePayment } from './payments-api'
 import ErrorBanner from '../../components/error-banner'
 
@@ -8,7 +8,7 @@ interface CheckoutButtonProps {
   planId: string;
   className?: string;
   children?: React.ReactNode;
-  variant?: string;
+  variant?: ButtonProps['variant'];
 }
 
 export default function CheckoutButton({
