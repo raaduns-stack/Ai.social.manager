@@ -4,11 +4,13 @@ import Button, { ButtonProps } from '../../components/ui/Button'
 import { initializePayment } from './payments-api'
 import ErrorBanner from '../../components/error-banner'
 
+import type { ButtonVariant } from '../../components/ui/Button';
+
 interface CheckoutButtonProps {
   planId: string;
   className?: string;
   children?: React.ReactNode;
-  variant?: ButtonProps['variant'];
+  variant?: ButtonVariant;
 }
 
 export default function CheckoutButton({

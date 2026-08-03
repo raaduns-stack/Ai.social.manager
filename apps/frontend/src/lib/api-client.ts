@@ -16,30 +16,10 @@ const apiClient = axios.create({
 // Request interceptor to attach Bearer token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const url = config.url || '';
-    const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin');
-    let token: string | null = null;
-
-    if (isAdminRequest) {
-      const adminSessionStr = localStorage.getItem('admin_session');
-      if (adminSessionStr) {
-        try {
-          const adminSession = JSON.parse(adminSessionStr);
-          if (adminSession && adminSession.accessToken) {
-            token = adminSession.accessToken;
-          }
-        } catch (e) {
-          // Ignore parse errors
-        }
-      }
-    }
-
-    if (!token) {
-      token = useAuthStore.getState().accessToken;
-    }
-
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const { accessToken } = useAuthStore.getState();
+    console.log('apiClient request - attaching token', accessToken);
+    if (accessToken && config.headers) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
     return config;
   },

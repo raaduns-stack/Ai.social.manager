@@ -50,6 +50,13 @@
       "when": 1785502805353,
       "tag": "0006_fair_maginty",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1785684835263,
+      "tag": "0007_sticky_ben_urich",
+      "breakpoints": true
     }
   ]
 }
