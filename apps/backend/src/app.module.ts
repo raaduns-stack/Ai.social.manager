@@ -13,6 +13,7 @@ import { PaymentsModule } from './payments/payments.module';
 import { InvoicesModule } from './invoices/invoices.module';
 import { AdminModule } from './admin/admin.module';
 import { HealthController } from './health/health.controller';
+import { SocialAccountsModule } from './social-accounts/social-accounts.module';
 
 @Module({
   imports: [
@@ -35,6 +36,7 @@ import { HealthController } from './health/health.controller';
     PaymentsModule,
     InvoicesModule,
     AdminModule,
+    SocialAccountsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule, SupportModule
@@ -42,4 +44,4 @@ import { HealthController } from './health/health.controller';
   controllers: [AppController, HealthController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

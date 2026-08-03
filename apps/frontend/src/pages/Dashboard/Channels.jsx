@@ -1,10 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Input from '../../components/ui/Input'
+
+import apiClient from '../../lib/api-client'
 import Modal from '../../components/ui/Modal'
+import Loader from '../../components/ui/Loader'
+import EmptyState from '../../components/ui/EmptyState'
+import ErrorBanner from '../../components/error-banner'
 import {
   Camera,
   Music,
@@ -22,56 +27,81 @@ import {
 
 export default function Channels() {
   // State for channels list
-  const [channels, setChannels] = useState([
-    {
-      id: 'instagram',
-      name: 'Instagram Business',
-      platform: 'instagram',
-      handle: '@studio_creative_official',
-      status: 'Connected',
-      lastSynced: '2m ago',
-    },
-    {
-      id: 'tiktok',
-      name: 'TikTok Pro',
-      platform: 'tiktok',
-      handle: 'Not linked',
-      status: 'Disconnected',
-      lastSynced: 'Waiting for authentication...',
-    },
-    {
-      id: 'linkedin',
-      name: 'LinkedIn Company',
-      platform: 'linkedin',
-      handle: 'SocialAI Enterprise',
-      status: 'Connected',
-      lastSynced: '1h ago',
-    },
-    {
-      id: 'x',
-      name: 'X / Twitter',
-      platform: 'x',
-      handle: '@SocialAI_App',
-      status: 'Action Required',
-      lastSynced: 'Token expired. Please re-authenticate.',
-    },
-    {
-      id: 'youtube',
-      name: 'YouTube Studio',
-      platform: 'youtube',
-      handle: 'SocialAI Global',
-      status: 'Connected',
-      lastSynced: '45m ago',
-    },
-    {
-      id: 'facebook',
-      name: 'Facebook Page',
-      platform: 'facebook',
-      handle: 'SocialAI Official',
-      status: 'Connected',
-      lastSynced: '5h ago',
-    },
-  ])
+  const [channels, setChannels] = useState([]);
+
+  // Helper to map backend status to UI status
+  const mapStatus = (status) => {
+    switch (status) {
+      case 'connected':
+        return 'Connected';
+      case 'disconnected':
+        return 'Disconnected';
+      case 'action_required':
+        return 'Action Required';
+      default:
+        return status;
+    }
+  };
+
+  // Helper to generate display name from platform
+  const getDisplayName = (platform) => {
+    switch (platform) {
+      case 'instagram':
+        return 'Instagram Business';
+      case 'tiktok':
+        return 'TikTok Pro';
+      case 'linkedin':
+        return 'LinkedIn Company';
+      case 'x':
+        return 'X / Twitter';
+      case 'youtube':
+        return 'YouTube Studio';
+      case 'facebook':
+        return 'Facebook Page';
+      default:
+        return platform;
+    }
+  };
+
+  // Function to fetch channels from backend
+  const fetchChannels = () => {
+    setLoading(true);
+    setFetchError(null);
+    apiClient
+      .get('/social-accounts')
+      .then((response) => {
+        const data = response.data;
+        if (Array.isArray(data)) {
+          const mapped = data.map((item) => ({
+            id: item.id ?? item.platform,
+            platform: item.platform,
+            name: getDisplayName(item.platform),
+            handle: item.accountHandle,
+            status: mapStatus(item.status),
+            lastSynced: item.connectedAt,
+          }));
+          setChannels(mapped);
+        } else {
+          console.error('Unexpected response format:', data);
+          setChannels([]);
+        }
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error('Failed to fetch social accounts:', error);
+        setFetchError(error);
+        setChannels([]);
+        setLoading(false);
+      });
+  };
+
+  // Fetch channels on component mount
+  useEffect(() => {
+    fetchChannels();
+  }, []);
+
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   // Modals state
   const [isConnectModalOpen, setIsConnectModalOpen] = useState(false)
@@ -80,6 +110,7 @@ export default function Channels() {
   const [connectError, setConnectError] = useState('')
 
   // Dynamically compute stats from state
+  // Stats will recompute automatically when channels change
   const totalChannels = channels.length
   const activeConnections = channels.filter((c) => c.status === 'Connected').length
   const actionRequiredCount = channels.filter((c) => c.status === 'Action Required').length
@@ -127,84 +158,84 @@ export default function Channels() {
 
   // Handle individual card connect/disconnect button clicks
   const handleChannelAction = (id, currentStatus) => {
+    const channel = channels.find((c) => c.id === id);
     if (currentStatus === 'Connected') {
-      // Disconnect channel
-      setChannels((prev) =>
-        prev.map((c) =>
-          c.id === id
-            ? { ...c, status: 'Disconnected', handle: 'Not linked', lastSynced: 'Waiting for authentication...' }
-            : c
-        )
-      )
+      // Disconnect channel via backend DELETE
+      apiClient
+        .delete(`/social-accounts/${id}`)
+        .then(() => {
+          fetchChannels();
+        })
+        .catch((error) => {
+          console.error('Failed to disconnect channel:', error);
+        });
     } else {
-      // Connect / Reconnect channel
-      const handleInput = prompt('Enter account handle/name to link:', '@')
+      // Connect or reconnect channel
+      const handleInput = prompt('Enter account handle/name to link:', '@');
       if (handleInput && handleInput.trim() !== '' && handleInput !== '@') {
-        setChannels((prev) =>
-          prev.map((c) =>
-            c.id === id
-              ? { ...c, status: 'Connected', handle: handleInput, lastSynced: 'Just now' }
-              : c
-          )
-        )
+        if (channel && channel.id) {
+          // Reconnect existing account: set status to connected
+          apiClient
+            .patch(`/social-accounts/${id}`, { status: 'connected' })
+            .then(() => {
+              fetchChannels();
+            })
+            .catch((error) => {
+              console.error('Failed to reconnect channel:', error);
+            });
+        } else {
+          // New connection
+          const payload = {
+            platform: selectedPlatform,
+            accountHandle: handleInput,
+          };
+          apiClient
+            .post('/social-accounts', payload)
+            .then(() => {
+              fetchChannels();
+            })
+            .catch((error) => {
+              console.error('Failed to connect new channel:', error);
+            });
+        }
       }
     }
-  }
+  };
 
   // Handle adding/connecting account via Top Right Modal
   const handleConnectSubmit = (e) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!newHandle.trim()) {
-      setConnectError('Please enter an account handle or username.')
-      return
+      setConnectError('Please enter an account handle or username.');
+      return;
     }
 
-    const platformNameMap = {
-      instagram: 'Instagram Business',
-      tiktok: 'TikTok Pro',
-      linkedin: 'LinkedIn Company',
-      x: 'X / Twitter',
-      youtube: 'YouTube Studio',
-      facebook: 'Facebook Page',
-    }
+    const payload = {
+      platform: selectedPlatform,
+      accountHandle:
+        newHandle.startsWith('@') || selectedPlatform === 'linkedin' || selectedPlatform === 'facebook' || selectedPlatform === 'youtube'
+          ? newHandle
+          : `@${newHandle}`,
+    };
 
-    const formattedHandle = newHandle.startsWith('@') || selectedPlatform === 'linkedin' || selectedPlatform === 'facebook' || selectedPlatform === 'youtube'
-      ? newHandle
-      : `@${newHandle}`
-
-    // Update existing matching platform to Connected, or append a new one
-    setChannels((prev) => {
-      const matchIndex = prev.findIndex((c) => c.platform === selectedPlatform)
-      if (matchIndex > -1) {
-        return prev.map((c, idx) =>
-          idx === matchIndex
-            ? { ...c, status: 'Connected', handle: formattedHandle, lastSynced: 'Just now' }
-            : c
-        )
-      } else {
-        // Add new platform if not found (though default list includes all 6, this is a clean fallback)
-        return [
-          ...prev,
-          {
-            id: selectedPlatform,
-            name: platformNameMap[selectedPlatform] || selectedPlatform,
-            platform: selectedPlatform,
-            handle: formattedHandle,
-            status: 'Connected',
-            lastSynced: 'Just now',
-          },
-        ]
-      }
-    })
-
-    setNewHandle('')
-    setConnectError('')
-    setIsConnectModalOpen(false)
-  }
+    apiClient
+      .post('/social-accounts', payload)
+      .then(() => {
+        fetchChannels();
+      })
+      .catch((error) => {
+        console.error('Failed to connect account:', error);
+        setConnectError('Failed to connect account.');
+      })
+      .finally(() => {
+        setNewHandle('');
+        setConnectError('');
+        setIsConnectModalOpen(false);
+      });
+  };
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
       <PageHeader
         title="Social Channels"
         description="Manage your connected social accounts and synchronization status."
@@ -220,7 +251,6 @@ export default function Channels() {
         }
       />
 
-      {/* Stats Summary Panel */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card className="p-6 flex items-center gap-6">
           <div className="w-12 h-12 rounded-control bg-accent-50 flex items-center justify-center text-accent">
@@ -259,73 +289,84 @@ export default function Channels() {
         </Card>
       </div>
 
-      {/* Channels Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {channels.map((channel) => {
-          const details = getPlatformDetails(channel.platform)
-          return (
-            <Card
-              key={channel.id}
-              className="p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border border-border"
-            >
-              <div>
-                <div className="flex justify-between items-start mb-6">
-                  <div
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                    style={details.style}
-                  >
-                    {details.icon}
-                  </div>
-                  <Badge
-                    tone={
-                      channel.status === 'Connected'
-                        ? 'success'
-                        : channel.status === 'Action Required'
-                        ? 'danger'
-                        : 'neutral'
-                    }
-                  >
-                    {channel.status}
-                  </Badge>
-                </div>
-                <h3 className="text-lg font-bold text-ink">{channel.name}</h3>
-                <p className="text-xs text-ink-muted mt-1">{channel.handle}</p>
-
-                <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                  <span
-                    className={`text-xs ${
-                      channel.status === 'Action Required' ? 'text-danger font-medium' : 'text-ink-muted'
-                    }`}
-                  >
-                    {channel.status === 'Connected'
-                      ? `Last synced: ${channel.lastSynced}`
-                      : channel.status === 'Action Required'
-                      ? 'Token expired. Reconnect needed.'
-                      : 'Waiting for authentication...'}
-                  </span>
-                  {channel.status === 'Connected' && (
-                    <CheckCircle2 size={16} className="text-accent" />
-                  )}
-                </div>
-              </div>
-
-              <Button
-                className="mt-6 w-full"
-                variant={channel.status === 'Connected' ? 'outline' : 'primary'}
-                onClick={() => handleChannelAction(channel.id, channel.status)}
+      {loading ? (
+        <Loader />
+      ) : fetchError ? (
+        <div className="flex items-start gap-4">
+          <ErrorBanner error={fetchError} onDismiss={() => setFetchError(null)} />
+          <Button variant="primary" onClick={fetchChannels}>Retry</Button>
+        </div>
+      ) : channels.length === 0 ? (
+        <EmptyState
+          title="No Social Channels"
+          description="You have no connected accounts. Use the Connect button to add one."
+        />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {channels.map((channel) => {
+            const details = getPlatformDetails(channel.platform)
+            return (
+              <Card
+                key={channel.id}
+                className="p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border border-border"
               >
-                {channel.status === 'Connected'
-                  ? 'Disconnect'
-                  : channel.status === 'Action Required'
-                  ? 'Reconnect'
-                  : 'Connect Account'}
-              </Button>
-            </Card>
-          )
-        })}
-      </div>
+                <div>
+                  <div className="flex justify-between items-start mb-6">
+                    <div
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                      style={details.style}
+                    >
+                      {details.icon}
+                    </div>
+                    <Badge
+                      tone={
+                        channel.status === 'Connected'
+                          ? 'success'
+                          : channel.status === 'Action Required'
+                            ? 'danger'
+                            : 'neutral'
+                      }
+                    >
+                      {channel.status}
+                    </Badge>
+                  </div>
+                  <h3 className="text-lg font-bold text-ink">{channel.name}</h3>
+                  <p className="text-xs text-ink-muted mt-1">{channel.handle}</p>
 
-      {/* Footer Info Banner */}
+                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                    <span
+                      className={`text-xs ${channel.status === 'Action Required' ? 'text-danger font-medium' : 'text-ink-muted'
+                        }`}
+                    >
+                      {channel.status === 'Connected'
+                        ? `Last synced: ${channel.lastSynced}`
+                        : channel.status === 'Action Required'
+                          ? 'Token expired. Reconnect needed.'
+                          : 'Waiting for authentication...'}
+                    </span>
+                    {channel.status === 'Connected' && (
+                      <CheckCircle2 size={16} className="text-accent" />
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  className="mt-6 w-full"
+                  variant={channel.status === 'Connected' ? 'outline' : 'primary'}
+                  onClick={() => handleChannelAction(channel.id, channel.status)}
+                >
+                  {channel.status === 'Connected'
+                    ? 'Disconnect'
+                    : channel.status === 'Action Required'
+                      ? 'Reconnect'
+                      : 'Connect Account'}
+                </Button>
+              </Card>
+            )
+          })}
+        </div>
+      )}
+
       <Card className="p-6 bg-canvas border border-border flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="max-w-2xl">
           <h4 className="text-sm font-bold text-ink mb-1 flex items-center gap-1.5">
@@ -355,7 +396,6 @@ export default function Channels() {
         </div>
       </Card>
 
-      {/* Connect New Account Modal */}
       <Modal
         open={isConnectModalOpen}
         onClose={() => setIsConnectModalOpen(false)}
