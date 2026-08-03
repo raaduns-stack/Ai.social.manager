@@ -16,10 +16,26 @@ const apiClient = axios.create({
 // Request interceptor to attach Bearer token
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    const { accessToken } = useAuthStore.getState();
-    console.log('apiClient request - attaching token', accessToken);
-    if (accessToken && config.headers) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    const url = config.url || '';
+    const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin') || window.location.pathname.startsWith('/admin');
+
+    if (isAdminRequest) {
+      const adminSessionStr = localStorage.getItem('admin_session');
+      if (adminSessionStr) {
+        try {
+          const adminSession = JSON.parse(adminSessionStr);
+          if (adminSession?.accessToken && config.headers) {
+            config.headers.Authorization = `Bearer ${adminSession.accessToken}`;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    } else {
+      const { accessToken } = useAuthStore.getState();
+      if (accessToken && config.headers) {
+        config.headers.Authorization = `Bearer ${accessToken}`;
+      }
     }
     return config;
   },
@@ -35,6 +51,20 @@ apiClient.interceptors.response.use(
   async (error: AxiosError<any>) => {
     const originalRequest = error.config;
 
+    if (originalRequest) {
+      const url = originalRequest.url || '';
+      
+      // 2. PREVENT REDIRECT LOOPS
+      if (
+        url.includes('/auth/login') ||
+        url.includes('/auth/register') ||
+        url.includes('/auth/refresh') ||
+        url.includes('/admin/login') // avoid loops on admin login too
+      ) {
+        throw error;
+      }
+    }
+
     // 1. On a 401, attempt to refresh tokens once (if we have a refresh token and haven't retried yet)
     if (
       error.response?.status === 401 &&
@@ -44,7 +74,7 @@ apiClient.interceptors.response.use(
       (originalRequest as any)._retry = true;
 
       const url = originalRequest.url || '';
-      const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin');
+      const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin') || window.location.pathname.startsWith('/admin');
 
       if (isAdminRequest) {
         let adminRefreshToken: string | null = null;
@@ -107,8 +137,6 @@ apiClient.interceptors.response.use(
         if (refreshToken && !isRefreshing) {
           isRefreshing = true;
           try {
-            // POST /auth/refresh with the stored refresh token.
-            // We provide it in the body and in the Authorization header to be robust
             const response = await axios.post(
               `${API_BASE_URL}/auth/refresh`,
               { refreshToken },
@@ -131,17 +159,20 @@ apiClient.interceptors.response.use(
           } catch (refreshError) {
             isRefreshing = false;
             logout();
+            // remove auth_session as requested
+            localStorage.removeItem('auth_session'); 
             window.location.href = '/login';
             return Promise.reject(refreshError);
           }
         } else if (!refreshToken) {
           logout();
+          localStorage.removeItem('auth_session');
           window.location.href = '/login';
         }
       }
     }
 
-    // 2. Unwrap any error response into the ApiErrorResponse shape and throw it
+    // Unwrap any error response into the ApiErrorResponse shape and throw it
     const errorData = error.response?.data;
     const apiError: ApiErrorResponse = {
       statusCode: errorData?.statusCode || error.response?.status || 500,

@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import apiClient from '../lib/api-client'
 import { useAuthStore } from '../store/auth-store'
 
-const AuthContext = createContext(null)
+export const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const store = useAuthStore()
@@ -17,6 +17,10 @@ export function AuthProvider({ children }) {
 
   // Fetch subscription from backend to determine hasActiveSubscription
   const checkSubscription = async () => {
+    if (window.location.pathname.startsWith('/admin')) {
+      // Skip customer background fetches entirely when on Admin routes
+      return;
+    }
     if (!store.accessToken) {
       setHasActiveSubscription(false)
       return
@@ -31,6 +35,9 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
+    if (window.location.pathname.startsWith('/admin')) {
+      return;
+    }
     if (store.user) {
       checkSubscription()
     } else {
@@ -89,10 +96,4 @@ export function AuthProvider({ children }) {
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>')
-  return ctx
 }

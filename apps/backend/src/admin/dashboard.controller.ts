@@ -11,7 +11,7 @@ import { DashboardService } from './dashboard.service';
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER)
 @Controller('admin')
-export class DashboardController {
+export class AdminDashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('dashboard-summary')

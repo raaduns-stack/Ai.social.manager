@@ -37,6 +37,7 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
     PaymentsModule,
     InvoicesModule,
     AdminModule,
+    DashboardModule,
     SocialAccountsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
