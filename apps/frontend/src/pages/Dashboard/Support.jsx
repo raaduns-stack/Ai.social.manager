@@ -394,156 +394,74 @@ export default function Support() {
         </div>
       ) : activeTab === 'faqs' ? (
         // FAQ View
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Main FAQ list */}
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="p-6">
-              {/* Search */}
-              <div className="mb-6">
-                <input
-                  type="text"
-                  placeholder="Search FAQ questions or answers..."
-                  value={faqSearch}
-                  onChange={(e) => setFaqSearch(e.target.value)}
-                  className="w-full h-11 rounded-control border border-border bg-surface px-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-soft"
-                />
-              </div>
-
-              {/* Chips */}
-              {!loadingFaqs && (
-                <div className="flex flex-wrap gap-2 mb-6">
-                  {faqCategories.map((cat) => (
-                    <button
-                      key={cat}
-                      onClick={() => setSelectedFaqCategory(cat)}
-                      className={cn(
-                        'px-3 py-1.5 text-xs font-semibold rounded-full border transition-all',
-                        selectedFaqCategory === cat
-                          ? 'bg-primary border-primary text-white'
-                          : 'bg-surface border-border text-ink-muted hover:text-ink'
-                      )}
-                    >
-                      {cat}
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* FAQ List */}
-              {loadingFaqs ? (
-                <div className="py-12 flex justify-center">
-                  <Loader size={24} label="Loading FAQs..." />
-                </div>
-              ) : filteredFaqs.length > 0 ? (
-                <div className="space-y-3">
-                  {filteredFaqs.map((faq) => {
-                    const isOpen = openFaqId === faq.id
-                    return (
-                      <div key={faq.id} className="border border-border rounded-card overflow-hidden bg-surface transition-all">
-                        <button
-                          onClick={() => setOpenFaqId(isOpen ? null : faq.id)}
-                          className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-canvas transition-colors"
-                        >
-                          <span className="text-sm font-medium text-ink">{faq.question}</span>
-                          <ChevronDown
-                            size={18}
-                            className={cn('text-ink-muted shrink-0 transition-transform duration-300', isOpen && 'rotate-180')}
-                          />
-                        </button>
-                        {isOpen && (
-                          <div className="px-5 pb-4 text-sm text-ink-muted leading-relaxed border-t border-border/30 pt-3 bg-canvas/30">
-                            {faq.answer}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="py-12 text-center text-ink-muted text-sm">
-                  No FAQs found matching your query.
-                </div>
-              )}
-            </Card>
+        <Card className="p-6">
+          {/* Search */}
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Search FAQ questions or answers..."
+              value={faqSearch}
+              onChange={(e) => setFaqSearch(e.target.value)}
+              className="w-full h-11 rounded-control border border-border bg-surface px-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-soft"
+            />
           </div>
 
-          {/* AI Assist Sidebar */}
-          <div className="space-y-6">
-            <Card className="p-0 overflow-hidden flex flex-col border-border shadow-soft" style={{ height: '400px' }}>
-              {/* Header */}
-              <div className="flex items-center gap-3 px-5 py-4 border-b border-border bg-canvas">
-                <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white shrink-0">
-                  <Bot size={16} />
-                </div>
-                <div>
-                  <p className="text-sm font-bold text-ink">AI Assistant</p>
-                  <p className="text-[10px] text-ink-muted flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#10B981] inline-block" />
-                    Online helpdesk bot
-                  </p>
-                </div>
-              </div>
-
-              {/* Message List */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-surface">
-                {chatMessages.map((msg) => (
-                  <div key={msg.id} className={cn('flex', msg.role === 'user' ? 'justify-end' : 'justify-start')}>
-                    <div
-                      className={cn(
-                        'max-w-[85%] px-3 py-2 rounded-card text-xs leading-relaxed',
-                        msg.role === 'user' ? 'bg-primary text-white rounded-br-none' : 'bg-canvas text-ink rounded-bl-none'
-                      )}
-                    >
-                      {msg.text}
-                    </div>
-                  </div>
-                ))}
-                {botTyping && (
-                  <div className="flex justify-start">
-                    <div className="bg-canvas text-ink-muted px-3 py-2 rounded-card rounded-bl-none text-xs italic">
-                      thinking...
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Form Input */}
-              <form onSubmit={handleBotChat} className="flex gap-2 p-3 border-t border-border bg-canvas">
-                <input
-                  type="text"
-                  value={chatInput}
-                  onChange={(e) => setChatInput(e.target.value)}
-                  placeholder="Ask a question..."
-                  className="flex-1 h-9 rounded-control border border-border bg-surface px-3 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-primary-500"
-                />
+          {/* Chips */}
+          {!loadingFaqs && (
+            <div className="flex flex-wrap gap-2 mb-6">
+              {faqCategories.map((cat) => (
                 <button
-                  type="submit"
-                  className="w-9 h-9 rounded-control bg-primary text-white flex items-center justify-center hover:bg-primary-600 transition-colors"
+                  key={cat}
+                  onClick={() => setSelectedFaqCategory(cat)}
+                  className={cn(
+                    'px-3 py-1.5 text-xs font-semibold rounded-full border transition-all',
+                    selectedFaqCategory === cat
+                      ? 'bg-primary border-primary text-white'
+                      : 'bg-surface border-border text-ink-muted hover:text-ink'
+                  )}
                 >
-                  <Send size={14} />
+                  {cat}
                 </button>
-              </form>
-            </Card>
+              ))}
+            </div>
+          )}
 
-            <a
-              href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_PREFILL)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center gap-3 p-4 rounded-card bg-[#25D366] hover:bg-[#1FBF5C] transition-colors text-white shadow-soft"
-            >
-              <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center shrink-0">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor">
-                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.149-.15.347-.397.520-.596.174-.198.232-.34.348-.566.116-.225.058-.42-.04-.57-.099-.149-.669-1.612-.917-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.05 3.13 4.965 4.264.694.269 1.235.43 1.657.55.696.198 1.33.17 1.83.103.558-.075 1.758-.719 2.006-1.413.248-.694.248-1.288.173-1.413-.074-.124-.272-.198-.57-.347z" />
-                  <path d="M12.004 2.003c-5.523 0-10 4.477-10 10 0 1.771.468 3.483 1.352 4.976L2 22l5.176-1.334A9.953 9.953 0 0 0 12.004 22c5.523 0 10-4.477 10-10s-4.477-9.997-10-9.997zm0 18.166a8.14 8.14 0 0 1-4.15-1.135l-.297-.177-3.077.793.822-3.001-.194-.309a8.15 8.15 0 0 1-1.256-4.34c0-4.508 3.67-8.176 8.155-8.176 4.485 0 8.153 3.668 8.153 8.176 0 4.508-3.668 8.169-8.156 8.169z" />
-                </svg>
-              </div>
-              <div className="text-left leading-tight">
-                <p className="text-sm font-bold">Human Support Desk</p>
-                <p className="text-[10px] text-white/95">Chat on WhatsApp</p>
-              </div>
-            </a>
-          </div>
-        </div>
+          {/* FAQ List */}
+          {loadingFaqs ? (
+            <div className="py-12 flex justify-center">
+              <Loader size={24} label="Loading FAQs..." />
+            </div>
+          ) : filteredFaqs.length > 0 ? (
+            <div className="space-y-3">
+              {filteredFaqs.map((faq) => {
+                const isOpen = openFaqId === faq.id
+                return (
+                  <div key={faq.id} className="border border-border rounded-card overflow-hidden bg-surface transition-all">
+                    <button
+                      onClick={() => setOpenFaqId(isOpen ? null : faq.id)}
+                      className="w-full px-5 py-4 flex items-center justify-between text-left hover:bg-canvas transition-colors"
+                    >
+                      <span className="text-sm font-medium text-ink">{faq.question}</span>
+                      <ChevronDown
+                        size={18}
+                        className={cn('text-ink-muted shrink-0 transition-transform duration-300', isOpen && 'rotate-180')}
+                      />
+                    </button>
+                    {isOpen && (
+                      <div className="px-5 pb-4 text-sm text-ink-muted leading-relaxed border-t border-border/30 pt-3 bg-canvas/30">
+                        {faq.answer}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          ) : (
+            <div className="py-12 text-center text-ink-muted text-sm">
+              No FAQs found matching your query.
+            </div>
+          )}
+        </Card>
       ) : (
         // Ticket List View
         <div className="space-y-4">
