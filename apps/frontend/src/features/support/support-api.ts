@@ -76,6 +76,11 @@ export async function getFaqs(): Promise<Faq[]> {
   return response.data
 }
 
+export async function getWhatsappLink(): Promise<{ url: string }> {
+  const response = await api.get<{ url: string }>('/support/whatsapp-link')
+  return response.data
+}
+
 // ---------------------------------------------------------------------------
 // Admin Support API
 // ---------------------------------------------------------------------------

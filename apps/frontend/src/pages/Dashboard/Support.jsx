@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useContext } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AuthContext } from '../../context/AuthContext'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -12,6 +14,7 @@ import {
   getTicketDetails, 
   createTicket, 
   addTicketMessage,
+  getWhatsappLink
 } from '../../features/support/support-api'
 import { 
   HelpCircle, 
@@ -24,12 +27,21 @@ import {
   ArrowLeft,
   MessageSquare,
   Clock,
-  User
+  User,
+  Lock,
+  MessageCircle
 } from 'lucide-react'
 import { cn } from '../../utils/cn'
 
 export default function Support() {
+  const { user } = useContext(AuthContext)
+  const navigate = useNavigate()
+
   const [activeTab, setActiveTab] = useState('faqs')
+  
+  // WhatsApp State
+  const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false)
+  const [loadingWhatsapp, setLoadingWhatsapp] = useState(false)
   
   // FAQs State
   const [faqs, setFaqs] = useState([])
@@ -148,6 +160,29 @@ export default function Support() {
   })
 
   // Submit Ticket
+  const handleWhatsappClick = async () => {
+    const isPremium = user?.plan?.slug === 'growth' || user?.plan?.slug === 'enterprise'
+    if (!isPremium) {
+      setIsUpgradeModalOpen(true)
+      return
+    }
+
+    setLoadingWhatsapp(true)
+    try {
+      const { url } = await getWhatsappLink()
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      // 403 means stale state or not premium
+      if (err?.statusCode === 403 || err?.response?.status === 403) {
+        setIsUpgradeModalOpen(true)
+      } else {
+        console.error('Failed to get WhatsApp link:', err)
+      }
+    } finally {
+      setLoadingWhatsapp(false)
+    }
+  }
+
   const handleCreateTicket = async (e) => {
     e.preventDefault()
     setSubmittingTicket(true)
@@ -395,15 +430,32 @@ export default function Support() {
       ) : activeTab === 'faqs' ? (
         // FAQ View
         <Card className="p-6">
-          {/* Search */}
-          <div className="mb-6">
+          {/* Search & WhatsApp */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <input
               type="text"
               placeholder="Search FAQ questions or answers..."
               value={faqSearch}
               onChange={(e) => setFaqSearch(e.target.value)}
-              className="w-full h-11 rounded-control border border-border bg-surface px-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-soft"
+              className="flex-1 h-11 rounded-control border border-border bg-surface px-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-soft"
             />
+            
+            <Button
+              variant="outline"
+              onClick={handleWhatsappClick}
+              disabled={loadingWhatsapp}
+              className="h-11 px-5 flex items-center gap-2 whitespace-nowrap shrink-0 border-primary-500/30 hover:border-primary-500 hover:bg-primary-50 text-primary-700"
+            >
+              {loadingWhatsapp ? (
+                <Loader size={16} />
+              ) : (
+                <MessageCircle size={18} />
+              )}
+              Premium Human Support
+              {(!user?.plan?.slug || !['growth', 'enterprise'].includes(user.plan.slug)) && (
+                <Badge tone="warning" className="ml-1 scale-90"><Lock size={12} className="mr-1 inline" />Locked</Badge>
+              )}
+            </Button>
           </div>
 
           {/* Chips */}
@@ -583,6 +635,29 @@ export default function Support() {
             </Button>
           </div>
         </form>
+      </Modal>
+
+      {/* Upgrade Modal */}
+      <Modal open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} title="Premium Feature">
+        <div className="space-y-4 py-2">
+          <div className="flex justify-center mb-2">
+            <div className="h-12 w-12 rounded-full bg-warning/20 flex items-center justify-center text-warning">
+              <Lock size={24} />
+            </div>
+          </div>
+          <p className="text-center text-sm text-ink-muted leading-relaxed">
+            Direct WhatsApp human support is a premium feature available on our <strong className="text-ink">Growth</strong> and <strong className="text-ink">Enterprise</strong> plans. 
+            Upgrade your plan to instantly connect with our support agents.
+          </p>
+          <div className="flex justify-center gap-3 pt-4">
+            <Button variant="outline" onClick={() => setIsUpgradeModalOpen(false)}>
+              Maybe Later
+            </Button>
+            <Button variant="primary" onClick={() => { setIsUpgradeModalOpen(false); navigate('/pricing'); }}>
+              Upgrade Plan
+            </Button>
+          </div>
+        </div>
       </Modal>
     </div>
   )
