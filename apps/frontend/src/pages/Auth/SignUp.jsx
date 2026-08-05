@@ -75,7 +75,7 @@ export default function SignUp() {
 
     try {
       await register(formData.email, formData.password, formData.fullName, formData.companyName)
-      navigate('/verify-email')
+      navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
       setApiError(err)
     } finally {

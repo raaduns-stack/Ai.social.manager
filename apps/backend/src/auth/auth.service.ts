@@ -4,6 +4,9 @@ import {
   Injectable,
   InternalServerErrorException,
   UnauthorizedException,
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -14,6 +17,9 @@ import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { MailerService } from '../mailer/mailer.service';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
 
 import { UserRole } from '../common/enums/roles.enum';
 
@@ -23,10 +29,13 @@ const SALT_ROUNDS = 10;
 
 @Injectable()
 export class AuthService {
+  private readonly resendLimits = new Map<string, number>();
+
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailerService: MailerService,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -38,6 +47,9 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+    
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const [user] = await this.db
       .insert(schema.users)
@@ -45,6 +57,9 @@ export class AuthService {
           email: dto.email,
           passwordHash,
           fullName: dto.fullName,
+          isEmailVerified: false,
+          emailVerificationCode: code,
+          emailVerificationExpiresAt: expiresAt,
       })
       .returning();
 
@@ -63,6 +78,8 @@ export class AuthService {
       planId: freePlan.id,
       status: 'active',
     });
+
+    await this.mailerService.sendVerificationCode(user, code);
 
     return this.issueTokens(user);
   }
@@ -84,7 +101,91 @@ export class AuthService {
       throw new UnauthorizedException('This account has been suspended');
     }
 
+    if (!user.isEmailVerified) {
+      throw new ForbiddenException({
+        statusCode: 403,
+        message: 'Your email address is not verified. Please verify your email to log in.',
+        errorCode: 'EMAIL_NOT_VERIFIED',
+      });
+    }
+
     return this.issueTokens(user);
+  }
+
+  async verifyEmail(dto: VerifyEmailDto) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, dto.email),
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isEmailVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    if (user.emailVerificationCode !== dto.code) {
+      throw new BadRequestException('Invalid verification code');
+    }
+
+    if (user.emailVerificationExpiresAt && new Date() > user.emailVerificationExpiresAt) {
+      throw new BadRequestException('Verification code has expired');
+    }
+
+    const [updatedUser] = await this.db
+      .update(schema.users)
+      .set({
+        isEmailVerified: true,
+        emailVerificationCode: null,
+        emailVerificationExpiresAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, user.id))
+      .returning();
+
+    await this.mailerService.sendWelcomeEmail(updatedUser);
+
+    return this.issueTokens(updatedUser);
+  }
+
+  async resendVerification(dto: ResendVerificationDto) {
+    const email = dto.email;
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, email),
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (user.isEmailVerified) {
+      throw new BadRequestException('Email is already verified');
+    }
+
+    // Rate limiting: 1 request per 30 seconds per email
+    const lastSent = this.resendLimits.get(email);
+    const now = Date.now();
+    if (lastSent && now - lastSent < 30000) {
+      const secondsLeft = Math.ceil((30000 - (now - lastSent)) / 1000);
+      throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting a new code.`);
+    }
+    this.resendLimits.set(email, now);
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    const [updatedUser] = await this.db
+      .update(schema.users)
+      .set({
+        emailVerificationCode: code,
+        emailVerificationExpiresAt: expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, user.id))
+      .returning();
+
+    await this.mailerService.sendVerificationCode(updatedUser, code);
+
+    return { message: 'Verification code resent' };
   }
 
   async refresh(userId: string, email: string, role: string) {

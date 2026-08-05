@@ -27,6 +27,11 @@ export default () => ({
     webhookSecretHash: process.env.FLUTTERWAVE_WEBHOOK_SECRET_HASH,
   },
 
+  mail: {
+    resendApiKey: process.env.RESEND_API_KEY,
+    mailFrom: process.env.MAIL_FROM ?? 'noreply@socialpilot.ai',
+  },
+
   redis: {
     url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   },

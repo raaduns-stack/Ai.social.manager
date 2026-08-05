@@ -174,6 +174,26 @@ apiClient.interceptors.response.use(
 
     // Unwrap any error response into the ApiErrorResponse shape and throw it
     const errorData = error.response?.data;
+
+    if (
+      error.response?.status === 403 &&
+      originalRequest &&
+      originalRequest.url?.includes('/auth/login') &&
+      errorData?.errorCode === 'EMAIL_NOT_VERIFIED'
+    ) {
+      let email = '';
+      try {
+        const payload = typeof originalRequest.data === 'string'
+          ? JSON.parse(originalRequest.data)
+          : originalRequest.data;
+        email = payload?.email || '';
+      } catch (e) {
+        // ignore
+      }
+      window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+      return new Promise(() => {}); // Halt execution to prevent login screen error toasts
+    }
+
     const apiError: ApiErrorResponse = {
       statusCode: errorData?.statusCode || error.response?.status || 500,
       path: errorData?.path || originalRequest?.url || '',

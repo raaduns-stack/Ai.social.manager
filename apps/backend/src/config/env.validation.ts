@@ -33,6 +33,14 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   FLUTTERWAVE_WEBHOOK_SECRET_HASH?: string;
+
+  @IsString()
+  @IsOptional()
+  RESEND_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  MAIL_FROM?: string;
 }
 
 /**

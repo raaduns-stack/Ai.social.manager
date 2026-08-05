@@ -7,6 +7,7 @@ import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
+import { MailerModule } from './mailer/mailer.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -32,6 +33,7 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
     ]),
     DatabaseModule,
     AuthModule,
+    MailerModule,
     PlansModule,
     SubscriptionsModule,
     PaymentsModule,
