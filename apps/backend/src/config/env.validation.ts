@@ -41,6 +41,11 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   MAIL_FROM?: string;
+
+  // Expected format: digits only, no leading '+', e.g. 2348000000000
+  @IsString()
+  @IsOptional()
+  SUPPORT_WHATSAPP_NUMBER?: string;
 }
 
 /**

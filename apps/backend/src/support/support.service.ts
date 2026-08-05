@@ -11,6 +11,7 @@ import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
+import { ConfigService } from '@nestjs/config';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -18,11 +19,20 @@ type Database = PostgresJsDatabase<typeof schema>;
 export class SupportService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    private readonly configService: ConfigService,
   ) {}
 
   // ---------------------------------------------------------------------------
   // Customer-Facing Operations
   // ---------------------------------------------------------------------------
+
+  getWhatsappLink(): { url: string } {
+    const number = this.configService.get<string>('support.whatsappNumber');
+    if (!number) {
+      throw new BadRequestException('WhatsApp support is not configured.');
+    }
+    return { url: `https://wa.me/${number}` };
+  }
 
   async createTicket(userId: string, dto: CreateTicketDto) {
     return await this.db.transaction(async (tx) => {
