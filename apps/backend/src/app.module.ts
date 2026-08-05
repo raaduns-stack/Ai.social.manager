@@ -16,6 +16,8 @@ import { AdminModule } from './admin/admin.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health/health.controller';
 import { SocialAccountsModule } from './social-accounts/social-accounts.module';
+import { SupportModule } from './support/support.module';
+import { FaqsModule } from './faqs/faqs.module';
 
 @Module({
   imports: [
@@ -41,9 +43,11 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
     AdminModule,
     DashboardModule,
     SocialAccountsModule,
+    SupportModule,
+    FaqsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
-    // AiModule (Gemini/OpenClaw integration), NotificationsModule, SupportModule
+    // AiModule (Gemini/OpenClaw integration), NotificationsModule
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],
