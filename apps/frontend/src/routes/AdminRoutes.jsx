@@ -40,7 +40,9 @@ import AdminUploads from "../pages/Admin/Uploads";
 import AdminAnalytics from "../pages/Admin/Analytics";
 import AdminAIConfig from "../pages/Admin/AIConfiguration";
 import AdminSupport from "../pages/Admin/Support";
+import AdminFaqs from "../pages/Admin/Faqs";
 import AdminSettings from "../pages/Admin/Settings";
+import RequireAdminRoles from "./RequireAdminRoles";
 
 // --- Auth (shared) ---
 import AdminLogin from "../pages/Admin/AdminLogin";
@@ -97,7 +99,22 @@ export default function AdminRoutes() {
           <Route path="ai-config" element={<AdminAIConfig />} />
 
           {/* Support + Settings (Treasure) */}
-          <Route path="support" element={<AdminSupport />} />
+          <Route
+            path="support"
+            element={
+              <RequireAdminRoles allowedRoles={["super_admin", "account_manager"]}>
+                <AdminSupport />
+              </RequireAdminRoles>
+            }
+          />
+          <Route
+            path="faqs"
+            element={
+              <RequireAdminRoles allowedRoles={["super_admin", "account_manager"]}>
+                <AdminFaqs />
+              </RequireAdminRoles>
+            }
+          />
           <Route path="settings" element={<AdminSettings />} />
         </Route>
 

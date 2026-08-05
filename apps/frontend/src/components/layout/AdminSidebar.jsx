@@ -25,8 +25,10 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Clock,
+  HelpCircle,
 } from "lucide-react";
 import { useState } from "react";
+import { useAdminAuth } from "../../context/useAdminAuth";
 
 const NAV_SECTIONS = [
   {
@@ -56,6 +58,7 @@ const NAV_SECTIONS = [
     items: [
       { label: "AI Configuration", to: "/admin/ai-config", icon: Cog },
       { label: "Support Center", to: "/admin/support", icon: Headset },
+      { label: "FAQ Manager", to: "/admin/faqs", icon: HelpCircle },
       { label: "Staff Dashboard", to: "/admin/staff", icon: LayoutDashboard },
       { label: "Manage Staff", to: "/admin/staff/manage", icon: UserCheck },
       { label: "Roles & Permissions", to: "/admin/staff/roles-permissions", icon: Settings2 },
@@ -70,6 +73,8 @@ const NAV_SECTIONS = [
 
 export default function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const { admin } = useAdminAuth();
+  const isAllowedRole = admin && ["super_admin", "account_manager"].includes(admin.role);
 
   return (
     <aside
@@ -98,22 +103,27 @@ export default function AdminSidebar() {
             </p>
           )}
           <nav className="flex flex-col gap-1">
-            {section.items.map(({ label, to, icon: Icon }) => (
-              <NavLink
-                key={to}
-                to={to}
-                title={collapsed ? label : undefined}
-                className={({ isActive }) =>
-                  `flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${isActive
-                    ? "bg-[#4F46E5]/10 text-[#4F46E5] font-medium"
-                    : "text-[#111827] hover:bg-[#F9FAFB]"
-                  } ${collapsed ? "justify-center" : ""}`
-                }
-              >
-                <Icon size={16} />
-                {!collapsed && label}
-              </NavLink>
-            ))}
+            {section.items.map(({ label, to, icon: Icon }) => {
+              if ((to === "/admin/support" || to === "/admin/faqs") && !isAllowedRole) {
+                return null;
+              }
+              return (
+                <NavLink
+                  key={to}
+                  to={to}
+                  title={collapsed ? label : undefined}
+                  className={({ isActive }) =>
+                    `flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${isActive
+                      ? "bg-[#4F46E5]/10 text-[#4F46E5] font-medium"
+                      : "text-[#111827] hover:bg-[#F9FAFB]"
+                    } ${collapsed ? "justify-center" : ""}`
+                  }
+                >
+                  <Icon size={16} />
+                  {!collapsed && label}
+                </NavLink>
+              );
+            })}
           </nav>
         </div>
       ))}

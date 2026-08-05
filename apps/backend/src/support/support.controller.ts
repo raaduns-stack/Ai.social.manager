@@ -16,29 +16,29 @@ export class SupportController {
 
   @Post()
   @ApiOperation({ summary: 'Create a new support ticket' })
-  createTicket(@CurrentUser() user: User, @Body() dto: CreateTicketDto) {
-    return this.supportService.createTicket(user.id, dto);
+  createTicket(@CurrentUser() user: { userId: string }, @Body() dto: CreateTicketDto) {
+    return this.supportService.createTicket(user.userId, dto);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all support tickets for the current user' })
-  getTickets(@CurrentUser() user: User) {
-    return this.supportService.getTicketsForUser(user.id);
+  getTickets(@CurrentUser() user: { userId: string }) {
+    return this.supportService.getTicketsForUser(user.userId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get details and message history for a support ticket' })
-  getTicketDetails(@CurrentUser() user: User, @Param('id') id: string) {
-    return this.supportService.getTicketDetailsForUser(user.id, id);
+  getTicketDetails(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
+    return this.supportService.getTicketDetailsForUser(user.userId, id);
   }
 
   @Post(':id/messages')
   @ApiOperation({ summary: 'Add a reply to a support ticket' })
   addMessage(
-    @CurrentUser() user: User,
+    @CurrentUser() user: { userId: string },
     @Param('id') id: string,
     @Body() dto: CreateMessageDto,
   ) {
-    return this.supportService.addMessageAsUser(user.id, id, dto);
+    return this.supportService.addMessageAsUser(user.userId, id, dto);
   }
 }

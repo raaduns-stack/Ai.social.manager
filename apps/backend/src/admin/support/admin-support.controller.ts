@@ -47,10 +47,10 @@ export class AdminSupportController {
   @Post(':id/messages')
   @ApiOperation({ summary: 'Add a reply/message to a support ticket as admin' })
   addMessage(
-    @CurrentUser() admin: User,
+    @CurrentUser() admin: { userId: string },
     @Param('id') id: string,
     @Body() dto: CreateMessageDto,
   ) {
-    return this.supportService.addMessageAsAdmin(admin.id, id, dto);
+    return this.supportService.addMessageAsAdmin(admin.userId, id, dto);
   }
 }
