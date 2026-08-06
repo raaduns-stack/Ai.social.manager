@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   RefreshCw,
   ThumbsUp,
@@ -21,6 +21,11 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
+import apiClient from '../../lib/api-client'
+import {
+  getSuggestions,
+  saveSuggestionFeedback,
+} from '../../features/dashboard/dashboard-api'
 
 const initialSuggestions = [
   {
@@ -152,12 +157,48 @@ function PlatformBadge({ platform }) {
 export default function AISuggestions() {
   const [activePlatform, setActivePlatform] = useState('All')
   const [isRegenerating, setIsRegenerating] = useState(false)
-  const [suggestions, setSuggestions] = useState(initialSuggestions)
+  const [suggestions, setSuggestions] = useState([])// React state hook initializing an array to hold generated content suggestions
   const [copiedId, setCopiedId] = useState(null)
 
   // Stored Ratings: { [id]: { type: 'like' | 'dislike', stars: number } }
   const [ratings, setRatings] = useState({})
 
+  /**
+ * Triggers initial data retrieval on component mount.
+ */
+  useEffect(() => {
+  loadSuggestions()
+}, [])
+
+/**
+ * Fetches suggestions from the backend service and transforms 
+ * database payload objects into UI-ready presentation models.
+ */
+const loadSuggestions = async () => {
+  try {
+    const data = await getSuggestions()
+
+    // Map raw backend schema data into UI component properties
+    const mapped = data.map((item) => ({
+      id: item.id,
+      title: item.type === 'caption' ? 'AI Caption' : 'AI Content Idea',
+      description: item.content,
+      caption: item.content,
+      hashtags: item.hashtags || [],
+      platform: 'Instagram',
+      type: item.type,
+      tone: 'primary',
+      borderClass: 'border-l-primary',
+      scheduledDate: new Date(item.createdAt).toLocaleDateString(),
+      image:
+        'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&w=800&q=80',
+    }))
+
+    setSuggestions(mapped)
+  } catch (error) {
+    console.error('Failed to load suggestions:', error)
+  }
+}
   // Rating Modal State
   const [ratingTarget, setRatingTarget] = useState(null) // { id, type: 'like' | 'dislike' } | null
   const [selectedStars, setSelectedStars] = useState(0)
@@ -168,13 +209,52 @@ export default function AISuggestions() {
     return card.platform === activePlatform
   })
 
-  const handleRegenerate = () => {
+  /**
+ * Triggers API call to generate a new content caption, transforms the 
+ * response into a UI-ready suggestion object, and prepends it to state.
+ */
+ const handleRegenerate = async () => {
+  try {
+    // Set loading state to disable UI action buttons and trigger spinner
     setIsRegenerating(true)
-    setTimeout(() => {
-      setIsRegenerating(false)
-      setSuggestions((prev) => [...prev].reverse())
-    }, 1200)
+
+    // Call backend endpoint to generate mock/AI caption
+    const response = await apiClient.post(
+      '/content-suggestions/caption',
+      {
+        businessType: 'Coffee Shop',
+      }
+    )
+
+    const data = response.data
+
+    // Map backend payload to local UI card schema with default presentation attributes
+    const newSuggestion = {
+      id: data.id,
+      type: 'AI Caption',
+      platform: 'Instagram',
+      tone: 'primary',
+      borderClass: 'border-l-primary',
+      title: 'AI Generated Caption',
+      description: 'Generated from the backend',
+      caption: data.caption,
+      hashtags: data.hashtags,
+      scheduledDate: new Date().toLocaleDateString(),
+      image:
+        'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
+    }
+
+    // Prepend new suggestion to top of list for immediate visual feedback
+    setSuggestions((prev) => [newSuggestion, ...prev])
+  } catch (err) {
+    // Log error for debugging and notify user of failure
+    console.error(err)
+    alert('Failed to generate suggestion')
+  } finally {
+    // Re-enable UI button regardless of request success or failure
+    setIsRegenerating(false)
   }
+}
 
   const handleCopy = (id, text) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -189,9 +269,21 @@ export default function AISuggestions() {
     setSelectedStars(existing?.stars || 0)
     setHoveredStars(0)
   }
-
-  const handleSaveRating = () => {
-    if (!ratingTarget || selectedStars === 0) return
+/**
+   * Submits user rating and reaction feedback to the API for the active content suggestion.
+   */
+  const handleSaveRating = async () => {
+    // Guard clause: Prevent submission if no item is selected or no star rating is set
+  if (!ratingTarget || selectedStars === 0) return
+// Send POST request mapping local UI state ('like'/'dislike') to API expected values ('up'/'down')
+  try {
+    await apiClient.post(
+      `/content-suggestions/${ratingTarget.id}/feedback`,
+      {
+        reaction: ratingTarget.type === 'like' ? 'up' : 'down',
+        rating: selectedStars,
+      }
+    )
 
     setRatings((prev) => ({
       ...prev,
@@ -201,10 +293,20 @@ export default function AISuggestions() {
       },
     }))
 
-    setRatingTarget(null)
-    setSelectedStars(0)
-    setHoveredStars(0)
+TypeScript
+
+    // Notify the user of successful feedback submission
+    alert('Feedback saved successfully!')
+  } catch (err) {
+    // Log error details for debugging and notify the user of submission failure
+    console.error(err)
+    alert('Failed to save feedback.')
   }
+// Reset rating modal/form state variables back to their initial default value
+  setRatingTarget(null)
+  setSelectedStars(0)
+  setHoveredStars(0)
+}
 
   return (
     <div className="space-y-6">
@@ -212,17 +314,19 @@ export default function AISuggestions() {
       <PageHeader
         title="AI Content Suggestions"
         description="Central repository for all AI-generated posts and scheduling recommendations."
-        // action={
-        //   <Button
-        //     variant="primary"
-        //     onClick={handleRegenerate}
-        //     disabled={isRegenerating}
-        //     className="gap-2 shadow-soft font-semibold"
-        //   >
-        //     <RefreshCw size={16} className={isRegenerating ? 'animate-spin' : ''} />
-        //     <span>{isRegenerating ? 'Regenerating...' : 'Regenerate Ideas'}</span>
-        //   </Button>
-        // }
+         action={
+           <Button
+             variant="primary"
+             onClick={handleRegenerate}
+             disabled={isRegenerating}
+             className="gap-2 shadow-soft font-semibold"
+           >
+           {/* Animated loading spinner icon displayed when a request is in progress */}
+             <RefreshCw size={16} className={isRegenerating ? 'animate-spin' : ''} />
+             {/* Dynamic button label reflecting current loading state */}
+             <span>{isRegenerating ? 'Regenerating...' : 'Regenerate Ideas'}</span>
+           </Button>
+         }
       />
 
       {/* Filters Bar */}
