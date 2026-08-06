@@ -7,3 +7,6 @@ export * from './subscriptions.schema';
 export * from './payments.schema';
 export * from './invoices.schema';
 export * from './social-accounts.schema';
+export * from './content-feedback.schema';
+export * from './content-suggestions.schema';
+export * from './ai-prompt-templates.schema';
