@@ -38,6 +38,17 @@ export class AuthService {
     private readonly mailerService: MailerService,
   ) {}
 
+  /**
+   * Registers a new user.
+   * 
+   * This function checks if the email is already in use, hashes the password,
+   * generates an email verification code, inserts the user into the database,
+   * and assigns them the default "free" subscription plan.
+   * Finally, it sends a verification email and returns the authentication tokens.
+   * 
+   * @param dto The user's registration data (email, password, etc.)
+   * @returns An object containing the created user and JWT tokens
+   */
   async register(dto: RegisterDto) {
     const existing = await this.db.query.users.findFirst({
       where: eq(schema.users.email, dto.email),
@@ -84,6 +95,16 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
+  /**
+   * Authenticates a user.
+   * 
+   * This function verifies the user's email exists, compares the provided password hash,
+   * ensures the account is not suspended, and checks if the email has been verified.
+   * If all checks pass, it generates and returns JWT tokens.
+   * 
+   * @param dto The user's login credentials (email, password)
+   * @returns An object containing the authenticated user and JWT tokens
+   */
   async login(dto: LoginDto) {
     const user = await this.db.query.users.findFirst({
       where: eq(schema.users.email, dto.email),
@@ -194,6 +215,16 @@ export class AuthService {
     return this.signTokens({ sub: userId, email, role });
   }
 
+  /**
+   * Issues new access and refresh JWT tokens for a user.
+   * 
+   * It signs the tokens with the user's ID, email, and role. It also looks up
+   * the user's active subscription plan from the database and embeds it in the 
+   * returned user object so the frontend has immediate access to their plan tier.
+   * 
+   * @param user The user entity from the database
+   * @returns An object containing the user data and the newly generated tokens
+   */
   private async issueTokens(user: schema.User) {
     const tokens = await this.signTokens({
       sub: user.id,

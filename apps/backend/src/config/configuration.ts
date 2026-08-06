@@ -36,6 +36,8 @@ export default () => ({
     url: process.env.REDIS_URL ?? 'redis://localhost:6379',
   },
 
+  // Support configuration
+  // The WhatsApp number is used to generate the premium support link
   support: {
     whatsappNumber: process.env.SUPPORT_WHATSAPP_NUMBER,
   },

@@ -1,3 +1,9 @@
+/**
+ * Pricing Component
+ * 
+ * Marketing and upgrade page that lists all available subscription plans,
+ * their features, and pricing details.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'

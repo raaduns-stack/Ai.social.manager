@@ -44,6 +44,8 @@ export interface Faq {
 
 // ---------------------------------------------------------------------------
 // Customer Support API
+// These functions are called by the standard user dashboard to create and 
+// manage support tickets, as well as fetch FAQs and WhatsApp links.
 // ---------------------------------------------------------------------------
 
 export async function createTicket(dto: {
@@ -83,6 +85,8 @@ export async function getWhatsappLink(): Promise<{ url: string }> {
 
 // ---------------------------------------------------------------------------
 // Admin Support API
+// These functions are restricted to users with the 'admin' role. 
+// They allow managing all system tickets and updating FAQs.
 // ---------------------------------------------------------------------------
 
 export async function adminGetTickets(status?: string): Promise<SupportTicket[]> {

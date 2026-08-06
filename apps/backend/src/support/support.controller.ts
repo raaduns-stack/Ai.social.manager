@@ -9,6 +9,12 @@ import { User } from '../database/schema';
 import { PlanTierGuard } from '../auth/guards/plan-tiers.guard';
 import { RequirePlanTiers } from '../auth/decorators/plan-tiers.decorator';
 
+/**
+ * Controller handling user-facing support operations.
+ * 
+ * Provides endpoints for users to create and manage their support tickets,
+ * as well as an endpoint to retrieve the premium WhatsApp support link.
+ */
 @ApiTags('support')
 @ApiBearerAuth()
 @UseGuards(JwtAuthGuard)
@@ -16,6 +22,14 @@ import { RequirePlanTiers } from '../auth/decorators/plan-tiers.decorator';
 export class SupportController {
   constructor(private readonly supportService: SupportService) {}
 
+  /**
+   * Retrieves the WhatsApp support link for premium users.
+   * 
+   * This endpoint is protected by `PlanTierGuard` and is only accessible
+   * if the user has an active 'growth' or 'enterprise' subscription.
+   * 
+   * @returns An object containing the WhatsApp URL
+   */
   @Get('whatsapp-link')
   @UseGuards(PlanTierGuard)
   @RequirePlanTiers('growth', 'enterprise')

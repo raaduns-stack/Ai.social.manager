@@ -169,6 +169,11 @@ export default function Support() {
   })
 
   // Submit Ticket
+  /**
+   * Handles click events on the WhatsApp support button.
+   * Checks if the user is on a premium plan before fetching the link.
+   * If not premium, it triggers the upgrade modal.
+   */
   const handleWhatsappClick = async () => {
     const isPremium = user?.plan?.slug === 'growth' || user?.plan?.slug === 'enterprise'
     if (!isPremium) {

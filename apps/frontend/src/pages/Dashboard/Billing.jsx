@@ -1,3 +1,9 @@
+/**
+ * Billing Component
+ * 
+ * Displays the user's current subscription plan, billing history, and provides 
+ * a way to upgrade or downgrade plans. Integrates with the backend /subscription API.
+ */
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import PageHeader from '../../components/layout/PageHeader'

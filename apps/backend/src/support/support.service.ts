@@ -26,6 +26,10 @@ export class SupportService {
   // Customer-Facing Operations
   // ---------------------------------------------------------------------------
 
+  /**
+   * Retrieves the premium WhatsApp support link.
+   * Pulls the WhatsApp number from the application configuration.
+   */
   getWhatsappLink(): { url: string } {
     const number = this.configService.get<string>('support.whatsappNumber');
     if (!number) {
@@ -34,6 +38,10 @@ export class SupportService {
     return { url: `https://wa.me/${number}` };
   }
 
+  /**
+   * Creates a new support ticket and its initial message.
+   * Uses a transaction to ensure both records are inserted atomically.
+   */
   async createTicket(userId: string, dto: CreateTicketDto) {
     return await this.db.transaction(async (tx) => {
       const [ticket] = await tx
@@ -84,6 +92,10 @@ export class SupportService {
     return ticket;
   }
 
+  /**
+   * Adds a reply message to an existing support ticket on behalf of a user.
+   * If the ticket was previously resolved, it will automatically be reopened.
+   */
   async addMessageAsUser(userId: string, ticketId: string, dto: CreateMessageDto) {
     // Verify ownership and that ticket is not closed/resolved (or let them reply anyway, standard support allows replying)
     const ticket = await this.db.query.supportTickets.findFirst({

@@ -1,3 +1,8 @@
+/**
+ * ChoosePlan Component (Onboarding)
+ * 
+ * Presents the subscription options to the user during the onboarding flow.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, CreditCard, RefreshCw } from 'lucide-react'
