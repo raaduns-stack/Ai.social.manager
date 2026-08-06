@@ -7,6 +7,7 @@ import configuration from './config/configuration';
 import { validateEnv } from './config/env.validation';
 import { DatabaseModule } from './database/database.module';
 import { AuthModule } from './auth/auth.module';
+import { MailerModule } from './mailer/mailer.module';
 import { PlansModule } from './plans/plans.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -15,6 +16,8 @@ import { AdminModule } from './admin/admin.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health/health.controller';
 import { SocialAccountsModule } from './social-accounts/social-accounts.module';
+import { SupportModule } from './support/support.module';
+import { FaqsModule } from './faqs/faqs.module';
 
 @Module({
   imports: [
@@ -32,15 +35,19 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
     ]),
     DatabaseModule,
     AuthModule,
+    MailerModule,
     PlansModule,
     SubscriptionsModule,
     PaymentsModule,
     InvoicesModule,
     AdminModule,
+    DashboardModule,
     SocialAccountsModule,
+    SupportModule,
+    FaqsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
-    // AiModule (Gemini/OpenClaw integration), NotificationsModule, SupportModule
+    // AiModule (Gemini/OpenClaw integration), NotificationsModule
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

@@ -1,532 +1,435 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
-  MessageSquare,
   Search,
-  Archive,
-  MoreVertical,
-  Paperclip,
-  Smile,
-  Image,
+  X,
   Send,
   User,
-  Inbox,
+  Loader,
+  MessageSquare,
+  ArrowRight,
+  HelpCircle,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import Modal from '../../components/ui/Modal'
-import EmptyState from '../../components/ui/EmptyState'
+import Card from '../../components/ui/Card'
+import { getAdminUsers } from '../../features/admin/admin-api'
+import {
+  adminGetTickets,
+  adminGetTicketDetails,
+  adminAssignTicket,
+  adminUpdateTicketStatus,
+  adminAddTicketMessage,
+} from '../../features/support/support-api'
 import { cn } from '../../utils/cn'
 
-// Mock Data representing ticket priorities, statuses, and conversation histories
-const INITIAL_TICKETS = [
-  {
-    id: 1,
-    customer: 'Amaka Obi',
-    status: 'Open',
-    subject: "Payment issue with Pro subscription",
-    preview: "Payment issue with Pro subscription - can't access features",
-    priority: 'High',
-    time: '12m ago',
-    messages: [
-      { sender: 'customer', name: 'Amaka Obi', time: '10:42 AM', text: "Hello support team, I upgraded to the Pro plan two hours ago but my dashboard still says I'm on the Free Tier. I can't access the multi-channel scheduler which I desperately need for a client campaign starting today." },
-      { sender: 'admin', name: 'Alex Rivera', time: '10:45 AM', text: "Hi Amaka, I'm sorry to hear about this delay. I can see your payment was successful in our billing logs. Let me manually refresh your account status on our end. Just a moment." },
-      { sender: 'customer', name: 'Amaka Obi', time: '10:48 AM', text: "Thank you Alex, that would be great. I've tried logging out and back in but it didn't help. Is there anything else I need to do?" },
-      { sender: 'admin', name: 'Alex Rivera', time: '10:52 AM', text: "I've just updated your license seat manually. Could you please refresh your browser and check the 'Channels' tab? You should see all 12 slots available now." }
-    ]
-  },
-  {
-    id: 2,
-    customer: 'Tunde Bakare',
-    status: 'Pending',
-    subject: "API endpoint returning 500 error",
-    preview: "API endpoint returning 500 error on bulk upload...",
-    priority: 'Medium',
-    time: '45m ago',
-    messages: [
-      { sender: 'customer', name: 'Tunde Bakare', time: '09:30 AM', text: "Getting a 500 internal server error when uploading a CSV file with 50 posts. The server log mentions a timeout." },
-      { sender: 'admin', name: 'Alex Rivera', time: '09:45 AM', text: "Hi Tunde, let me check the server logs. It looks like the processing takes longer than the timeout limit for large batch files. We are looking into extending it." }
-    ]
-  },
-  {
-    id: 3,
-    customer: 'Sarah Jenkins',
-    status: 'Open',
-    subject: "Audience insights export",
-    preview: "How do I export audience insights to PDF?",
-    priority: 'Low',
-    time: '2h ago',
-    messages: [
-      { sender: 'customer', name: 'Sarah Jenkins', time: '08:15 AM', text: "Hi, I am preparing a weekly report for my manager and need to export the audience graphs to PDF. Is there a button for that?" }
-    ]
-  },
-  {
-    id: 4,
-    customer: 'Michael Chen',
-    status: 'Resolved',
-    subject: "Enterprise branding options",
-    preview: "Request for custom enterprise branding options",
-    priority: 'Medium',
-    time: '5h ago',
-    messages: [
-      { sender: 'customer', name: 'Michael Chen', time: '05:10 AM', text: "We need custom domains and enterprise branding for client reports. Is this on your roadmap?" },
-      { sender: 'admin', name: 'Alex Rivera', time: '05:30 AM', text: "Yes, Michael! Enterprise white-labeling is supported on our Custom plan. I've sent the details to your email." }
-    ]
-  },
-  {
-    id: 5,
-    customer: 'Ibrahim Diallo',
-    status: 'Open',
-    subject: "Instagram scheduler issue",
-    preview: "Instagram scheduler failing to post carousel...",
-    priority: 'High',
-    time: '6h ago',
-    messages: [
-      { sender: 'customer', name: 'Ibrahim Diallo', time: '04:00 AM', text: "My scheduled carousel post for Instagram failed twice. It says 'Media format not supported' even though they are standard JPGs." }
-    ]
-  }
-]
-
 export default function Support() {
-  const [statusTab, setStatusTab] = useState('Open Tickets') // 'Open Tickets' | 'Pending Tickets' | 'Closed Tickets'
-  const [activeChannel, setActiveChannel] = useState('tickets') // 'tickets' | 'chat' | 'whatsapp'
-  const [tickets, setTickets] = useState(INITIAL_TICKETS)
-  const [activeTicketId, setActiveTicketId] = useState(1)
-  const [searchQuery, setSearchQuery] = useState('')
+  const [tickets, setTickets] = useState([])
+  const [staffList, setStaffList] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  // Filters & Search
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  // Drawer state for replying
+  const [selectedTicketId, setSelectedTicketId] = useState(null)
+  const [selectedTicket, setSelectedTicket] = useState(null)
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false)
+  const [loadingThread, setLoadingThread] = useState(false)
   const [replyText, setReplyText] = useState('')
+  const [submittingReply, setSubmittingReply] = useState(false)
 
-  // Archive modal state
-  const [showArchiveModal, setShowArchiveModal] = useState(false)
+  const messagesEndRef = useRef(null)
 
-  // Message scroll reference
-  const messageEndRef = useRef(null)
-
-  // Filtered tickets based on search query AND status tab
-  const filteredTickets = tickets.filter((t) => {
-    const matchesSearch =
-      t.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.preview.toLowerCase().includes(searchQuery.toLowerCase())
-
-    let matchesStatus = false
-    if (statusTab === 'Open Tickets') {
-      matchesStatus = t.status === 'Open'
-    } else if (statusTab === 'Pending Tickets') {
-      matchesStatus = t.status === 'Pending'
-    } else if (statusTab === 'Closed Tickets') {
-      matchesStatus = t.status === 'Closed' || t.status === 'Resolved'
+  // Fetch initial tickets and staff list
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [allTickets, allUsers] = await Promise.all([
+        adminGetTickets(),
+        getAdminUsers(),
+      ])
+      setTickets(allTickets)
+      // Staff members are those whose role is not 'user'
+      const staff = allUsers.filter((u) => u.role !== 'user')
+      setStaffList(staff)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to load support tickets. Please ensure backend is running.')
+    } finally {
+      setLoading(false)
     }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // Poll ticket thread details when selected
+  useEffect(() => {
+    if (!selectedTicketId) return
+
+    let isMounted = true
+    async function loadThread() {
+      setLoadingThread(true)
+      try {
+        const ticketDetail = await adminGetTicketDetails(selectedTicketId)
+        if (isMounted) {
+          setSelectedTicket(ticketDetail)
+        }
+      } catch (err) {
+        console.error('Failed to load ticket thread:', err)
+      } finally {
+        if (isMounted) {
+          setLoadingThread(false)
+        }
+      }
+    }
+
+    loadThread()
+
+    return () => {
+      isMounted = false
+    }
+  }, [selectedTicketId])
+
+  // Scroll to bottom of message thread
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' })
+    }
+  }, [selectedTicket?.messages, selectedTicketId])
+
+  // Inline Handlers: Assign Ticket
+  const handleAssign = async (ticketId, staffId) => {
+    try {
+      const updated = await adminAssignTicket(ticketId, staffId)
+      // Update in-state tickets array
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, assignedToStaffId: staffId, status: 'in_progress' } : t))
+      )
+      // Update drawer if current
+      if (selectedTicketId === ticketId) {
+        setSelectedTicket((prev) => prev ? { ...prev, assignedToStaffId: staffId, status: 'in_progress' } : null)
+      }
+      
+      // Reload tickets to get updated relational objects (assignedStaff name)
+      const freshTickets = await adminGetTickets()
+      setTickets(freshTickets)
+    } catch (err) {
+      console.error('Failed to assign ticket:', err)
+    }
+  }
+
+  // Inline Handlers: Update Status
+  const handleStatusChange = async (ticketId, status) => {
+    try {
+      await adminUpdateTicketStatus(ticketId, status)
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: status } : t))
+      )
+      if (selectedTicketId === ticketId) {
+        setSelectedTicket((prev) => prev ? { ...prev, status: status } : null)
+      }
+    } catch (err) {
+      console.error('Failed to update ticket status:', err)
+    }
+  }
+
+  // Submit reply message from admin
+  const handleSendReply = async (e) => {
+    e.preventDefault()
+    if (!replyText.trim() || !selectedTicketId) return
+
+    setSubmittingReply(true)
+    try {
+      const newMsg = await adminAddTicketMessage(selectedTicketId, replyText.trim())
+      setSelectedTicket((prev) => {
+        if (!prev) return null
+        return {
+          ...prev,
+          messages: [...(prev.messages || []), newMsg],
+          status: 'in_progress', // auto updates state on admin response
+        }
+      })
+      setReplyText('')
+      
+      // Update tickets array locally
+      setTickets((prev) =>
+        prev.map((t) => (t.id === selectedTicketId ? { ...t, status: 'in_progress' } : t))
+      )
+    } catch (err) {
+      console.error('Failed to post reply:', err)
+    } finally {
+      setSubmittingReply(false)
+    }
+  }
+
+  // Filter logic
+  const filteredTickets = tickets.filter((ticket) => {
+    const matchesSearch =
+      ticket.subject.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ticket.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (ticket.user?.fullName || '').toLowerCase().includes(searchTerm.toLowerCase())
+
+    const matchesStatus =
+      statusFilter === 'all' || ticket.status === statusFilter
 
     return matchesSearch && matchesStatus
   })
 
-  const activeTicket = tickets.find((t) => t.id === activeTicketId)
-
-  // Auto-select first ticket in active status tab if activeTicketId is not in filtered list
-  useEffect(() => {
-    if (filteredTickets.length > 0 && !filteredTickets.some((t) => t.id === activeTicketId)) {
-      setActiveTicketId(filteredTickets[0].id)
-    }
-  }, [statusTab, searchQuery, tickets])
-
-  // Scroll to bottom on load/update of messages
-  const scrollToBottom = () => {
-    messageEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
-  useEffect(() => {
-    if (activeChannel === 'tickets') {
-      scrollToBottom()
-    }
-  }, [activeTicket?.messages, activeChannel, activeTicketId])
-
-  const handleSendMessage = () => {
-    if (!replyText.trim() || !activeTicketId) return
-
-    const now = new Date()
-    const timeString = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-
-    const newMessage = {
-      sender: 'admin',
-      name: 'Alex Rivera',
-      time: timeString,
-      text: replyText.trim(),
-    }
-
-    setTickets((prevTickets) =>
-      prevTickets.map((t) => {
-        if (t.id === activeTicketId) {
-          return {
-            ...t,
-            messages: [...t.messages, newMessage],
-            preview: newMessage.text,
-            time: 'Just now',
-          }
-        }
-        return t
-      })
-    )
-
-    setReplyText('')
-  }
-
-  const handleKeyDown = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSendMessage()
-    }
-  }
-
-  const handleArchiveTicket = () => {
-    setTickets((prevTickets) =>
-      prevTickets.map((t) => {
-        if (t.id === activeTicketId) {
-          return { ...t, status: 'Resolved' }
-        }
-        return t
-      })
-    )
-    setShowArchiveModal(false)
-  }
-
-  // Get tone for badge mapping
-  const getBadgeTone = (status) => {
-    switch (status) {
-      case 'Open':
-        return 'primary'
-      case 'Pending':
-        return 'warning'
-      case 'Resolved':
-      case 'Closed':
-        return 'success'
-      default:
-        return 'neutral'
-    }
-  }
-
-  // Priority color indicators
-  const getPriorityDotClass = (priority) => {
+  const getPriorityDot = (priority) => {
     switch (priority) {
-      case 'High':
-        return 'bg-danger'
-      case 'Medium':
-        return 'bg-warning'
-      case 'Low':
-        return 'bg-ink-muted opacity-40'
-      default:
-        return 'bg-ink-muted'
+      case 'high':
+        return <span className="inline-block w-2.5 h-2.5 bg-danger rounded-full" title="High Priority" />
+      case 'medium':
+        return <span className="inline-block w-2.5 h-2.5 bg-warning rounded-full" title="Medium Priority" />
+      case 'low':
+        return <span className="inline-block w-2.5 h-2.5 bg-ink-muted/40 rounded-full" title="Low Priority" />
     }
   }
 
-  const TABS = ['Open Tickets', 'Pending Tickets', 'Closed Tickets']
-
-  const getTabCount = (tabName) => {
-    return tickets.filter((t) => {
-      if (tabName === 'Open Tickets') return t.status === 'Open'
-      if (tabName === 'Pending Tickets') return t.status === 'Pending'
-      if (tabName === 'Closed Tickets') return t.status === 'Closed' || t.status === 'Resolved'
-      return false
-    }).length
+  const getStatusBadgeTone = (status) => {
+    switch (status) {
+      case 'open':
+      case 'in_progress':
+        return 'warning'
+      case 'resolved':
+      case 'closed':
+        return 'success'
+    }
   }
 
   return (
-    <div className="flex flex-col h-[calc(100vh-112px)]">
-      {/* Page Header */}
-      <div className="mb-4">
-        <PageHeader
-        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
-          title="Support Center"
-          description="Manage client issues, live chat queries, and system assistance."
-        />
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Support Center (Admin)"
+        description="Review customer issues, reassign tickets to staff, and post replies directly to threads."
+      />
 
-      {/* Top Status Tabs */}
-      <div className="flex border-b border-border mb-4 shrink-0">
-        {TABS.map((tab) => {
-          const isActive = statusTab === tab
-          const count = getTabCount(tab)
-          return (
-            <button
-              key={tab}
-              onClick={() => setStatusTab(tab)}
-              className={cn(
-                "px-4 py-2.5 font-semibold text-sm border-b-2 transition-colors flex items-center gap-2 -mb-px",
-                isActive
-                  ? "border-primary text-primary"
-                  : "border-transparent text-ink-muted hover:text-ink hover:border-border"
-              )}
-            >
-              <span>{tab}</span>
-              <Badge tone={isActive ? 'primary' : 'neutral'} className="text-xs px-2 py-0.5">
-                {count}
-              </Badge>
-            </button>
-          )
-        })}
-      </div>
+      {error && (
+        <div className="p-4 bg-danger/10 border border-danger/20 text-danger rounded-control text-sm">
+          {error}
+        </div>
+      )}
 
-      {/* Main Support Panel Workspace */}
-      <div className="flex-1 flex border border-border rounded-card bg-surface overflow-hidden shadow-soft">
-        
-        {/* Left Panel: Ticket List */}
-        <div className="w-[320px] md:w-[380px] flex flex-col border-r border-border bg-surface overflow-hidden shrink-0">
-          
-          {/* Sub-Navigation Tabs & Search */}
-          <div className="px-6 pt-4 border-b border-border bg-canvas">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-bold text-ink">Support Hub</h2>
-              <div className="relative w-36">
-                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-surface border border-border rounded-control pl-7 pr-2 py-1 text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-primary-500"
-                />
-              </div>
-            </div>
-            <div className="flex gap-4">
-              <button
-                onClick={() => setActiveChannel('tickets')}
-                className={cn(
-                  "pb-3 border-b-2 font-semibold text-xs transition-colors",
-                  activeChannel === 'tickets'
-                    ? "border-primary text-primary"
-                    : "border-transparent text-ink-muted hover:text-primary"
-                )}
-              >
-                Tickets
-              </button>
-              <button
-                onClick={() => setActiveChannel('chat')}
-                className={cn(
-                  "pb-3 border-b-2 font-semibold text-xs transition-colors",
-                  activeChannel === 'chat'
-                    ? "border-primary text-primary"
-                    : "border-transparent text-ink-muted hover:text-primary"
-                )}
-              >
-                Live Chat
-              </button>
-              <button
-                onClick={() => setActiveChannel('whatsapp')}
-                className={cn(
-                  "pb-3 border-b-2 font-semibold text-xs transition-colors",
-                  activeChannel === 'whatsapp'
-                    ? "border-primary text-primary"
-                    : "border-transparent text-ink-muted hover:text-primary"
-                )}
-              >
-                WhatsApp
-              </button>
-            </div>
-          </div>
-
-          {/* Ticket Listing or Empty Lists */}
-          <div className="flex-1 overflow-y-auto divide-y divide-border/30 bg-surface">
-            {activeChannel === 'tickets' ? (
-              filteredTickets.length > 0 ? (
-                filteredTickets.map((ticket) => {
-                  const isActive = ticket.id === activeTicketId
-                  return (
-                    <div
-                      key={ticket.id}
-                      onClick={() => setActiveTicketId(ticket.id)}
-                      className={cn(
-                        "p-4 flex flex-col gap-1.5 cursor-pointer transition-colors border-l-4",
-                        isActive
-                          ? "bg-primary-50/50 border-primary"
-                          : "border-transparent hover:bg-canvas"
-                      )}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="text-sm font-bold text-ink">{ticket.customer}</span>
-                        <Badge tone={getBadgeTone(ticket.status)} className="px-2 py-0.5 text-[10px]">
-                          {ticket.status}
-                        </Badge>
-                      </div>
-                      <p className="text-xs text-ink-muted truncate font-medium">{ticket.subject}</p>
-                      <div className="flex items-center justify-between mt-2">
-                        <div className="flex items-center gap-1.5">
-                          <span className={cn("w-2 h-2 rounded-full", getPriorityDotClass(ticket.priority))}></span>
-                          <span className="text-[10px] text-ink-muted font-medium">{ticket.priority} Priority</span>
-                        </div>
-                        <span className="text-[10px] text-ink-muted">{ticket.time}</span>
-                      </div>
-                    </div>
-                  )
-                })
-              ) : (
-                <div className="p-8 text-center text-ink-muted">
-                  <p className="text-xs font-semibold">No {statusTab.toLowerCase()} found</p>
-                  <p className="text-[11px] mt-1">Try broadening your search or switching tabs.</p>
-                </div>
-              )
-            ) : (
-              <div className="p-8 text-center text-ink-muted flex flex-col items-center justify-center h-full">
-                <MessageSquare size={24} className="mb-2 opacity-40 text-ink-muted" />
-                <p className="text-xs font-semibold">No active sessions</p>
-                <p className="text-[10px] mt-1 leading-relaxed">Integration channels are ready but currently idle.</p>
-              </div>
-            )}
-          </div>
+      {/* Filter and Search Bar */}
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="relative w-full sm:max-w-xs">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+          <input
+            type="text"
+            placeholder="Search tickets..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full h-10 rounded-control border border-border bg-surface pl-10 pr-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 shadow-soft"
+          />
         </div>
 
-        {/* Right Panel: Chat Thread or Channel Empty State */}
-        {activeChannel === 'tickets' ? (
-          activeTicket && filteredTickets.some(t => t.id === activeTicket.id) ? (
-            <div className="flex-1 flex flex-col bg-canvas overflow-hidden">
-              
-              {/* Active Ticket Header */}
-              <div className="px-6 py-4 bg-surface border-b border-border flex justify-between items-center shrink-0">
-                <div>
-                  <h3 className="text-sm font-bold text-ink">{activeTicket.subject}</h3>
-                  <div className="flex items-center gap-1.5 mt-1 text-xs text-ink-muted">
-                    <User size={12} className="text-ink-muted" />
-                    <span>Assigned to:</span>
-                    <span className="font-semibold text-primary">Alex Rivera</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowArchiveModal(true)}
-                    title="Mark resolved / Archive"
-                    className="p-2 text-ink-muted hover:bg-canvas hover:text-ink transition-colors rounded-control"
-                  >
-                    <Archive size={16} />
-                  </button>
-                  <button className="p-2 text-ink-muted hover:bg-canvas hover:text-ink transition-colors rounded-control">
-                    <MoreVertical size={16} />
-                  </button>
-                </div>
-              </div>
+        <div className="flex gap-2 w-full sm:w-auto">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="h-10 rounded-control border border-border bg-surface px-4 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-primary-500 shadow-soft cursor-pointer"
+          >
+            <option value="all">All Statuses</option>
+            <option value="open">Open</option>
+            <option value="in_progress">In Progress</option>
+            <option value="resolved">Resolved</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
 
-              {/* Message List Area */}
-              <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 bg-canvas">
-                
-                {/* Date separator */}
-                <div className="flex justify-center">
-                  <span className="px-3 py-1 bg-surface border border-border/50 rounded-full text-[10px] font-semibold text-ink-muted">
-                    Today
-                  </span>
-                </div>
-
-                {activeTicket.messages.map((msg, index) => {
-                  const isAdmin = msg.sender === 'admin'
-                  return (
-                    <div
-                      key={index}
-                      className={cn(
-                        "flex flex-col max-w-[80%]",
-                        isAdmin ? "self-end items-end" : "self-start items-start"
-                      )}
-                    >
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        {!isAdmin && <span className="text-xs font-bold text-ink">{msg.name}</span>}
-                        <span className="text-[10px] text-ink-muted">{msg.time}</span>
-                        {isAdmin && <span className="text-xs font-bold text-primary">{msg.name}</span>}
+      {/* Main Tickets Table Container */}
+      <Card className="overflow-hidden p-0 rounded-card border border-border">
+        {loading ? (
+          <div className="py-20 flex justify-center">
+            <Loader size={24} label="Loading customer tickets..." />
+          </div>
+        ) : filteredTickets.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse text-sm">
+              <thead>
+                <tr className="bg-canvas border-b border-border text-ink-muted font-semibold text-xs">
+                  <th className="px-4 py-3">Priority</th>
+                  <th className="px-4 py-3">Subject</th>
+                  <th className="px-4 py-3">Customer</th>
+                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Assigned Staff</th>
+                  <th className="px-4 py-3">Created Date</th>
+                  <th className="px-4 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60">
+                {filteredTickets.map((ticket) => (
+                  <tr key={ticket.id} className="hover:bg-canvas/50 transition-colors">
+                    <td className="px-4 py-3 text-center">
+                      <div className="flex justify-center">{getPriorityDot(ticket.priority)}</div>
+                    </td>
+                    <td className="px-4 py-3 font-semibold text-ink">
+                      <div>
+                        <p>{ticket.subject}</p>
+                        <p className="text-[10px] text-ink-muted font-normal mt-0.5">{ticket.category}</p>
                       </div>
-                      <div
+                    </td>
+                    <td className="px-4 py-3">
+                      <div>
+                        <p className="font-semibold text-ink">{ticket.user?.fullName}</p>
+                        <p className="text-[10px] text-ink-muted">{ticket.user?.email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={ticket.status}
+                        onChange={(e) => handleStatusChange(ticket.id, e.target.value)}
                         className={cn(
-                          "p-3 rounded-card text-sm shadow-soft border border-border/30",
-                          isAdmin
-                            ? "bg-primary text-white border-primary"
-                            : "bg-surface text-ink-muted"
+                          'h-8 px-2 py-0.5 border border-border rounded-control text-xs font-semibold focus:outline-none capitalize cursor-pointer',
+                          ticket.status === 'resolved' || ticket.status === 'closed'
+                            ? 'text-emerald-700 bg-emerald-50 border-emerald-200'
+                            : 'text-amber-700 bg-amber-50 border-amber-200'
                         )}
                       >
-                        {msg.text}
-                      </div>
-                    </div>
-                  )
-                })
-                }
-                <div ref={messageEndRef} />
+                        <option value="open">Open</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                        <option value="closed">Closed</option>
+                      </select>
+                    </td>
+                    <td className="px-4 py-3">
+                      <select
+                        value={ticket.assignedToStaffId || ''}
+                        onChange={(e) => handleAssign(ticket.id, e.target.value)}
+                        className="h-8 px-2 py-0.5 border border-border rounded-control text-xs text-ink bg-surface focus:outline-none cursor-pointer w-full max-w-[150px]"
+                      >
+                        <option value="">Unassigned</option>
+                        {staffList.map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.name} ({staff.role})
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-ink-muted">
+                      {new Date(ticket.createdAt).toLocaleDateString()}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setSelectedTicketId(ticket.id)
+                          setIsDrawerOpen(true)
+                        }}
+                        className="gap-1 text-primary hover:text-primary-700"
+                      >
+                        Reply <ArrowRight size={14} />
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-20 text-center text-ink-muted">
+            <p className="font-semibold">No support tickets found.</p>
+            <p className="text-xs mt-1">Try adjusting your filters or search keywords.</p>
+          </div>
+        )}
+      </Card>
+
+      {/* Side Reply Drawer */}
+      {isDrawerOpen && (
+        <div className="fixed inset-0 z-50 overflow-hidden">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-ink/40 transition-opacity" onClick={() => setIsDrawerOpen(false)} />
+          
+          <div className="absolute inset-y-0 right-0 pl-10 max-w-full flex">
+            <div className="w-screen max-w-md bg-surface shadow-2xl flex flex-col border-l border-border h-full">
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-border bg-canvas flex justify-between items-center shrink-0">
+                <div>
+                  <h3 className="text-sm font-bold text-ink">Ticket Conversation</h3>
+                  <p className="text-xs text-ink-muted mt-1 leading-relaxed truncate max-w-[280px]">
+                    Subject: {selectedTicket?.subject}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsDrawerOpen(false)}
+                  className="rounded-control p-1.5 text-ink-muted hover:bg-border/50 hover:text-ink transition-all"
+                >
+                  <X size={18} />
+                </button>
               </div>
 
-              {/* Bottom Reply Bar */}
-              <div className="p-4 bg-surface border-t border-border shrink-0">
-                <div className="flex items-end gap-3 bg-canvas border border-border rounded-card p-2 focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/10 transition-all">
-                  <div className="flex flex-col flex-1">
+              {/* Chat Thread */}
+              <div className="flex-1 overflow-y-auto p-6 bg-canvas space-y-4 flex flex-col">
+                {loadingThread ? (
+                  <div className="my-auto py-12 flex justify-center">
+                    <Loader size={20} label="Fetching details..." />
+                  </div>
+                ) : selectedTicket?.messages && selectedTicket.messages.length > 0 ? (
+                  selectedTicket.messages.map((msg, idx) => {
+                    const isCustomer = msg.senderId === selectedTicket.userId
+                    return (
+                      <div
+                        key={msg.id || idx}
+                        className={cn(
+                          'flex flex-col max-w-[85%] rounded-card p-3 shadow-soft border border-border/30',
+                          isCustomer
+                            ? 'bg-surface text-ink self-start'
+                            : 'bg-primary text-white border-primary self-end'
+                        )}
+                      >
+                        <div className="flex justify-between items-center gap-3 mb-1 text-[10px] opacity-75 font-semibold">
+                          <span>{isCustomer ? 'Customer' : 'Support Team'}</span>
+                          <span>{new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        </div>
+                        <p className="text-xs leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="my-auto text-center text-ink-muted text-xs">
+                    No messages in this thread.
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Reply Box */}
+              {selectedTicket?.status !== 'closed' && (
+                <div className="p-4 border-t border-border bg-surface shrink-0">
+                  <form onSubmit={handleSendReply} className="flex gap-2 items-end">
                     <textarea
                       value={replyText}
                       onChange={(e) => setReplyText(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      className="w-full bg-transparent border-none focus:ring-0 focus:outline-none resize-none text-sm text-ink py-1 px-3 min-h-[40px] max-h-[150px] overflow-y-auto"
-                      placeholder="Type your reply..."
-                      rows={1}
+                      placeholder="Type a response to customer..."
+                      required
+                      rows={2}
+                      className="flex-1 rounded-control border border-border bg-surface px-3 py-2 text-xs text-ink focus:outline-none focus:ring-1 focus:ring-primary-500 focus:border-primary-500 resize-none"
                     />
-                    <div className="flex items-center gap-2 px-3 pb-1 pt-2">
-                      <button type="button" className="text-ink-muted hover:text-primary transition-colors p-1 rounded hover:bg-surface">
-                        <Paperclip size={16} />
-                      </button>
-                      <button type="button" className="text-ink-muted hover:text-primary transition-colors p-1 rounded hover:bg-surface">
-                        <Smile size={16} />
-                      </button>
-                      <button type="button" className="text-ink-muted hover:text-primary transition-colors p-1 rounded hover:bg-surface">
-                        <Image size={16} />
-                      </button>
-                      <div className="w-[1px] h-4 bg-border mx-2"></div>
-                      <span className="text-[11px] text-ink-muted italic">Shift + Enter for new line</span>
-                    </div>
-                  </div>
-                  <Button
-                    variant="primary"
-                    onClick={handleSendMessage}
-                    disabled={!replyText.trim()}
-                    className="w-10 h-10 rounded-control flex items-center justify-center p-0 shrink-0"
-                  >
-                    <Send size={16} />
-                  </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      size="sm"
+                      disabled={submittingReply || !replyText.trim()}
+                      className="h-9 px-3 flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <Send size={12} />
+                      Send
+                    </Button>
+                  </form>
                 </div>
-              </div>
-
+              )}
             </div>
-          ) : (
-            <div className="flex-1 flex items-center justify-center bg-canvas p-12">
-              <EmptyState
-                icon={<Inbox size={48} className="text-ink-muted" />}
-                title="No Ticket Selected"
-                description="Select a ticket from the active tab list to view history and draft responses."
-              />
-            </div>
-          )
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-12 bg-canvas">
-            <EmptyState
-              icon={<MessageSquare size={48} className="text-ink-muted" />}
-              title={`${activeChannel === 'chat' ? 'Live Chat' : 'WhatsApp'} Integration`}
-              description={`The ${activeChannel === 'chat' ? 'Live Chat' : 'WhatsApp'} support channel is configured but not connected to live clients yet.`}
-              action={
-                <Button variant="outline" onClick={() => setActiveChannel('tickets')}>
-                  Return to Tickets
-                </Button>
-              }
-            />
-          </div>
-        )}
-      </div>
-
-      {/* Archive Modal Confirmation */}
-      <Modal
-        open={showArchiveModal}
-        onClose={() => setShowArchiveModal(false)}
-        title="Resolve & Archive Ticket?"
-      >
-        <div className="space-y-4">
-          <p className="text-sm text-ink-muted leading-relaxed">
-            Are you sure you want to mark this ticket as <strong>Resolved</strong> and archive the thread? It will move to the Closed Tickets tab.
-          </p>
-          <div className="flex justify-end gap-3 mt-6">
-            <Button variant="outline" onClick={() => setShowArchiveModal(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" onClick={handleArchiveTicket}>
-              Confirm & Resolve
-            </Button>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   )
 }

@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { PlanTierGuard } from '../auth/guards/plan-tiers.guard';
+import { RequirePlanTiers } from '../auth/decorators/plan-tiers.decorator';
 
 @ApiTags('dashboard')
 @ApiBearerAuth()
@@ -33,5 +35,16 @@ export class DashboardController {
         },
       };
     }
+  }
+
+  @Get('premium-feature')
+  @UseGuards(PlanTierGuard)
+  @RequirePlanTiers('growth', 'enterprise')
+  @ApiOperation({ summary: "A premium feature restricted to Growth or Enterprise plan tiers" })
+  getPremiumFeature() {
+    return {
+      message: 'Welcome to the premium feature!',
+      status: 'success',
+    };
   }
 }

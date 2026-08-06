@@ -1,19 +1,24 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Mail, RefreshCw } from 'lucide-react'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { useAuthStore } from '../../store/auth-store'
+import apiClient from '../../lib/api-client'
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const user = useAuthStore((state) => state.user)
-  const email = user?.email || 'user@example.com'
+  const setAuth = useAuthStore((state) => state.setAuth)
+  const email = searchParams.get('email') || user?.email || 'user@example.com'
 
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [resendStatus, setResendStatus] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [countdown, setCountdown] = useState(0)
+
   const inputRefs = [
     useRef(null),
     useRef(null),
@@ -22,6 +27,14 @@ export default function VerifyEmail() {
     useRef(null),
     useRef(null),
   ]
+
+  useEffect(() => {
+    if (countdown === 0) return
+    const timer = setInterval(() => {
+      setCountdown((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [countdown])
 
   const handleChange = (index, value) => {
     // Only accept numeric inputs
@@ -45,16 +58,23 @@ export default function VerifyEmail() {
     }
   }
 
-  const handleResend = (e) => {
+  const handleResend = async (e) => {
     e.preventDefault()
+    if (countdown > 0) return
     setResendStatus('sending')
-    setTimeout(() => {
+    setError('')
+    try {
+      await apiClient.post('/auth/resend-verification', { email })
       setResendStatus('sent')
+      setCountdown(60)
       setTimeout(() => setResendStatus(''), 3000)
-    }, 1000)
+    } catch (err) {
+      setResendStatus('')
+      setError(err?.message || 'Failed to resend verification code. Please try again.')
+    }
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
     const fullCode = code.join('')
     if (fullCode.length < 6) {
@@ -63,11 +83,20 @@ export default function VerifyEmail() {
     }
 
     setLoading(true)
-    // Mock network call
-    setTimeout(() => {
+    setError('')
+    try {
+      const response = await apiClient.post('/auth/verify-email', {
+        email,
+        code: fullCode,
+      })
+      const { user: verifiedUser, accessToken, refreshToken } = response.data
+      setAuth(verifiedUser, accessToken, refreshToken)
+      navigate('/choose-plan')
+    } catch (err) {
+      setError(err?.message || 'Verification failed. Please check the code and try again.')
+    } finally {
       setLoading(false)
-      navigate('/welcome')
-    }, 800)
+    }
   }
 
   return (
@@ -101,7 +130,7 @@ export default function VerifyEmail() {
             ))}
           </div>
 
-          {error && <p className="text-xs text-danger">{error}</p>}
+          {error && <p className="text-xs text-danger text-center">{error}</p>}
 
           <Button
             type="submit"
@@ -118,8 +147,12 @@ export default function VerifyEmail() {
           Didn't receive the email?{' '}
           <button
             onClick={handleResend}
-            disabled={resendStatus === 'sending'}
-            className="text-primary font-semibold hover:underline cursor-pointer inline-flex items-center gap-1"
+            disabled={countdown > 0 || resendStatus === 'sending'}
+            className={`font-semibold inline-flex items-center gap-1 ${
+              countdown > 0 || resendStatus === 'sending'
+                ? 'text-ink-muted/50 cursor-not-allowed'
+                : 'text-primary hover:underline cursor-pointer'
+            }`}
           >
             {resendStatus === 'sending' ? (
               <>
@@ -127,6 +160,8 @@ export default function VerifyEmail() {
               </>
             ) : resendStatus === 'sent' ? (
               <span className="text-accent">✓ Code resent!</span>
+            ) : countdown > 0 ? (
+              `Resend code in ${countdown}s`
             ) : (
               'Resend code'
             )}

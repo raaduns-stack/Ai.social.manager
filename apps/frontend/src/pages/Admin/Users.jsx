@@ -12,6 +12,7 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import DataTable from '../../components/ui/DataTable'
+import Card from '../../components/ui/Card'
 import { getAdminUsers, suspendUser, deleteUser } from '../../features/admin/admin-api'
 import ErrorBanner from '../../components/error-banner'
 

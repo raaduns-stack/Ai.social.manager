@@ -1,3 +1,9 @@
+/**
+ * Pricing Component
+ * 
+ * Marketing and upgrade page that lists all available subscription plans,
+ * their features, and pricing details.
+ */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'
@@ -52,7 +58,6 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
         'Basic AI image generation',
         'Content preview',
         'Basic analytics',
-        'AI/WhatsApp Support',
       ]
     } else if (plan.slug === 'starter') {
       featuresList = [
@@ -262,7 +267,7 @@ export default function Pricing() {
     },
     {
       q: 'Do you offer support?',
-      a: 'Yes, we provide 24/7 AI and WhatsApp support across all subscription tiers, including our Free plan.',
+      a: 'Yes, we provide 24/7 AI support across all subscription tiers, including our Free plan.',
     },
   ]
 

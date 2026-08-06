@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, Terminal, Sparkles } from 'lucide-react'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 import ErrorBanner from '../../components/error-banner'
 
 /**

@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ArrowRight, Terminal } from 'lucide-react'
 import Input from '../../components/ui/Input'
 import Button from '../../components/ui/Button'
-import { useAuth } from '../../context/AuthContext'
+import { useAuth } from '../../context/useAuth'
 import ErrorBanner from '../../components/error-banner'
 
 /**
@@ -75,7 +75,7 @@ export default function SignUp() {
 
     try {
       await register(formData.email, formData.password, formData.fullName, formData.companyName)
-      navigate('/verify-email')
+      navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
       setApiError(err)
     } finally {

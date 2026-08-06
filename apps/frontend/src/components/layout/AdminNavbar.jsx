@@ -6,7 +6,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut } from "lucide-react";
-import { useAdminAuth } from "../../context/AdminAuthContext";
+import { useAdminAuth } from "../../context/useAdminAuth";
 import { notifications } from "../../data/mockData";
 
 export default function AdminNavbar() {

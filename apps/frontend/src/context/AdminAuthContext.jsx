@@ -10,7 +10,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import apiClient from "../lib/api-client";
 
-const AdminAuthContext = createContext(null);
+export const AdminAuthContext = createContext(null);
 
 const STORAGE_KEY = "admin_session";
 
@@ -73,12 +73,4 @@ export function AdminAuthProvider({ children }) {
       {children}
     </AdminAuthContext.Provider>
   );
-}
-
-export function useAdminAuth() {
-  const ctx = useContext(AdminAuthContext);
-  if (!ctx) {
-    throw new Error("useAdminAuth must be used inside <AdminAuthProvider>");
-  }
-  return ctx;
 }

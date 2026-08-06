@@ -1,6 +1,6 @@
 import { ComponentPropsWithoutRef, ElementType, ReactNode } from 'react'
 
-type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'
+export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'destructive'
 type ButtonSize = 'sm' | 'md' | 'lg'
 
 export type ButtonProps<T extends ElementType = 'button'> =

@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 import { useNavigate, useLocation, Link } from "react-router-dom";
-import { useAdminAuth } from "../../context/AdminAuthContext";
+import { useAdminAuth } from "../../context/useAdminAuth";
 import { Loader2, Lock, Mail } from "lucide-react";
 
 export default function AdminLogin() {
@@ -131,7 +131,7 @@ export default function AdminLogin() {
           </button>
 
           <p className="text-center text-xs text-[#6B7280]">
-            Demo credentials: pascal@raaduns.com / admin123
+            Demo credentials: superadmin@test.com / Password123!
           </p>
         </form>
       </div>
