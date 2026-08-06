@@ -9,5 +9,5 @@ export * from './invoices.schema';
 export * from './social-accounts.schema';
 export * from './support-tickets.schema';
 export * from './faqs.schema';
+export * from './uploads.schema';
 export * from './relations';
-

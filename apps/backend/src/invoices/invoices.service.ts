@@ -8,9 +8,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class InvoicesService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) { }
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /** Return all invoices for the logged-in user. */
   async findAllByUser(userId: string) {

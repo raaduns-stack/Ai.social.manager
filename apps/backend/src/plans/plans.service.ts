@@ -8,9 +8,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class PlansService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   async findAll() {
     return this.db.query.plans.findMany({

@@ -8,9 +8,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class DashboardService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   async getSummary(period: string = 'weekly') {
     const now = new Date();
@@ -26,9 +24,7 @@ export class DashboardService {
     }
 
     // 1. Total Customers (total rows in users)
-    const [totalCustomersRes] = await this.db
-      .select({ val: count() })
-      .from(schema.users);
+    const [totalCustomersRes] = await this.db.select({ val: count() }).from(schema.users);
 
     // 2. New Customers This Period
     const [newCustomersRes] = await this.db
@@ -53,10 +49,7 @@ export class DashboardService {
       .select({ val: sum(schema.payments.amount) })
       .from(schema.payments)
       .where(
-        and(
-          eq(schema.payments.status, 'successful'),
-          gte(schema.payments.createdAt, startDate),
-        ),
+        and(eq(schema.payments.status, 'successful'), gte(schema.payments.createdAt, startDate)),
       );
 
     const revenueKobo = Number(revenueRes?.val || 0);

@@ -27,10 +27,7 @@ export class AdminController {
 
   @Post('users/:id/suspend')
   @ApiOperation({ summary: 'Suspend or activate a user account' })
-  suspendUser(
-    @Param('id') id: string,
-    @Body('suspend') suspend: boolean,
-  ) {
+  suspendUser(@Param('id') id: string, @Body('suspend') suspend: boolean) {
     return this.adminService.suspendUser(id, suspend);
   }
 
