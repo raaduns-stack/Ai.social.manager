@@ -5,6 +5,8 @@ import Button from '../../components/ui/Button'
 import Badge from '../../components/ui/Badge'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import apiClient from '../../lib/api-client';
+import { uploadFile, deleteUpload } from '../../features/uploads/uploads-api';
 import {
   Upload,
   Image as ImageIcon,
@@ -27,113 +29,25 @@ import {
   MessageSquare,
 } from 'lucide-react'
 
-const CATEGORIES = [
-  'Business Assets',
-  'Staff Images',
-  'Office View',
-  'Products',
-  'Events',
-  'Business Documents',
-]
+const CATEGORY_LABELS = {
+  'business_assets': 'Business Assets',
+  'staff_images': 'Staff Images',
+  'office_view': 'Office View',
+  'products': 'Products',
+  'events': 'Events',
+  'business_documents': 'Business Documents',
+}
+
+const CATEGORIES = Object.keys(CATEGORY_LABELS)
 
 export default function Uploads() {
   const fileInputRef = useRef(null)
 
   // Active Category Tab
-  const [activeCategory, setActiveCategory] = useState('Business Assets')
+  const [activeCategory, setActiveCategory] = useState('business_assets')
 
   // Asset Library State
-  const [assets, setAssets] = useState([
-    {
-      id: 1,
-      name: 'Company_Logo_Primary.png',
-      category: 'Business Assets',
-      type: 'image',
-      size: '1.2 MB',
-      sizeBytes: 1240000,
-      date: 'Jul 20',
-      timestamp: Date.now() - 1000 * 60 * 60 * 2,
-      status: 'Approved',
-      description: 'Main high-resolution logo mark for headers & press kits.',
-      url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=300&q=80',
-    },
-    {
-      id: 2,
-      name: 'Executive_Team_Photo.jpg',
-      category: 'Staff Images',
-      type: 'image',
-      size: '3.4 MB',
-      sizeBytes: 3500000,
-      date: 'Jul 19',
-      timestamp: Date.now() - 1000 * 60 * 60 * 24,
-      status: 'Approved',
-      description: 'Leadership team headshots for about page & media releases.',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB1krZOfiC6QCAloGneiRc7-QX9-b2GDw_jJp4PPpYJs_58goOSnxRVa75QfDvZwx2JZUdtNuo3fxSKFyTaBNfrJ_cWUPIBaPiXD_Cr1NoU3nRDQFk80hmL--8tzLtcdwq9V7g-eZgMJtTK0yhskZWUetaQlC-IW5GvXOSYiBif-qTMjbIcY5-jhKGdZao7dfkgCyuplIfGiksE2DvY8MzsblqLGh5o9KPfoxuQPuZ41wmO-75vJ_CZjdQ7klTl0lDfxPFRjADYw2Ch',
-    },
-    {
-      id: 3,
-      name: 'SF_Headquarters_Lobby.jpg',
-      category: 'Office View',
-      type: 'image',
-      size: '4.1 MB',
-      sizeBytes: 4200000,
-      date: 'Jul 18',
-      timestamp: Date.now() - 1000 * 60 * 60 * 48,
-      status: 'Approved',
-      description: 'Main lobby area shot with ambient natural daylight.',
-      url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=300&q=80',
-    },
-    {
-      id: 4,
-      name: 'Product_Reveal_Draft.mp4',
-      category: 'Products',
-      type: 'video',
-      size: '18.5 MB',
-      sizeBytes: 19400000,
-      date: 'Jul 16',
-      timestamp: Date.now() - 1000 * 60 * 60 * 72,
-      status: 'Approved',
-      description: 'Feature demonstration video for the v2.0 software release.',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD3Jimuu-B4LWppBlMkDFBuoUyVtoA4p-ilkzJM6JTRQUbElC4T5hs8VRN8dJzHeXZfMSRpLJm3xNR17lWyCT-cvSfVyPYiuD6sEcOdaaHuITbxMo9VeOggj-EMjwY214lPqnDHptGeUqELk6lHZ5yBCRRSEuNm_K8HjIy1bTJh8RoAOWgebkylgR4CFuVOD_D7g0ql5u2BUcXfEvq-d4Gx1Ah8FBF0gpPVZ8g2gqx5_toU2Gsj5MQXi10Tyw9u_kTolEz-X3vQTRHT',
-    },
-    {
-      id: 5,
-      name: 'Annual_Tech_Summit_Keynote.mp4',
-      category: 'Events',
-      type: 'video',
-      size: '42.8 MB',
-      sizeBytes: 44800000,
-      date: 'Jul 15',
-      timestamp: Date.now() - 1000 * 60 * 60 * 96,
-      status: 'Approved',
-      description: 'Keynote presentation recording from Tech Summit 2026.',
-    },
-    {
-      id: 6,
-      name: 'Corporate_Governance_2026.pdf',
-      category: 'Business Documents',
-      type: 'document',
-      size: '1.8 MB',
-      sizeBytes: 1880000,
-      date: 'Jul 14',
-      timestamp: Date.now() - 1000 * 60 * 60 * 120,
-      status: 'Approved',
-      description: 'Official corporate compliance policy and ethics guide.',
-    },
-    {
-      id: 7,
-      name: 'Brand_Banner_Twitter.png',
-      category: 'Business Assets',
-      type: 'image',
-      size: '2.5 MB',
-      sizeBytes: 2600000,
-      date: 'Jul 12',
-      timestamp: 1697587200000,
-      status: 'Approved',
-      description: 'Social header graphics for X/Twitter brand page.',
-      url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAleUQStKWP_nrPLhcPgKO1wb_6LbpZM2WcZRJkvqSNyOd-4d16FY3P2EwbkP_FP3Wt33EZeXgjELG-2ONDt-4UJobjnV5my8HB9QsvMP3rQ2AVhomrZux2ECKmXz8SSap3un_SuaqzTlkCxSeJeYuA_e_an2mmozXi8MShxo5flHnQP1rRkQd1ygbWn21cg1wttdiGBBorf956x22nx9OgxLRR6xXSk08b9mBoJVweYkYugFLIoIcqlBDx0ynqSg_Ze5a6BKFYi37e',
-    },
-  ])
+  const [assets, setAssets] = useState([]);
 
   // Staged Files Pending Upload
   const [pendingFiles, setPendingFiles] = useState([])
@@ -152,6 +66,52 @@ export default function Uploads() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [assetToDelete, setAssetToDelete] = useState(null)
   const [activeDropdownId, setActiveDropdownId] = useState(null)
+
+  const fetchUploads = async (search = '', sortBy = 'Newest') => {
+    try {
+      const response = await apiClient.get('/uploads', {
+        params: {
+          ...(search ? { search } : {}),
+          ...(sortBy ? { sortBy } : {})
+        }
+      });
+      const uploads = response.data;
+      const mapped = uploads.map((u) => {
+        const type = u.mimeType?.startsWith('image/')
+          ? 'image'
+          : u.mimeType?.startsWith('video/')
+            ? 'video'
+            : 'document';
+        const sizeBytes = u.fileSize ?? 0;
+        const size = sizeBytes > 1024 * 1024
+          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.round(sizeBytes / 1024)} KB`;
+        const created = new Date(u.createdAt);
+        return {
+          id: u.id,
+          name: u.originalName,
+          category: u.category,
+          type,
+          size,
+          sizeBytes,
+          date: created.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          timestamp: created.getTime(),
+          status: 'Approved',
+          description: u.description || '',
+          url: u.fileUrl,
+        };
+      });
+      setAssets(mapped);
+    } catch (err) {
+      console.error('Failed to fetch uploads', err);
+    }
+  };
+
+  // Fetch uploads on mount, search query change, or sort option change
+  useEffect(() => {
+    fetchUploads(searchQuery, sortOption);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, sortOption]);
 
   // Auto-simulate upload progress bar
   useEffect(() => {
@@ -242,43 +202,52 @@ export default function Uploads() {
     setPendingFiles((prev) => prev.filter((pf) => pf.id !== id))
   }
 
-  const handleUploadSubmit = () => {
-    if (pendingFiles.length === 0) return
+  const handleUploadSubmit = async () => {
+    console.log('Upload button clicked, pendingFiles:', pendingFiles);
+    if (pendingFiles.length === 0) {
+      console.log('No pending files to upload');
+      return;
+    }
 
-    const newAssets = pendingFiles.map((pf) => ({
-      id: Date.now() + Math.random(),
-      name: pf.name,
-      category: activeCategory,
-      type: pf.type,
-      size: pf.size,
-      sizeBytes: pf.sizeBytes,
-      date: 'Just now',
-      timestamp: Date.now(),
-      status: 'Uploading',
-      progress: 10,
-      description: pf.description,
-      url: pf.previewUrl || (pf.type === 'image' ? 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=300&q=80' : undefined),
-    }))
-
-    setAssets((prev) => [...newAssets, ...prev])
-    setPendingFiles([])
+    try {
+      await Promise.all(
+        pendingFiles.map(async (pf) => {
+          const formData = new FormData()
+          formData.append('file', pf.file)
+          formData.append('category', activeCategory)
+          if (pf.description) {
+            formData.append('description', pf.description)
+          }
+          await uploadFile(formData)
+        })
+      )
+      await fetchUploads(searchQuery, sortOption)
+      setPendingFiles([])
+    } catch (err) {
+      console.error('Upload failed:', err)
+    }
   }
 
   // Create new folder action
   const handleCreateFolder = (e) => {
     e.preventDefault()
     if (!newFolderName.trim()) return
-    alert(`Mock folder "${newFolderName}" created under ${activeCategory}!`)
+    alert(`Mock folder "${newFolderName}" created under ${CATEGORY_LABELS[activeCategory]}!`)
     setNewFolderName('')
     setIsFolderModalOpen(false)
   }
 
   // Delete file action
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (assetToDelete) {
-      setAssets((prev) => prev.filter((a) => a.id !== assetToDelete.id))
-      setAssetToDelete(null)
-      setIsDeleteModalOpen(false)
+      try {
+        await deleteUpload(assetToDelete.id)
+        await fetchUploads(searchQuery, sortOption)
+        setAssetToDelete(null)
+        setIsDeleteModalOpen(false)
+      } catch (err) {
+        console.error('Failed to delete upload', err)
+      }
     }
   }
 
@@ -294,9 +263,24 @@ export default function Uploads() {
     setActiveDropdownId(null)
   }
 
-  const handleDownloadSim = (asset) => {
-    alert(`Downloading ${asset.name} (${asset.size})...`)
-    setActiveDropdownId(null)
+  const handleDownload = async (asset) => {
+    try {
+      const response = await apiClient.get(`/uploads/${asset.id}/download`, {
+        responseType: 'blob',
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', asset.name)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Failed to download file', err)
+    } finally {
+      setActiveDropdownId(null)
+    }
   }
 
   // Filter assets by Active Category Tab + Search Query + Sorting
@@ -374,17 +358,15 @@ export default function Uploads() {
                   setActiveCategory(category)
                   setPendingFiles([])
                 }}
-                className={`px-4 py-2.5 text-sm font-medium rounded-control transition-all flex items-center gap-2 ${
-                  isActive
-                    ? 'bg-primary text-white shadow-soft font-semibold'
-                    : 'text-ink-muted hover:text-ink hover:bg-canvas'
-                }`}
-              >
-                <span>{category}</span>
-                <span
-                  className={`px-1.5 py-0.5 text-xs rounded-full ${
-                    isActive ? 'bg-white/20 text-white' : 'bg-canvas text-ink-muted'
+                className={`px-4 py-2.5 text-sm font-medium rounded-control transition-all flex items-center gap-2 ${isActive
+                  ? 'bg-primary text-white shadow-soft font-semibold'
+                  : 'text-ink-muted hover:text-ink hover:bg-canvas'
                   }`}
+              >
+                <span>{CATEGORY_LABELS[category]}</span>
+                <span
+                  className={`px-1.5 py-0.5 text-xs rounded-full ${isActive ? 'bg-white/20 text-white' : 'bg-canvas text-ink-muted'
+                    }`}
                 >
                   {count}
                 </span>
@@ -399,14 +381,14 @@ export default function Uploads() {
         <div className="flex justify-between items-center border-b border-border pb-3">
           <div>
             <h3 className="text-base font-semibold text-ink">
-              Upload to <span className="text-primary">{activeCategory}</span>
+              Upload to <span className="text-primary">{CATEGORY_LABELS[activeCategory]}</span>
             </h3>
             <p className="text-xs text-ink-muted mt-0.5">
-              Select or drop files to store under {activeCategory}
+              Select or drop files to store under {CATEGORY_LABELS[activeCategory]}
             </p>
           </div>
           <Badge tone="primary" className="text-xs">
-            Category: {activeCategory}
+            Category: {CATEGORY_LABELS[activeCategory]}
           </Badge>
         </div>
 
@@ -416,11 +398,10 @@ export default function Uploads() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current.click()}
-          className={`border-2 border-dashed rounded-control p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${
-            isDragging
-              ? 'border-primary bg-primary-50/50 scale-[1.01]'
-              : 'border-border bg-canvas hover:border-primary hover:bg-surface'
-          }`}
+          className={`border-2 border-dashed rounded-control p-6 flex flex-col items-center justify-center gap-3 transition-all cursor-pointer ${isDragging
+            ? 'border-primary bg-primary-50/50 scale-[1.01]'
+            : 'border-border bg-canvas hover:border-primary hover:bg-surface'
+            }`}
         >
           <div className="w-12 h-12 rounded-full bg-primary-50 text-primary flex items-center justify-center">
             <Upload size={24} />
@@ -501,7 +482,7 @@ export default function Uploads() {
                 Cancel
               </Button>
               <Button variant="primary" size="sm" onClick={handleUploadSubmit} className="gap-1.5">
-                <Upload size={14} /> Upload {pendingFiles.length} File{pendingFiles.length > 1 ? 's' : ''} to {activeCategory}
+                <Upload size={14} /> Upload {pendingFiles.length} File{pendingFiles.length > 1 ? 's' : ''} to {CATEGORY_LABELS[activeCategory]}
               </Button>
             </div>
           </div>
@@ -513,7 +494,7 @@ export default function Uploads() {
         {/* Search, Sort & View Mode Toolbar */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
           <h3 className="text-base font-semibold text-ink">
-            {activeCategory} Files ({categoryAssets.length})
+            {CATEGORY_LABELS[activeCategory]} Files ({categoryAssets.length})
           </h3>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -552,18 +533,16 @@ export default function Uploads() {
             <div className="flex border border-border rounded-control overflow-hidden bg-surface">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`p-2 transition-colors ${
-                  viewMode === 'grid' ? 'bg-canvas text-primary' : 'text-ink-muted hover:text-ink'
-                }`}
+                className={`p-2 transition-colors ${viewMode === 'grid' ? 'bg-canvas text-primary' : 'text-ink-muted hover:text-ink'
+                  }`}
                 title="Grid View"
               >
                 <LayoutGrid size={16} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`p-2 transition-colors ${
-                  viewMode === 'list' ? 'bg-canvas text-primary' : 'text-ink-muted hover:text-ink'
-                }`}
+                className={`p-2 transition-colors ${viewMode === 'list' ? 'bg-canvas text-primary' : 'text-ink-muted hover:text-ink'
+                  }`}
                 title="List View"
               >
                 <ListIcon size={16} />
@@ -576,9 +555,9 @@ export default function Uploads() {
         {categoryAssets.length === 0 ? (
           <Card className="p-12 flex flex-col items-center justify-center text-center">
             <FolderOpen size={48} className="text-ink-muted mb-3 stroke-1" />
-            <h4 className="text-base font-semibold text-ink">No files in {activeCategory}</h4>
+            <h4 className="text-base font-semibold text-ink">No files in {CATEGORY_LABELS[activeCategory]}</h4>
             <p className="text-xs text-ink-muted mt-1 max-w-sm">
-              Upload files above to store them in {activeCategory}.
+              Upload files above to store them in {CATEGORY_LABELS[activeCategory]}.
             </p>
           </Card>
         ) : viewMode === 'grid' ? (
@@ -632,7 +611,7 @@ export default function Uploads() {
                           <Eye size={16} />
                         </button>
                         <button
-                          onClick={() => handleDownloadSim(asset)}
+                          onClick={() => handleDownload(asset)}
                           className="p-1 rounded text-ink-muted hover:text-primary hover:bg-canvas"
                           title="Download"
                         >
@@ -686,7 +665,7 @@ export default function Uploads() {
                               <Eye size={14} /> Details
                             </button>
                             <button
-                              onClick={() => handleDownloadSim(asset)}
+                              onClick={() => handleDownload(asset)}
                               className="w-full text-left px-3 py-1.5 text-xs text-ink hover:bg-canvas flex items-center gap-1.5"
                             >
                               <Download size={14} /> Download
@@ -780,7 +759,7 @@ export default function Uploads() {
                             <Eye size={16} />
                           </button>
                           <button
-                            onClick={() => handleDownloadSim(asset)}
+                            onClick={() => handleDownload(asset)}
                             className="hover:text-primary transition-colors cursor-pointer"
                             title="Download"
                           >
@@ -837,7 +816,7 @@ export default function Uploads() {
       >
         <div className="space-y-4">
           <p className="text-sm text-ink-muted">
-            Are you sure you want to delete <strong>{assetToDelete?.name}</strong> from {activeCategory}?
+            Are you sure you want to delete <strong>{assetToDelete?.name}</strong> from {CATEGORY_LABELS[activeCategory]}?
           </p>
           <div className="bg-canvas p-3 rounded-control border border-border flex items-center gap-2">
             <AlertCircle size={16} className="text-danger" />
@@ -925,7 +904,7 @@ export default function Uploads() {
               <Button
                 variant="outline"
                 className="flex items-center gap-1"
-                onClick={() => handleDownloadSim(previewAsset)}
+                onClick={() => handleDownload(previewAsset)}
               >
                 <Download size={14} /> Download
               </Button>

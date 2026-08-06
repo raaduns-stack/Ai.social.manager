@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, integer, timestamp, boolean, json, pgEnum } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  integer,
+  timestamp,
+  boolean,
+  json,
+  pgEnum,
+} from 'drizzle-orm/pg-core';
 
 export const planIntervalEnum = pgEnum('plan_interval', ['monthly', 'yearly']);
 

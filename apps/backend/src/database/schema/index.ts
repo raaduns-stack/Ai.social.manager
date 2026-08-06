@@ -7,3 +7,5 @@ export * from './subscriptions.schema';
 export * from './payments.schema';
 export * from './invoices.schema';
 export * from './social-accounts.schema';
+export * from './uploads.schema';
+export * from './relations';

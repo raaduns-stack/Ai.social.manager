@@ -16,10 +16,10 @@ export const payments = pgTable('payments', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  subscriptionId: uuid('subscription_id')
-    .references(() => subscriptions.id, { onDelete: 'set null' }),
-  planId: uuid('plan_id')
-    .references(() => plans.id, { onDelete: 'set null' }),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id, {
+    onDelete: 'set null',
+  }),
+  planId: uuid('plan_id').references(() => plans.id, { onDelete: 'set null' }),
   amount: integer('amount').notNull(), // in kobo/cents
   currency: varchar('currency', { length: 10 }).notNull().default('NGN'),
   status: paymentStatusEnum('status').notNull().default('pending'),

@@ -15,14 +15,18 @@ import { AdminModule } from './admin/admin.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { HealthController } from './health/health.controller';
 import { SocialAccountsModule } from './social-accounts/social-accounts.module';
+import { UploadsModule } from './uploads/uploads.module';
+
 
 @Module({
   imports: [
+    UploadsModule,
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
       validate: validateEnv,
       envFilePath: ['.env'],
+
     }),
     ThrottlerModule.forRoot([
       {
@@ -38,6 +42,8 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
     InvoicesModule,
     AdminModule,
     SocialAccountsModule,
+    UploadsModule,
+
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule, SupportModule

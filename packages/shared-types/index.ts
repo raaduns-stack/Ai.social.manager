@@ -75,3 +75,25 @@ export interface ApiErrorResponse {
   timestamp: string;
   message: string | string[] | object;
 }
+
+export type UploadCategory =
+  | 'business_assets'
+  | 'staff_images'
+  | 'office_view'
+  | 'products'
+  | 'events'
+  | 'business_documents';
+
+export interface Upload {
+  id: string;
+  userId: string;
+  category: UploadCategory;
+  originalName: string;
+  storedName: string;
+  fileUrl: string;
+  mimeType: string;
+  fileSize: number;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+

@@ -13,11 +13,6 @@ export const ALL_ADMIN_ROLES = [
   UserRole.DESIGNER,
 ];
 
-export const MANAGEMENT_ROLES = [
-  UserRole.SUPER_ADMIN,
-  UserRole.ACCOUNT_MANAGER,
-];
+export const MANAGEMENT_ROLES = [UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER];
 
-export const FINANCIAL_ROLES = [
-  UserRole.SUPER_ADMIN,
-];
+export const FINANCIAL_ROLES = [UserRole.SUPER_ADMIN];

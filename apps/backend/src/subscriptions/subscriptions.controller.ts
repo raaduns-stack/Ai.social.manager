@@ -21,10 +21,7 @@ export class SubscriptionsController {
 
   @Post()
   @ApiOperation({ summary: 'Subscribe or upgrade to a new plan (creates a pending subscription)' })
-  create(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: CreateSubscriptionDto,
-  ) {
+  create(@CurrentUser() user: { userId: string }, @Body() dto: CreateSubscriptionDto) {
     return this.subscriptionsService.create(user.userId, dto.planId);
   }
 

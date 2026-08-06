@@ -22,7 +22,7 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
-  ) { }
+  ) {}
 
   /**
    * Initialize a Flutterwave payment for a plan subscription.
@@ -65,8 +65,7 @@ export class PaymentsService {
       this.configService.get<string>('payments.flutterwaveSecretKey') ||
       process.env.FLUTTERWAVE_SECRET_KEY;
 
-    const corsOrigin =
-      this.configService.get<string>('corsOrigin') ?? 'http://localhost:5173';
+    const corsOrigin = this.configService.get<string>('corsOrigin') ?? 'http://localhost:5173';
     const redirectUrl = `${corsOrigin}/payments/callback`;
 
     const response = await fetch('https://api.flutterwave.com/v3/payments', {
@@ -109,7 +108,6 @@ export class PaymentsService {
     return this.verifyAndFulfillTransaction(transactionId);
   }
 
-
   /**
    * Handle incoming Flutterwave webhook notifications.
    */
@@ -122,10 +120,7 @@ export class PaymentsService {
       throw new UnauthorizedException('Invalid or missing verif-hash header');
     }
 
-    if (
-      payload?.event === 'charge.completed' &&
-      payload?.data?.status === 'successful'
-    ) {
+    if (payload?.event === 'charge.completed' && payload?.data?.status === 'successful') {
       const transactionId = payload.data.id || payload.data.tx_ref;
       if (transactionId) {
         // Re-verify the transaction against Flutterwave API before activating anything
@@ -226,9 +221,7 @@ export class PaymentsService {
 
     // Activate the subscription
     if (payment.subscriptionId) {
-      const plan = payment.planId
-        ? await this.plansService.findById(payment.planId)
-        : null;
+      const plan = payment.planId ? await this.plansService.findById(payment.planId) : null;
 
       const startDate = new Date();
       const endDate = new Date(startDate);

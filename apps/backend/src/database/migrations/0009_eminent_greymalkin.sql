@@ -1,0 +1,1 @@
+ALTER TABLE "uploads" ADD COLUMN "description" varchar(500) DEFAULT '';

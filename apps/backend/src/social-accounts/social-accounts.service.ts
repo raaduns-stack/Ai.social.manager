@@ -10,9 +10,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class SocialAccountsService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /**
    * Create a new social account linked to the given user.
@@ -51,12 +49,7 @@ export class SocialAccountsService {
         ...allowedUpdates,
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(schema.social_accounts.id, id),
-          eq(schema.social_accounts.userId, userId),
-        ),
-      )
+      .where(and(eq(schema.social_accounts.id, id), eq(schema.social_accounts.userId, userId)))
       .returning();
     if (!updated) {
       throw new NotFoundException('Social account not found');
@@ -68,12 +61,7 @@ export class SocialAccountsService {
   async remove(userId: string, id: string) {
     const [deleted] = await this.db
       .delete(schema.social_accounts)
-      .where(
-        and(
-          eq(schema.social_accounts.id, id),
-          eq(schema.social_accounts.userId, userId),
-        ),
-      )
+      .where(and(eq(schema.social_accounts.id, id), eq(schema.social_accounts.userId, userId)))
       .returning();
     if (!deleted) {
       throw new NotFoundException('Social account not found');

@@ -9,16 +9,13 @@ import { UpdateSocialAccountDto } from './dto/update-social-account.dto';
 @ApiTags('social-accounts')
 @Controller('social-accounts')
 export class SocialAccountsController {
-  constructor(private readonly socialAccountsService: SocialAccountsService) { }
+  constructor(private readonly socialAccountsService: SocialAccountsService) {}
 
   @Post()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Create a new social account for the authenticated user' })
-  create(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: CreateSocialAccountDto,
-  ) {
+  create(@CurrentUser() user: { userId: string }, @Body() dto: CreateSocialAccountDto) {
     return this.socialAccountsService.create(user.userId, dto);
   }
 
@@ -33,7 +30,9 @@ export class SocialAccountsController {
   @Patch(':id')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
-  @ApiOperation({ summary: 'Update a social account (status / token expiration) for the authenticated user' })
+  @ApiOperation({
+    summary: 'Update a social account (status / token expiration) for the authenticated user',
+  })
   update(
     @CurrentUser() user: { userId: string },
     @Param('id') id: string,

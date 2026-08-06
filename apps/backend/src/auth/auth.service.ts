@@ -42,9 +42,9 @@ export class AuthService {
     const [user] = await this.db
       .insert(schema.users)
       .values({
-          email: dto.email,
-          passwordHash,
-          fullName: dto.fullName,
+        email: dto.email,
+        passwordHash,
+        fullName: dto.fullName,
       })
       .returning();
 
