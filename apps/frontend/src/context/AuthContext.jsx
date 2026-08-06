@@ -15,7 +15,7 @@ export function AuthProvider({ children }) {
     setUser(store.user)
   }, [store.user])
 
-  // Fetch subscription from backend to determine hasActiveSubscription
+  // Fetch subscription from backend to determine hasActiveSubscription and inject plan
   const checkSubscription = async () => {
     if (window.location.pathname.startsWith('/admin')) {
       // Skip customer background fetches entirely when on Admin routes
@@ -29,6 +29,14 @@ export function AuthProvider({ children }) {
       const response = await apiClient.get('/subscription')
       const sub = response.data
       setHasActiveSubscription(sub && sub.status === 'active')
+
+      // Inject plan into the global user state so features like WhatsApp support can read user.plan.slug
+      if (sub && sub.plan && store.user) {
+        if (store.user.plan?.id !== sub.plan.id || store.user.plan?.slug !== sub.plan.slug) {
+          const updatedUser = { ...store.user, plan: sub.plan };
+          store.setAuth(updatedUser, store.accessToken, store.refreshToken);
+        }
+      }
     } catch (err) {
       setHasActiveSubscription(false)
     }

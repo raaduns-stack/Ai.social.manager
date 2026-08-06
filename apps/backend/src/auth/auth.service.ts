@@ -11,7 +11,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -201,6 +201,16 @@ export class AuthService {
       role: user.role,
     });
 
+    // Fetch the active plan to embed in the login payload
+    const activeSub = await this.db.query.subscriptions.findFirst({
+      where: and(
+        eq(schema.subscriptions.userId, user.id),
+        eq(schema.subscriptions.status, 'active')
+      ),
+      with: { plan: true },
+      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+    });
+
     return {
       user: {
         id: user.id,
@@ -208,6 +218,7 @@ export class AuthService {
         fullName: user.fullName,
         businessName: user.businessName,
         role: user.role,
+        plan: activeSub?.plan || null,
       },
       ...tokens,
     };

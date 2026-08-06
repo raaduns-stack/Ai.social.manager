@@ -64,7 +64,7 @@ export default function ChoosePlan() {
         'Basic AI image generation',
         'Content preview',
         'Basic analytics',
-        'AI/WhatsApp Support',
+
       ]
     } else if (plan.slug === 'starter') {
       return [
