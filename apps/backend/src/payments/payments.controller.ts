@@ -15,10 +15,7 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Initialize Flutterwave payment for a subscription plan' })
-  initialize(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: InitializePaymentDto,
-  ) {
+  initialize(@CurrentUser() user: { userId: string }, @Body() dto: InitializePaymentDto) {
     return this.paymentsService.initializePayment(user.userId, dto.planId);
   }
 
@@ -26,19 +23,13 @@ export class PaymentsController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
   @ApiOperation({ summary: 'Verify Flutterwave payment transaction and activate subscription' })
-  verify(
-    @CurrentUser() user: { userId: string },
-    @Param('transactionId') transactionId: string,
-  ) {
+  verify(@CurrentUser() user: { userId: string }, @Param('transactionId') transactionId: string) {
     return this.paymentsService.verifyPayment(user.userId, transactionId);
   }
 
   @Post('webhook')
   @ApiOperation({ summary: 'Handle Flutterwave payment completion webhooks' })
-  webhook(
-    @Headers('verif-hash') verifHash: string,
-    @Body() body: any,
-  ) {
+  webhook(@Headers('verif-hash') verifHash: string, @Body() body: any) {
     return this.paymentsService.handleWebhook(verifHash, body);
   }
 }

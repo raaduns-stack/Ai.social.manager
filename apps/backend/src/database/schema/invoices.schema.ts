@@ -4,22 +4,17 @@ import { users } from './users.schema';
 import { payments } from './payments.schema';
 import { subscriptions } from './subscriptions.schema';
 
-export const invoiceStatusEnum = pgEnum('invoice_status', [
-  'paid',
-  'unpaid',
-  'void',
-  'refunded',
-]);
+export const invoiceStatusEnum = pgEnum('invoice_status', ['paid', 'unpaid', 'void', 'refunded']);
 
 export const invoices = pgTable('invoices', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  paymentId: uuid('payment_id')
-    .references(() => payments.id, { onDelete: 'set null' }),
-  subscriptionId: uuid('subscription_id')
-    .references(() => subscriptions.id, { onDelete: 'set null' }),
+  paymentId: uuid('payment_id').references(() => payments.id, { onDelete: 'set null' }),
+  subscriptionId: uuid('subscription_id').references(() => subscriptions.id, {
+    onDelete: 'set null',
+  }),
   invoiceNumber: varchar('invoice_number', { length: 100 }).notNull().unique(),
   amount: integer('amount').notNull(), // in kobo/cents
   currency: varchar('currency', { length: 10 }).notNull().default('NGN'),

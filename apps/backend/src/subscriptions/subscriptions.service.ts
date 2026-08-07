@@ -1,8 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import { eq, and, desc } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
@@ -12,9 +8,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /** Return the logged-in user's current active subscription with plan details. */
   async findByUserId(userId: string) {

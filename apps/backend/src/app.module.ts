@@ -18,6 +18,7 @@ import { HealthController } from './health/health.controller';
 import { SocialAccountsModule } from './social-accounts/social-accounts.module';
 import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
+import { UploadsModule } from './uploads/uploads.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { FaqsModule } from './faqs/faqs.module';
       load: [configuration],
       validate: validateEnv,
       envFilePath: ['.env'],
+
     }),
     ThrottlerModule.forRoot([
       {
@@ -45,6 +47,7 @@ import { FaqsModule } from './faqs/faqs.module';
     SocialAccountsModule,
     SupportModule,
     FaqsModule,
+    UploadsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule

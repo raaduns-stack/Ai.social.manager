@@ -11,9 +11,7 @@ import { RequirePlanTiers } from '../auth/decorators/plan-tiers.decorator';
 @UseGuards(JwtAuthGuard)
 @Controller('dashboard')
 export class DashboardController {
-  constructor(
-    private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+  constructor(private readonly subscriptionsService: SubscriptionsService) {}
 
   @Get('my-summary')
   @ApiOperation({ summary: "Get the logged-in user's customer dashboard summary" })
