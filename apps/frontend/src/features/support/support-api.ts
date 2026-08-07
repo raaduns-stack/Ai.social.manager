@@ -102,7 +102,7 @@ export async function adminGetTicketDetails(id: string): Promise<SupportTicket> 
 }
 
 export async function adminAssignTicket(id: string, staffId: string): Promise<SupportTicket> {
-  const response = await api.patch<SupportTicket>(`/admin/support/tickets/${id}/assign`, { staffId })
+  const response = await api.patch<SupportTicket>(`/admin/support/tickets/${id}/assign`, { assigneeId: staffId })
   return response.data
 }
 
