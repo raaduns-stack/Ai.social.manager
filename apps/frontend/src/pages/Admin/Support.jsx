@@ -22,12 +22,8 @@ import {
   adminAddTicketMessage,
 } from '../../features/support/support-api'
 import { cn } from '../../utils/cn'
-import { useAdminAuth } from '../../context/useAdminAuth'
 
 export default function Support() {
-  const { admin } = useAdminAuth()
-  const isSuperAdmin = admin?.role === 'super_admin'
-
   const [tickets, setTickets] = useState([])
   const [staffList, setStaffList] = useState([])
   const [loading, setLoading] = useState(true)
@@ -109,7 +105,6 @@ export default function Support() {
 
   // Inline Handlers: Assign Ticket
   const handleAssign = async (ticketId, staffId) => {
-    setError(null)
     try {
       const updated = await adminAssignTicket(ticketId, staffId)
       // Update in-state tickets array
@@ -126,8 +121,6 @@ export default function Support() {
       setTickets(freshTickets)
     } catch (err) {
       console.error('Failed to assign ticket:', err)
-      setError(err?.response?.data?.message || err?.message || 'Failed to assign ticket. You may not have permission.')
-      setTimeout(() => setError(null), 5000)
     }
   }
 
@@ -219,7 +212,7 @@ export default function Support() {
 
       {error && (
         <div className="p-4 bg-danger/10 border border-danger/20 text-danger rounded-control text-sm">
-          {typeof error === 'object' ? error.message || JSON.stringify(error) : error}
+          {error}
         </div>
       )}
 
@@ -307,37 +300,18 @@ export default function Support() {
                       </select>
                     </td>
                     <td className="px-4 py-3">
-                      {isSuperAdmin ? (
-                        <select
-                          value={ticket.assignedToStaffId || ''}
-                          onChange={(e) => handleAssign(ticket.id, e.target.value)}
-                          className="h-8 px-2 py-0.5 border border-border rounded-control text-xs text-ink bg-surface focus:outline-none cursor-pointer w-full max-w-[150px]"
-                        >
-                          <option value="">Unassigned</option>
-                          {staffList.map((staff) => (
-                            <option key={staff.id} value={staff.id}>
-                              {staff.fullName || staff.name || staff.email} ({staff.role})
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        !ticket.assignedToStaffId ? (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleAssign(ticket.id, admin?.id)}
-                            className="text-xs h-8 px-3"
-                          >
-                            Claim this ticket
-                          </Button>
-                        ) : ticket.assignedToStaffId === admin?.id ? (
-                          <span className="text-xs font-semibold text-ink">Claimed by you</span>
-                        ) : (
-                          <span className="text-xs text-ink-muted">
-                            Claimed by {ticket.assignedStaff?.fullName || ticket.assignedStaff?.name || 'another staff member'}
-                          </span>
-                        )
-                      )}
+                      <select
+                        value={ticket.assignedToStaffId || ''}
+                        onChange={(e) => handleAssign(ticket.id, e.target.value)}
+                        className="h-8 px-2 py-0.5 border border-border rounded-control text-xs text-ink bg-surface focus:outline-none cursor-pointer w-full max-w-[150px]"
+                      >
+                        <option value="">Unassigned</option>
+                        {staffList.map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.name} ({staff.role})
+                          </option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-4 py-3 text-xs text-ink-muted">
                       {new Date(ticket.createdAt).toLocaleDateString()}

@@ -12,7 +12,6 @@ import * as schema from '../database/schema';
 import { CreateTicketDto } from './dto/create-ticket.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { ConfigService } from '@nestjs/config';
-import { ALL_ADMIN_ROLES, UserRole } from '../common/enums/roles.enum';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -119,7 +118,7 @@ export class SupportService {
       if (ticket.status === 'resolved') {
         await tx
           .update(schema.supportTickets)
-          .set({ status: 'open', updatedAt: new Date(), resolvedAt: null })
+          .set({ status: 'open', updatedAt: new Date() })
           .where(eq(schema.supportTickets.id, ticketId));
       } else {
         await tx
@@ -203,69 +202,41 @@ export class SupportService {
     return ticket;
   }
 
-  async assignTicket(admin: { userId: string; role: string }, ticketId: string, assigneeId: string) {
-    const currentTicket = await this.db.query.supportTickets.findFirst({
-      where: eq(schema.supportTickets.id, ticketId),
-    });
-
-    if (!currentTicket) {
-      throw new NotFoundException('Support ticket not found');
-    }
-
-    if (admin.role !== UserRole.SUPER_ADMIN) {
-      if (assigneeId !== admin.userId) {
-        throw new ForbiddenException({
-          message: 'You can only assign tickets to yourself',
-          code: 'ASSIGNMENT_NOT_PERMITTED',
-        });
-      }
-
-      if (currentTicket.assignedToStaffId && currentTicket.assignedToStaffId !== admin.userId) {
-        throw new ForbiddenException({
-          message: 'Ticket is already claimed by another staff member',
-          code: 'ASSIGNMENT_NOT_PERMITTED',
-        });
-      }
-    }
-
-    // Verify staff user exists and is a valid staff member
+  async assignTicket(ticketId: string, staffId: string) {
+    // Verify staff user exists
     const staff = await this.db.query.users.findFirst({
-      where: eq(schema.users.id, assigneeId),
+      where: eq(schema.users.id, staffId),
     });
 
-    if (!staff || !ALL_ADMIN_ROLES.includes(staff.role as UserRole)) {
-      throw new BadRequestException('User is not a valid staff member');
+    if (!staff) {
+      throw new NotFoundException('Staff user not found');
     }
 
     // Update assignment and set status to in_progress if open
     const [ticket] = await this.db
       .update(schema.supportTickets)
       .set({
-        assignedToStaffId: assigneeId,
+        assignedToStaffId: staffId,
         status: 'in_progress', // auto set to in_progress on assignment
         updatedAt: new Date(),
       })
       .where(eq(schema.supportTickets.id, ticketId))
       .returning();
 
+    if (!ticket) {
+      throw new NotFoundException('Support ticket not found');
+    }
+
     return ticket;
   }
 
   async updateTicketStatus(ticketId: string, status: 'open' | 'in_progress' | 'resolved' | 'closed') {
-    const updateData: any = {
-      status,
-      updatedAt: new Date(),
-    };
-
-    if (status === 'resolved') {
-      updateData.resolvedAt = new Date();
-    } else if (status === 'open' || status === 'in_progress') {
-      updateData.resolvedAt = null;
-    }
-
     const [ticket] = await this.db
       .update(schema.supportTickets)
-      .set(updateData)
+      .set({
+        status,
+        updatedAt: new Date(),
+      })
       .where(eq(schema.supportTickets.id, ticketId))
       .returning();
 

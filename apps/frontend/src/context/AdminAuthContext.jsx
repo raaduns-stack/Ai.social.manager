@@ -45,7 +45,6 @@ export function AdminAuthProvider({ children }) {
       }
 
       const session = {
-        id: user.id,
         email: user.email,
         name: user.fullName,
         role: user.role,
