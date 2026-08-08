@@ -25,6 +25,7 @@ import { CustomerProfileModule } from './settings/customer-profile/customer-prof
 import { SystemSettingsModule } from './settings/system-settings/system-settings.module';
 import { NotificationSettingsModule } from './settings/notification-settings/notification-settings.module';
 import { NotificationPreferencesModule } from './settings/notification-preferences/notification-preferences.module';
+import { EmailConfigModule } from './settings/email-config/email-config.module';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { NotificationPreferencesModule } from './settings/notification-preferenc
     SystemSettingsModule,
     NotificationSettingsModule,
     NotificationPreferencesModule,
+    EmailConfigModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule
