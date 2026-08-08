@@ -21,6 +21,7 @@ import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { CompanyProfileModule } from './settings/company-profile/company-profile.module';
+import { CustomerProfileModule } from './settings/customer-profile/customer-profile.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { CompanyProfileModule } from './settings/company-profile/company-profile
     FaqsModule,
     UploadsModule,
     CompanyProfileModule,
+    CustomerProfileModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule
