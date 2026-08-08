@@ -68,6 +68,7 @@ export class AuthService {
           email: dto.email,
           passwordHash,
           fullName: dto.fullName,
+          businessName: dto.businessName,
           isEmailVerified: false,
           emailVerificationCode: code,
           emailVerificationExpiresAt: expiresAt,
@@ -106,23 +107,33 @@ export class AuthService {
    * @returns An object containing the authenticated user and JWT tokens
    */
   async login(dto: LoginDto) {
+    console.log('[DEBUG Auth] Login Attempt:', { email: dto.email, passwordLength: dto.password?.length });
     const user = await this.db.query.users.findFirst({
       where: eq(schema.users.email, dto.email),
     });
     if (!user) {
+      console.log('[DEBUG Auth] User not found for email:', dto.email);
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
+    console.log('[DEBUG Auth] Password comparison result:', {
+      email: dto.email,
+      hashInDB: user.passwordHash,
+      passwordMatches
+    });
+
     if (!passwordMatches) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!user.isActive) {
+      console.log('[DEBUG Auth] User is inactive:', dto.email);
       throw new UnauthorizedException('This account has been suspended');
     }
 
     if (!user.isEmailVerified) {
+      console.log('[DEBUG Auth] User email not verified:', dto.email);
       throw new ForbiddenException({
         statusCode: 403,
         message: 'Your email address is not verified. Please verify your email to log in.',
@@ -130,6 +141,7 @@ export class AuthService {
       });
     }
 
+    console.log('[DEBUG Auth] Login successful, issuing tokens for:', dto.email);
     return this.issueTokens(user);
   }
 

@@ -4,6 +4,7 @@ import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
@@ -37,12 +38,8 @@ export class AuthController {
     return this.authService.resendVerification(dto);
   }
 
-  // NOTE: this guards the refresh endpoint with the *access-token* strategy for
-  // simplicity in this scaffold. For production, add a separate JwtRefreshStrategy
-  // that validates against JWT_REFRESH_SECRET, and check the refresh token against
-  // an allowlist/blocklist table so tokens can be revoked on logout.
   @Post('refresh')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtRefreshGuard)
   @ApiOperation({ summary: 'Exchange a valid token for a fresh access/refresh pair' })
   refresh(@CurrentUser() user: { userId: string; email: string; role: string }) {
     return this.authService.refresh(user.userId, user.email, user.role);
