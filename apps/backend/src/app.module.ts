@@ -27,6 +27,7 @@ import { NotificationSettingsModule } from './settings/notification-settings/not
 import { NotificationPreferencesModule } from './settings/notification-preferences/notification-preferences.module';
 import { EmailConfigModule } from './settings/email-config/email-config.module';
 import { SocialApiSettingsModule } from './settings/social-api-settings/social-api-settings.module';
+import { PaymentGatewaySettingsModule } from './settings/payment-gateway-settings/payment-gateway-settings.module';
 
 @Module({
   imports: [
@@ -64,6 +65,7 @@ import { SocialApiSettingsModule } from './settings/social-api-settings/social-a
     NotificationPreferencesModule,
     EmailConfigModule,
     SocialApiSettingsModule,
+    PaymentGatewaySettingsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule
