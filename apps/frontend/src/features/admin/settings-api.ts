@@ -42,10 +42,8 @@ export interface UpdateCompanyProfileData {
 export interface SystemSettings {
   id: number | string
   defaultTimezone: string | null
-  defaultCurrency: string | null
   maintenanceMode: boolean | null
   allowNewRegistrations: boolean | null
-  freeTrialDays: number | null
   contentApprovalRequired: boolean | null
   dateFormat: string | null
   createdAt: string | Date | null
@@ -54,10 +52,8 @@ export interface SystemSettings {
 
 export interface UpdateSystemSettingsData {
   defaultTimezone?: string
-  defaultCurrency?: string
   maintenanceMode?: boolean
   allowNewRegistrations?: boolean
-  freeTrialDays?: number
   contentApprovalRequired?: boolean
   dateFormat?: string
 }

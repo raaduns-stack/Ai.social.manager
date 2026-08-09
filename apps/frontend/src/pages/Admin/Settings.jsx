@@ -358,10 +358,8 @@ function SystemSettingsTab() {
   const [saveSuccess, setSaveSuccess] = useState(false)
 
   const [defaultTimezone, setDefaultTimezone] = useState('UTC')
-  const [defaultCurrency, setDefaultCurrency] = useState('USD')
   const [maintenanceMode, setMaintenanceMode] = useState(false)
   const [allowNewRegistrations, setAllowNewRegistrations] = useState(true)
-  const [freeTrialDays, setFreeTrialDays] = useState(14)
   const [contentApprovalRequired, setContentApprovalRequired] = useState(false)
   const [dateFormat, setDateFormat] = useState('YYYY-MM-DD')
 
@@ -374,10 +372,8 @@ function SystemSettingsTab() {
         const settings = await getSystemSettings()
         if (active) {
           setDefaultTimezone(settings.defaultTimezone || 'UTC')
-          setDefaultCurrency(settings.defaultCurrency || 'USD')
           setMaintenanceMode(!!settings.maintenanceMode)
           setAllowNewRegistrations(!!settings.allowNewRegistrations)
-          setFreeTrialDays(settings.freeTrialDays ?? 14)
           setContentApprovalRequired(!!settings.contentApprovalRequired)
           setDateFormat(settings.dateFormat || 'YYYY-MM-DD')
         }
@@ -404,10 +400,8 @@ function SystemSettingsTab() {
       setSaveSuccess(false)
       await updateSystemSettings({
         defaultTimezone,
-        defaultCurrency,
         maintenanceMode,
         allowNewRegistrations,
-        freeTrialDays: Number(freeTrialDays),
         contentApprovalRequired,
         dateFormat,
       })
@@ -447,37 +441,19 @@ function SystemSettingsTab() {
       >
         <Card className="p-6">
           <form onSubmit={handleSave} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Default Timezone"
-                id="default-timezone"
-                value={defaultTimezone}
-                onChange={(e) => setDefaultTimezone(e.target.value)}
-              />
-              <Input
-                label="Default Currency"
-                id="default-currency"
-                value={defaultCurrency}
-                onChange={(e) => setDefaultCurrency(e.target.value)}
-              />
-            </div>
+            <Input
+              label="Default Timezone"
+              id="default-timezone"
+              value={defaultTimezone}
+              onChange={(e) => setDefaultTimezone(e.target.value)}
+            />
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input
-                label="Date Format"
-                id="date-format"
-                value={dateFormat}
-                onChange={(e) => setDateFormat(e.target.value)}
-              />
-              <Input
-                label="Free Trial Days"
-                id="free-trial-days"
-                type="number"
-                value={freeTrialDays}
-                onChange={(e) => setFreeTrialDays(e.target.value)}
-              />
-            </div>
-
+            <Input
+              label="Date Format"
+              id="date-format"
+              value={dateFormat}
+              onChange={(e) => setDateFormat(e.target.value)}
+            />
 
             <div className="flex justify-end pt-2">
               <Button type="submit" variant="primary" disabled={saving}>

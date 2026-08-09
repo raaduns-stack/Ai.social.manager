@@ -1,13 +1,9 @@
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import { IsBoolean, IsOptional, IsString } from 'class-validator';
 
 export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsString()
   defaultTimezone?: string;
-
-  @IsOptional()
-  @IsString()
-  defaultCurrency?: string;
 
   @IsOptional()
   @IsBoolean()
@@ -16,11 +12,6 @@ export class UpdateSystemSettingsDto {
   @IsOptional()
   @IsBoolean()
   allowNewRegistrations?: boolean;
-
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  freeTrialDays?: number;
 
   @IsOptional()
   @IsBoolean()

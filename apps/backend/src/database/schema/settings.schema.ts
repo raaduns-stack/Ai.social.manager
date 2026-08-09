@@ -26,10 +26,8 @@ export const companyProfile = pgTable('company_profile', {
 export const systemSettings = pgTable('system_settings', {
   id: uuid('id').primaryKey().defaultRandom(),
   defaultTimezone: varchar('default_timezone', { length: 100 }).notNull().default('Africa/Lagos'),
-  defaultCurrency: varchar('default_currency', { length: 10 }).notNull().default('NGN'),
   maintenanceMode: boolean('maintenance_mode').notNull().default(false),
   allowNewRegistrations: boolean('allow_new_registrations').notNull().default(true),
-  freeTrialDays: integer('free_trial_days').notNull().default(14),
   contentApprovalRequired: boolean('content_approval_required').notNull().default(true),
   dateFormat: varchar('date_format', { length: 30 }).notNull().default('DD/MM/YYYY'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
