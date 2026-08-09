@@ -1,17 +1,57 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as nodemailer from 'nodemailer';
+import { DATABASE_CONNECTION } from '../database/database.module';
+import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import * as schema from '../database/schema';
+import { decryptSecret } from '../common/utils/encryption.util';
 import { User } from '../database/schema';
+
+type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class MailerService {
   private readonly logger = new Logger(MailerService.name);
-  private transporter: nodemailer.Transporter | null = null;
+  constructor(
+    private readonly configService: ConfigService,
+    @Inject(DATABASE_CONNECTION) private readonly db: Database
+  ) {}
 
-  constructor(private readonly configService: ConfigService) {
+  private async getTransporterAndFrom(): Promise<{ transporter: nodemailer.Transporter | null, from: string }> {
+    try {
+      const config = await this.db.query.emailConfig.findFirst();
+      let from = this.configService.get<string>('mail.mailFrom') || 'noreply@socialpilot.ai';
+      
+      if (config && config.smtpHost && config.smtpUsername && config.smtpPasswordEncrypted) {
+        const plainPassword = decryptSecret(config.smtpPasswordEncrypted);
+        const transporter = nodemailer.createTransport({
+          host: config.smtpHost,
+          port: config.smtpPort || 587,
+          secure: config.smtpSecure || false,
+          auth: {
+            user: config.smtpUsername,
+            pass: plainPassword,
+          },
+        });
+        
+        if (config.senderName && config.senderEmail) {
+          from = `"${config.senderName}" <${config.senderEmail}>`;
+        } else if (config.senderEmail) {
+          from = config.senderEmail;
+        }
+        
+        return { transporter, from };
+      }
+    } catch (error) {
+      this.logger.error('Error fetching email config from DB, falling back to .env', error);
+    }
+
+    // Fallback to .env config
     const apiKey = this.configService.get<string>('mail.resendApiKey');
+    const from = this.configService.get<string>('mail.mailFrom') || 'noreply@socialpilot.ai';
+    
     if (apiKey) {
-      this.transporter = nodemailer.createTransport({
+      const transporter = nodemailer.createTransport({
         host: 'smtp.resend.com',
         port: 465,
         secure: true,
@@ -20,14 +60,14 @@ export class MailerService {
           pass: apiKey,
         },
       });
-      this.logger.log('MailerService initialized with Resend SMTP');
-    } else {
-      this.logger.warn('RESEND_API_KEY is not defined. Emails will be logged to the console instead.');
+      return { transporter, from };
     }
+    
+    return { transporter: null, from };
   }
 
   async sendVerificationCode(user: User, code: string): Promise<void> {
-    const from = this.configService.get<string>('mail.mailFrom') || 'noreply@socialpilot.ai';
+    const { transporter, from } = await this.getTransporterAndFrom();
     const subject = 'Verify your SocialPilot AI account';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
@@ -43,9 +83,9 @@ export class MailerService {
       </div>
     `;
 
-    if (this.transporter) {
+    if (transporter) {
       try {
-        await this.transporter.sendMail({
+        await transporter.sendMail({
           from,
           to: user.email,
           subject,
@@ -62,7 +102,7 @@ export class MailerService {
   }
 
   async sendWelcomeEmail(user: User): Promise<void> {
-    const from = this.configService.get<string>('mail.mailFrom') || 'noreply@socialpilot.ai';
+    const { transporter, from } = await this.getTransporterAndFrom();
     const subject = 'Welcome to SocialPilot AI!';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
@@ -76,9 +116,9 @@ export class MailerService {
       </div>
     `;
 
-    if (this.transporter) {
+    if (transporter) {
       try {
-        await this.transporter.sendMail({
+        await transporter.sendMail({
           from,
           to: user.email,
           subject,

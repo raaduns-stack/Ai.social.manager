@@ -20,6 +20,14 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
 import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { CompanyProfileModule } from './settings/company-profile/company-profile.module';
+import { CustomerProfileModule } from './settings/customer-profile/customer-profile.module';
+import { SystemSettingsModule } from './settings/system-settings/system-settings.module';
+import { NotificationSettingsModule } from './settings/notification-settings/notification-settings.module';
+import { NotificationPreferencesModule } from './settings/notification-preferences/notification-preferences.module';
+import { EmailConfigModule } from './settings/email-config/email-config.module';
+import { SocialApiSettingsModule } from './settings/social-api-settings/social-api-settings.module';
+import { PaymentGatewaySettingsModule } from './settings/payment-gateway-settings/payment-gateway-settings.module';
 
 @Module({
   imports: [
@@ -50,6 +58,14 @@ import { UploadsModule } from './uploads/uploads.module';
     SupportModule,
     FaqsModule,
     UploadsModule,
+    CompanyProfileModule,
+    CustomerProfileModule,
+    SystemSettingsModule,
+    NotificationSettingsModule,
+    NotificationPreferencesModule,
+    EmailConfigModule,
+    SocialApiSettingsModule,
+    PaymentGatewaySettingsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule

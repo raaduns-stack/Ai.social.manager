@@ -97,3 +97,111 @@ export interface Upload {
   updatedAt?: Date | string;
 }
 
+export interface CompanyProfile {
+  id: string;
+  companyName: string;
+  logoUrl?: string | null;
+  contactEmail: string;
+  contactPhone?: string | null;
+  website?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  businessDescription?: string | null;
+  registrationNumber?: string | null;
+  taxId?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface SystemSettings {
+  id: string;
+  defaultTimezone?: string | null;
+  defaultCurrency?: string | null;
+  maintenanceMode: boolean;
+  allowNewRegistrations: boolean;
+  freeTrialDays: number;
+  maxSocialAccountsPerCustomer: number;
+  contentApprovalRequired: boolean;
+  dateFormat?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface NotificationTypeSettings {
+  id: string;
+  notificationType: string;
+  emailAvailable: boolean;
+  inAppAvailable: boolean;
+  whatsappAvailable: boolean;
+  isEnabledGlobally: boolean;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface NotificationPreference {
+  notificationType: string;
+  emailEnabled: boolean;
+  inAppEnabled: boolean;
+  whatsappEnabled: boolean;
+  emailAvailable: boolean;
+  inAppAvailable: boolean;
+  whatsappAvailable: boolean;
+}
+
+export interface EmailConfig {
+  id: string;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpUsername?: string | null;
+  smtpPasswordMasked?: string | null;
+  smtpSecure: boolean;
+  senderName?: string | null;
+  senderEmail?: string | null;
+  replyToEmail?: string | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface SocialApiSetting {
+  id: string | null;
+  platform: string;
+  clientId?: string | null;
+  clientSecretMasked?: string | null;
+  redirectUri?: string | null;
+  isEnabled: boolean;
+  createdAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+}
+
+export interface PaymentGatewaySettings {
+  id: string;
+  publicKey?: string | null;
+  secretKeyMasked?: string | null;
+  webhookSecretMasked?: string | null;
+  supportedMethods: string[];
+  isLiveMode: boolean;
+  isEnabled: boolean;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+}
+
+export interface CustomerCompanyProfile {
+  id: string | null;
+  userId: string;
+  businessName: string;
+  businessDescription?: string | null;
+  industry?: string | null;
+  website?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  addressLine1?: string | null;
+  city?: string | null;
+  country?: string | null;
+  logoUrl?: string | null;
+  createdAt?: Date | string | null;
+  updatedAt?: Date | string | null;
+}
