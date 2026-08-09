@@ -1,5 +1,5 @@
 import { Body, Controller, Post, Patch, UseGuards } from '@nestjs/common';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -40,6 +40,7 @@ export class AuthController {
 
   @Patch('change-password')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Change current user password' })
   changePassword(
     @CurrentUser() user: { userId: string },
@@ -54,6 +55,7 @@ export class AuthController {
   // an allowlist/blocklist table so tokens can be revoked on logout.
   @Post('refresh')
   @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Exchange a valid token for a fresh access/refresh pair' })
   refresh(@CurrentUser() user: { userId: string; email: string; role: string }) {
     return this.authService.refresh(user.userId, user.email, user.role);
