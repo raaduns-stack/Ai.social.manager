@@ -30,7 +30,6 @@ export const systemSettings = pgTable('system_settings', {
   maintenanceMode: boolean('maintenance_mode').notNull().default(false),
   allowNewRegistrations: boolean('allow_new_registrations').notNull().default(true),
   freeTrialDays: integer('free_trial_days').notNull().default(14),
-  maxSocialAccountsPerCustomer: integer('max_social_accounts_per_customer').notNull().default(5),
   contentApprovalRequired: boolean('content_approval_required').notNull().default(true),
   dateFormat: varchar('date_format', { length: 30 }).notNull().default('DD/MM/YYYY'),
   createdAt: timestamp('created_at').notNull().defaultNow(),

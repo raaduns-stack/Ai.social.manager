@@ -18,6 +18,7 @@ export const plans = pgTable('plans', {
   price: integer('price').notNull().default(0), // in cents
   interval: planIntervalEnum('interval').notNull().default('monthly'),
   features: json('features').$type<string[]>().default([]),
+  maxSocialAccounts: integer('max_social_accounts').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

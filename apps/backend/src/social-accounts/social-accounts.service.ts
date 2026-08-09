@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
@@ -16,6 +16,32 @@ export class SocialAccountsService {
    * Create a new social account linked to the given user.
    */
   async create(userId: string, dto: CreateSocialAccountDto) {
+    const activeSub = await this.db.query.subscriptions.findFirst({
+      where: and(
+        eq(schema.subscriptions.userId, userId),
+        eq(schema.subscriptions.status, 'active')
+      ),
+      with: {
+        plan: true,
+      },
+    });
+
+    if (!activeSub || !activeSub.plan) {
+      throw new BadRequestException('No active subscription plan found.');
+    }
+
+    const maxSocialAccounts = activeSub.plan.maxSocialAccounts;
+
+    const existingAccounts = await this.db.query.social_accounts.findMany({
+      where: eq(schema.social_accounts.userId, userId),
+    });
+
+    if (existingAccounts.length >= maxSocialAccounts) {
+      throw new BadRequestException(
+        `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activeSub.plan.name}).`
+      );
+    }
+
     const [account] = await this.db
       .insert(schema.social_accounts)
       .values({

@@ -46,7 +46,6 @@ export interface SystemSettings {
   maintenanceMode: boolean | null
   allowNewRegistrations: boolean | null
   freeTrialDays: number | null
-  maxSocialAccountsPerCustomer: number | null
   contentApprovalRequired: boolean | null
   dateFormat: string | null
   createdAt: string | Date | null
@@ -59,7 +58,6 @@ export interface UpdateSystemSettingsData {
   maintenanceMode?: boolean
   allowNewRegistrations?: boolean
   freeTrialDays?: number
-  maxSocialAccountsPerCustomer?: number
   contentApprovalRequired?: boolean
   dateFormat?: string
 }

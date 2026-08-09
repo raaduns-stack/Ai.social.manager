@@ -23,11 +23,6 @@ export class UpdateSystemSettingsDto {
   freeTrialDays?: number;
 
   @IsOptional()
-  @IsNumber()
-  @Min(1)
-  maxSocialAccountsPerCustomer?: number;
-
-  @IsOptional()
   @IsBoolean()
   contentApprovalRequired?: boolean;
 

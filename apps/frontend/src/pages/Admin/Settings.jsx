@@ -362,7 +362,6 @@ function SystemSettingsTab() {
   const [maintenanceMode, setMaintenanceMode] = useState(false)
   const [allowNewRegistrations, setAllowNewRegistrations] = useState(true)
   const [freeTrialDays, setFreeTrialDays] = useState(14)
-  const [maxSocialAccountsPerCustomer, setMaxSocialAccountsPerCustomer] = useState(5)
   const [contentApprovalRequired, setContentApprovalRequired] = useState(false)
   const [dateFormat, setDateFormat] = useState('YYYY-MM-DD')
 
@@ -379,7 +378,6 @@ function SystemSettingsTab() {
           setMaintenanceMode(!!settings.maintenanceMode)
           setAllowNewRegistrations(!!settings.allowNewRegistrations)
           setFreeTrialDays(settings.freeTrialDays ?? 14)
-          setMaxSocialAccountsPerCustomer(settings.maxSocialAccountsPerCustomer ?? 5)
           setContentApprovalRequired(!!settings.contentApprovalRequired)
           setDateFormat(settings.dateFormat || 'YYYY-MM-DD')
         }
@@ -410,7 +408,6 @@ function SystemSettingsTab() {
         maintenanceMode,
         allowNewRegistrations,
         freeTrialDays: Number(freeTrialDays),
-        maxSocialAccountsPerCustomer: Number(maxSocialAccountsPerCustomer),
         contentApprovalRequired,
         dateFormat,
       })
@@ -481,13 +478,6 @@ function SystemSettingsTab() {
               />
             </div>
 
-            <Input
-              label="Max Social Accounts Per Customer"
-              id="max-social-accounts"
-              type="number"
-              value={maxSocialAccountsPerCustomer}
-              onChange={(e) => setMaxSocialAccountsPerCustomer(e.target.value)}
-            />
 
             <div className="flex justify-end pt-2">
               <Button type="submit" variant="primary" disabled={saving}>
