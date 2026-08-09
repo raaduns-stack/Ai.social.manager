@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -6,6 +6,8 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import { Info, ShieldCheck } from 'lucide-react'
 import BrandVoiceForm from '../../components/BrandVoiceForm'
+import { getCompanyInfo, updateCompanyInfo } from '../../features/settings/settings-api'
+import { changePassword } from '../../features/auth/auth-api'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -183,6 +185,11 @@ const textareaStyle = { borderRadius: '8px', border: '1px solid var(--color-bord
 // Tab panels
 // ---------------------------------------------------------------------------
 function CompanyInfoTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [originalProfile, setOriginalProfile] = useState(null)
+
   const [businessName, setBusinessName] = useState('SocialAI Pro')
   const [industry, setIndustry] = useState('Technology & SaaS')
   const [description, setDescription] = useState(
@@ -204,34 +211,104 @@ function CompanyInfoTab() {
     targetAudience: 'Tech startups, digital agencies',
     writingStyle: 'Conversational',
   })
+  const [logoUrl, setLogoUrl] = useState('')
 
   const [saved, setSaved] = useState(false)
 
-  const handleSave = (e) => {
+  const applyProfile = (profile) => {
+    setBusinessName(profile.businessName || '')
+    setIndustry(profile.industry || 'Technology & SaaS')
+    setDescription(profile.businessDescription || '')
+    setEmail(profile.contactEmail || '')
+    setPhoneNumber(profile.contactPhone || '')
+    setLocation(profile.addressLine1 || '')
+    setWebsite(profile.website || '')
+    setLogoUrl(profile.logoUrl || '')
+  }
+
+  const loadProfile = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const profile = await getCompanyInfo()
+      setOriginalProfile(profile)
+      applyProfile(profile)
+    } catch (err) {
+      setError(err.message || 'Failed to load company info')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadProfile()
+  }, [])
+
+  const handleSave = async (e) => {
     if (e && e.preventDefault) e.preventDefault()
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+    try {
+      setSaving(true)
+      const updated = await updateCompanyInfo({
+        businessName,
+        businessDescription: description,
+        industry,
+        website,
+        contactEmail: email,
+        contactPhone: phoneNumber,
+        addressLine1: location,
+        logoUrl,
+      })
+      setOriginalProfile(updated)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (err) {
+      alert(err.message || 'Failed to save settings')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDiscard = () => {
-    setBusinessName('SocialAI Pro')
-    setIndustry('Technology & SaaS')
-    setDescription(
-      'A forward-thinking management firm leveraging artificial intelligence to streamline social media workflows for high-growth startups.'
+    if (originalProfile) {
+      applyProfile(originalProfile)
+    } else {
+      setBusinessName('')
+      setIndustry('Technology & SaaS')
+      setDescription('')
+      setEmail('')
+      setPhoneCountry('US')
+      setPhoneNumber('')
+      setLocation('')
+      setWebsite('')
+      setLogoUrl('')
+      setBusinessWebsite('')
+      setCompetitorUrls('')
+      setCompetitorSocials('')
+      setBrandVoice({
+        tone: 'Professional',
+        targetAudience: 'Tech startups, digital agencies',
+        writingStyle: 'Conversational',
+      })
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading settings...</p>
+      </Card>
     )
-    setEmail('contact@socialai.pro')
-    setPhoneCountry('US')
-    setPhoneNumber('(555) 123-4567')
-    setLocation('')
-    setWebsite('https://socialai.pro')
-    setBusinessWebsite('')
-    setCompetitorUrls('')
-    setCompetitorSocials('')
-    setBrandVoice({
-      tone: 'Professional',
-      targetAudience: 'Tech startups, digital agencies',
-      writingStyle: 'Conversational',
-    })
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={loadProfile}>
+          Retry
+        </Button>
+      </Card>
+    )
   }
 
   return (
@@ -450,8 +527,8 @@ function CompanyInfoTab() {
         <Button variant="outline" onClick={handleDiscard}>
           Discard
         </Button>
-        <Button variant="primary" onClick={handleSave}>
-          {saved ? '✓ Saved!' : 'Save Changes'}
+        <Button variant="primary" onClick={handleSave} disabled={saving}>
+          {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
         </Button>
       </div>
     </div>
@@ -512,18 +589,48 @@ function SecurityTab() {
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
   const [confirmPw, setConfirmPw] = useState('')
+  const [currentPwError, setCurrentPwError] = useState('')
   const [pwError, setPwError] = useState('')
+  const [loading, setLoading] = useState(false)
   const [pwSaved, setPwSaved] = useState(false)
 
-  const handlePasswordUpdate = (e) => {
+  const handlePasswordUpdate = async (e) => {
     e.preventDefault()
     setPwError('')
-    if (!currentPw) { setPwError('Current password is required.'); return }
-    if (newPw.length < 12) { setPwError('New password must be at least 12 characters.'); return }
-    if (newPw !== confirmPw) { setPwError('New passwords do not match.'); return }
-    setPwSaved(true)
-    setCurrentPw(''); setNewPw(''); setConfirmPw('')
-    setTimeout(() => setPwSaved(false), 2000)
+    setCurrentPwError('')
+    setPwSaved(false)
+
+    if (!currentPw) {
+      setCurrentPwError('Current password is required.')
+      return
+    }
+    if (newPw.length < 8) {
+      setPwError('New password must be at least 8 characters.')
+      return
+    }
+    if (newPw !== confirmPw) {
+      setPwError('New passwords do not match.')
+      return
+    }
+
+    try {
+      setLoading(true)
+      await changePassword(currentPw, newPw)
+      setPwSaved(true)
+      setCurrentPw('')
+      setNewPw('')
+      setConfirmPw('')
+      setTimeout(() => setPwSaved(false), 3000)
+    } catch (err) {
+      const message = err.response?.data?.message || err.message || 'Failed to update password'
+      if (message.toLowerCase().includes('current password')) {
+        setCurrentPwError(message)
+      } else {
+        setPwError(message)
+      }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -542,6 +649,7 @@ function SecurityTab() {
               placeholder="••••••••"
               value={currentPw}
               onChange={(e) => setCurrentPw(e.target.value)}
+              error={currentPwError}
             />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Input
@@ -570,8 +678,8 @@ function SecurityTab() {
             </p>
 
             <div className="flex justify-end pt-2">
-              <Button type="submit" variant="primary">
-                {pwSaved ? '✓ Updated!' : 'Update Password'}
+              <Button type="submit" variant="primary" disabled={loading}>
+                {loading ? 'Updating...' : pwSaved ? '✓ Updated!' : 'Update Password'}
               </Button>
             </div>
           </form>
