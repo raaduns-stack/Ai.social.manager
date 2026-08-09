@@ -6,7 +6,12 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import { Info, ShieldCheck } from 'lucide-react'
 import BrandVoiceForm from '../../components/BrandVoiceForm'
-import { getCompanyInfo, updateCompanyInfo } from '../../features/settings/settings-api'
+import {
+  getCompanyInfo,
+  updateCompanyInfo,
+  getNotificationPreferences,
+  updateNotificationPreference,
+} from '../../features/settings/settings-api'
 import { changePassword } from '../../features/auth/auth-api'
 
 // ---------------------------------------------------------------------------
@@ -536,16 +541,82 @@ function CompanyInfoTab() {
 }
 
 function NotificationsTab() {
-  const [prefs, setPrefs] = useState(
-    Object.fromEntries(NOTIFICATION_PREFS.map((p) => [p.id, p.defaultChecked]))
-  )
-  const [saved, setSaved] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [preferences, setPreferences] = useState([])
+  const [savingRows, setSavingRows] = useState({}) // { [notificationType]: 'saving' | 'saved' | 'error' }
 
-  const toggle = (id) => setPrefs((prev) => ({ ...prev, [id]: !prev[id] }))
+  const loadPreferences = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const data = await getNotificationPreferences()
+      setPreferences(data)
+    } catch (err) {
+      setError(err.message || 'Failed to load notification preferences')
+    } finally {
+      setLoading(false)
+    }
+  }
 
-  const handleSave = () => {
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2000)
+  useEffect(() => {
+    loadPreferences()
+  }, [])
+
+  const handleToggle = async (notificationType, field, currentValue) => {
+    // Optimistic update
+    setPreferences((prev) =>
+      prev.map((p) =>
+        p.notificationType === notificationType ? { ...p, [field]: !currentValue } : p
+      )
+    )
+
+    setSavingRows((prev) => ({ ...prev, [notificationType]: 'saving' }))
+
+    try {
+      await updateNotificationPreference(notificationType, {
+        [field]: !currentValue,
+      })
+      setSavingRows((prev) => ({ ...prev, [notificationType]: 'saved' }))
+      setTimeout(() => {
+        setSavingRows((prev) => ({ ...prev, [notificationType]: null }))
+      }, 2000)
+    } catch (err) {
+      setSavingRows((prev) => ({ ...prev, [notificationType]: 'error' }))
+      // Rollback
+      setPreferences((prev) =>
+        prev.map((p) =>
+          p.notificationType === notificationType ? { ...p, [field]: currentValue } : p
+        )
+      )
+      alert(err.response?.data?.message || err.message || 'Failed to update preference')
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading preferences...</p>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={loadPreferences}>
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  const formatTypeName = (type) => {
+    return type
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
   }
 
   return (
@@ -553,33 +624,72 @@ function NotificationsTab() {
       <div className="p-6 border-b border-border bg-canvas">
         <h3 className="text-base font-semibold text-ink">Notification Preferences</h3>
         <p className="text-xs text-ink-muted mt-0.5">
-          Control which updates are delivered to your inbox and dashboard.
+          Control which updates are delivered to your inbox, dashboard, or phone.
         </p>
       </div>
 
       <div className="divide-y divide-border">
-        {NOTIFICATION_PREFS.map((pref) => (
-          <div
-            key={pref.id}
-            className="px-6 py-4 flex items-center justify-between hover:bg-canvas transition-colors"
-          >
-            <div className="max-w-md pr-4">
-              <p className="text-sm font-medium text-ink">{pref.title}</p>
-              <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">{pref.description}</p>
-            </div>
-            <Toggle
-              id={`notif-${pref.id}`}
-              checked={prefs[pref.id]}
-              onChange={() => toggle(pref.id)}
-            />
-          </div>
-        ))}
-      </div>
+        {preferences.map((pref) => {
+          const status = savingRows[pref.notificationType]
+          return (
+            <div
+              key={pref.notificationType}
+              className="px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-canvas transition-colors"
+            >
+              <div className="max-w-md pr-4">
+                <p className="text-sm font-semibold text-ink">
+                  {formatTypeName(pref.notificationType)}
+                </p>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Receive notifications when this event occurs.
+                </p>
+              </div>
 
-      <div className="p-6 border-t border-border flex justify-end bg-surface">
-        <Button variant="primary" onClick={handleSave}>
-          {saved ? '✓ Saved!' : 'Save Preferences'}
-        </Button>
+              <div className="flex flex-wrap items-center gap-6">
+                {pref.emailAvailable && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-muted">Email</span>
+                    <Toggle
+                      id={`email-${pref.notificationType}`}
+                      checked={pref.emailEnabled}
+                      onChange={() => handleToggle(pref.notificationType, 'emailEnabled', pref.emailEnabled)}
+                    />
+                  </div>
+                )}
+
+                {pref.inAppAvailable && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-muted">In-App</span>
+                    <Toggle
+                      id={`inapp-${pref.notificationType}`}
+                      checked={pref.inAppEnabled}
+                      onChange={() => handleToggle(pref.notificationType, 'inAppEnabled', pref.inAppEnabled)}
+                    />
+                  </div>
+                )}
+
+                {pref.whatsappAvailable && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-muted">WhatsApp</span>
+                    <Toggle
+                      id={`whatsapp-${pref.notificationType}`}
+                      checked={pref.whatsappEnabled}
+                      onChange={() => handleToggle(pref.notificationType, 'whatsappEnabled', pref.whatsappEnabled)}
+                    />
+                  </div>
+                )}
+
+                {status && (
+                  <span className="text-xs w-16 text-right">
+                    {status === 'saving' && <span className="text-primary animate-pulse">Saving...</span>}
+                    {status === 'saved' && <span className="text-success font-semibold">✓ Saved</span>}
+                    {status === 'error' && <span className="text-danger font-semibold">✗ Failed</span>}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </Card>
   )
