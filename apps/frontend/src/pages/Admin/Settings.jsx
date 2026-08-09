@@ -6,11 +6,19 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import { Info, ShieldCheck } from 'lucide-react'
 import { changePassword } from '../../features/auth/auth-api'
-import { getCompanyProfile, updateCompanyProfile, getSystemSettings, updateSystemSettings } from '../../features/admin/settings-api'
+import {
+  getCompanyProfile,
+  updateCompanyProfile,
+  getSystemSettings,
+  updateSystemSettings,
+  getNotificationSettings,
+  updateNotificationTypeSetting,
+} from '../../features/admin/settings-api'
 
 const TABS = [
   { id: 'company-info', label: 'Company Profile' },
   { id: 'system', label: 'System Settings' },
+  { id: 'notifications', label: 'Notification Settings' },
   { id: 'security', label: 'Security' },
 ]
 
@@ -538,6 +546,164 @@ function SystemSettingsTab() {
   )
 }
 
+function NotificationSettingsTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [settings, setSettings] = useState([])
+  const [savingRows, setSavingRows] = useState({}) // { [notificationType]: 'saving' | 'saved' | 'error' }
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const data = await getNotificationSettings()
+      setSettings(data)
+    } catch (err) {
+      setError(err.message || 'Failed to load notification settings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const handleToggle = async (notificationType, field, currentValue) => {
+    // Optimistic update
+    setSettings((prev) =>
+      prev.map((s) =>
+        s.notificationType === notificationType ? { ...s, [field]: !currentValue } : s
+      )
+    )
+
+    setSavingRows((prev) => ({ ...prev, [notificationType]: 'saving' }))
+
+    try {
+      await updateNotificationTypeSetting(notificationType, {
+        [field]: !currentValue,
+      })
+      setSavingRows((prev) => ({ ...prev, [notificationType]: 'saved' }))
+      setTimeout(() => {
+        setSavingRows((prev) => ({ ...prev, [notificationType]: null }))
+      }, 2000)
+    } catch (err) {
+      setSavingRows((prev) => ({ ...prev, [notificationType]: 'error' }))
+      // Rollback
+      setSettings((prev) =>
+        prev.map((s) =>
+          s.notificationType === notificationType ? { ...s, [field]: currentValue } : s
+        )
+      )
+      alert(err.message || 'Failed to update setting')
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading notification settings...</p>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={loadSettings}>
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  const formatTypeName = (type) => {
+    return type
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  }
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="p-6 border-b border-border bg-canvas">
+        <h3 className="text-base font-semibold text-ink">Global Notification Type Settings</h3>
+        <p className="text-xs text-ink-muted mt-0.5">
+          Control which notification channels are available to users globally and enable/disable them platform-wide.
+        </p>
+      </div>
+
+      <div className="divide-y divide-border">
+        {settings.map((row) => {
+          const status = savingRows[row.notificationType]
+          return (
+            <div
+              key={row.notificationType}
+              className="px-6 py-4 flex flex-col lg:flex-row lg:items-center justify-between gap-4 hover:bg-canvas transition-colors"
+            >
+              <div className="max-w-md">
+                <p className="text-sm font-semibold text-ink">
+                  {formatTypeName(row.notificationType)}
+                </p>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Type ID: <code className="bg-canvas-card px-1 py-0.5 rounded">{row.notificationType}</code>
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-muted">Email</span>
+                  <Toggle
+                    id={`email-${row.notificationType}`}
+                    checked={row.emailAvailable}
+                    onChange={() => handleToggle(row.notificationType, 'emailAvailable', row.emailAvailable)}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-muted">In-App</span>
+                  <Toggle
+                    id={`inapp-${row.notificationType}`}
+                    checked={row.inAppAvailable}
+                    onChange={() => handleToggle(row.notificationType, 'inAppAvailable', row.inAppAvailable)}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-ink-muted">WhatsApp</span>
+                  <Toggle
+                    id={`whatsapp-${row.notificationType}`}
+                    checked={row.whatsappAvailable}
+                    onChange={() => handleToggle(row.notificationType, 'whatsappAvailable', row.whatsappAvailable)}
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 border-l border-border pl-6">
+                  <span className="text-xs font-semibold text-ink">Enabled Globally</span>
+                  <Toggle
+                    id={`global-${row.notificationType}`}
+                    checked={row.isEnabledGlobally}
+                    onChange={() => handleToggle(row.notificationType, 'isEnabledGlobally', row.isEnabledGlobally)}
+                  />
+                </div>
+
+                {status && (
+                  <span className="text-xs w-16 text-right">
+                    {status === 'saving' && <span className="text-primary animate-pulse">Saving...</span>}
+                    {status === 'saved' && <span className="text-success font-semibold">✓ Saved</span>}
+                    {status === 'error' && <span className="text-danger font-semibold">✗ Failed</span>}
+                  </span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </Card>
+  )
+}
+
 function SecurityTab() {
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
@@ -698,6 +864,7 @@ export default function Settings() {
       <div>
         {activeTab === 'company-info' && <CompanyInfoTab />}
         {activeTab === 'system' && <SystemSettingsTab />}
+        {activeTab === 'notifications' && <NotificationSettingsTab />}
         {activeTab === 'security' && <SecurityTab />}
       </div>
     </div>
