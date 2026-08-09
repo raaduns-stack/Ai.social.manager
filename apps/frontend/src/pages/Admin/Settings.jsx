@@ -13,12 +13,16 @@ import {
   updateSystemSettings,
   getNotificationSettings,
   updateNotificationTypeSetting,
+  getEmailConfig,
+  updateEmailConfig,
+  sendTestEmail,
 } from '../../features/admin/settings-api'
 
 const TABS = [
   { id: 'company-info', label: 'Company Profile' },
   { id: 'system', label: 'System Settings' },
   { id: 'notifications', label: 'Notification Settings' },
+  { id: 'email', label: 'Email Configuration' },
   { id: 'security', label: 'Security' },
 ]
 
@@ -704,6 +708,250 @@ function NotificationSettingsTab() {
   )
 }
 
+function EmailConfigTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  const [smtpHost, setSmtpHost] = useState('')
+  const [smtpPort, setSmtpPort] = useState(587)
+  const [smtpUsername, setSmtpUsername] = useState('')
+  const [smtpPassword, setSmtpPassword] = useState('')
+  const [smtpPasswordMasked, setSmtpPasswordMasked] = useState('')
+  const [smtpSecure, setSmtpSecure] = useState(false)
+  const [senderName, setSenderName] = useState('')
+  const [senderEmail, setSenderEmail] = useState('')
+  const [replyToEmail, setReplyToEmail] = useState('')
+
+  // Test Email state
+  const [testRecipient, setTestRecipient] = useState('')
+  const [testingEmail, setTestingEmail] = useState(false)
+  const [testSuccess, setTestSuccess] = useState('')
+  const [testError, setTestError] = useState('')
+
+  const loadConfig = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const config = await getEmailConfig()
+      setSmtpHost(config.smtpHost || '')
+      setSmtpPort(config.smtpPort ?? 587)
+      setSmtpUsername(config.smtpUsername || '')
+      setSmtpPassword('') // Keep password empty on load
+      setSmtpPasswordMasked(config.smtpPasswordMasked || '')
+      setSmtpSecure(!!config.smtpSecure)
+      setSenderName(config.senderName || '')
+      setSenderEmail(config.senderEmail || '')
+      setReplyToEmail(config.replyToEmail || '')
+    } catch (err) {
+      setError(err.message || 'Failed to load email config')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadConfig()
+  }, [])
+
+  const handleSave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    try {
+      setSaving(true)
+      setSaveSuccess(false)
+      const data = {
+        smtpHost,
+        smtpPort: Number(smtpPort),
+        smtpUsername,
+        smtpSecure,
+        senderName,
+        senderEmail,
+        replyToEmail,
+      }
+      if (smtpPassword) {
+        data.smtpPassword = smtpPassword
+      }
+      const updated = await updateEmailConfig(data)
+      setSmtpPasswordMasked(updated.smtpPasswordMasked || '')
+      setSmtpPassword('') // Reset password input after save
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    } catch (err) {
+      alert(err.message || 'Failed to update email config')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSendTestEmail = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    if (!testRecipient) {
+      setTestError('Recipient email is required.')
+      return
+    }
+    try {
+      setTestingEmail(true)
+      setTestSuccess('')
+      setTestError('')
+      const res = await sendTestEmail(testRecipient)
+      setTestSuccess(res.message || 'Test email sent successfully!')
+    } catch (err) {
+      setTestError(err.response?.data?.message || err.message || 'Failed to send test email')
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading email config...</p>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={loadConfig}>
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      <SettingsSection
+        label="SMTP Credentials"
+        description="Configure SMTP settings used by the platform to send automated messages, resets, and notifications."
+      >
+        <Card className="p-6">
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="md:col-span-2">
+                <Input
+                  label="SMTP Host"
+                  id="smtp-host"
+                  placeholder="smtp.example.com"
+                  value={smtpHost}
+                  onChange={(e) => setSmtpHost(e.target.value)}
+                />
+              </div>
+              <Input
+                label="SMTP Port"
+                id="smtp-port"
+                type="number"
+                placeholder="587"
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="SMTP Username"
+                id="smtp-username"
+                placeholder="user@example.com"
+                value={smtpUsername}
+                onChange={(e) => setSmtpUsername(e.target.value)}
+              />
+              <div className="flex flex-col gap-1.5">
+                <Input
+                  label="SMTP Password"
+                  id="smtp-password"
+                  type="password"
+                  placeholder="Leave blank to keep current password"
+                  value={smtpPassword}
+                  onChange={(e) => setSmtpPassword(e.target.value)}
+                />
+                {smtpPasswordMasked && (
+                  <p className="text-xs text-ink-muted">
+                    Current password: <code className="bg-canvas-card px-1 py-0.5 rounded">{smtpPasswordMasked}</code>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 py-2">
+              <Toggle
+                id="smtp-secure"
+                checked={smtpSecure}
+                onChange={() => setSmtpSecure(!smtpSecure)}
+              />
+              <label htmlFor="smtp-secure" className="text-sm font-medium text-ink">
+                Use Secure Connection (SSL/TLS)
+              </label>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Sender Name"
+                id="sender-name"
+                placeholder="SocialPilot AI"
+                value={senderName}
+                onChange={(e) => setSenderName(e.target.value)}
+              />
+              <Input
+                label="Sender Email"
+                id="sender-email"
+                type="email"
+                placeholder="no-reply@socialpilot.test"
+                value={senderEmail}
+                onChange={(e) => setSenderEmail(e.target.value)}
+              />
+            </div>
+
+            <Input
+              label="Reply-To Email"
+              id="reply-to-email"
+              type="email"
+              placeholder="support@socialpilot.test"
+              value={replyToEmail}
+              onChange={(e) => setReplyToEmail(e.target.value)}
+            />
+
+            <div className="flex justify-end pt-2">
+              <Button type="submit" variant="primary" disabled={saving}>
+                {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Config'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </SettingsSection>
+
+      <SettingsSection
+        label="Test Mailer Connection"
+        description="Verify SMTP credentials by sending a test email to a specific recipient."
+      >
+        <Card className="p-6">
+          <form onSubmit={handleSendTestEmail} className="space-y-4">
+            <Input
+              label="Recipient Email Address"
+              id="test-recipient"
+              type="email"
+              placeholder="admin@example.com"
+              value={testRecipient}
+              onChange={(e) => setTestRecipient(e.target.value)}
+            />
+
+            {testError && <p className="text-xs text-danger font-medium">{testError}</p>}
+            {testSuccess && <p className="text-xs text-success font-medium">{testSuccess}</p>}
+
+            <div className="flex justify-end pt-2">
+              <Button type="submit" variant="outline" disabled={testingEmail}>
+                {testingEmail ? 'Sending Test...' : 'Send Test Email'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </SettingsSection>
+    </div>
+  )
+}
+
 function SecurityTab() {
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
@@ -865,6 +1113,7 @@ export default function Settings() {
         {activeTab === 'company-info' && <CompanyInfoTab />}
         {activeTab === 'system' && <SystemSettingsTab />}
         {activeTab === 'notifications' && <NotificationSettingsTab />}
+        {activeTab === 'email' && <EmailConfigTab />}
         {activeTab === 'security' && <SecurityTab />}
       </div>
     </div>
