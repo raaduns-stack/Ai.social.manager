@@ -6,10 +6,11 @@ import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
 import { Info, ShieldCheck } from 'lucide-react'
 import { changePassword } from '../../features/auth/auth-api'
-import { getCompanyProfile, updateCompanyProfile } from '../../features/admin/settings-api'
+import { getCompanyProfile, updateCompanyProfile, getSystemSettings, updateSystemSettings } from '../../features/admin/settings-api'
 
 const TABS = [
   { id: 'company-info', label: 'Company Profile' },
+  { id: 'system', label: 'System Settings' },
   { id: 'security', label: 'Security' },
 ]
 
@@ -308,6 +309,235 @@ function CompanyInfoTab() {
   )
 }
 
+function Toggle({ id, checked, onChange }) {
+  return (
+    <label htmlFor={id} className="relative inline-flex items-center cursor-pointer">
+      <input
+        id={id}
+        type="checkbox"
+        className="sr-only peer"
+        checked={checked}
+        onChange={onChange}
+      />
+      <div
+        className={[
+          'w-11 h-6 rounded-full transition-colors duration-200 relative',
+          'after:content-[\'\'] after:absolute after:top-[2px] after:start-[2px]',
+          'after:bg-white after:border after:border-border after:rounded-full',
+          'after:h-5 after:w-5 after:transition-all',
+          'peer-checked:after:translate-x-full peer-checked:after:border-white',
+          checked ? 'bg-primary' : 'bg-border',
+        ].join(' ')}
+      />
+    </label>
+  )
+}
+
+function SystemSettingsTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  const [defaultTimezone, setDefaultTimezone] = useState('UTC')
+  const [defaultCurrency, setDefaultCurrency] = useState('USD')
+  const [maintenanceMode, setMaintenanceMode] = useState(false)
+  const [allowNewRegistrations, setAllowNewRegistrations] = useState(true)
+  const [freeTrialDays, setFreeTrialDays] = useState(14)
+  const [maxSocialAccountsPerCustomer, setMaxSocialAccountsPerCustomer] = useState(5)
+  const [contentApprovalRequired, setContentApprovalRequired] = useState(false)
+  const [dateFormat, setDateFormat] = useState('YYYY-MM-DD')
+
+  useEffect(() => {
+    let active = true
+    const fetchSettings = async () => {
+      try {
+        setLoading(true)
+        setError('')
+        const settings = await getSystemSettings()
+        if (active) {
+          setDefaultTimezone(settings.defaultTimezone || 'UTC')
+          setDefaultCurrency(settings.defaultCurrency || 'USD')
+          setMaintenanceMode(!!settings.maintenanceMode)
+          setAllowNewRegistrations(!!settings.allowNewRegistrations)
+          setFreeTrialDays(settings.freeTrialDays ?? 14)
+          setMaxSocialAccountsPerCustomer(settings.maxSocialAccountsPerCustomer ?? 5)
+          setContentApprovalRequired(!!settings.contentApprovalRequired)
+          setDateFormat(settings.dateFormat || 'YYYY-MM-DD')
+        }
+      } catch (err) {
+        if (active) {
+          setError(err.message || 'Failed to load system settings')
+        }
+      } finally {
+        if (active) {
+          setLoading(false)
+        }
+      }
+    }
+    fetchSettings()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const handleSave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    try {
+      setSaving(true)
+      setSaveSuccess(false)
+      await updateSystemSettings({
+        defaultTimezone,
+        defaultCurrency,
+        maintenanceMode,
+        allowNewRegistrations,
+        freeTrialDays: Number(freeTrialDays),
+        maxSocialAccountsPerCustomer: Number(maxSocialAccountsPerCustomer),
+        contentApprovalRequired,
+        dateFormat,
+      })
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    } catch (err) {
+      alert(err.message || 'Failed to update system settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading system settings...</p>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={() => window.location.reload()}>
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-8">
+      <SettingsSection
+        label="General Configuration"
+        description="Global system preferences, regional defaults, and formats."
+      >
+        <Card className="p-6">
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Default Timezone"
+                id="default-timezone"
+                value={defaultTimezone}
+                onChange={(e) => setDefaultTimezone(e.target.value)}
+              />
+              <Input
+                label="Default Currency"
+                id="default-currency"
+                value={defaultCurrency}
+                onChange={(e) => setDefaultCurrency(e.target.value)}
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Input
+                label="Date Format"
+                id="date-format"
+                value={dateFormat}
+                onChange={(e) => setDateFormat(e.target.value)}
+              />
+              <Input
+                label="Free Trial Days"
+                id="free-trial-days"
+                type="number"
+                value={freeTrialDays}
+                onChange={(e) => setFreeTrialDays(e.target.value)}
+              />
+            </div>
+
+            <Input
+              label="Max Social Accounts Per Customer"
+              id="max-social-accounts"
+              type="number"
+              value={maxSocialAccountsPerCustomer}
+              onChange={(e) => setMaxSocialAccountsPerCustomer(e.target.value)}
+            />
+
+            <div className="flex justify-end pt-2">
+              <Button type="submit" variant="primary" disabled={saving}>
+                {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Changes'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </SettingsSection>
+
+      <SettingsSection
+        label="Feature Controls"
+        description="Enable/disable platform-wide systems and registration flows."
+      >
+        <Card className="divide-y divide-border">
+          <div className="p-6 flex items-center justify-between hover:bg-canvas transition-colors">
+            <div className="max-w-md pr-4">
+              <p className="text-sm font-medium text-ink">Maintenance Mode</p>
+              <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                Platform becomes read-only or offline for normal users during updates.
+              </p>
+            </div>
+            <Toggle
+              id="maintenance-mode"
+              checked={maintenanceMode}
+              onChange={() => setMaintenanceMode(!maintenanceMode)}
+            />
+          </div>
+
+          <div className="p-6 flex items-center justify-between hover:bg-canvas transition-colors">
+            <div className="max-w-md pr-4">
+              <p className="text-sm font-medium text-ink">Allow New Registrations</p>
+              <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                Toggles whether new users can sign up on the landing page.
+              </p>
+            </div>
+            <Toggle
+              id="allow-registrations"
+              checked={allowNewRegistrations}
+              onChange={() => setAllowNewRegistrations(!allowNewRegistrations)}
+            />
+          </div>
+
+          <div className="p-6 flex items-center justify-between hover:bg-canvas transition-colors">
+            <div className="max-w-md pr-4">
+              <p className="text-sm font-medium text-ink">Content Approval Required</p>
+              <p className="text-xs text-ink-muted mt-0.5 leading-relaxed">
+                All scheduled posts must be approved by an administrator before publishing.
+              </p>
+            </div>
+            <Toggle
+              id="content-approval"
+              checked={contentApprovalRequired}
+              onChange={() => setContentApprovalRequired(!contentApprovalRequired)}
+            />
+          </div>
+
+          <div className="p-6 flex justify-end bg-surface">
+            <Button variant="primary" onClick={handleSave} disabled={saving}>
+              {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save System Settings'}
+            </Button>
+          </div>
+        </Card>
+      </SettingsSection>
+    </div>
+  )
+}
+
 function SecurityTab() {
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
@@ -467,6 +697,7 @@ export default function Settings() {
 
       <div>
         {activeTab === 'company-info' && <CompanyInfoTab />}
+        {activeTab === 'system' && <SystemSettingsTab />}
         {activeTab === 'security' && <SecurityTab />}
       </div>
     </div>
