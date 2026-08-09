@@ -18,6 +18,8 @@ import {
   sendTestEmail,
   getSocialApiSettings,
   updateSocialApiSetting,
+  getPaymentGatewaySettings,
+  updatePaymentGatewaySettings,
 } from '../../features/admin/settings-api'
 
 const TABS = [
@@ -26,6 +28,7 @@ const TABS = [
   { id: 'notifications', label: 'Notification Settings' },
   { id: 'email', label: 'Email Configuration' },
   { id: 'social', label: 'Social API Settings' },
+  { id: 'payment', label: 'Payment Gateway' },
   { id: 'security', label: 'Security' },
 ]
 
@@ -1116,6 +1119,231 @@ function EmailConfigTab() {
   )
 }
 
+function PaymentGatewaySettingsTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  const [publicKey, setPublicKey] = useState('')
+  const [secretKey, setSecretKey] = useState('')
+  const [secretKeyMasked, setSecretKeyMasked] = useState('')
+  const [webhookSecret, setWebhookSecret] = useState('')
+  const [webhookSecretMasked, setWebhookSecretMasked] = useState('')
+  const [supportedMethods, setSupportedMethods] = useState([])
+  const [isLiveMode, setIsLiveMode] = useState(false)
+  const [isEnabled, setIsEnabled] = useState(false)
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const settings = await getPaymentGatewaySettings()
+      setPublicKey(settings.publicKey || '')
+      setSecretKey('')
+      setSecretKeyMasked(settings.secretKeyMasked || '')
+      setWebhookSecret('')
+      setWebhookSecretMasked(settings.webhookSecretMasked || '')
+      setSupportedMethods(settings.supportedMethods || [])
+      setIsLiveMode(!!settings.isLiveMode)
+      setIsEnabled(!!settings.isEnabled)
+    } catch (err) {
+      setError(err.message || 'Failed to load payment gateway settings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const handleSave = async (e) => {
+    if (e && e.preventDefault) e.preventDefault()
+    try {
+      setSaving(true)
+      setSaveSuccess(false)
+      const data = {
+        publicKey,
+        supportedMethods,
+        isLiveMode,
+        isEnabled,
+      }
+      if (secretKey) {
+        data.secretKey = secretKey
+      }
+      if (webhookSecret) {
+        data.webhookSecret = webhookSecret
+      }
+      const updated = await updatePaymentGatewaySettings(data)
+      setSecretKeyMasked(updated.secretKeyMasked || '')
+      setWebhookSecretMasked(updated.webhookSecretMasked || '')
+      setSecretKey('')
+      setWebhookSecret('')
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    } catch (err) {
+      alert(err.message || 'Failed to update payment settings')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleMethodToggle = (methodId) => {
+    setSupportedMethods((prev) =>
+      prev.includes(methodId)
+        ? prev.filter((m) => m !== methodId)
+        : [...prev, methodId]
+    )
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading payment settings...</p>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={loadSettings}>
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  const PAYMENT_METHODS = [
+    { id: 'card', label: 'Credit / Debit Card' },
+    { id: 'bank_transfer', label: 'Bank Transfer' },
+    { id: 'ussd', label: 'USSD Code' },
+    { id: 'mobile_money', label: 'Mobile Money' },
+  ]
+
+  return (
+    <div className="space-y-8">
+      <SettingsSection
+        label="Gateway Integration"
+        description="Provide keys and secrets for your payment gateway merchant account."
+      >
+        <Card className="p-6">
+          <form onSubmit={handleSave} className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+              <h4 className="text-sm font-semibold text-ink">Configuration Status</h4>
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-ink-muted">Live Mode</span>
+                    <Toggle
+                      id="is-live-mode"
+                      checked={isLiveMode}
+                      onChange={() => setIsLiveMode(!isLiveMode)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2 border-l border-border pl-6">
+                    <span className="text-xs font-semibold text-ink">Enabled Gateway</span>
+                    <Toggle
+                      id="gateway-enabled"
+                      checked={isEnabled}
+                      onChange={() => setIsEnabled(!isEnabled)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Input
+              label="Public Key"
+              id="payment-public-key"
+              placeholder="pk_test_..."
+              value={publicKey}
+              onChange={(e) => setPublicKey(e.target.value)}
+            />
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-1.5">
+                <Input
+                  label="Secret Key"
+                  id="payment-secret-key"
+                  type="password"
+                  placeholder="Leave blank to keep current key"
+                  value={secretKey}
+                  onChange={(e) => setSecretKey(e.target.value)}
+                />
+                {secretKeyMasked && (
+                  <p className="text-xs text-ink-muted">
+                    Current key: <code className="bg-canvas-card px-1 py-0.5 rounded">{secretKeyMasked}</code>
+                  </p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <Input
+                  label="Webhook Secret"
+                  id="payment-webhook-secret"
+                  type="password"
+                  placeholder="Leave blank to keep current secret"
+                  value={webhookSecret}
+                  onChange={(e) => setWebhookSecret(e.target.value)}
+                />
+                {webhookSecretMasked && (
+                  <p className="text-xs text-ink-muted">
+                    Current secret: <code className="bg-canvas-card px-1 py-0.5 rounded">{webhookSecretMasked}</code>
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button type="submit" variant="primary" disabled={saving}>
+                {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Gateway Settings'}
+              </Button>
+            </div>
+          </form>
+        </Card>
+      </SettingsSection>
+
+      <SettingsSection
+        label="Supported Payment Methods"
+        description="Select which billing channels are offered to subscribers during the checkout process."
+      >
+        <Card className="p-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {PAYMENT_METHODS.map((method) => {
+                const checked = supportedMethods.includes(method.id)
+                return (
+                  <div
+                    key={method.id}
+                    className="flex items-center justify-between p-4 border border-border rounded-control hover:bg-canvas transition-colors"
+                  >
+                    <label htmlFor={`method-${method.id}`} className="text-sm font-medium text-ink cursor-pointer select-none">
+                      {method.label}
+                    </label>
+                    <Toggle
+                      id={`method-${method.id}`}
+                      checked={checked}
+                      onChange={() => handleMethodToggle(method.id)}
+                    />
+                  </div>
+                )
+              })}
+            </div>
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleSave} variant="primary" disabled={saving}>
+                {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Supported Methods'}
+              </Button>
+            </div>
+          </div>
+        </Card>
+      </SettingsSection>
+    </div>
+  )
+}
+
 function SecurityTab() {
   const [currentPw, setCurrentPw] = useState('')
   const [newPw, setNewPw] = useState('')
@@ -1279,6 +1507,7 @@ export default function Settings() {
         {activeTab === 'notifications' && <NotificationSettingsTab />}
         {activeTab === 'email' && <EmailConfigTab />}
         {activeTab === 'social' && <SocialApiSettingsTab />}
+        {activeTab === 'payment' && <PaymentGatewaySettingsTab />}
         {activeTab === 'security' && <SecurityTab />}
       </div>
     </div>
