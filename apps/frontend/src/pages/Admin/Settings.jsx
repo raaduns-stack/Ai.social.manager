@@ -16,6 +16,8 @@ import {
   getEmailConfig,
   updateEmailConfig,
   sendTestEmail,
+  getSocialApiSettings,
+  updateSocialApiSetting,
 } from '../../features/admin/settings-api'
 
 const TABS = [
@@ -23,6 +25,7 @@ const TABS = [
   { id: 'system', label: 'System Settings' },
   { id: 'notifications', label: 'Notification Settings' },
   { id: 'email', label: 'Email Configuration' },
+  { id: 'social', label: 'Social API Settings' },
   { id: 'security', label: 'Security' },
 ]
 
@@ -708,6 +711,167 @@ function NotificationSettingsTab() {
   )
 }
 
+function PlatformCard({ initialData, onSave }) {
+  const [clientId, setClientId] = useState(initialData.clientId || '')
+  const [clientSecret, setClientSecret] = useState('')
+  const [clientSecretMasked, setClientSecretMasked] = useState(initialData.clientSecretMasked || '')
+  const [redirectUri, setRedirectUri] = useState(initialData.redirectUri || '')
+  const [isEnabled, setIsEnabled] = useState(!!initialData.isEnabled)
+
+  const [saving, setSaving] = useState(false)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    try {
+      setSaving(true)
+      setSaveSuccess(false)
+      const data = {
+        clientId,
+        redirectUri,
+        isEnabled,
+      }
+      if (clientSecret) {
+        data.clientSecret = clientSecret
+      }
+      const updated = await onSave(initialData.platform, data)
+      setClientSecretMasked(updated.clientSecretMasked || '')
+      setClientSecret('')
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 2000)
+    } catch (err) {
+      alert(err.message || 'Failed to update social API setting')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const formatName = (name) => {
+    if (name === 'twitter') return 'Twitter / X'
+    return name.charAt(0).toUpperCase() + name.slice(1)
+  }
+
+  return (
+    <Card className="p-6">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="flex items-center justify-between border-b border-border pb-3 mb-4">
+          <h4 className="text-sm font-semibold text-ink">{formatName(initialData.platform)}</h4>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-ink-muted">{isEnabled ? 'Active' : 'Disabled'}</span>
+            <Toggle
+              id={`enable-${initialData.platform}`}
+              checked={isEnabled}
+              onChange={() => setIsEnabled(!isEnabled)}
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            label="Client ID"
+            id={`client-id-${initialData.platform}`}
+            value={clientId}
+            onChange={(e) => setClientId(e.target.value)}
+          />
+          <div className="flex flex-col gap-1.5">
+            <Input
+              label="Client Secret"
+              id={`client-secret-${initialData.platform}`}
+              type="password"
+              placeholder="Leave blank to keep current secret"
+              value={clientSecret}
+              onChange={(e) => setClientSecret(e.target.value)}
+            />
+            {clientSecretMasked && (
+              <p className="text-xs text-ink-muted">
+                Current secret: <code className="bg-canvas-card px-1 py-0.5 rounded">{clientSecretMasked}</code>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <Input
+          label="Redirect URI"
+          id={`redirect-uri-${initialData.platform}`}
+          value={redirectUri}
+          onChange={(e) => setRedirectUri(e.target.value)}
+        />
+
+        <div className="flex justify-end pt-2">
+          <Button type="submit" variant="primary" disabled={saving}>
+            {saving ? 'Saving...' : saveSuccess ? '✓ Saved!' : 'Save Credentials'}
+          </Button>
+        </div>
+      </form>
+    </Card>
+  )
+}
+
+function SocialApiSettingsTab() {
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [platforms, setPlatforms] = useState([])
+
+  const loadSettings = async () => {
+    try {
+      setLoading(true)
+      setError('')
+      const data = await getSocialApiSettings()
+      setPlatforms(data)
+    } catch (err) {
+      setError(err.message || 'Failed to load social API settings')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const handleSave = async (platform, data) => {
+    return await updateSocialApiSetting(platform, data)
+  }
+
+  if (loading) {
+    return (
+      <Card className="p-6 flex justify-center items-center h-48">
+        <p className="text-sm text-ink-muted">Loading social API settings...</p>
+      </Card>
+    )
+  }
+
+  if (error) {
+    return (
+      <Card className="p-6 border-danger/30 bg-danger/5">
+        <p className="text-sm text-danger">{error}</p>
+        <Button variant="outline" className="mt-4" onClick={loadSettings}>
+          Retry
+        </Button>
+      </Card>
+    )
+  }
+
+  return (
+    <div className="space-y-6">
+      <SettingsSection
+        label="OAuth Configurations"
+        description="Provide Client IDs and Secrets for each social provider. These keys are used when customers connect their channels."
+      >
+        <div className="space-y-6">
+          {platforms.map((platform) => (
+            <PlatformCard
+              key={platform.platform}
+              initialData={platform}
+              onSave={handleSave}
+            />
+          ))}
+        </div>
+      </SettingsSection>
+    </div>
+  )
+}
+
 function EmailConfigTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -1114,6 +1278,7 @@ export default function Settings() {
         {activeTab === 'system' && <SystemSettingsTab />}
         {activeTab === 'notifications' && <NotificationSettingsTab />}
         {activeTab === 'email' && <EmailConfigTab />}
+        {activeTab === 'social' && <SocialApiSettingsTab />}
         {activeTab === 'security' && <SecurityTab />}
       </div>
     </div>
