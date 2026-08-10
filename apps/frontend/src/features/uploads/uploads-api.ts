@@ -1,5 +1,5 @@
 import api from '../../lib/api-client'
-import { Upload, UploadCategory } from '@socialpilot/shared-types'
+import { Upload, UploadCategory, UploadStatus } from '@socialpilot/shared-types'
 
 // Parameters used when fetching uploads
 export interface GetUploadsParams {
@@ -45,5 +45,40 @@ export async function updateUpload(
 // Delete an upload by its ID
 export async function deleteUpload(id: string): Promise<void> {
   const response = await api.delete<void>(`/uploads/${id}`)
+  return response.data
+}
+
+// ---------------------------------------------------------------------------
+// Admin Uploads API
+// These functions are restricted to users with an admin-level role
+// (super_admin, account_manager, reviewer). They allow moderating uploads
+// submitted by any customer.
+// ---------------------------------------------------------------------------
+
+export interface AdminGetUploadsParams {
+  category?: UploadCategory
+  status?: UploadStatus
+  userId?: string
+  search?: string
+  sortBy?: string
+  limit?: number
+  offset?: number
+}
+
+export async function adminGetUploads(params?: AdminGetUploadsParams): Promise<Upload[]> {
+  const response = await api.get<Upload[]>('/admin/uploads', { params })
+  return response.data
+}
+
+export async function adminGetUpload(id: string): Promise<Upload> {
+  const response = await api.get<Upload>(`/admin/uploads/${id}`)
+  return response.data
+}
+
+export async function adminReviewUpload(
+  id: string,
+  dto: { status: UploadStatus; rejectionReason?: string }
+): Promise<Upload> {
+  const response = await api.patch<Upload>(`/admin/uploads/${id}/review`, dto)
   return response.data
 }

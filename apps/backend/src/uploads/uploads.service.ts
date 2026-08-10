@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { eq, and, ilike } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { existsSync, unlinkSync } from 'fs';
@@ -8,7 +8,10 @@ import * as schema from '../database/schema';
 import { CreateUploadDto } from './dto/create-upload.dto';
 import { UpdateUploadDto } from './dto/update-upload.dto';
 import { QueryUploadDto } from './dto/query-upload.dto';
+import { QueryAdminUploadDto } from './dto/query-admin-upload.dto';
+import { ReviewUploadDto } from './dto/review-upload.dto';
 import { Upload } from '../database/schema/uploads.schema';
+import { UploadStatus } from '../common/enums/upload-status.enum';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -40,6 +43,8 @@ export class UploadsService {
         fileUrl,
         mimeType: file.mimetype,
         fileSize: file.size,
+        // Ensure status has a default value for new column
+        status: UploadStatus.PENDING,
       })
       .returning();
 
@@ -172,5 +177,119 @@ export class UploadsService {
       // eslint-disable-next-line no-console
       console.error(`Failed to delete local file: ${filePath}`, err);
     }
+  }
+
+  // =========================================================
+  // ADMIN METHODS — moderation queue for customer uploads
+  // =========================================================
+
+  /**
+   * ADMIN: Retrieve every customer upload (not scoped to one user) for the
+   * moderation queue. Supports filtering by category, review status,
+   * uploading customer, filename search, sorting, and pagination. Includes
+   * basic uploader info via the existing `user` relation.
+   */
+  async getAllUploadsForAdmin(query: QueryAdminUploadDto) {
+    const conditions = [];
+
+    if (query.category) {
+      conditions.push(eq(schema.uploads.category, query.category));
+    }
+
+    if (query.status) {
+      conditions.push(eq(schema.uploads.status, query.status));
+    }
+
+    if (query.userId) {
+      conditions.push(eq(schema.uploads.userId, query.userId));
+    }
+
+    if (query.search) {
+      conditions.push(ilike(schema.uploads.originalName, `%${query.search}%`));
+    }
+
+    return this.db.query.uploads.findMany({
+      where: conditions.length ? and(...conditions) : undefined,
+
+      limit: query.limit,
+      offset: query.offset,
+
+      orderBy: (uploads, { desc, asc }) => {
+        if (query.sortBy === 'Largest') {
+          return [desc(uploads.fileSize)];
+        }
+        if (query.sortBy === 'Name') {
+          return [asc(uploads.originalName)];
+        }
+        return [desc(uploads.createdAt)];
+      },
+
+      // Include the uploading customer's basic info for the moderation queue
+      with: {
+        user: {
+          columns: {
+            id: true,
+            fullName: true,
+            email: true,
+            businessName: true,
+          },
+        },
+      },
+    });
+  }
+
+  /**
+   * ADMIN: Retrieve a single upload by ID regardless of which customer owns
+   * it, including the uploading customer's basic info.
+   */
+  async getUploadByIdForAdmin(id: string) {
+    const upload = await this.db.query.uploads.findFirst({
+      where: eq(schema.uploads.id, id),
+      with: {
+        user: {
+          columns: {
+            id: true,
+            fullName: true,
+            email: true,
+            businessName: true,
+          },
+        },
+      },
+    });
+
+    if (!upload) {
+      throw new NotFoundException('Upload not found');
+    }
+
+    return upload;
+  }
+
+  /**
+   * ADMIN: Approve or reject a customer upload. Records which admin
+   * performed the review and when. Requires a rejection reason whenever
+   * the upload is being rejected.
+   */
+  async reviewUpload(id: string, adminId: string, dto: ReviewUploadDto): Promise<Upload> {
+    if (dto.status === UploadStatus.REJECTED && !dto.rejectionReason) {
+      throw new BadRequestException('A rejection reason is required when rejecting an upload');
+    }
+
+    const [updated] = await this.db
+      .update(schema.uploads)
+      .set({
+        status: dto.status,
+        rejectionReason: dto.status === UploadStatus.REJECTED ? dto.rejectionReason : null,
+        reviewedBy: adminId,
+        reviewedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.uploads.id, id))
+      .returning();
+
+    if (!updated) {
+      throw new NotFoundException('Upload not found');
+    }
+
+    return updated;
   }
 }

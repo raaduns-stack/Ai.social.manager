@@ -9,6 +9,7 @@ import {
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
 import { UploadCategory } from '../../common/enums/upload-category.enum';
+import { UploadStatus } from '../../common/enums/upload-status.enum';
 
 export const uploadCategoryEnum = pgEnum('upload_category', [
   UploadCategory.BUSINESS_ASSETS,
@@ -17,6 +18,13 @@ export const uploadCategoryEnum = pgEnum('upload_category', [
   UploadCategory.PRODUCTS,
   UploadCategory.EVENTS,
   UploadCategory.BUSINESS_DOCUMENTS,
+]);
+
+// Moderation status for the Admin Uploads review queue
+export const uploadStatusEnum = pgEnum('upload_status', [
+  UploadStatus.PENDING,
+  UploadStatus.APPROVED,
+  UploadStatus.REJECTED,
 ]);
 
 export const uploads = pgTable('uploads', {
@@ -39,6 +47,17 @@ export const uploads = pgTable('uploads', {
   fileSize: integer('file_size').notNull(),
 
   description: varchar('description', { length: 500 }).default(''),
+
+  // ---- Admin moderation fields ----
+  status: uploadStatusEnum('status').notNull().default(UploadStatus.PENDING),
+
+  // ID of the admin/staff user who approved or rejected this upload
+  reviewedBy: uuid('reviewed_by'),
+
+  reviewedAt: timestamp('reviewed_at'),
+
+  // Required when status is 'rejected'; explains why to the customer
+  rejectionReason: varchar('rejection_reason', { length: 500 }),
 
   createdAt: timestamp('created_at').defaultNow().notNull(),
 

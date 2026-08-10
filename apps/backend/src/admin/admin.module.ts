@@ -6,14 +6,13 @@ import { AdminDashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
 import { AdminSupportController } from './support/admin-support.controller';
 import { SupportModule } from '../support/support.module';
-import { AnalyticsController } from './analytics.controller';
-import { AnalyticsService } from './analytics.service';
+import { AdminUploadsController } from './uploads/admin-uploads.controller';
+import { UploadsModule } from '../uploads/uploads.module';
 
 @Module({
-  imports: [DatabaseModule, SupportModule],
-  controllers: [AdminController, AdminDashboardController, AdminSupportController, AnalyticsController],
-  providers: [AdminService, DashboardService, AnalyticsService],
-  exports: [AdminService, DashboardService, AnalyticsService],
+  imports: [DatabaseModule, SupportModule, UploadsModule],
+  controllers: [AdminController, AdminDashboardController, AdminSupportController, AdminUploadsController],
+  providers: [AdminService, DashboardService],
+  exports: [AdminService, DashboardService],
 })
-export class AdminModule {}
-
+export class AdminModule { }

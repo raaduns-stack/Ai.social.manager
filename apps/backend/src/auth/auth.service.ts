@@ -36,7 +36,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
-  ) {}
+  ) { }
 
   /**
    * Registers a new user.
@@ -58,20 +58,20 @@ export class AuthService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
-    
+
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
     const [user] = await this.db
       .insert(schema.users)
       .values({
-          email: dto.email,
-          passwordHash,
-          fullName: dto.fullName,
-          businessName: dto.businessName,
-          isEmailVerified: false,
-          emailVerificationCode: code,
-          emailVerificationExpiresAt: expiresAt,
+        email: dto.email,
+        passwordHash,
+        fullName: dto.fullName,
+        businessName: dto.businessName,
+        isEmailVerified: false,
+        emailVerificationCode: code,
+        emailVerificationExpiresAt: expiresAt,
       })
       .returning();
 
