@@ -23,7 +23,7 @@ export class UploadsService {
    */
   async uploadFile(
     userId: string,
-    file: Express.Multer.File,
+    file: any,
     createUploadDto: CreateUploadDto,
   ): Promise<Upload> {
     // Generate the file URL for accessing the uploaded file

@@ -20,6 +20,8 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
 import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { ContentSuggestionsModule } from './content-suggestions/content-suggestions.module';
+import { CalendarModule } from './calendar/calendar.module';
 import { CompanyProfileModule } from './settings/company-profile/company-profile.module';
 import { CustomerProfileModule } from './settings/customer-profile/customer-profile.module';
 import { SystemSettingsModule } from './settings/system-settings/system-settings.module';
@@ -58,6 +60,8 @@ import { PaymentGatewaySettingsModule } from './settings/payment-gateway-setting
     SupportModule,
     FaqsModule,
     UploadsModule,
+    ContentSuggestionsModule,
+    CalendarModule,
     CompanyProfileModule,
     CustomerProfileModule,
     SystemSettingsModule,
