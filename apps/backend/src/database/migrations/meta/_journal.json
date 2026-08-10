@@ -71,6 +71,13 @@
       "when": 1786358994238,
       "tag": "0009_long_smiling_tiger",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786364643286,
+      "tag": "0010_parched_misty_knight",
+      "breakpoints": true
     }
   ]
 }
