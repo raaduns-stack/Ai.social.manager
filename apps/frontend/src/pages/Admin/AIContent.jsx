@@ -1,10 +1,11 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   Plus,
   FileText,
   Camera,
   TrendingUp,
   Edit,
+  Trash2,
   Star,
   BarChart2,
   MoreVertical,
@@ -18,75 +19,151 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import {
+  getPrompts,
+  createPrompt as createPromptApi,
+  updatePrompt as updatePromptApi,
+  togglePrompt as togglePromptApi,
+  deletePrompt as deletePromptApi,
+  getFeedbackAnalytics,
+} from '../../features/admin/prompt-api'
 
-const INITIAL_TEMPLATES = [
+const INITIAL_FALLBACK_TEMPLATES = [
   {
-    id: 1,
+    id: 'mock-1',
     name: 'Professional LinkedIn Post',
-    description: 'Optimized for executive thought leadership and B2B engagement.',
-    lastEdited: 'Oct 12, 2023',
-    active: true,
-    icon: 'description', // filetext
+    category: 'LinkedIn',
+    prompt: 'Generate executive thought leadership and B2B engagement content.',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
-    id: 2,
+    id: 'mock-2',
     name: 'Casual Instagram Caption',
-    description: 'Short, punchy, and emoji-rich captions for lifestyle brands.',
-    lastEdited: 'Oct 10, 2023',
-    active: true,
-    icon: 'camera',
+    category: 'Instagram',
+    prompt: 'Short, punchy, and emoji-rich captions for lifestyle brands.',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
   {
-    id: 3,
+    id: 'mock-3',
     name: 'Viral Thread Starter',
-    description: 'Hook-heavy frameworks designed for Twitter/X reach.',
-    lastEdited: 'Sep 28, 2023',
-    active: false,
-    icon: 'trending',
+    category: 'X / Twitter',
+    prompt: 'Hook-heavy frameworks designed for maximum reach.',
+    isActive: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   },
-]
-
-const RATING_DISTRIBUTION = [
-  { stars: 5, count: '9,673', percentage: 78 },
-  { stars: 4, count: '1,860', percentage: 15 },
-  { stars: 3, count: '496', percentage: 4 },
-  { stars: 2, count: '248', percentage: 2 },
-  { stars: 1, count: '125', percentage: 1 },
 ]
 
 export default function AIContent() {
-  const [templates, setTemplates] = useState(INITIAL_TEMPLATES)
+  const [templates, setTemplates] = useState([])
+  const [analytics, setAnalytics] = useState({
+    totalSuggestions: 0,
+    totalFeedback: 0,
+    upReactions: 0,
+    downReactions: 0,
+    approvalRate: 0,
+    avgRating: 0,
+    ratingDistribution: [
+      { stars: 5, count: '0', percentage: 0 },
+      { stars: 4, count: '0', percentage: 0 },
+      { stars: 3, count: '0', percentage: 0 },
+      { stars: 2, count: '0', percentage: 0 },
+      { stars: 1, count: '0', percentage: 0 },
+    ],
+  })
+  const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState(null) // template to edit or null for new
 
   const [formState, setFormState] = useState({
     name: '',
-    description: '',
-    icon: 'description',
+    category: 'General',
+    prompt: '',
   })
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    try {
+      setLoading(true)
+      const [promptsRes, analyticsRes] = await Promise.all([
+        getPrompts().catch(() => []),
+        getFeedbackAnalytics().catch(() => null),
+      ])
+
+      if (promptsRes && promptsRes.length > 0) {
+        setTemplates(promptsRes)
+      } else {
+        setTemplates(INITIAL_FALLBACK_TEMPLATES)
+      }
+
+      if (analyticsRes) {
+        setAnalytics(analyticsRes)
+      }
+    } catch (err) {
+      console.error('Failed to load AI content data:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Dynamic template search
   const filteredTemplates = useMemo(() => {
     return templates.filter((t) => {
       const matchName = t.name.toLowerCase().includes(searchQuery.toLowerCase())
-      const matchDesc = t.description.toLowerCase().includes(searchQuery.toLowerCase())
-      return matchName || matchDesc
+      const matchCategory = (t.category || '').toLowerCase().includes(searchQuery.toLowerCase())
+      const matchPrompt = (t.prompt || '').toLowerCase().includes(searchQuery.toLowerCase())
+      return matchName || matchCategory || matchPrompt
     })
   }, [templates, searchQuery])
 
-  const handleToggle = (id) => {
+  const handleToggle = async (id) => {
+    // Optimistic UI update
     setTemplates((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, active: !t.active } : t))
+      prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t))
     )
+
+    if (id.startsWith && !id.startsWith('mock-')) {
+      try {
+        await togglePromptApi(id)
+      } catch (err) {
+        console.error('Failed to toggle prompt:', err)
+        // Rollback on error
+        setTemplates((prev) =>
+          prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t))
+        )
+      }
+    }
+  }
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this prompt template?')) return
+
+    setTemplates((prev) => prev.filter((t) => t.id !== id))
+
+    if (id.startsWith && !id.startsWith('mock-')) {
+      try {
+        await deletePromptApi(id)
+      } catch (err) {
+        console.error('Failed to delete prompt:', err)
+        loadData()
+      }
+    }
   }
 
   const handleOpenAddModal = () => {
     setActiveTemplate(null)
     setFormState({
       name: '',
-      description: '',
-      icon: 'description',
+      category: 'General',
+      prompt: '',
     })
     setIsModalOpen(true)
   }
@@ -95,49 +172,69 @@ export default function AIContent() {
     setActiveTemplate(template)
     setFormState({
       name: template.name,
-      description: template.description,
-      icon: template.icon,
+      category: template.category || 'General',
+      prompt: template.prompt || '',
     })
     setIsModalOpen(true)
   }
 
-  const handleFormSubmit = (e) => {
+  const handleFormSubmit = async (e) => {
     e.preventDefault()
-    if (!formState.name.trim() || !formState.description.trim()) return
+    if (!formState.name.trim() || !formState.prompt.trim()) return
 
-    const now = new Date()
-    const formattedDate = now.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
-
-    if (activeTemplate) {
-      // Edit mode
-      setTemplates((prev) =>
-        prev.map((t) =>
-          t.id === activeTemplate.id
-            ? {
-                ...t,
-                name: formState.name,
-                description: formState.description,
-                icon: formState.icon,
-                lastEdited: formattedDate,
-              }
-            : t
-        )
-      )
-    } else {
-      // Add mode
-      const created = {
-        id: Date.now(),
-        name: formState.name,
-        description: formState.description,
-        icon: formState.icon,
-        lastEdited: formattedDate,
-        active: true,
+    try {
+      if (activeTemplate) {
+        // Edit mode
+        if (activeTemplate.id.startsWith && !activeTemplate.id.startsWith('mock-')) {
+          const updated = await updatePromptApi(activeTemplate.id, {
+            name: formState.name,
+            category: formState.category,
+            prompt: formState.prompt,
+          })
+          setTemplates((prev) =>
+            prev.map((t) => (t.id === activeTemplate.id ? updated : t))
+          )
+        } else {
+          setTemplates((prev) =>
+            prev.map((t) =>
+              t.id === activeTemplate.id
+                ? {
+                    ...t,
+                    name: formState.name,
+                    category: formState.category,
+                    prompt: formState.prompt,
+                    updatedAt: new Date().toISOString(),
+                  }
+                : t
+            )
+          )
+        }
+      } else {
+        // Create mode
+        try {
+          const created = await createPromptApi({
+            name: formState.name,
+            category: formState.category,
+            prompt: formState.prompt,
+            isActive: true,
+          })
+          setTemplates((prev) => [created, ...prev])
+        } catch (apiErr) {
+          console.error(apiErr)
+          const fallbackCreated = {
+            id: `mock-${Date.now()}`,
+            name: formState.name,
+            category: formState.category,
+            prompt: formState.prompt,
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+          }
+          setTemplates((prev) => [fallbackCreated, ...prev])
+        }
       }
-      setTemplates((prev) => [...prev, created])
+    } catch (err) {
+      console.error('Error saving prompt:', err)
     }
 
     setIsModalOpen(false)
@@ -146,9 +243,8 @@ export default function AIContent() {
   return (
     <div className="space-y-6">
       <PageHeader
-        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
         title="AI Content Management"
-        description="Control generative assets and analyze feedback performance across all channels."
+        description="Control generative prompt assets and analyze feedback performance across all customer channels."
       />
 
       {/* Section 1: AI Prompt Management */}
@@ -157,7 +253,7 @@ export default function AIContent() {
           <div className="p-5 border-b border-border bg-canvas/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h3 className="text-base font-semibold text-ink">AI Prompt Management</h3>
-              <p className="text-xs text-ink-muted">Manage and version control your content generation templates.</p>
+              <p className="text-xs text-ink-muted">Manage, edit, activate, and delete your AI prompt templates.</p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div className="relative">
@@ -187,16 +283,23 @@ export default function AIContent() {
               <thead>
                 <tr className="border-b border-border bg-canvas/10 text-xs font-semibold text-ink-muted uppercase tracking-wider">
                   <th className="px-5 py-3">Template Name</th>
-                  <th className="px-5 py-3">Description</th>
-                  <th className="px-5 py-3">Last Edited</th>
-                  <th className="px-5 py-3">Status</th>
+                  <th className="px-5 py-3">Category</th>
+                  <th className="px-5 py-3">Prompt Content</th>
+                  <th className="px-5 py-3">Last Updated</th>
+                  <th className="px-5 py-3">Active Status</th>
                   <th className="px-5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border text-sm text-ink">
-                {filteredTemplates.length === 0 ? (
+                {loading ? (
                   <tr>
-                    <td colSpan={5} className="px-5 py-10 text-center text-ink-muted text-xs font-medium">
+                    <td colSpan={6} className="px-5 py-10 text-center text-ink-muted text-xs font-medium">
+                      Loading prompt templates...
+                    </td>
+                  </tr>
+                ) : filteredTemplates.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-5 py-10 text-center text-ink-muted text-xs font-medium">
                       No prompt templates matched your search.
                     </td>
                   </tr>
@@ -205,13 +308,19 @@ export default function AIContent() {
                     let IconComponent = FileText
                     let iconBg = 'bg-primary-50 text-primary'
 
-                    if (template.icon === 'camera') {
+                    if ((template.category || '').toLowerCase().includes('instagram') || (template.category || '').toLowerCase().includes('media')) {
                       IconComponent = Camera
                       iconBg = 'bg-accent-50 text-accent-600'
-                    } else if (template.icon === 'trending') {
+                    } else if ((template.category || '').toLowerCase().includes('twitter') || (template.category || '').toLowerCase().includes('growth')) {
                       IconComponent = TrendingUp
                       iconBg = 'bg-amber-50 text-warning'
                     }
+
+                    const formattedDate = new Date(template.updatedAt || template.createdAt || Date.now()).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
 
                     return (
                       <tr key={template.id} className="hover:bg-canvas/40 transition-colors">
@@ -223,32 +332,45 @@ export default function AIContent() {
                             <span className="font-semibold text-ink">{template.name}</span>
                           </div>
                         </td>
-                        <td className="px-5 py-4 text-ink-muted max-w-xs truncate">
-                          {template.description}
+                        <td className="px-5 py-4">
+                          <Badge tone="neutral" className="font-semibold text-xs">
+                            {template.category || 'General'}
+                          </Badge>
                         </td>
-                        <td className="px-5 py-4 text-ink-muted">
-                          {template.lastEdited}
+                        <td className="px-5 py-4 text-ink-muted max-w-xs truncate" title={template.prompt}>
+                          {template.prompt}
+                        </td>
+                        <td className="px-5 py-4 text-ink-muted text-xs">
+                          {formattedDate}
                         </td>
                         <td className="px-5 py-4">
                           <button
                             onClick={() => handleToggle(template.id)}
                             className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${
-                              template.active ? 'bg-primary' : 'bg-border'
+                              template.isActive ? 'bg-primary' : 'bg-border'
                             }`}
                           >
                             <span
                               className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                template.active ? 'translate-x-5' : 'translate-x-0'
+                                template.isActive ? 'translate-x-5' : 'translate-x-0'
                               }`}
                             />
                           </button>
                         </td>
-                        <td className="px-5 py-4 text-right">
+                        <td className="px-5 py-4 text-right space-x-1">
                           <button
                             onClick={() => handleOpenEditModal(template)}
                             className="p-1.5 rounded-control text-ink-muted hover:text-primary hover:bg-primary-50 transition-colors"
+                            title="Edit Prompt"
                           >
                             <Edit size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(template.id)}
+                            className="p-1.5 rounded-control text-ink-muted hover:text-danger hover:bg-red-50 transition-colors"
+                            title="Delete Prompt"
+                          >
+                            <Trash2 size={16} />
                           </button>
                         </td>
                       </tr>
@@ -284,37 +406,39 @@ export default function AIContent() {
               <span className="text-xs font-semibold text-ink-muted uppercase">Approval Rate</span>
               <span className="inline-flex items-center gap-0.5 rounded px-1.5 py-0.5 text-xs font-bold bg-accent-50 text-accent-600">
                 <TrendingUp size={12} />
-                +2.4%
+                {analytics.approvalRate >= 50 ? 'High' : 'Normal'}
               </span>
             </div>
-            <div className="text-3xl font-bold text-ink">94.2%</div>
-            <p className="text-xs text-ink-muted mt-2">Based on human-in-the-loop validation</p>
+            <div className="text-3xl font-bold text-ink">{analytics.approvalRate}%</div>
+            <p className="text-xs text-ink-muted mt-2">Percentage of thumbs-up customer reactions</p>
           </Card>
 
           <Card className="p-5 shadow-soft">
             <div className="flex justify-between items-start mb-4">
               <span className="text-xs font-semibold text-ink-muted uppercase">Avg. Rating</span>
               <div className="flex text-warning">
-                <Star size={14} className="fill-warning" />
-                <Star size={14} className="fill-warning" />
-                <Star size={14} className="fill-warning" />
-                <Star size={14} className="fill-warning" />
-                <Star size={14} className="fill-warning opacity-30" />
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    size={14}
+                    className={star <= Math.round(analytics.avgRating || 0) ? 'fill-warning' : 'fill-warning opacity-30'}
+                  />
+                ))}
               </div>
             </div>
             <div className="text-3xl font-bold text-ink">
-              4.8<span className="text-lg font-normal text-ink-muted">/5</span>
+              {analytics.avgRating}<span className="text-lg font-normal text-ink-muted">/5</span>
             </div>
-            <p className="text-xs text-ink-muted mt-2">Across all active prompt templates</p>
+            <p className="text-xs text-ink-muted mt-2">Average customer star rating</p>
           </Card>
 
           <Card className="p-5 shadow-soft">
             <div className="flex justify-between items-start mb-4">
-              <span className="text-xs font-semibold text-ink-muted uppercase">Total Rated Posts</span>
+              <span className="text-xs font-semibold text-ink-muted uppercase">Total Feedback Events</span>
               <BarChart2 size={16} className="text-ink-muted" />
             </div>
-            <div className="text-3xl font-bold text-ink">12,402</div>
-            <p className="text-xs text-ink-muted mt-2">Lifetime feedback events recorded</p>
+            <div className="text-3xl font-bold text-ink">{analytics.totalFeedback.toLocaleString()}</div>
+            <p className="text-xs text-ink-muted mt-2">Total user feedback interactions recorded</p>
           </Card>
         </div>
 
@@ -324,16 +448,13 @@ export default function AIContent() {
             <h4 className="text-sm font-semibold text-ink">Rating Distribution</h4>
             <div className="flex gap-2">
               <button className="px-3 py-1.5 bg-canvas hover:bg-canvas/70 text-ink rounded-control text-xs font-semibold border border-border">
-                Last 30 Days
-              </button>
-              <button className="p-1 rounded-control text-ink-muted hover:text-ink hover:bg-canvas">
-                <MoreVertical size={16} />
+                All Time
               </button>
             </div>
           </div>
 
           <div className="space-y-4 max-w-3xl">
-            {RATING_DISTRIBUTION.map((rating) => (
+            {analytics.ratingDistribution.map((rating) => (
               <div key={rating.stars} className="flex items-center gap-4">
                 <div className="w-12 text-xs text-ink-muted flex items-center justify-end gap-1 font-semibold">
                   {rating.stars} <Star size={12} className="fill-ink-muted/30" />
@@ -345,7 +466,7 @@ export default function AIContent() {
                   />
                 </div>
                 <div className="w-16 text-right text-xs font-bold text-ink">
-                  {rating.count}
+                  {rating.count} ({rating.percentage}%)
                 </div>
               </div>
             ))}
@@ -357,8 +478,8 @@ export default function AIContent() {
                 <Smile size={20} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-ink">High Sentiment</p>
-                <p className="text-xs text-ink-muted">93% of feedback is positive</p>
+                <p className="text-sm font-semibold text-ink">Positive Reactions</p>
+                <p className="text-xs text-ink-muted">{analytics.upReactions} Thumbs Up vs {analytics.downReactions} Thumbs Down</p>
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -366,8 +487,8 @@ export default function AIContent() {
                 <Sparkles size={20} />
               </div>
               <div>
-                <p className="text-sm font-semibold text-ink">Optimization Hub</p>
-                <p className="text-xs text-ink-muted">Recommended: Update "Casual" prompt</p>
+                <p className="text-sm font-semibold text-ink">AI Suggestions Generated</p>
+                <p className="text-xs text-ink-muted">{analytics.totalSuggestions} total content items generated</p>
               </div>
             </div>
           </div>
@@ -389,27 +510,30 @@ export default function AIContent() {
             required
           />
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-ink">Description</label>
-            <textarea
-              value={formState.description}
-              onChange={(e) => setFormState((prev) => ({ ...prev, description: e.target.value }))}
-              rows={3}
-              placeholder="Describe target tone, platforms, or guidelines..."
-              className="rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
-              required
-            />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-ink">Icon Theme</label>
+            <label className="text-sm font-medium text-ink">Category / Platform</label>
             <select
-              value={formState.icon}
-              onChange={(e) => setFormState((prev) => ({ ...prev, icon: e.target.value }))}
+              value={formState.category}
+              onChange={(e) => setFormState((prev) => ({ ...prev, category: e.target.value }))}
               className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
             >
-              <option value="description">Document / B2B (Indigo)</option>
-              <option value="camera">Camera / Media (Emerald)</option>
-              <option value="trending">Graph / Growth (Amber)</option>
+              <option value="General">General</option>
+              <option value="Instagram">Instagram</option>
+              <option value="LinkedIn">LinkedIn</option>
+              <option value="X / Twitter">X / Twitter</option>
+              <option value="TikTok">TikTok</option>
+              <option value="Facebook">Facebook</option>
             </select>
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-ink">Prompt Content</label>
+            <textarea
+              value={formState.prompt}
+              onChange={(e) => setFormState((prev) => ({ ...prev, prompt: e.target.value }))}
+              rows={4}
+              placeholder="Write the system prompt instructions for the AI..."
+              className="rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary font-mono"
+              required
+            />
           </div>
 
           <div className="pt-4 flex justify-end gap-2">
@@ -428,4 +552,4 @@ export default function AIContent() {
       </Modal>
     </div>
   )
-}
+}

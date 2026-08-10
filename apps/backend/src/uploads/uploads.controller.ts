@@ -71,7 +71,7 @@ export class UploadsController {
   @UseInterceptors(FileInterceptor('file'))
   async uploadFile(
     @CurrentUser() user: { userId: string }, // Currently authenticated user
-    @UploadedFile() file: Express.Multer.File, // Uploaded file
+    @UploadedFile() file: any, // Uploaded file
     @Body() createUploadDto: CreateUploadDto, // Upload metadata (category, etc.)
   ) {
     // Ensure a file was actually uploaded

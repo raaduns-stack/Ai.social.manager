@@ -21,6 +21,7 @@ import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UploadsModule } from './uploads/uploads.module';
 import { ContentSuggestionsModule } from './content-suggestions/content-suggestions.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 @Module({
   imports: [
@@ -52,9 +53,7 @@ import { ContentSuggestionsModule } from './content-suggestions/content-suggesti
     FaqsModule,
     UploadsModule,
     ContentSuggestionsModule,
-    // Next modules to add here as they're built:
-    // UsersModule, ContentCalendarModule, UploadsModule,
-    // AiModule (Gemini/OpenClaw integration), NotificationsModule
+    CalendarModule,
   ],
   controllers: [AppController, HealthController],
   providers: [AppService],

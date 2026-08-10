@@ -27,28 +27,48 @@ export class PromptManagementController {
   getAllPrompts() {
     return this.promptManagementService.getAllPrompts();
   }
+
   // ==================================================
-// UPDATE AN AI PROMPT TEMPLATE
-// PATCH /api/admin/prompt-management/:id
-// ==================================================
-@Patch(':id')
-updatePrompt(
-  @Param('id') id: string,
-  @Body() updatePromptDto: UpdatePromptDto,
-) {
-  return this.promptManagementService.updatePrompt(
-    id,
-    updatePromptDto,
-  );
-}
-// ==================================================
-// DELETE AN AI PROMPT TEMPLATE
-// DELETE /api/admin/prompt-management/:id
-// ==================================================
-@Delete(':id')
-deletePrompt(@Param('id') id: string) {
-  return this.promptManagementService.deletePrompt(id);
-}
+  // GET AI FEEDBACK ANALYTICS
+  // GET /api/admin/prompt-management/feedback-analytics
+  // ==================================================
+  @Get('feedback-analytics')
+  getFeedbackAnalytics() {
+    return this.promptManagementService.getFeedbackAnalytics();
+  }
+
+  // ==================================================
+  // UPDATE AN AI PROMPT TEMPLATE
+  // PATCH /api/admin/prompt-management/:id
+  // ==================================================
+  @Patch(':id')
+  updatePrompt(
+    @Param('id') id: string,
+    @Body() updatePromptDto: UpdatePromptDto,
+  ) {
+    return this.promptManagementService.updatePrompt(
+      id,
+      updatePromptDto,
+    );
+  }
+
+  // ==================================================
+  // TOGGLE AI PROMPT STATUS
+  // PATCH /api/admin/prompt-management/:id/toggle
+  // ==================================================
+  @Patch(':id/toggle')
+  togglePrompt(@Param('id') id: string) {
+    return this.promptManagementService.togglePrompt(id);
+  }
+
+  // ==================================================
+  // DELETE AN AI PROMPT TEMPLATE
+  // DELETE /api/admin/prompt-management/:id
+  // ==================================================
+  @Delete(':id')
+  deletePrompt(@Param('id') id: string) {
+    return this.promptManagementService.deletePrompt(id);
+  }
 
   // ==========================================
   // Create a New AI Prompt Template

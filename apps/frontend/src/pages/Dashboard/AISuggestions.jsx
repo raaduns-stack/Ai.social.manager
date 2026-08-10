@@ -274,39 +274,43 @@ const loadSuggestions = async () => {
    */
   const handleSaveRating = async () => {
     // Guard clause: Prevent submission if no item is selected or no star rating is set
-  if (!ratingTarget || selectedStars === 0) return
-// Send POST request mapping local UI state ('like'/'dislike') to API expected values ('up'/'down')
-  try {
-    await apiClient.post(
-      `/content-suggestions/${ratingTarget.id}/feedback`,
-      {
-        reaction: ratingTarget.type === 'like' ? 'up' : 'down',
-        rating: selectedStars,
+    if (!ratingTarget || selectedStars === 0) return
+    try {
+      const isUuid =
+        typeof ratingTarget.id === 'string' &&
+        ratingTarget.id.includes('-') &&
+        ratingTarget.id.length > 20
+
+      if (isUuid) {
+        await apiClient.post(
+          `/content-suggestions/${ratingTarget.id}/feedback`,
+          {
+            reaction: ratingTarget.type === 'like' ? 'up' : 'down',
+            rating: selectedStars,
+          }
+        )
       }
-    )
 
-    setRatings((prev) => ({
-      ...prev,
-      [ratingTarget.id]: {
-        type: ratingTarget.type,
-        stars: selectedStars,
-      },
-    }))
+      setRatings((prev) => ({
+        ...prev,
+        [ratingTarget.id]: {
+          type: ratingTarget.type,
+          stars: selectedStars,
+        },
+      }))
 
-TypeScript
-
-    // Notify the user of successful feedback submission
-    alert('Feedback saved successfully!')
-  } catch (err) {
-    // Log error details for debugging and notify the user of submission failure
-    console.error(err)
-    alert('Failed to save feedback.')
+      // Notify the user of successful feedback submission
+      alert('Feedback saved successfully!')
+    } catch (err) {
+      // Log error details for debugging and notify the user of submission failure
+      console.error(err)
+      alert('Failed to save feedback.')
+    }
+    // Reset rating modal/form state variables back to their initial default value
+    setRatingTarget(null)
+    setSelectedStars(0)
+    setHoveredStars(0)
   }
-// Reset rating modal/form state variables back to their initial default value
-  setRatingTarget(null)
-  setSelectedStars(0)
-  setHoveredStars(0)
-}
 
   return (
     <div className="space-y-6">

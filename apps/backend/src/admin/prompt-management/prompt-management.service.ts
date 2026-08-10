@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq } from 'drizzle-orm';
+import { eq, count } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
@@ -24,7 +24,8 @@ export class PromptManagementService {
       .select()
       .from(schema.aiPromptTemplates);
   }
-    // ==================================================
+
+  // ==================================================
   // CREATE A NEW AI PROMPT TEMPLATE
   // Inserts a new prompt into the database.
   // ==================================================
@@ -41,40 +42,120 @@ export class PromptManagementService {
 
     return prompt;
   }
+
   // ==================================================
-// UPDATE AN AI PROMPT TEMPLATE
-// Allows the admin to modify an existing prompt.
-// ==================================================
-async updatePrompt(
-  id: string,
-  data: {
-    name?: string;
-    category?: string;
-    prompt?: string;
-    isActive?: boolean;
-  },
-) {
-  const [updatedPrompt] = await this.db
-    .update(schema.aiPromptTemplates)
-    .set({
-      ...data,
-      updatedAt: new Date(),
-    })
-    .where(eq(schema.aiPromptTemplates.id, id))
-    .returning();
+  // UPDATE AN AI PROMPT TEMPLATE
+  // Allows the admin to modify an existing prompt.
+  // ==================================================
+  async updatePrompt(
+    id: string,
+    data: {
+      name?: string;
+      category?: string;
+      prompt?: string;
+      isActive?: boolean;
+    },
+  ) {
+    const [updatedPrompt] = await this.db
+      .update(schema.aiPromptTemplates)
+      .set({
+        ...data,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.aiPromptTemplates.id, id))
+      .returning();
 
-  return updatedPrompt;
-}
-// ==================================================
-// DELETE AN AI PROMPT TEMPLATE
-// Removes a prompt permanently from the database.
-// ==================================================
-async deletePrompt(id: string) {
-  const [deletedPrompt] = await this.db
-    .delete(schema.aiPromptTemplates)
-    .where(eq(schema.aiPromptTemplates.id, id))
-    .returning();
+    return updatedPrompt;
+  }
 
-  return deletedPrompt;
-}
+  // ==================================================
+  // TOGGLE AI PROMPT STATUS
+  // Enables or disables a prompt template.
+  // ==================================================
+  async togglePrompt(id: string) {
+    const [existingPrompt] = await this.db
+      .select()
+      .from(schema.aiPromptTemplates)
+      .where(eq(schema.aiPromptTemplates.id, id));
+
+    if (!existingPrompt) {
+      return null;
+    }
+
+    const [updatedPrompt] = await this.db
+      .update(schema.aiPromptTemplates)
+      .set({
+        isActive: !existingPrompt.isActive,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.aiPromptTemplates.id, id))
+      .returning();
+
+    return updatedPrompt;
+  }
+
+  // ==================================================
+  // DELETE AN AI PROMPT TEMPLATE
+  // Removes a prompt permanently from the database.
+  // ==================================================
+  async deletePrompt(id: string) {
+    const [deletedPrompt] = await this.db
+      .delete(schema.aiPromptTemplates)
+      .where(eq(schema.aiPromptTemplates.id, id))
+      .returning();
+
+    return deletedPrompt;
+  }
+
+  // ==================================================
+  // AI FEEDBACK ANALYTICS
+  // Computes aggregate feedback stats for admin view.
+  // ==================================================
+  async getFeedbackAnalytics() {
+    const allFeedback = await this.db
+      .select()
+      .from(schema.contentFeedback);
+
+    const totalFeedback = allFeedback.length;
+    const upReactions = allFeedback.filter((f) => f.reaction === 'up').length;
+    const downReactions = allFeedback.filter((f) => f.reaction === 'down').length;
+
+    const approvalRate = totalFeedback > 0 
+      ? Number(((upReactions / totalFeedback) * 100).toFixed(1)) 
+      : 0;
+
+    const totalRatingSum = allFeedback.reduce((sum, f) => sum + f.rating, 0);
+    const avgRating = totalFeedback > 0 
+      ? Number((totalRatingSum / totalFeedback).toFixed(1)) 
+      : 0;
+
+    const ratingCounts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
+    allFeedback.forEach((f) => {
+      if (f.rating >= 1 && f.rating <= 5) {
+        ratingCounts[f.rating] = (ratingCounts[f.rating] || 0) + 1;
+      }
+    });
+
+    const ratingDistribution = [5, 4, 3, 2, 1].map((stars) => {
+      const cnt = ratingCounts[stars] || 0;
+      const percentage = totalFeedback > 0 
+        ? Math.round((cnt / totalFeedback) * 100) 
+        : 0;
+      return { stars, count: cnt.toLocaleString(), percentage };
+    });
+
+    const [suggestionsCountRes] = await this.db
+      .select({ count: count() })
+      .from(schema.contentSuggestions);
+
+    return {
+      totalSuggestions: suggestionsCountRes?.count || 0,
+      totalFeedback,
+      upReactions,
+      downReactions,
+      approvalRate,
+      avgRating,
+      ratingDistribution,
+    };
+  }
 }
