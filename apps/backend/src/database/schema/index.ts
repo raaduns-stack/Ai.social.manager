@@ -14,4 +14,6 @@ export * from './content-feedback.schema';
 export * from './content-suggestions.schema';
 export * from './content-calendar.schema';
 export * from './ai-prompt-templates.schema';
+export * from './settings.schema';
 export * from './relations';
+

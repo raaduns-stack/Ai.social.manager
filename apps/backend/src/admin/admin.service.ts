@@ -193,6 +193,7 @@ export class AdminService {
         price: 0,
         interval: 'monthly' as const,
         isActive: true,
+        maxSocialAccounts: 1,
         features: [
           'Connect 1 social media account',
           'Generate 5 AI posts per month',
@@ -209,6 +210,7 @@ export class AdminService {
         price: 3000000,
         interval: 'monthly' as const,
         isActive: true,
+        maxSocialAccounts: 3,
         features: [
           'Everything in Free, plus:',
           'Connect 3 social media accounts',
@@ -229,6 +231,7 @@ export class AdminService {
         price: 10000000,
         interval: 'monthly' as const,
         isActive: true,
+        maxSocialAccounts: 7,
         features: [
           'Everything in Starter, plus:',
           'Connect 7 social media accounts',
@@ -253,6 +256,7 @@ export class AdminService {
         price: 15000000,
         interval: 'monthly' as const,
         isActive: true,
+        maxSocialAccounts: 15,
         features: [
           'Everything in Growth, plus:',
           'Connect 15 social media accounts',
@@ -286,6 +290,7 @@ export class AdminService {
             interval: p.interval,
             isActive: p.isActive,
             features: p.features,
+            maxSocialAccounts: p.maxSocialAccounts,
             updatedAt: new Date(),
           })
           .where(eq(schema.plans.id, existing.id));
@@ -297,6 +302,7 @@ export class AdminService {
           interval: p.interval,
           isActive: p.isActive,
           features: p.features,
+          maxSocialAccounts: p.maxSocialAccounts,
         });
       }
     }
