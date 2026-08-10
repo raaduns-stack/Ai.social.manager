@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Search,
   Download,
@@ -8,8 +8,7 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  ChevronDown,
-  Sparkles
+  ChevronDown
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -17,84 +16,8 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import EmptyState from '../../components/ui/EmptyState'
 import { cn } from '../../utils/cn'
-
-// ---------------------------------------------------------------------------
-// Initial Mock Data (Preserving details from the Stitch HTML mockup)
-// ---------------------------------------------------------------------------
-const INITIAL_UPLOADS = [
-  {
-    id: "up_1",
-    name: "Product_Shot_01.jpg",
-    category: "Products",
-    uploader: "Amaka Obi",
-    customer: "TechCorp Solutions",
-    size: "4.2 MB",
-    date: "Oct 24, 2023",
-    status: "Approved",
-    type: "image",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCvLQMoLA34w1BHU1Wy7B1NEiacHGcQcRLyKF-e9iY1hWN0J6YIeEYCNY9QevrOtLcTl6z_n2qLbe2pro_l_HzOYdyWpIK8gC-wy9KtZRYLpkCi_mrTMtk4tEx0OxQK339X3xYae__o-9tIg2d0WxthaTJuZc4MCEbCAm0KXnZLp29Dt6Yq2YV2D48IompR5g9eWBN5V8CtkZG8dDURhO2aWQc3E763XHOEvUEirtIMRHGamBQfX_bXOQ3UK6BB0R3knG1AhPKylRY9",
-  },
-  {
-    id: "up_2",
-    name: "Office_Team_Culture.png",
-    category: "Products",
-    uploader: "James Wilson",
-    customer: "GreenWay Eco",
-    size: "8.1 MB",
-    date: "Oct 25, 2023",
-    status: "Pending",
-    type: "image",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDs3cdt3BdjWuNUR0HAvwqY1XYoWnlacOYKmxLC7IbszGtVHa0DdwxsHJ8s6m3979Isl0sOI7KFfwgAvZIDJT9bvIRtucK7i_H72gVhoByM5KRF9DvFcHYcCcXah4nqMjzelpM5SSq70FQ0SkVF-NeiwJja-4c9PARogOC1gx9kjFV2E82RWvWbkIDf3uA7YK0lisrc9gEQx-r9TfCTgnhlDBpDJcidOeZCFVfB3JcyvX3dvjmlf9whCQRkpy4_53DHC-O-lwQjM6PE",
-  },
-  {
-    id: "up_3",
-    name: "Quarterly_Logistics_Draft.pdf",
-    category: "Products",
-    uploader: "Sarah Chen",
-    customer: "Nova Financial",
-    size: "1.4 MB",
-    date: "Oct 22, 2023",
-    status: "Rejected",
-    type: "document",
-    url: null,
-  },
-  {
-    id: "up_4",
-    name: "Main_Stage_Lighting.jpg",
-    category: "Products",
-    uploader: "Marcus Thorne",
-    customer: "TechCorp Solutions",
-    size: "5.7 MB",
-    date: "Oct 21, 2023",
-    status: "Approved",
-    type: "image",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuCTXJu3thCV3BRJNxPjYktUqF6MVYquZ1LYmmtzBsISqhV4SWNP5tMJ9PpryO7SlIUKAxjBO-257LkqA5IiXPsqpjC7SgLd-xo_eN9XV7_2OtHn_v9_s0h9kelGzIlUK1VHIzxgnWFx-uckjn1Pbno4hAtflBVa-hnuAzlXCDAjIM9PBKfAC1kPA7QNlvwYZB19D820Jt41Jol9uAzxANn3YBc0KK5NmNFrGoNGt6RACxoSbjYSfA875lZqZI9JBR9aTKwRg0wKvV3p",
-  },
-  {
-    id: "up_5",
-    name: "Tech_Macro_Detail.png",
-    category: "Products",
-    uploader: "Amaka Obi",
-    customer: "TechCorp Solutions",
-    size: "3.1 MB",
-    date: "Oct 20, 2023",
-    status: "Approved",
-    type: "image",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuDSmg5VWBzpQp3UwXHUhcdQARHo3SDCrRvjazJLOC0haToPiEjVxEtzsZYgHv7E6C_1NCi3I7w01hAPWLPvWX7CWIYi3bWwFqJx1u5uBedFJQmbji5TRG_EHuFBsJOw6_DR5eajMWKPViz7pLX2NGLXqtX29uA4lu11kjPwq9pkKu2m6X8eXOFA40aT8nPaI5PMucyW62jHkEOnfDZO0cpptNGikSnVascSBIA26Y-kmLPwPR1oLE7xCVP30ljbuwnBie9wuxVw7j9y",
-  },
-  {
-    id: "up_6",
-    name: "Main_Entrance_Concept.png",
-    category: "Products",
-    uploader: "Elena Rodriguez",
-    customer: "GreenWay Eco",
-    size: "12.4 MB",
-    date: "Oct 25, 2023",
-    status: "Pending",
-    type: "image",
-    url: "https://lh3.googleusercontent.com/aida-public/AB6AXuBi9gIKkydOh3W-u_FBKV7K1LRW9DN15vB1SYpVjg8qdKx3GuBgiDKvT-uTeEhQQWXNdHzc-kqFYzy30s4LdyypVxf5rgfbyDL5tptQmK-LcmytpFNtAgZ4I_WmJopNxhtgHV7suzd5uO5yDxcic0NDibwjDNWGUj3RZLUgKT537sIKanUcmXP7KRlyaVZAyO-0ctHKYGnD4qogWzB_CYD08gDxcYG8qi6hnrWQ4_tg13c9t68dBqCNTqwuPpjDGWgU8y2mLFho7z3V",
-  },
-]
+import apiClient from '../../lib/api-client'
+import { adminGetUploads, adminReviewUpload } from '../../features/uploads/uploads-api'
 
 const CATEGORIES = [
   "Business Assets",
@@ -106,48 +29,150 @@ const CATEGORIES = [
   "Business Documents",
 ]
 
+const CATEGORY_MAP = {
+  'Business Assets': 'business_assets',
+  'Brand Assets': 'business_assets', // fallback
+  'Staff': 'staff_images',
+  'Office View': 'office_view',
+  'Products': 'products',
+  'Events': 'events',
+  'Business Documents': 'business_documents',
+}
+
+const CATEGORY_TO_TAB = {
+  'business_assets': 'Business Assets',
+  'staff_images': 'Staff',
+  'office_view': 'Office View',
+  'products': 'Products',
+  'events': 'Events',
+  'business_documents': 'Business Documents',
+}
+
 export default function Uploads() {
-  // ---------------------------------------------------------------------------
-  // State variables
-  // ---------------------------------------------------------------------------
   const [activeTab, setActiveTab] = useState('Products')
   const [customerFilter, setCustomerFilter] = useState('All Customers')
   const [statusFilter, setStatusFilter] = useState('All Status')
   const [searchQuery, setSearchQuery] = useState('')
-  const [uploads, setUploads] = useState(INITIAL_UPLOADS)
+  const [uploads, setUploads] = useState([])
   const [currentPage, setCurrentPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState(null)
 
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-  const handleApprove = (id) => {
-    setUploads(prev =>
-      prev.map(up => up.id === id ? { ...up, status: 'Approved' } : up)
-    )
+  const loadUploads = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const data = await adminGetUploads()
+      const mapped = data.map((u) => {
+        const type = u.mimeType?.startsWith('image/')
+          ? 'image'
+          : u.mimeType?.startsWith('video/')
+            ? 'video'
+            : 'document';
+        const sizeBytes = u.fileSize ?? 0;
+        const size = sizeBytes > 1024 * 1024
+          ? `${(sizeBytes / (1024 * 1024)).toFixed(1)} MB`
+          : `${Math.round(sizeBytes / 1024)} KB`;
+        const created = new Date(u.createdAt);
+        return {
+          id: u.id,
+          name: u.originalName,
+          category: CATEGORY_TO_TAB[u.category] || 'Products',
+          type,
+          size,
+          sizeBytes,
+          date: created.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+          timestamp: created.getTime(),
+          status: u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : 'Pending',
+          description: u.description || '',
+          url: u.fileUrl,
+          uploader: u.user ? u.user.fullName : 'Unknown',
+          customer: u.user ? (u.user.businessName || u.user.fullName) : 'Unknown',
+          user: u.user,
+        };
+      });
+      setUploads(mapped)
+    } catch (err) {
+      setError(err.message || 'Failed to fetch uploads')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const handleReject = (id) => {
-    setUploads(prev =>
-      prev.map(up => up.id === id ? { ...up, status: 'Rejected' } : up)
-    )
+  useEffect(() => {
+    loadUploads()
+  }, [])
+
+  const handleApprove = async (id) => {
+    try {
+      await adminReviewUpload(id, { status: 'approved' })
+      loadUploads()
+    } catch (err) {
+      console.error('Failed to approve upload', err)
+      alert('Failed to approve upload: ' + (err.message || err))
+    }
   }
 
-  const handleEvaluate = (id) => {
-    setUploads(prev =>
-      prev.map(up => up.id === id ? { ...up, status: 'Pending' } : up)
-    )
+  const handleReject = async (id) => {
+    const reason = window.prompt('Enter rejection reason:')
+    if (reason === null) return
+    if (!reason.trim()) {
+      alert('A rejection reason is required to reject.')
+      return
+    }
+    try {
+      await adminReviewUpload(id, { status: 'rejected', rejectionReason: reason })
+      loadUploads()
+    } catch (err) {
+      console.error('Failed to reject upload', err)
+      alert('Failed to reject upload: ' + (err.message || err))
+    }
   }
 
-  // ---------------------------------------------------------------------------
-  // Filtering and Queries
-  // ---------------------------------------------------------------------------
+  const handleEvaluate = async (id) => {
+    try {
+      await adminReviewUpload(id, { status: 'pending' })
+      loadUploads()
+    } catch (err) {
+      console.error('Failed to re-evaluate upload', err)
+      alert('Failed to re-evaluate upload: ' + (err.message || err))
+    }
+  }
+
+  const handleDownload = async (up) => {
+    try {
+      const response = await apiClient.get(`/admin/uploads/${up.id}/download`, {
+        responseType: 'blob',
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', up.name)
+      document.body.appendChild(link)
+      link.click()
+      link.parentNode.removeChild(link)
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Failed to download file', err)
+    }
+  }
+
+  // Collect unique customers from all uploads to populate the filter dropdown
+  const uniqueCustomers = Array.from(
+    new Map(
+      uploads
+        .filter(u => u.user)
+        .map(u => [u.user.id, u.user.businessName || u.user.fullName])
+    ).entries()
+  );
+
   const filteredUploads = uploads.filter(up => {
     // 1. Tab category filter
     const matchesCategory = up.category === activeTab
 
     // 2. Customer filter
     const matchesCustomer =
-      customerFilter === 'All Customers' || up.customer === customerFilter
+      customerFilter === 'All Customers' || (up.user && up.user.id === customerFilter)
 
     // 3. Status filter
     const matchesStatus =
@@ -159,11 +184,18 @@ export default function Uploads() {
     return matchesCategory && matchesCustomer && matchesStatus && matchesSearch
   })
 
+  // Client-side pagination
+  const ITEMS_PER_PAGE = 6
+  const totalPages = Math.ceil(filteredUploads.length / ITEMS_PER_PAGE) || 1
+  const paginatedUploads = filteredUploads.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  )
+
   return (
     <div className="space-y-6">
       {/* Page Header Section */}
       <PageHeader
-        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
         title="Uploads Manager"
         description="Verify user content uploads, logo assets, and platform-specific media."
       />
@@ -207,9 +239,9 @@ export default function Uploads() {
                 className="appearance-none bg-surface border border-border rounded-control text-sm py-2 pl-3 pr-10 focus:outline-none focus:ring-2 focus:ring-primary-500 text-ink min-w-[180px]"
               >
                 <option value="All Customers">All Customers</option>
-                <option value="TechCorp Solutions">TechCorp Solutions</option>
-                <option value="GreenWay Eco">GreenWay Eco</option>
-                <option value="Nova Financial">Nova Financial</option>
+                {uniqueCustomers.map(([id, name]) => (
+                  <option key={id} value={id}>{name}</option>
+                ))}
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted" size={14} />
             </div>
@@ -257,7 +289,21 @@ export default function Uploads() {
       </div>
 
       {/* Grid: Assets Cards */}
-      {filteredUploads.length === 0 ? (
+      {isLoading ? (
+        <Card className="p-12 flex flex-col items-center justify-center text-center">
+          <div className="w-10 h-10 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin"></div>
+          <p className="text-xs text-ink-muted mt-3">Loading uploads...</p>
+        </Card>
+      ) : error ? (
+        <Card className="p-12 flex flex-col items-center justify-center text-center border-danger">
+          <AlertCircle size={32} className="text-danger mb-2" />
+          <h4 className="text-base font-semibold text-ink">Error Loading Uploads</h4>
+          <p className="text-xs text-danger mt-1">{error}</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={loadUploads}>
+            Retry
+          </Button>
+        </Card>
+      ) : paginatedUploads.length === 0 ? (
         <EmptyState
           icon={<FileText size={32} />}
           title="No uploaded files found"
@@ -265,19 +311,36 @@ export default function Uploads() {
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredUploads.map((up) => (
+          {paginatedUploads.map((up) => (
             <Card
               key={up.id}
               className="overflow-hidden border-border bg-surface shadow-soft group hover:shadow-hover transition-shadow duration-300"
             >
-              {up.type === 'document' ? (
+              {up.type !== 'image' && up.type !== 'video' ? (
                 <div className="h-48 bg-canvas flex flex-col items-center justify-center relative p-4 border-b border-border">
                   <FileText size={64} className="text-ink-muted mb-2" />
                   <span className="text-[10px] text-ink-muted font-bold tracking-wider">DOCUMENT</span>
                   <div className="absolute top-3 right-3">
-                    <Badge tone="danger" className="shadow-soft gap-1 flex items-center">
-                      <AlertCircle size={12} />
-                      Rejected
+                    <Badge
+                      tone={up.status === 'Approved' ? 'success' : up.status === 'Rejected' ? 'danger' : 'warning'}
+                      className="shadow-soft gap-1 flex items-center"
+                    >
+                      {up.status === 'Approved' ? (
+                        <>
+                          <CheckCircle2 size={12} />
+                          Approved
+                        </>
+                      ) : up.status === 'Rejected' ? (
+                        <>
+                          <AlertCircle size={12} />
+                          Rejected
+                        </>
+                      ) : (
+                        <>
+                          <Clock size={12} />
+                          Pending
+                        </>
+                      )}
                     </Badge>
                   </div>
                 </div>
@@ -290,13 +353,18 @@ export default function Uploads() {
                   />
                   <div className="absolute top-3 right-3">
                     <Badge
-                      tone={up.status === 'Approved' ? 'success' : 'warning'}
+                      tone={up.status === 'Approved' ? 'success' : up.status === 'Rejected' ? 'danger' : 'warning'}
                       className="shadow-soft gap-1 flex items-center"
                     >
                       {up.status === 'Approved' ? (
                         <>
                           <CheckCircle2 size={12} />
                           Approved
+                        </>
+                      ) : up.status === 'Rejected' ? (
+                        <>
+                          <AlertCircle size={12} />
+                          Rejected
                         </>
                       ) : (
                         <>
@@ -331,7 +399,7 @@ export default function Uploads() {
                       size="sm"
                       title="Download Asset"
                       className="h-8 w-8 p-0 flex items-center justify-center hover:bg-canvas rounded-control"
-                      onClick={() => alert(`Simulating download of: ${up.name}`)}
+                      onClick={() => handleDownload(up)}
                     >
                       <Download size={14} className="text-ink-muted" />
                     </Button>
@@ -413,43 +481,45 @@ export default function Uploads() {
       )}
 
       {/* Pagination Footer */}
-      <footer className="mt-8 flex items-center justify-between py-4 border-t border-border">
-        <p className="text-xs text-ink-muted">Showing {filteredUploads.length} of 142 uploads</p>
-        <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage === 1}
-            onClick={() => setCurrentPage(1)}
-          >
-            Previous
-          </Button>
-          <div className="flex gap-1">
-            {[1, 2, 3].map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                className={cn(
-                  "w-8 h-8 flex items-center justify-center rounded-control text-xs font-semibold transition-colors",
-                  currentPage === page
-                    ? "bg-primary text-white"
-                    : "text-ink-muted hover:bg-canvas hover:text-ink"
-                )}
-              >
-                {page}
-              </button>
-            ))}
+      {!isLoading && !error && filteredUploads.length > 0 && (
+        <footer className="mt-8 flex items-center justify-between py-4 border-t border-border">
+          <p className="text-xs text-ink-muted">Showing {paginatedUploads.length} of {filteredUploads.length} uploads</p>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            >
+              Previous
+            </Button>
+            <div className="flex gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={cn(
+                    "w-8 h-8 flex items-center justify-center rounded-control text-xs font-semibold transition-colors",
+                    currentPage === page
+                      ? "bg-primary text-white"
+                      : "text-ink-muted hover:bg-canvas hover:text-ink"
+                  )}
+                >
+                  {page}
+                </button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            >
+              Next
+            </Button>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={currentPage === 3}
-            onClick={() => setCurrentPage(currentPage + 1)}
-          >
-            Next
-          </Button>
-        </div>
-      </footer>
+        </footer>
+      )}
     </div>
   )
 }
