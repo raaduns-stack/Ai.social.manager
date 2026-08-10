@@ -12,12 +12,19 @@ import { DashboardService } from './dashboard.service';
 @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER)
 @Controller('admin')
 export class AdminDashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(private readonly dashboardService: DashboardService) { }
 
   @Get('dashboard-summary')
   @ApiOperation({ summary: 'Get summary statistics for the admin dashboard' })
   @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'monthly'] })
   getSummary(@Query('period') period?: string) {
     return this.dashboardService.getSummary(period);
+  }
+
+  @Get('analytics-summary')
+  @ApiOperation({ summary: 'Get real-data analytics summary for the admin analytics page' })
+  @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'monthly'] })
+  getAnalyticsSummary(@Query('period') period?: string) {
+    return this.dashboardService.getAnalyticsSummary(period);
   }
 }

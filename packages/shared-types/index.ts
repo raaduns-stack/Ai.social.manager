@@ -84,6 +84,8 @@ export type UploadCategory =
   | 'events'
   | 'business_documents';
 
+export type UploadStatus = 'pending' | 'approved' | 'rejected';
+
 export interface Upload {
   id: string;
   userId: string;
@@ -93,8 +95,20 @@ export interface Upload {
   fileUrl: string;
   mimeType: string;
   fileSize: number;
+  description?: string;
+  status?: UploadStatus;
+  reviewedBy?: string | null;
+  reviewedAt?: Date | string | null;
+  rejectionReason?: string | null;
   createdAt?: Date | string;
   updatedAt?: Date | string;
+  // Present only on admin responses — the customer who uploaded the file
+  user?: {
+    id: string;
+    fullName: string;
+    email: string;
+    businessName: string | null;
+  };
 }
 
 export interface CompanyProfile {

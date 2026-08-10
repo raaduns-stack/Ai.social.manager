@@ -49,7 +49,7 @@ export default function ErrorBanner({ error, onDismiss }: ErrorBannerProps) {
       <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
       <div className="flex-1">
         <h4 className="text-sm font-bold text-red-300">
-          Request Failed (Status {error.statusCode})
+          {error.statusCode ? `Request Failed (Status ${error.statusCode})` : 'Connection Error'}
         </h4>
         <div className="mt-1 text-sm text-rose-200/90">{renderMessage()}</div>
         {error.path && (

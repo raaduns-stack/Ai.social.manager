@@ -64,6 +64,13 @@
       "when": 1786030520558,
       "tag": "0008_shallow_lifeguard",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786358994238,
+      "tag": "0009_long_smiling_tiger",
+      "breakpoints": true
     }
   ]
 }

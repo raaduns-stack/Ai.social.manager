@@ -3,6 +3,7 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { SocialAccountsService } from '../social-accounts/social-accounts.service';
 import { PlanTierGuard } from '../auth/guards/plan-tiers.guard';
 import { RequirePlanTiers } from '../auth/decorators/plan-tiers.decorator';
 
@@ -11,7 +12,10 @@ import { RequirePlanTiers } from '../auth/decorators/plan-tiers.decorator';
 @UseGuards(JwtAuthGuard)
 @Controller('dashboard')
 export class DashboardController {
-  constructor(private readonly subscriptionsService: SubscriptionsService) {}
+  constructor(
+    private readonly subscriptionsService: SubscriptionsService,
+    private readonly socialAccountsService: SocialAccountsService,
+  ) { }
 
   @Get('my-summary')
   @ApiOperation({ summary: "Get the logged-in user's customer dashboard summary" })
@@ -33,6 +37,25 @@ export class DashboardController {
         },
       };
     }
+  }
+
+  @Get('my-analytics-summary')
+  @ApiOperation({
+    summary:
+      "Get real-data analytics summary for the logged-in user's Analytics page (connected accounts only — post/engagement metrics are not tracked yet)",
+  })
+  async getMyAnalyticsSummary(@CurrentUser() user: { userId: string }) {
+    const accounts = await this.socialAccountsService.findAll(user.userId);
+    const connectedAccounts = accounts.filter((account) => account.status === 'connected');
+
+    return {
+      connectedAccountsCount: connectedAccounts.length,
+      connectedPlatforms: connectedAccounts.map((account) => ({
+        platform: account.platform,
+        accountHandle: account.accountHandle,
+        connectedAt: account.connectedAt,
+      })),
+    };
   }
 
   @Get('premium-feature')
