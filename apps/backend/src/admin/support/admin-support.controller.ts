@@ -34,8 +34,12 @@ export class AdminSupportController {
 
   @Patch(':id/assign')
   @ApiOperation({ summary: 'Assign a support ticket to a staff member' })
-  assignTicket(@Param('id') id: string, @Body() dto: AssignTicketDto) {
-    return this.supportService.assignTicket(id, dto.staffId);
+  assignTicket(
+    @CurrentUser() admin: { userId: string; role: string },
+    @Param('id') id: string,
+    @Body() dto: AssignTicketDto,
+  ) {
+    return this.supportService.assignTicket(admin, id, dto.assigneeId);
   }
 
   @Patch(':id/status')

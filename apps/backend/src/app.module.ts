@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
@@ -19,6 +20,16 @@ import { SocialAccountsModule } from './social-accounts/social-accounts.module';
 import { SupportModule } from './support/support.module';
 import { FaqsModule } from './faqs/faqs.module';
 import { UploadsModule } from './uploads/uploads.module';
+import { ContentSuggestionsModule } from './content-suggestions/content-suggestions.module';
+import { CalendarModule } from './calendar/calendar.module';
+import { CompanyProfileModule } from './settings/company-profile/company-profile.module';
+import { CustomerProfileModule } from './settings/customer-profile/customer-profile.module';
+import { SystemSettingsModule } from './settings/system-settings/system-settings.module';
+import { NotificationSettingsModule } from './settings/notification-settings/notification-settings.module';
+import { NotificationPreferencesModule } from './settings/notification-preferences/notification-preferences.module';
+import { EmailConfigModule } from './settings/email-config/email-config.module';
+import { SocialApiSettingsModule } from './settings/social-api-settings/social-api-settings.module';
+import { PaymentGatewaySettingsModule } from './settings/payment-gateway-settings/payment-gateway-settings.module';
 
 @Module({
   imports: [
@@ -35,6 +46,7 @@ import { UploadsModule } from './uploads/uploads.module';
         limit: 100, // basic rate limiting; tighten per-route later (e.g. auth endpoints)
       },
     ]),
+    ScheduleModule.forRoot(),
     DatabaseModule,
     AuthModule,
     MailerModule,
@@ -48,6 +60,16 @@ import { UploadsModule } from './uploads/uploads.module';
     SupportModule,
     FaqsModule,
     UploadsModule,
+    ContentSuggestionsModule,
+    CalendarModule,
+    CompanyProfileModule,
+    CustomerProfileModule,
+    SystemSettingsModule,
+    NotificationSettingsModule,
+    NotificationPreferencesModule,
+    EmailConfigModule,
+    SocialApiSettingsModule,
+    PaymentGatewaySettingsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule

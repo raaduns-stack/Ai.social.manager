@@ -354,7 +354,7 @@ export default function Dashboard() {
             <Send className="w-5 h-5 text-ink-muted/50" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">{metrics.posts}</span>
+            <span className="text-2xl font-bold text-ink">{renderValue(summaryData?.totalFeedback)}</span>{/* Displays total feedback count using helper function to gracefully handle null/undefined states */}
             <Badge tone="neutral" className="gap-1 font-semibold">
               <span>{metrics.postsChange}</span>
             </Badge>
@@ -412,7 +412,7 @@ export default function Dashboard() {
             <Sparkles className="w-5 h-5 text-ink-muted/50" />
           </div>
           <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">{metrics.aiContent}</span>
+            <span className="text-2xl font-bold text-ink">{renderValue(summaryData?.totalSuggestions)}</span>{/* Displays total suggestions count using helper function to gracefully handle null/undefined states */}
             <Badge tone="success" className="gap-1 font-semibold">
               <TrendingUp className="w-3.5 h-3.5" />
               <span>{metrics.aiContentChange}</span>

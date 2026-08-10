@@ -221,6 +221,32 @@ export class AuthService {
     return { message: 'Verification code resent' };
   }
 
+  async changePassword(userId: string, dto: import('./dto/change-password.dto').ChangePasswordDto) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const passwordMatches = await bcrypt.compare(dto.currentPassword, user.passwordHash);
+    if (!passwordMatches) {
+      throw new BadRequestException('Current password is incorrect');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
+
+    await this.db
+      .update(schema.users)
+      .set({
+        passwordHash,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, user.id));
+
+    return { message: 'Password updated successfully' };
+  }
+
   async refresh(userId: string, email: string, role: string) {
     // Re-issues a new access/refresh pair. In production, pair this with a
     // refresh-token allowlist/blocklist table so tokens can be revoked on logout.

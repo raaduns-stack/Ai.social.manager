@@ -27,6 +27,7 @@ export const supportTickets = pgTable('support_tickets', {
   priority: ticketPriorityEnum('priority').notNull().default('medium'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  resolvedAt: timestamp('resolved_at'),
 });
 
 export const ticketMessages = pgTable('ticket_messages', {

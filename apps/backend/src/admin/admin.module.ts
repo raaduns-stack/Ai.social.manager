@@ -12,6 +12,11 @@ import { UploadsModule } from '../uploads/uploads.module';
 @Module({
   imports: [DatabaseModule, SupportModule, UploadsModule],
   controllers: [AdminController, AdminDashboardController, AdminSupportController, AdminUploadsController],
+import { PromptManagementModule } from './prompt-management/prompt-management.module';
+
+@Module({
+  imports: [DatabaseModule, SupportModule, PromptManagementModule],
+  controllers: [AdminController, AdminDashboardController, AdminSupportController],
   providers: [AdminService, DashboardService],
   exports: [AdminService, DashboardService],
 })

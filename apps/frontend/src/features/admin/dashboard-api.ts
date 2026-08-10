@@ -6,6 +6,9 @@ export interface AdminDashboardSummary {
   activeSubscriptions: number
   expiredSubscriptions: number
   revenueThisPeriod: number
+
+  totalSuggestions: number
+  totalFeedback: number
 }
 
 export async function getAdminDashboardSummary(period = 'weekly'): Promise<AdminDashboardSummary> {

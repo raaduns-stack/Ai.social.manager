@@ -1,5 +1,5 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, validateSync } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsString, Length, validateSync } from 'class-validator';
 
 enum Environment {
   Development = 'development',
@@ -25,6 +25,11 @@ class EnvironmentVariables {
   @IsString()
   @IsNotEmpty()
   JWT_REFRESH_SECRET: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @Length(32, 32)
+  SETTINGS_ENCRYPTION_KEY: string;
 
   @IsString()
   @IsOptional()

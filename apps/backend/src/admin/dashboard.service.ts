@@ -43,8 +43,18 @@ export class DashboardService {
       .select({ val: count() })
       .from(schema.subscriptions)
       .where(eq(schema.subscriptions.status, 'expired'));
+    
+    // 5. Total AI Suggestions
+const [suggestionsRes] = await this.db
+  .select({ val: count() })
+  .from(schema.contentSuggestions);
 
-    // 5. Revenue This Period (sum of successful payments converted from kobo to naira)
+// 6. Total Feedback
+const [feedbackRes] = await this.db
+  .select({ val: count() })
+  .from(schema.contentFeedback);
+
+    // 7. Revenue This Period (sum of successful payments converted from kobo to naira)
     const [revenueRes] = await this.db
       .select({ val: sum(schema.payments.amount) })
       .from(schema.payments)
@@ -56,12 +66,14 @@ export class DashboardService {
     const revenueNaira = revenueKobo / 100;
 
     return {
-      totalCustomers: totalCustomersRes?.val || 0,
-      newCustomersThisPeriod: newCustomersRes?.val || 0,
-      activeSubscriptions: activeSubsRes?.val || 0,
-      expiredSubscriptions: expiredSubsRes?.val || 0,
-      revenueThisPeriod: revenueNaira,
-    };
+  totalCustomers: totalCustomersRes?.val || 0,
+  newCustomersThisPeriod: newCustomersRes?.val || 0,
+  activeSubscriptions: activeSubsRes?.val || 0,
+  expiredSubscriptions: expiredSubsRes?.val || 0,
+  revenueThisPeriod: revenueNaira,
+  totalSuggestions: suggestionsRes?.val || 0,
+  totalFeedback: feedbackRes?.val || 0,
+};
   }
 
   /**

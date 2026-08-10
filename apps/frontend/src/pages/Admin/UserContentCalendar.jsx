@@ -1,707 +1,671 @@
-import { useState, useMemo } from 'react'
+/**
+ * Admin/UserContentCalendar.jsx
+ * ─────────────────────────────────────────────────────────────────────────────
+ * Detailed per-user calendar view for admins.
+ * Route: /admin/users/:userId/calendar (defined in AdminRoutes.jsx)
+ * The userId comes from useParams() — not hard-coded.
+ *
+ * Admins can:
+ *  - View Month / Week / Day calendar of a customer's posts
+ *  - Click a post to see full details
+ *  - Approve / Reject / Request Revision with optional notes
+ *    via PATCH /api/calendar/admin/posts/:id/approval
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+import { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Calendar as CalendarIcon,
-  ChevronDown,
-  Camera,
-  Video,
-  Zap,
-  FileText,
-  Download,
-  PlusCircle,
-  CheckCircle,
-  ArrowLeft,
+  ChevronLeft,
   ChevronRight,
-  ShieldCheck,
-  ShieldAlert,
-  ShieldX,
-  Trash2,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  FileEdit,
+  AlertCircle,
+  RefreshCw,
+  ArrowLeft,
+  Sparkles,
+  Tag,
+  Camera,
+  Linkedin,
+  Twitter,
+  Music,
+  Share2,
+  Facebook,
+  CalendarDays,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
+import {
+  getAdminCalendarPosts,
+  getAdminOverview,
+  updatePostApproval,
+} from '../../features/calendar/calendar-api'
 
-const CUSTOMERS = {
-  '1': 'Amaka Obi',
-  '2': 'Lena Dubois',
-  '3': 'David Chen',
-  '4': 'Sasha Kovic',
-  '5': 'Marcus Thorne',
-  '6': 'Julia Peters',
-  '7': 'Alex Rivera',
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+function getPlatformMeta(platform) {
+  switch (platform) {
+    case 'Instagram':   return { icon: <Camera size={12} />,   colour: 'danger' }
+    case 'LinkedIn':    return { icon: <Linkedin size={12} />,  colour: 'primary' }
+    case 'X / Twitter': return { icon: <Twitter size={12} />,  colour: 'neutral' }
+    case 'TikTok':      return { icon: <Music size={12} />,    colour: 'warning' }
+    case 'Facebook':    return { icon: <Facebook size={12} />, colour: 'primary' }
+    default:            return { icon: <Share2 size={12} />,   colour: 'neutral' }
+  }
 }
 
-const INITIAL_POSTS = [
-  // Amaka Obi (User ID 1)
-  {
-    id: 1,
-    day: 1,
-    type: 'published',
-    platform: 'Instagram',
-    format: 'photo',
-    text: 'New morning routine showing the startup workspace setup.',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB9Sc6LpLgJQH9vmc4zu3fcmjgM9L2fYJYsRdIUBv93XDi7RTpY-HEdv7_gU4uQgwEMzOujH6K_NTfmLAIm_5y7lylpkV7IDKy2qtGpci3c5xZo6_QI5B9EJpV64XNzMWm7lloqbGn-WsDKtq1VQ3Rl1wZy_heRcy0ovpEfIDktC3SJTuYQXtFcVFv4RVnwSsHqsc4dOTKJmhw1JBFhJcRcXIzjTlPl1rnPekJv_KfTXJ9hJ8nYbdhxBRn9pVEMYxW21QQn_Hu-Tu1_',
-    customer: 'Amaka Obi',
-    approvalStatus: 'Approved',
-  },
-  {
-    id: 4,
-    day: 10,
-    type: 'published',
-    platform: 'Instagram',
-    format: 'photo',
-    text: 'Summer Sale Launch - 20% off all productivity bundles!',
-    customer: 'Amaka Obi',
-    approvalStatus: 'Approved',
-  },
-  {
-    id: 5,
-    day: 10,
-    type: 'scheduled',
-    platform: 'Facebook',
-    format: 'photo',
-    text: 'Customer Review #42: "This service changed how we automate social sharing!"',
-    customer: 'Amaka Obi',
-    approvalStatus: 'Pending',
-  },
-  {
-    id: 6,
-    day: 13,
-    type: 'scheduled',
-    platform: 'TikTok',
-    format: 'video',
-    text: 'AI Integration Update - walkthrough of the neural content scheduler.',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAUri0p8q27PrGV8KDh6P3l6thQFLEpZoW3Ap8ST7Rhk2SiwT70jNfLUdOdLkkF2o2WinG5Xaa_-Ha13VAA3UTcdBfZfDaOAchYTtmb_rSZfBT9NdD3Bd4oVhaieGbLREJLhmUUqTZUVTrdBCG2srqBprEv4ffg8pKvEmJbnGczMlRVfoAm2dyVxjPHVxtriY154Sjt0OkhhX2YBdZ3wHtIpB8KZFjzJus-BUXJnc7dHXZ1a4QRSqHdH-H45beOBDqhnK8-bUTMYrqO',
-    customer: 'Amaka Obi',
-    approvalStatus: 'Approved',
-  },
-  {
-    id: 11,
-    day: 18,
-    type: 'scheduled',
-    platform: 'Instagram',
-    format: 'photo',
-    text: 'A sneak peek of the upcoming dashboard upgrades.',
-    customer: 'Amaka Obi',
-    approvalStatus: 'Rejected',
-  },
+function getApprovalMeta(status) {
+  switch (status) {
+    case 'APPROVED':          return { tone: 'success', label: 'Approved',          icon: <CheckCircle2 size={12} /> }
+    case 'PENDING':           return { tone: 'warning', label: 'Pending Review',    icon: <Clock size={12} /> }
+    case 'REVISION_REQUIRED': return { tone: 'warning', label: 'Revision Required', icon: <FileEdit size={12} /> }
+    case 'REJECTED':          return { tone: 'danger',  label: 'Rejected',          icon: <XCircle size={12} /> }
+    default:                  return { tone: 'neutral', label: status,              icon: <AlertCircle size={12} /> }
+  }
+}
 
-  // Lena Dubois (User ID 2)
-  {
-    id: 2,
-    day: 3,
-    type: 'draft',
-    platform: 'Instagram',
-    format: 'video',
-    text: 'Reel: Behind the scenes of our Paris creative studio vlog.',
-    customer: 'Lena Dubois',
-    approvalStatus: 'Pending',
-  },
-  {
-    id: 12,
-    day: 12,
-    type: 'scheduled',
-    platform: 'Facebook',
-    format: 'photo',
-    text: 'Expanding our creative boundaries this summer.',
-    customer: 'Lena Dubois',
-    approvalStatus: 'Pending',
-  },
+function getStatusMeta(status) {
+  switch (status) {
+    case 'SCHEDULED': return { tone: 'primary', label: 'Scheduled' }
+    case 'PUBLISHED': return { tone: 'success', label: 'Published' }
+    case 'DRAFT':     return { tone: 'neutral', label: 'Draft' }
+    default:          return { tone: 'neutral', label: status }
+  }
+}
 
-  // David Chen (User ID 3)
-  {
-    id: 3,
-    day: 6,
-    type: 'scheduled',
-    platform: 'Facebook',
-    format: 'photo',
-    text: 'Productivity hacks for solo developers - terminal setups.',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCg5wYx6jUpTwCMGXDKKxiIkZlvmfdBeEQyHOrGrplyQAG9ZdvH_D-b27x985l8TKQjq7tJ2SDc9v2EFHhtTP-lSrkee3LE4OwqleDRxd4FeT-li8YiG6wdp343Ypi46hU0cDkX06l_G1GIuzJ37ZPdT-VU5jlWjsBVD5bWKARLr4szyVrjn3nESwV8E6wB0X_jjnQOu687eIW5BTm7CzNr5GAUZ-9PY5iDhz8CuGjjpmpnkBf3pIhRQ6whX2a6j9x15BnIw3IEPAuu',
-    customer: 'David Chen',
-    approvalStatus: 'Approved',
-  },
-
-  // Sasha Kovic (User ID 4)
-  {
-    id: 8,
-    day: 21,
-    type: 'scheduled',
-    platform: 'TikTok',
-    format: 'video',
-    text: 'Weekend Agency Vlog Teaser - filming setups.',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsdl494QkBZDubMnx5tw6tq2II4uZGZnZ4Y81A2crrUMBFp8yQi24TZlf8zzcpYPUkU-Dsz1KcUX67CJAyd3odZKUuBIXVOpzwmNTXCCy1SdsEoS9J6dEZDUD7CZ55Tp6MvDhjd5lhfbrOI56ScLco3G3EXozpHh8si5jPwsE1paByLv8Ce14Mc3lEuqHW-Dro1HB-TD9BYsvljstA9J_KnvaiDVoayDrWA9EeWxur8hl35rHJmvE9XH2qG6FzrMzj1o2pchKBcUMO',
-    customer: 'Sasha Kovic',
-    approvalStatus: 'Pending',
-  },
-]
-
-const DAYS_OF_WEEK = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
-
-const CALENDAR_CELLS = [
-  { day: 28, currentMonth: false },
-  { day: 29, currentMonth: false },
-  { day: 30, currentMonth: false },
-  { day: 1, currentMonth: true },
-  { day: 2, currentMonth: true },
-  { day: 3, currentMonth: true },
-  { day: 4, currentMonth: true },
-  { day: 5, currentMonth: true },
-  { day: 6, currentMonth: true },
-  { day: 7, currentMonth: true },
-  { day: 8, currentMonth: true },
-  { day: 9, currentMonth: true },
-  { day: 10, currentMonth: true },
-  { day: 11, currentMonth: true },
-  { day: 12, currentMonth: true },
-  { day: 13, currentMonth: true, isToday: true },
-  { day: 14, currentMonth: true },
-  { day: 15, currentMonth: true },
-  { day: 16, currentMonth: true },
-  { day: 17, currentMonth: true },
-  { day: 18, currentMonth: true },
-  { day: 19, currentMonth: true },
-  { day: 20, currentMonth: true },
-  { day: 21, currentMonth: true },
-  { day: 22, currentMonth: true },
-  { day: 23, currentMonth: true },
-  { day: 24, currentMonth: true },
-  { day: 25, currentMonth: true },
-  { day: 26, currentMonth: true },
-  { day: 27, currentMonth: true },
-  { day: 28, currentMonth: true },
-  { day: 29, currentMonth: true },
-  { day: 30, currentMonth: true },
-  { day: 1, currentMonth: false },
-  { day: 2, currentMonth: false },
-]
-
-export default function UserContentCalendar() {
-  const { userId } = useParams()
-  const customerName = CUSTOMERS[userId] || 'Amaka Obi'
-
-  const [posts, setPosts] = useState(INITIAL_POSTS)
-  const [selectedPlatform, setSelectedPlatform] = useState('All Platforms')
-  const [viewMode, setViewMode] = useState('Month')
-  
-  // Modals state
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false)
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
-  
-  const [targetCellDay, setTargetCellDay] = useState(null)
-  const [selectedPost, setSelectedPost] = useState(null)
-
-  const [newPostForm, setNewPostForm] = useState({
-    text: '',
-    platform: 'Instagram',
-    format: 'photo',
+function formatDateTime(isoString) {
+  if (!isoString) return '—'
+  return new Date(isoString).toLocaleDateString('en-US', {
+    weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
   })
+}
 
-  // Dynamic cell posts filtration - locked to current customer
-  const filteredPosts = useMemo(() => {
-    return posts.filter((post) => {
-      const matchesPlatform = selectedPlatform === 'All Platforms' || post.platform === selectedPlatform
-      const matchesCustomer = post.customer === customerName
-      return matchesPlatform && matchesCustomer
+// ─── Month calendar grid ───────────────────────────────────────────────────────
+function MonthView({ posts, currentDate, onPostClick }) {
+  const year  = currentDate.getFullYear()
+  const month = currentDate.getMonth()
+  const firstDay = new Date(year, month, 1)
+  const lastDay  = new Date(year, month + 1, 0)
+  const startPad = firstDay.getDay()
+  const totalCells = startPad + lastDay.getDate()
+  const cells = Array.from({ length: Math.ceil(totalCells / 7) * 7 })
+
+  // Group posts by date key YYYY-MM-DD
+  const postsByDate = useMemo(() => {
+    const map = {}
+    posts.forEach(p => {
+      const ts = p.scheduledAt || p.publishedAt || p.createdAt
+      if (!ts) return
+      const key = ts.split('T')[0]
+      if (!map[key]) map[key] = []
+      map[key].push(p)
     })
-  }, [posts, selectedPlatform, customerName])
+    return map
+  }, [posts])
 
-  const handleOpenAddModal = (day) => {
-    setTargetCellDay(day)
-    setIsAddModalOpen(true)
-  }
-
-  const handleAddSubmit = (e) => {
-    e.preventDefault()
-    if (!newPostForm.text.trim()) return
-
-    const created = {
-      id: Date.now(),
-      day: targetCellDay || 1,
-      type: 'scheduled',
-      platform: newPostForm.platform,
-      format: newPostForm.format,
-      text: newPostForm.text,
-      customer: customerName,
-      approvalStatus: 'Pending',
-    }
-
-    setPosts((prev) => [...prev, created])
-    setIsAddModalOpen(false)
-    setNewPostForm({
-      text: '',
-      platform: 'Instagram',
-      format: 'photo',
-    })
-  }
-
-  const handleOpenDetailModal = (e, post) => {
-    e.stopPropagation()
-    setSelectedPost(post)
-    setIsDetailModalOpen(true)
-  }
-
-  const handleUpdateApprovalStatus = (status) => {
-    if (!selectedPost) return
-    setPosts((prev) =>
-      prev.map((post) =>
-        post.id === selectedPost.id ? { ...post, approvalStatus: status } : post
-      )
-    )
-    setSelectedPost((prev) => ({ ...prev, approvalStatus: status }))
-  }
-
-  const handleDeletePost = () => {
-    if (!selectedPost) return
-    setPosts((prev) => prev.filter((post) => post.id !== selectedPost.id))
-    setIsDetailModalOpen(false)
-    setSelectedPost(null)
-  }
-
-  const renderedCells = useMemo(() => {
-    if (viewMode === 'Month') return CALENDAR_CELLS
-    return CALENDAR_CELLS.slice(14, 21) // Week view filters the row around today
-  }, [viewMode])
-
-  const handleExportPDF = () => {
-    alert(`Generating PDF summary report for ${customerName}...`)
-  }
+  const todayStr = new Date().toISOString().split('T')[0]
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   return (
-    <div className="space-y-6">
-      {/* Breadcrumb Navigation */}
-      <div className="flex items-center gap-4">
-        <Link
-          to={`/admin/users/${userId}`}
-          className="w-10 h-10 flex items-center justify-center rounded-control border border-border bg-surface hover:bg-canvas text-ink-muted hover:text-ink transition-colors"
-        >
-          <ArrowLeft size={18} />
-        </Link>
-        <nav className="flex items-center gap-2 text-sm text-ink-muted">
-          <Link to="/admin/users" className="hover:text-primary transition-colors font-medium">
-            Users
-          </Link>
-          <ChevronRight size={14} className="text-ink-muted/50" />
-          <Link to={`/admin/users/${userId}`} className="hover:text-primary transition-colors font-medium">
-            {customerName}
-          </Link>
-          <ChevronRight size={14} className="text-ink-muted/50" />
-          <span className="text-ink font-semibold">Content Calendar</span>
-        </nav>
+    <div>
+      <div className="grid grid-cols-7 border-b border-canvas mb-1">
+        {dayNames.map(d => (
+          <div key={d} className="py-2 text-center text-xs font-medium text-ink-muted">{d}</div>
+        ))}
       </div>
+      <div className="grid grid-cols-7 gap-px bg-canvas">
+        {cells.map((_, idx) => {
+          const dayNum = idx - startPad + 1
+          const isValid = dayNum >= 1 && dayNum <= lastDay.getDate()
+          const dateStr = isValid
+            ? `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
+            : null
+          const dayPosts = dateStr ? (postsByDate[dateStr] || []) : []
+          const isToday = dateStr === todayStr
 
-      <PageHeader
-        title={`${customerName}'s Calendar`}
-        description="Review scheduled content and manage approval workflows."
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Platform filter */}
-            <div className="relative">
-              <select
-                value={selectedPlatform}
-                onChange={(e) => setSelectedPlatform(e.target.value)}
-                className="appearance-none bg-surface border border-border rounded-full py-2 pl-4 pr-10 text-sm font-semibold text-ink focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
-              >
-                <option value="All Platforms">All Platforms</option>
-                <option value="Instagram">Instagram</option>
-                <option value="Facebook">Facebook</option>
-                <option value="TikTok">TikTok</option>
-              </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-ink-muted w-4 h-4" />
+          return (
+            <div key={idx} className={`min-h-[90px] bg-surface p-1 ${!isValid ? 'opacity-20' : ''}`}>
+              {isValid && (
+                <>
+                  <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full
+                    ${isToday ? 'bg-primary-600 text-white' : 'text-ink-muted'}`}>
+                    {dayNum}
+                  </div>
+                  <div className="space-y-0.5">
+                    {dayPosts.slice(0, 3).map(p => {
+                      const appr = getApprovalMeta(p.approvalStatus)
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => onPostClick(p)}
+                          className={`w-full text-left text-[10px] rounded px-1 py-0.5 truncate transition-colors
+                            ${p.approvalStatus === 'APPROVED' ? 'bg-accent-50 text-accent-700 hover:bg-accent-100'
+                            : p.approvalStatus === 'REJECTED' ? 'bg-red-50 text-danger hover:bg-red-100'
+                            : p.approvalStatus === 'REVISION_REQUIRED' ? 'bg-amber-50 text-warning hover:bg-amber-100'
+                            : 'bg-primary-50 text-primary-700 hover:bg-primary-100'}`}
+                        >
+                          {p.title}
+                        </button>
+                      )
+                    })}
+                    {dayPosts.length > 3 && (
+                      <span className="text-[10px] text-ink-muted pl-1">+{dayPosts.length - 3} more</span>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
-            {/* Month/Week Switcher */}
-            <div className="flex border border-border rounded-control overflow-hidden shadow-soft">
-              <button
-                onClick={() => setViewMode('Month')}
-                className={`px-4 py-2 text-xs font-bold transition-all ${
-                  viewMode === 'Month'
-                    ? 'bg-canvas text-primary border-r border-border'
-                    : 'bg-surface text-ink-muted hover:bg-canvas'
-                }`}
-              >
-                Month
-              </button>
-              <button
-                onClick={() => setViewMode('Week')}
-                className={`px-4 py-2 text-xs font-bold transition-all ${
-                  viewMode === 'Week'
-                    ? 'bg-canvas text-primary'
-                    : 'bg-surface text-ink-muted hover:bg-canvas'
-                }`}
-              >
-                Week
-              </button>
+// ─── Week view ─────────────────────────────────────────────────────────────────
+function WeekView({ posts, currentDate, onPostClick }) {
+  const monday = new Date(currentDate)
+  monday.setDate(currentDate.getDate() - ((currentDate.getDay() + 6) % 7))
+  const days = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday)
+    d.setDate(monday.getDate() + i)
+    return d
+  })
+  const postsByDate = useMemo(() => {
+    const map = {}
+    posts.forEach(p => {
+      const ts = p.scheduledAt || p.publishedAt || p.createdAt
+      if (!ts) return
+      const key = ts.split('T')[0]
+      if (!map[key]) map[key] = []
+      map[key].push(p)
+    })
+    return map
+  }, [posts])
+  const todayStr = new Date().toISOString().split('T')[0]
+
+  return (
+    <div className="grid grid-cols-7 gap-2">
+      {days.map(d => {
+        const dateStr = d.toISOString().split('T')[0]
+        const dayPosts = postsByDate[dateStr] || []
+        const isToday = dateStr === todayStr
+        return (
+          <div key={dateStr} className={`rounded-lg border p-2 min-h-[140px] ${isToday ? 'border-primary-400 bg-primary-50' : 'border-canvas bg-surface'}`}>
+            <div className="text-xs font-semibold text-ink-muted mb-1">{d.toLocaleDateString('en-US', { weekday: 'short' })}</div>
+            <div className={`text-sm font-bold mb-2 ${isToday ? 'text-primary-600' : 'text-ink'}`}>{d.getDate()}</div>
+            <div className="space-y-1">
+              {dayPosts.length === 0 && <p className="text-[10px] text-ink-muted">—</p>}
+              {dayPosts.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => onPostClick(p)}
+                  className="w-full text-left text-[10px] rounded px-1 py-0.5 bg-primary-50 text-primary-700 hover:bg-primary-100 truncate transition-colors"
+                >
+                  {p.title}
+                </button>
+              ))}
             </div>
           </div>
-        }
-      />
+        )
+      })}
+    </div>
+  )
+}
 
-      {/* Calendar Month Grid */}
-      <Card className="overflow-hidden p-0 shadow-soft">
-        {/* Day Headers */}
-        <div className="grid grid-cols-7 border-b border-border bg-canvas/60">
-          {DAYS_OF_WEEK.map((day) => (
-            <div
-              key={day}
-              className={`py-2 text-center text-xs font-bold ${
-                day === 'SAT' || day === 'SUN' ? 'text-primary' : 'text-ink-muted'
-              }`}
-            >
-              {day}
-            </div>
-          ))}
+// ─── Day view ──────────────────────────────────────────────────────────────────
+function DayView({ posts, currentDate, onPostClick }) {
+  const dateStr = currentDate.toISOString().split('T')[0]
+  const dayPosts = useMemo(() => posts.filter(p => {
+    const ts = p.scheduledAt || p.publishedAt || p.createdAt
+    return ts && ts.startsWith(dateStr)
+  }), [posts, dateStr])
+
+  return (
+    <div>
+      <h3 className="text-sm font-semibold text-ink mb-3">
+        {currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </h3>
+      {dayPosts.length === 0 ? (
+        <div className="text-center py-12 text-ink-muted">
+          <CalendarDays className="mx-auto mb-2 opacity-30" size={32} />
+          <p className="text-sm">No posts for this day.</p>
         </div>
-
-        {/* Calendar Cells Grid */}
-        <div className="grid grid-cols-7 auto-rows-[minmax(140px,auto)] divide-x divide-y divide-border">
-          {renderedCells.map((cell, index) => {
-            const dayPosts = cell.currentMonth !== false
-              ? filteredPosts.filter((post) => post.day === cell.day)
-              : []
-
-            const isToday = cell.isToday
-
+      ) : (
+        <div className="space-y-3">
+          {dayPosts.map(p => {
+            const platform = getPlatformMeta(p.platform)
+            const appr = getApprovalMeta(p.approvalStatus)
             return (
-              <div
-                key={index}
-                className={`p-3 relative group transition-all duration-200 ${
-                  !cell.currentMonth
-                    ? 'bg-canvas/50 opacity-40 select-none'
-                    : isToday
-                    ? 'bg-primary-50/10 border-2 border-primary'
-                    : 'bg-surface hover:bg-canvas/30 cursor-pointer'
-                }`}
-                onClick={() => cell.currentMonth && handleOpenAddModal(cell.day)}
+              <button
+                key={p.id}
+                onClick={() => onPostClick(p)}
+                className="w-full text-left rounded-lg border border-canvas bg-surface p-3 hover:shadow-hover hover:border-primary-200 transition-all"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <span className={`text-xs font-bold ${isToday ? 'text-primary' : 'text-ink'}`}>
-                    {cell.day}
-                  </span>
-                  {isToday && (
-                    <span className="text-[9px] bg-primary text-white px-1.5 py-0.5 rounded-full font-bold uppercase tracking-wider shrink-0">
-                      Today
-                    </span>
-                  )}
-                  {cell.currentMonth && !isToday && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleOpenAddModal(cell.day)
-                      }}
-                      className="opacity-0 group-hover:opacity-100 text-primary-500 hover:text-primary transition-all p-0.5"
-                    >
-                      <PlusCircle size={15} />
-                    </button>
-                  )}
+                <div className="flex items-center gap-2 mb-1">
+                  <Badge tone={platform.colour} className="flex items-center gap-1">{platform.icon} {p.platform}</Badge>
+                  <Badge tone={appr.tone} className="flex items-center gap-1">{appr.icon} {appr.label}</Badge>
                 </div>
-
-                {/* Render posts inside the cell */}
-                <div className="space-y-2 mt-1">
-                  {dayPosts.map((post) => {
-                    let typeBadgeColor = 'bg-accent-50 border-accent/20'
-                    let textAccentColor = 'text-accent'
-                    let dotColor = 'bg-accent'
-                    let FormatIcon = Camera
-
-                    if (post.type === 'scheduled') {
-                      if (post.approvalStatus === 'Approved') {
-                        typeBadgeColor = 'bg-emerald-50 border-emerald-100'
-                        textAccentColor = 'text-emerald-700'
-                        dotColor = 'bg-emerald-500'
-                      } else if (post.approvalStatus === 'Rejected') {
-                        typeBadgeColor = 'bg-rose-50 border-rose-100'
-                        textAccentColor = 'text-rose-700'
-                        dotColor = 'bg-rose-500'
-                      } else {
-                        typeBadgeColor = 'bg-amber-50 border-amber-100'
-                        textAccentColor = 'text-amber-700'
-                        dotColor = 'bg-amber-500 animate-pulse'
-                      }
-                    } else if (post.type === 'draft') {
-                      typeBadgeColor = 'bg-canvas border-border/50 border-dashed'
-                      textAccentColor = 'text-ink-muted'
-                      dotColor = 'bg-ink-muted/50'
-                    }
-
-                    if (post.format === 'video') FormatIcon = Video
-                    if (post.format === 'article') FormatIcon = FileText
-
-                    return (
-                      <div
-                        key={post.id}
-                        onClick={(e) => handleOpenDetailModal(e, post)}
-                        className={`border rounded-control p-2 flex flex-col gap-1.5 shadow-sm bg-surface max-w-full hover:shadow transition-all ${typeBadgeColor}`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-1">
-                            {post.type === 'published' ? (
-                              <CheckCircle size={11} className="text-accent fill-accent-50 shrink-0" />
-                            ) : (
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dotColor}`} />
-                            )}
-                            <span className="text-[8px] font-bold uppercase tracking-wider text-ink-muted truncate">
-                              {post.type === 'scheduled' ? post.approvalStatus || 'Pending' : post.type}
-                            </span>
-                          </div>
-                          <FormatIcon size={11} className={`${textAccentColor} shrink-0`} />
-                        </div>
-
-                        {post.image ? (
-                          <div className="flex gap-2 items-center">
-                            <img
-                              src={post.image}
-                              alt={post.text}
-                              className="w-8 h-8 rounded-control object-cover shrink-0 border border-border"
-                            />
-                            <p className="text-[10px] leading-tight font-semibold text-ink truncate flex-1">
-                              {post.text}
-                            </p>
-                          </div>
-                        ) : (
-                          <p className="text-[10px] leading-tight font-semibold text-ink truncate">
-                            {post.text}
-                          </p>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
+                <p className="text-sm font-medium text-ink">{p.title}</p>
+                <p className="text-xs text-ink-muted mt-0.5 line-clamp-1">{p.caption}</p>
+              </button>
             )
           })}
         </div>
-      </Card>
+      )}
+    </div>
+  )
+}
 
-      {/* Footer Legend */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-6">
-        <div className="flex items-center gap-6 flex-wrap">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-accent" />
-            <span className="text-xs text-ink-muted font-medium">Published</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span className="text-xs text-ink-muted font-medium">Approved</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span className="text-xs text-ink-muted font-medium">Pending Approval</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
-            <span className="text-xs text-ink-muted font-medium">Rejected</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-ink-muted/50" />
-            <span className="text-xs text-ink-muted font-medium">Draft</span>
-          </div>
-        </div>
+// ─── Admin approval action panel ───────────────────────────────────────────────
+function ApprovalPanel({ post, onApprove, isUpdating }) {
+  const [notes, setNotes] = useState(post.adminNotes || '')
+  const [status, setStatus] = useState(post.approvalStatus)
 
-        <div className="flex items-center gap-4">
-          <span className="text-xs text-ink-muted font-medium">
-            Showing {filteredPosts.length} posts this month
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="text-primary font-semibold hover:bg-primary-50 gap-1.5 h-9"
-            onClick={handleExportPDF}
+  // Sync when post changes (e.g. after a successful update)
+  useEffect(() => {
+    setStatus(post.approvalStatus)
+    setNotes(post.adminNotes || '')
+  }, [post.id, post.approvalStatus, post.adminNotes])
+
+  // Approval status options matching backend enum exactly
+  const OPTIONS = [
+    { value: 'APPROVED',          label: 'Approve',          tone: 'success' },
+    { value: 'REVISION_REQUIRED', label: 'Request Revision', tone: 'warning' },
+    { value: 'REJECTED',          label: 'Reject',           tone: 'danger' },
+    { value: 'PENDING',           label: 'Set Pending',       tone: 'neutral' },
+  ]
+
+  return (
+    <div className="mt-4 border-t border-canvas pt-4">
+      <h4 className="text-sm font-semibold text-ink mb-2">Admin Approval Action</h4>
+
+      {/* Status selector */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        {OPTIONS.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => setStatus(opt.value)}
+            className={`px-3 py-1 text-xs rounded-full border font-medium transition-colors ${
+              status === opt.value
+                ? opt.value === 'APPROVED'   ? 'bg-accent-600 text-white border-accent-600'
+                : opt.value === 'REJECTED'   ? 'bg-danger text-white border-danger'
+                : opt.value === 'REVISION_REQUIRED' ? 'bg-amber-500 text-white border-amber-500'
+                : 'bg-gray-500 text-white border-gray-500'
+                : 'bg-surface text-ink-muted border-canvas hover:border-ink-muted'
+            }`}
           >
-            <Download size={14} />
-            Export PDF
-          </Button>
-        </div>
+            {opt.label}
+          </button>
+        ))}
       </div>
 
-      {/* Create Post Modal */}
-      <Modal
-        open={isAddModalOpen}
-        onClose={() => setIsAddModalOpen(false)}
-        title={`Schedule Post for Nov ${targetCellDay}`}
+      {/* Admin notes — always shown so admin can provide context */}
+      <textarea
+        rows={3}
+        placeholder="Admin notes (optional — visible to the customer)…"
+        value={notes}
+        onChange={e => setNotes(e.target.value)}
+        className="w-full text-sm border border-canvas rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-primary-400 bg-canvas resize-none"
+      />
+
+      {/* Submit button */}
+      <Button
+        className="mt-2 w-full"
+        size="sm"
+        disabled={isUpdating}
+        onClick={() => onApprove({ approvalStatus: status, adminNotes: notes.trim() || undefined })}
       >
-        <form onSubmit={handleAddSubmit} className="space-y-4">
-          <Input
-            label="Post Text"
-            value={newPostForm.text}
-            onChange={(e) => setNewPostForm((prev) => ({ ...prev, text: e.target.value }))}
-            placeholder="Write details or copy caption here..."
-            required
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink">Platform</label>
-              <select
-                value={newPostForm.platform}
-                onChange={(e) => setNewPostForm((prev) => ({ ...prev, platform: e.target.value }))}
-                className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
-              >
-                <option value="Instagram">Instagram</option>
-                <option value="Facebook">Facebook</option>
-                <option value="TikTok">TikTok</option>
-              </select>
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-ink">Format</label>
-              <select
-                value={newPostForm.format}
-                onChange={(e) => setNewPostForm((prev) => ({ ...prev, format: e.target.value }))}
-                className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 cursor-pointer"
-              >
-                <option value="photo">Photo Post</option>
-                <option value="video">Reel / Video</option>
-                <option value="article">Blog / Article</option>
-              </select>
-            </div>
-          </div>
+        {isUpdating ? 'Saving…' : 'Save Approval Decision'}
+      </Button>
+    </div>
+  )
+}
 
-          <div className="flex flex-col gap-1">
-            <label className="text-sm font-medium text-ink">Client Account</label>
-            <div className="h-10 px-3 flex items-center bg-canvas border border-border text-sm text-ink-muted rounded-control select-none">
-              {customerName} (Pre-assigned)
-            </div>
-          </div>
+// ─── Post details modal with admin approval ────────────────────────────────────
+function PostDetailModal({ post, onClose, onUpdated }) {
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [successMsg, setSuccessMsg] = useState(null)
+  const [updateError, setUpdateError] = useState(null)
 
-          <div className="pt-4 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsAddModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Schedule Post
-            </Button>
-          </div>
-        </form>
-      </Modal>
+  if (!post) return null
 
-      {/* Post Detail & Approval Action Modal */}
-      {selectedPost && (
-        <Modal
-          open={isDetailModalOpen}
-          onClose={() => setIsDetailModalOpen(false)}
-          title="Scheduled Post Details"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center justify-between border-b border-border pb-3">
-              <div className="space-y-0.5">
-                <span className="text-xs text-ink-muted">Publish Target</span>
-                <p className="text-sm font-bold text-ink">
-                  {selectedPost.platform} ({selectedPost.format})
-                </p>
-              </div>
-              <div className="space-y-0.5 text-right">
-                <span className="text-xs text-ink-muted">Approval Status</span>
-                <div>
-                  <Badge
-                    tone={
-                      selectedPost.type === 'published'
-                        ? 'success'
-                        : selectedPost.approvalStatus === 'Approved'
-                        ? 'success'
-                        : selectedPost.approvalStatus === 'Rejected'
-                        ? 'danger'
-                        : 'warning'
-                    }
-                    className="font-bold uppercase tracking-wider text-[9px] gap-1"
-                  >
-                    {selectedPost.type === 'published' ? (
-                      'Published'
-                    ) : selectedPost.approvalStatus === 'Approved' ? (
-                      <ShieldCheck size={11} />
-                    ) : selectedPost.approvalStatus === 'Rejected' ? (
-                      <ShieldX size={11} />
-                    ) : (
-                      <ShieldAlert size={11} />
-                    )}
-                    <span>{selectedPost.type === 'published' ? 'Published' : selectedPost.approvalStatus}</span>
-                  </Badge>
-                </div>
-              </div>
-            </div>
+  const platform = getPlatformMeta(post.platform)
+  const approval = getApprovalMeta(post.approvalStatus)
+  const status   = getStatusMeta(post.status)
 
-            <div className="space-y-1">
-              <span className="text-xs text-ink-muted">Caption & Hashtags</span>
-              <p className="text-sm bg-canvas border border-border p-3 rounded-control text-ink leading-relaxed whitespace-pre-line font-medium">
-                {selectedPost.text}
-              </p>
-            </div>
+  /**
+   * Send the PATCH request to update approval status.
+   * Request body shape matches UpdateApprovalDto exactly:
+   *   { approvalStatus: string, adminNotes?: string }
+   */
+  async function handleApprove(dto) {
+    setIsUpdating(true)
+    setUpdateError(null)
+    setSuccessMsg(null)
+    try {
+      const updated = await updatePostApproval(post.id, dto)
+      setSuccessMsg(`Status updated to ${dto.approvalStatus}`)
+      // Notify parent to refresh the post in the list
+      onUpdated(updated)
+    } catch (err) {
+      setUpdateError(err?.message || 'Failed to update approval status.')
+    } finally {
+      setIsUpdating(false)
+    }
+  }
 
-            {selectedPost.image && (
-              <div className="space-y-1">
-                <span className="text-xs text-ink-muted">Image Attachment</span>
-                <div className="border border-border rounded-control overflow-hidden bg-canvas max-h-60 flex items-center justify-center">
-                  <img
-                    src={selectedPost.image}
-                    alt="Post attachment preview"
-                    className="max-h-60 object-contain w-full"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Approval Workflow buttons */}
-            {selectedPost.type === 'scheduled' && (
-              <div className="space-y-2 border-t border-border pt-4">
-                <span className="text-xs font-semibold text-ink-muted block uppercase tracking-wider">
-                  Approval Actions
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    variant="outline"
-                    className="text-xs font-semibold border-emerald-200 text-emerald-700 bg-emerald-50/50 hover:bg-emerald-50 gap-1.5 flex items-center justify-center"
-                    onClick={() => handleUpdateApprovalStatus('Approved')}
-                    disabled={selectedPost.approvalStatus === 'Approved'}
-                  >
-                    <ShieldCheck size={14} />
-                    <span>Approve</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-xs font-semibold border-rose-200 text-rose-700 bg-rose-50/50 hover:bg-rose-50 gap-1.5 flex items-center justify-center"
-                    onClick={() => handleUpdateApprovalStatus('Rejected')}
-                    disabled={selectedPost.approvalStatus === 'Rejected'}
-                  >
-                    <ShieldX size={14} />
-                    <span>Reject</span>
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="text-xs font-semibold border-amber-200 text-amber-700 bg-amber-50/50 hover:bg-amber-50 gap-1.5 flex items-center justify-center"
-                    onClick={() => handleUpdateApprovalStatus('Pending')}
-                    disabled={selectedPost.approvalStatus === 'Pending'}
-                  >
-                    <ShieldAlert size={14} />
-                    <span>Set Pending</span>
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-between items-center border-t border-border pt-4 gap-2">
-              <Button
-                variant="outline"
-                className="text-xs text-rose-600 border-rose-100 hover:bg-rose-50 font-semibold gap-1.5 flex items-center h-9"
-                onClick={handleDeletePost}
-              >
-                <Trash2 size={14} />
-                <span>Delete Post</span>
-              </Button>
-              <Button
-                variant="primary"
-                className="text-xs h-9 px-4 font-semibold"
-                onClick={() => setIsDetailModalOpen(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </Modal>
+  return (
+    <Modal open={!!post} onClose={onClose} title="Post Details" className="max-w-xl">
+      {/* Media */}
+      {post.mediaUrl && (
+        <img src={post.mediaUrl} alt="Post media" className="w-full rounded-lg mb-4 object-cover max-h-48" />
       )}
+
+      {/* Status badges */}
+      <div className="flex flex-wrap gap-2 mb-3">
+        <Badge tone={platform.colour} className="flex items-center gap-1">{platform.icon} {post.platform}</Badge>
+        <Badge tone={status.tone}>{status.label}</Badge>
+        <Badge tone={approval.tone} className="flex items-center gap-1">{approval.icon} {approval.label}</Badge>
+        {post.aiGenerated && (
+          <Badge tone="primary" className="flex items-center gap-1"><Sparkles size={10} /> AI</Badge>
+        )}
+      </div>
+
+      {/* Title + caption */}
+      <h3 className="text-base font-semibold text-ink mb-1">{post.title}</h3>
+      <p className="text-sm text-ink-muted mb-3 whitespace-pre-wrap">{post.caption}</p>
+
+      {/* Schedule/publish times */}
+      <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+        {post.scheduledAt && (
+          <div>
+            <span className="text-xs text-ink-muted block mb-0.5">Scheduled</span>
+            <span className="font-medium text-ink">{formatDateTime(post.scheduledAt)}</span>
+          </div>
+        )}
+        {post.publishedAt && (
+          <div>
+            <span className="text-xs text-ink-muted block mb-0.5">Published</span>
+            <span className="font-medium text-ink">{formatDateTime(post.publishedAt)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Hashtags */}
+      {post.hashtags?.length > 0 && (
+        <div className="mb-3">
+          <span className="text-xs text-ink-muted flex items-center gap-1 mb-1"><Tag size={10} /> Hashtags</span>
+          <div className="flex flex-wrap gap-1">
+            {post.hashtags.map((tag, i) => (
+              <span key={i} className="text-xs bg-primary-50 text-primary-700 rounded-full px-2 py-0.5">{tag}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Customer info */}
+      {post.user && (
+        <div className="text-xs text-ink-muted mb-3">
+          Customer: <span className="font-medium text-ink">{post.user.fullName}</span>
+          {post.user.businessName && <span> · {post.user.businessName}</span>}
+        </div>
+      )}
+
+      {/* Success / error feedback */}
+      {successMsg && (
+        <div className="rounded-lg bg-accent-50 border border-accent-200 p-2 mb-2 text-xs text-accent-700 flex items-center gap-2">
+          <CheckCircle2 size={12} /> {successMsg}
+        </div>
+      )}
+      {updateError && (
+        <div className="rounded-lg bg-red-50 border border-red-200 p-2 mb-2 text-xs text-danger flex items-center gap-2">
+          <AlertCircle size={12} /> {updateError}
+        </div>
+      )}
+
+      {/* Admin approval action */}
+      <ApprovalPanel post={post} onApprove={handleApprove} isUpdating={isUpdating} />
+    </Modal>
+  )
+}
+
+// ─── Calendar navigation views ─────────────────────────────────────────────────
+const VIEWS = ['Month', 'Week', 'Day']
+
+// ─── Main page component ───────────────────────────────────────────────────────
+export default function UserContentCalendar() {
+  // userId comes from the route /admin/users/:userId/calendar
+  const { userId } = useParams()
+
+  const [posts, setPosts]           = useState([])
+  const [overview, setOverview]     = useState(null)
+  const [selectedPost, setSelectedPost] = useState(null)
+  const [activeView, setActiveView] = useState('Month')
+  const [currentDate, setCurrentDate] = useState(new Date())
+  const [loading, setLoading]       = useState(false)
+  const [error, setError]           = useState(null)
+
+  // ── Fetch the customer's posts + approval overview ──────────────────────────
+  const fetchData = useCallback(async () => {
+    if (!userId) return
+    setLoading(true)
+    setError(null)
+    try {
+      // Fetch all posts for this user (admin view, no approval filter — admin sees everything)
+      const [postData, overviewData] = await Promise.all([
+        getAdminCalendarPosts(userId),
+        getAdminOverview(userId),
+      ])
+      setPosts(postData)
+      setOverview(overviewData)
+    } catch (err) {
+      setError(err?.message || 'Failed to load calendar for this user.')
+    } finally {
+      setLoading(false)
+    }
+  }, [userId])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  // ── After a successful approval update, patch the local post list ────────────
+  function handlePostUpdated(updatedPost) {
+    setPosts(prev => prev.map(p => p.id === updatedPost.id ? { ...p, ...updatedPost } : p))
+    // Also update the selected post so the modal reflects the new status immediately
+    setSelectedPost(prev => prev?.id === updatedPost.id ? { ...prev, ...updatedPost } : prev)
+  }
+
+  // ── Calendar navigation ─────────────────────────────────────────────────────
+  function navigatePrev() {
+    setCurrentDate(d => {
+      const next = new Date(d)
+      if (activeView === 'Month') next.setMonth(d.getMonth() - 1)
+      else if (activeView === 'Week') next.setDate(d.getDate() - 7)
+      else next.setDate(d.getDate() - 1)
+      return next
+    })
+  }
+
+  function navigateNext() {
+    setCurrentDate(d => {
+      const next = new Date(d)
+      if (activeView === 'Month') next.setMonth(d.getMonth() + 1)
+      else if (activeView === 'Week') next.setDate(d.getDate() + 7)
+      else next.setDate(d.getDate() + 1)
+      return next
+    })
+  }
+
+  // ── Header label ────────────────────────────────────────────────────────────
+  const calendarLabel = useMemo(() => {
+    if (activeView === 'Month') {
+      return currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    }
+    if (activeView === 'Week') {
+      const mon = new Date(currentDate)
+      mon.setDate(currentDate.getDate() - ((currentDate.getDay() + 6) % 7))
+      const sun = new Date(mon)
+      sun.setDate(mon.getDate() + 6)
+      return `${mon.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${sun.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+    }
+    return currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  }, [activeView, currentDate])
+
+  // ── Customer name from first post's user join ───────────────────────────────
+  const customerName = posts[0]?.user?.fullName || `User ${userId}`
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <Link to="/admin/calendar" className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink mb-4">
+          <ArrowLeft size={14} /> Back to Calendar Management
+        </Link>
+        <div className="rounded-lg bg-red-50 border border-red-200 p-6 text-center">
+          <AlertCircle className="mx-auto mb-2 text-danger" size={32} />
+          <p className="text-sm font-medium text-danger mb-1">Failed to load calendar</p>
+          <p className="text-xs text-red-600 mb-3">{error}</p>
+          <Button size="sm" onClick={fetchData}><RefreshCw size={14} className="mr-1" /> Retry</Button>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="p-6">
+      {/* Back link */}
+      <Link to="/admin/calendar" className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink mb-4 w-fit">
+        <ArrowLeft size={14} /> Back to Calendar Management
+      </Link>
+
+      <PageHeader
+        title={`${customerName}'s Content Calendar`}
+        subtitle="Admin view — approve or review posts below."
+      />
+
+      {/* ── Approval metrics overview ── */}
+      {overview && (
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4 mb-6">
+          {[
+            { label: 'Total Posts',      value: overview.total,            tone: 'neutral' },
+            { label: 'Approved',         value: overview.approved,         tone: 'success' },
+            { label: 'Pending',          value: overview.pending,          tone: 'warning' },
+            { label: 'Revision Required', value: overview.revisionRequired, tone: 'warning' },
+            { label: 'Rejected',         value: overview.rejected,         tone: 'danger' },
+          ].map(m => (
+            <Card key={m.label} className="text-center py-3">
+              <p className="text-xl font-bold text-ink">{m.value}</p>
+              <p className="text-xs text-ink-muted mt-0.5">{m.label}</p>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* ── Calendar card ── */}
+      <Card>
+        {/* View switcher + navigation */}
+        <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+          <div className="flex rounded-lg border border-canvas overflow-hidden">
+            {VIEWS.map(v => (
+              <button
+                key={v}
+                onClick={() => setActiveView(v)}
+                className={`px-3 py-1.5 text-sm font-medium transition-colors ${
+                  activeView === v
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-surface text-ink-muted hover:bg-canvas'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button onClick={navigatePrev} className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink">
+              <ChevronLeft size={18} />
+            </button>
+            <span className="text-sm font-semibold text-ink min-w-[180px] text-center">{calendarLabel}</span>
+            <button onClick={navigateNext} className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink">
+              <ChevronRight size={18} />
+            </button>
+            <button onClick={() => setCurrentDate(new Date())} className="text-xs text-primary-600 hover:underline ml-2">Today</button>
+            <Button variant="ghost" size="sm" onClick={fetchData} title="Refresh"><RefreshCw size={14} /></Button>
+          </div>
+        </div>
+
+        {/* Calendar body */}
+        {loading ? (
+          <div className="grid grid-cols-7 gap-2">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <div key={i} className="animate-pulse rounded-lg border border-canvas bg-canvas p-2 min-h-[90px]" />
+            ))}
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="text-center py-16 text-ink-muted">
+            <CalendarDays className="mx-auto mb-3 opacity-30" size={40} />
+            <p className="font-medium">No posts found for this customer.</p>
+          </div>
+        ) : (
+          <>
+            {activeView === 'Month' && (
+              <MonthView posts={posts} currentDate={currentDate} onPostClick={setSelectedPost} />
+            )}
+            {activeView === 'Week' && (
+              <WeekView posts={posts} currentDate={currentDate} onPostClick={setSelectedPost} />
+            )}
+            {activeView === 'Day' && (
+              <DayView posts={posts} currentDate={currentDate} onPostClick={setSelectedPost} />
+            )}
+          </>
+        )}
+      </Card>
+
+      {/* ── Post list (all posts in a scannable table-like view) ── */}
+      <Card className="mt-6">
+        <h3 className="font-semibold text-ink mb-3">All Posts</h3>
+        {posts.length === 0 ? (
+          <p className="text-sm text-ink-muted">No posts.</p>
+        ) : (
+          <div className="space-y-2">
+            {posts.map(p => {
+              const platform = getPlatformMeta(p.platform)
+              const appr = getApprovalMeta(p.approvalStatus)
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setSelectedPost(p)}
+                  className="w-full text-left flex items-center gap-3 p-3 rounded-lg border border-canvas hover:bg-canvas hover:border-primary-200 transition-all"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                      <Badge tone={platform.colour} className="flex items-center gap-1 text-[10px]">{platform.icon} {p.platform}</Badge>
+                      <Badge tone={appr.tone} className="flex items-center gap-1 text-[10px]">{appr.icon} {appr.label}</Badge>
+                    </div>
+                    <p className="text-sm font-medium text-ink truncate">{p.title}</p>
+                    {p.scheduledAt && (
+                      <p className="text-xs text-ink-muted mt-0.5">{formatDateTime(p.scheduledAt)}</p>
+                    )}
+                  </div>
+                  <ChevronRight size={16} className="text-ink-muted shrink-0" />
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </Card>
+
+      {/* ── Post detail + approval modal ── */}
+      <PostDetailModal
+        post={selectedPost}
+        onClose={() => setSelectedPost(null)}
+        onUpdated={handlePostUpdated}
+      />
     </div>
   )
 }

@@ -13,7 +13,7 @@ import { UploadsService } from './uploads.service';
     MulterModule.register({
       storage: diskStorage({
         // Set the destination folder where uploaded files will be stored
-        destination: (req, file, callback) => {
+        destination: (req: any, file: any, callback: any) => {
           const uploadPath = join(process.cwd(), 'uploads');
 
           // Create the uploads folder if it doesn't already exist
@@ -26,7 +26,7 @@ import { UploadsService } from './uploads.service';
         },
 
         // Generate a unique filename for every uploaded file
-        filename: (req, file, callback) => {
+        filename: (req: any, file: any, callback: any) => {
           const uniqueSuffix =
             Date.now() + '-' + Math.round(Math.random() * 1e9);
 
