@@ -247,10 +247,33 @@ export class AuthService {
     return { message: 'Password updated successfully' };
   }
 
-  async refresh(userId: string, email: string, role: string) {
-    // Re-issues a new access/refresh pair. In production, pair this with a
-    // refresh-token allowlist/blocklist table so tokens can be revoked on logout.
-    return this.signTokens({ sub: userId, email, role });
+  async refreshTokens(refreshToken: string) {
+    try {
+      // 1. Verify the refresh token
+      const payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get<string>('auth.refreshSecret'),
+      });
+
+      // 2. Generate new tokens
+      const newPayload = { sub: payload.sub, email: payload.email, role: payload.role };
+      
+      const newAccessToken = await this.jwtService.signAsync(newPayload, {
+        secret: this.configService.get<string>('auth.accessSecret'),
+        expiresIn: this.configService.get<string>('auth.accessExpiresIn'),
+      });
+
+      const newRefreshToken = await this.jwtService.signAsync(newPayload, {
+        secret: this.configService.get<string>('auth.refreshSecret'),
+        expiresIn: this.configService.get<string>('auth.refreshExpiresIn'),
+      });
+
+      return {
+        accessToken: newAccessToken,
+        newRefreshToken: newRefreshToken
+      };
+    } catch (e) {
+      throw new UnauthorizedException('Invalid or expired refresh token');
+    }
   }
 
   /**

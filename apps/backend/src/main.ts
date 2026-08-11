@@ -8,6 +8,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import * as express from 'express';
 import { join } from 'path';
+import * as cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +18,8 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+
+  app.use(cookieParser());
 
   app.enableCors({
     origin: ['http://localhost:5173', 'http://localhost:5174'],
