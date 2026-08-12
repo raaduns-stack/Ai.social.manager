@@ -19,6 +19,15 @@ async function bootstrap() {
 
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
+  const frontendDir = join(process.cwd(), 'public');
+  app.use(express.static(frontendDir));
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.method !== 'GET') return next();
+    if (req.path.startsWith(`/${apiPrefix}`) || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(join(frontendDir, 'index.html'));
+  });
   app.use(cookieParser());
 
   app.enableCors({
