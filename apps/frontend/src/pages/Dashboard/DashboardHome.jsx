@@ -255,8 +255,8 @@ function DatePicker({ selectedDate, onSelectDate }) {
  */
 export default function DashboardHome() {
 
-  // Header calendar filter — defaults to the design's original date
-  const [selectedDate, setSelectedDate] = useState(new Date(2023, 9, 24)) // Oct 24, 2023
+  // Header calendar filter — defaults to the current date
+  const [selectedDate, setSelectedDate] = useState(new Date())
 
   // Dashboard period filter — drives the Quick Stats row
   const [period, setPeriod] = useState('week')
