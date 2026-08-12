@@ -10,6 +10,9 @@ import Modal from '../../components/ui/Modal'
 import Loader from '../../components/ui/Loader'
 import EmptyState from '../../components/ui/EmptyState'
 import ErrorBanner from '../../components/error-banner'
+// KYC overlay — rendered when user's KYC is not yet approved
+import KycOverlay from '../../features/kyc/KycOverlay'
+import { getMyKyc } from '../../features/kyc/kyc-api'
 import {
   Camera,
   Music,
@@ -26,6 +29,28 @@ import {
 } from 'lucide-react'
 
 export default function Channels() {
+  // ---- KYC state ----
+  // kycRecord: null (loading) | object (loaded). When kycRecord.status === 'approved'
+  // the overlay is hidden and the user can interact with channels normally.
+  const [kycRecord, setKycRecord] = useState(undefined) // undefined = loading
+  const [kycLoading, setKycLoading] = useState(true)
+
+  /** Fetch the user's KYC status. Re-called after submission to refresh state. */
+  const fetchKyc = () => {
+    setKycLoading(true)
+    getMyKyc()
+      .then((record) => setKycRecord(record))
+      .catch(() => setKycRecord(null))
+      .finally(() => setKycLoading(false))
+  }
+
+  useEffect(() => {
+    fetchKyc()
+  }, [])
+
+  // True when the KYC overlay should be shown (block channel interactions)
+  const kycBlocked = kycLoading || kycRecord?.status !== 'approved'
+
   // State for channels list
   const [channels, setChannels] = useState([]);
 
@@ -235,7 +260,25 @@ export default function Channels() {
   };
 
   return (
-    <div className="space-y-6">
+    // Wrap in a relative container so the KYC overlay positions correctly
+    // over just this page's content (not the whole app shell).
+    <div className="relative">
+      {/*
+        KYC OVERLAY — shown whenever KYC is not yet approved.
+        The Channels page below is visible but faded/disabled.
+        We use pointer-events-none + opacity on the channel content when
+        the overlay is active to reinforce the disabled state visually.
+      */}
+      {!kycLoading && kycRecord?.status !== 'approved' && (
+        <KycOverlay kycRecord={kycRecord} onRefresh={fetchKyc} />
+      )}
+
+      {/* Channels page content — faded when KYC overlay is active */}
+      <div
+        className={kycBlocked ? 'opacity-40 pointer-events-none select-none' : ''}
+        aria-hidden={kycBlocked}
+      >
+      <div className="space-y-6">
       <PageHeader
         title="Social Channels"
         description="Manage your connected social accounts and synchronization status."
@@ -445,6 +488,8 @@ export default function Channels() {
           </div>
         </form>
       </Modal>
+      </div>{/* end channels content */}
+      </div>{/* end relative wrapper */}
     </div>
   )
 }

@@ -6,6 +6,7 @@ import { social_accounts } from './social-accounts.schema';
 import { uploads } from './uploads.schema';
 import { contentCalendar } from './content-calendar.schema';
 import { notificationPreferences, customerCompanyProfile } from './settings.schema';
+import { kyc } from './kyc.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   tickets: many(supportTickets, { relationName: 'userTickets' }),
@@ -16,6 +17,8 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   contentCalendarPosts: many(contentCalendar),
   notificationPreferences: many(notificationPreferences),
   customerCompanyProfile: one(customerCompanyProfile),
+  // KYC — one business verification record per user
+  kyc: one(kyc),
 }));
 
 export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({

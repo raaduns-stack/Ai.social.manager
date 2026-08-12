@@ -26,6 +26,7 @@ import {
   ChevronsRight,
   Clock,
   HelpCircle,
+  ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
@@ -39,6 +40,7 @@ const NAV_SECTIONS = [
     label: "Customers",
     items: [
       { label: "User Management", to: "/admin/users", icon: Users },
+      { label: "KYC Verification", to: "/admin/kyc", icon: ShieldCheck },
       { label: "Content Calendar", to: "/admin/calendar", icon: Calendar },
       { label: "AI Content", to: "/admin/ai-content", icon: Sparkles },
     ],

@@ -30,6 +30,7 @@ import { NotificationPreferencesModule } from './settings/notification-preferenc
 import { EmailConfigModule } from './settings/email-config/email-config.module';
 import { SocialApiSettingsModule } from './settings/social-api-settings/social-api-settings.module';
 import { PaymentGatewaySettingsModule } from './settings/payment-gateway-settings/payment-gateway-settings.module';
+import { KycModule } from './kyc/kyc.module';
 
 @Module({
   imports: [
@@ -70,6 +71,7 @@ import { PaymentGatewaySettingsModule } from './settings/payment-gateway-setting
     EmailConfigModule,
     SocialApiSettingsModule,
     PaymentGatewaySettingsModule,
+    KycModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule
