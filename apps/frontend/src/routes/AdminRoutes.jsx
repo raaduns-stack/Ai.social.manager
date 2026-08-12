@@ -42,6 +42,7 @@ import AdminAIConfig from "../pages/Admin/AIConfiguration";
 import AdminSupport from "../pages/Admin/Support";
 import AdminFaqs from "../pages/Admin/Faqs";
 import AdminSettings from "../pages/Admin/Settings";
+import AdminKyc from "../pages/Admin/Kyc";
 import RequireAdminRoles from "./RequireAdminRoles";
 
 // --- Auth (shared) ---
@@ -90,6 +91,7 @@ export default function AdminRoutes() {
           <Route path="billing" element={<AdminBilling />} />
           <Route path="social-accounts" element={<AdminSocialAccounts />} />
           <Route path="uploads" element={<AdminUploads />} />
+          <Route path="kyc" element={<AdminKyc />} />
 
           {/* Money Management (Treasure) */}
           <Route path="money-management" element={<AdminMoneyManagement />} />
