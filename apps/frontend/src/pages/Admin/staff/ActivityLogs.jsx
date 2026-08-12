@@ -1,122 +1,109 @@
-import { useState } from 'react'
-import { Filter, ChevronRight } from 'lucide-react'
-import Badge from '../../../components/ui/Badge'
+import { useState, useEffect, useCallback } from 'react'
+import { Filter, ChevronRight, ChevronLeft, RefreshCw, AlertCircle } from 'lucide-react'
 import PageHeader from '../../../components/layout/PageHeader'
 import LogTable from '../../../components/staff/LogTable'
-
-const MOCK_ACTIVITIES = [
-  {
-    id: 1,
-    timestamp: 'Jul 25, 2026, 00:10 AM',
-    user: 'Amaka Obi',
-    action: 'Created User',
-    module: 'Users',
-    description: 'Added new customer account for Tunde Phillips.',
-  },
-  {
-    id: 2,
-    timestamp: 'Jul 24, 2026, 11:45 PM',
-    user: 'Lena Dubois',
-    action: 'Deleted Campaign',
-    module: 'Calendar',
-    description: "Removed inactive campaign 'Holiday Blitz 2024'.",
-  },
-  {
-    id: 3,
-    timestamp: 'Jul 24, 2026, 10:12 PM',
-    user: 'Marcus Thorne',
-    action: 'Updated Subscription',
-    module: 'Billing',
-    description: 'Upgraded subscription tier for creative studio to Enterprise plan.',
-  },
-  {
-    id: 4,
-    timestamp: 'Jul 24, 2026, 09:20 PM',
-    user: 'Sasha Kovic',
-    action: 'Edited AI Prompt',
-    module: 'AI Management',
-    description: 'Updated LinkedIn default content prompt baseline rules.',
-  },
-  {
-    id: 5,
-    timestamp: 'Jul 24, 2026, 08:05 PM',
-    user: 'Julia Peters',
-    action: 'Reset Password',
-    module: 'Staff',
-    description: 'Requested credentials reset link for support staff account.',
-  },
-  {
-    id: 6,
-    timestamp: 'Jul 24, 2026, 07:14 PM',
-    user: 'Alex Rivera',
-    action: 'Approved Content',
-    module: 'Calendar',
-    description: "Approved Instagram photo scheduled post 'Product Showcase'.",
-  },
-  {
-    id: 7,
-    timestamp: 'Jul 24, 2026, 06:05 PM',
-    user: 'Amaka Obi',
-    action: 'Created User',
-    module: 'Users',
-    description: 'Added customer account for Obi Creative Ltd.',
-  },
-  {
-    id: 8,
-    timestamp: 'Jul 24, 2026, 05:12 PM',
-    user: 'Lena Dubois',
-    action: 'Updated Subscription',
-    module: 'Billing',
-    description: 'Set discount promo coupon for client campaign billing.',
-  },
-  {
-    id: 9,
-    timestamp: 'Jul 24, 2026, 04:22 PM',
-    user: 'Sasha Kovic',
-    action: 'Edited AI Prompt',
-    module: 'AI Management',
-    description: 'Customized Instagram captions prompt for user Amaka Obi.',
-  },
-  {
-    id: 10,
-    timestamp: 'Jul 24, 2026, 03:01 PM',
-    user: 'Julia Peters',
-    action: 'Approved Content',
-    module: 'Calendar',
-    description: 'Approved LinkedIn scheduling post for creative campaign.',
-  },
-  {
-    id: 11,
-    timestamp: 'Jul 24, 2026, 02:40 PM',
-    user: 'Alex Rivera',
-    action: 'Reset Password',
-    module: 'Staff',
-    description: 'Reset password credentials for staff member Julia Peters.',
-  },
-  {
-    id: 12,
-    timestamp: 'Jul 24, 2026, 01:15 PM',
-    user: 'Marcus Thorne',
-    action: 'Approved Content',
-    module: 'Calendar',
-    description: 'Approved Facebook scheduled video upload post.',
-  },
-]
+import { getActivityLogs } from '../../../features/admin/activity-logs-api'
 
 const COLUMNS = [
-  { key: 'timestamp', label: 'Timestamp' },
-  { key: 'user', label: 'User' },
-  { key: 'action', label: 'Action' },
-  { key: 'module', label: 'Module' },
+  { key: 'timestamp',   label: 'Timestamp' },
+  { key: 'user',        label: 'User' },
+  { key: 'action',      label: 'Action' },
+  { key: 'module',      label: 'Module' },
   { key: 'description', label: 'Description' },
 ]
 
+const PAGE_SIZE = 20
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
+/**
+ * Maps a backend ActivityLogRecord to the flat shape LogTable expects.
+ * - createdAt → timestamp
+ * - userName → user
+ * - action → action
+ * - module → module
+ * - description → description
+ */
+function mapRecord(record) {
+  const timestamp = record.createdAt
+    ? new Date(record.createdAt).toLocaleString('en-US', {
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      })
+    : '—'
+
+  return {
+    id: record.id,
+    timestamp,
+    user: record.userName || '—',
+    action: record.action || '—',
+    module: record.module || '—',
+    description: record.description || '—',
+  }
+}
+
 export default function ActivityLogs() {
   const [selectedModule, setSelectedModule] = useState('All')
+  const [page, setPage] = useState(1)
 
-  const filteredActivities = selectedModule === 'All'
-    ? MOCK_ACTIVITIES
-    : MOCK_ACTIVITIES.filter((act) => act.module === selectedModule)
+  // ── Data / UI state ──
+  const [rows, setRows]           = useState([])
+  const [meta, setMeta]           = useState(null)   // { page, limit, total, totalPages }
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError]         = useState(null)
+
+  // ── Fetch ──────────────────────────────────────────────────────────────
+  const fetchData = useCallback(async (currentPage) => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const response = await getActivityLogs({
+        ...(selectedModule !== 'All' ? { module: selectedModule } : {}),
+        page: currentPage,
+        limit: PAGE_SIZE,
+      })
+      setRows(response.data.map(mapRecord))
+      setMeta(response.meta)
+    } catch (err) {
+      setError(err?.message || 'Failed to load activity logs. Please try again.')
+      setRows([])
+      setMeta(null)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [selectedModule])
+
+  // Fetch whenever filters change (reset to page 1)
+  useEffect(() => {
+    setPage(1)
+    fetchData(1)
+  }, [selectedModule, fetchData])
+
+  // Fetch when page changes (but NOT when filters change — handled above)
+  const handlePageChange = (newPage) => {
+    setPage(newPage)
+    fetchData(newPage)
+  }
+
+  // Manual refresh
+  const handleRefresh = () => fetchData(page)
+
+  // ── Pagination helpers ─────────────────────────────────────────────────
+  const totalPages  = meta?.totalPages ?? 1
+  const totalItems  = meta?.total ?? 0
+  const currentPage = meta?.page ?? page
+
+  /** Build a compact page window: [1, …, p-1, p, p+1, …, last] */
+  const buildPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1)
+    const pages = new Set([1, totalPages, currentPage - 1, currentPage, currentPage + 1].filter(p => p >= 1 && p <= totalPages))
+    return [...pages].sort((a, b) => a - b)
+  }
+
+  const pageNumbers = buildPageNumbers()
 
   return (
     <div className="space-y-6">
@@ -131,9 +118,19 @@ export default function ActivityLogs() {
         </div>
 
         <PageHeader
-        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="System Activity Audit Trails"
           description="Track administrative operations, platform changes, and content moderation activities."
+          action={
+            <button
+              onClick={handleRefresh}
+              disabled={isLoading}
+              title="Refresh"
+              className="flex items-center gap-1.5 text-xs font-semibold text-ink-muted hover:text-ink border border-border rounded-control px-3 py-1.5 bg-surface hover:bg-canvas transition-colors disabled:opacity-40"
+            >
+              <RefreshCw size={13} className={isLoading ? 'animate-spin' : ''} />
+              Refresh
+            </button>
+          }
         />
       </div>
 
@@ -155,15 +152,86 @@ export default function ActivityLogs() {
         </select>
       </div>
 
+      {/* Error State */}
+      {error && (
+        <div className="flex items-center gap-3 border border-danger/30 bg-danger/5 text-danger rounded-control px-4 py-3 text-sm font-medium">
+          <AlertCircle size={16} className="shrink-0" />
+          <span>{error}</span>
+          <button
+            onClick={handleRefresh}
+            className="ml-auto text-xs underline hover:no-underline"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Activity Table */}
       <div className="space-y-3">
         <LogTable
           columns={COLUMNS}
-          rows={filteredActivities}
-          isLoading={false}
+          rows={rows}
+          isLoading={isLoading}
           emptyMessage="No operations log history found matching selected module."
         />
       </div>
+
+      {/* Pagination */}
+      {!isLoading && !error && meta && totalPages > 0 && (
+        <div className="flex items-center justify-between text-xs text-ink-muted bg-surface border border-border rounded-control px-4 py-3">
+          <span>
+            Showing{' '}
+            <span className="font-semibold text-ink">
+              {(currentPage - 1) * PAGE_SIZE + 1}–
+              {Math.min(currentPage * PAGE_SIZE, totalItems)}
+            </span>{' '}
+            of <span className="font-semibold text-ink">{totalItems.toLocaleString()}</span> entries
+          </span>
+
+          <div className="flex items-center gap-1">
+            {/* Previous */}
+            <button
+              disabled={currentPage <= 1}
+              onClick={() => handlePageChange(currentPage - 1)}
+              className="p-1 hover:bg-canvas rounded-control transition-colors disabled:opacity-30 border border-border"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {/* Page numbers */}
+            {pageNumbers.map((p, idx) => {
+              const prevP = pageNumbers[idx - 1]
+              const showEllipsis = idx > 0 && p - prevP > 1
+              return (
+                <span key={p} className="flex items-center gap-1">
+                  {showEllipsis && (
+                    <span className="px-1 text-ink-muted">…</span>
+                  )}
+                  <button
+                    onClick={() => handlePageChange(p)}
+                    className={`w-7 h-7 flex items-center justify-center rounded font-semibold transition-colors ${
+                      p === currentPage
+                        ? 'bg-primary text-white'
+                        : 'hover:bg-canvas border border-transparent hover:border-border'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                </span>
+              )
+            })}
+
+            {/* Next */}
+            <button
+              disabled={currentPage >= totalPages}
+              onClick={() => handlePageChange(currentPage + 1)}
+              className="p-1 hover:bg-canvas rounded-control transition-colors disabled:opacity-30 border border-border"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
