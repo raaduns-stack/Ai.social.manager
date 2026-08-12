@@ -1,12 +1,26 @@
-import { Link } from 'react-router-dom'
-import { Bell, Search } from 'lucide-react'
+import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { Bell, Search, ChevronDown, LogOut } from 'lucide-react'
+import { useAuth } from '../../context/useAuth'
 import Avatar from '../ui/Avatar'
 
 /**
  * Top navbar shown inside the dashboard shell.
- * Wire up `user` and notification count from your auth/context state later.
+ * Fetches user info from AuthContext and supports logout dropdown.
  */
 export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount = 0 }) {
+  const { user: authUser, logout } = useAuth()
+  const navigate = useNavigate()
+  const [profileOpen, setProfileOpen] = useState(false)
+
+  const currentUser = authUser || user
+  const displayName = currentUser?.fullName || currentUser?.name || 'User'
+
+  const handleLogout = () => {
+    logout()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-6">
       <div className="flex items-center gap-2 rounded-control border border-border px-3 py-1.5 text-sm text-ink-muted w-72">
@@ -31,7 +45,45 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
             </span>
           )}
         </Link>
-        <Avatar name={user.name} />
+
+        {/* Profile Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setProfileOpen((o) => !o)}
+            className="flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-canvas transition-colors"
+          >
+            <Avatar name={displayName} />
+            <span className="hidden sm:block text-sm text-ink font-medium">
+              {displayName}
+            </span>
+            <ChevronDown size={14} className="text-ink-muted" />
+          </button>
+
+          {profileOpen && (
+            <>
+              {/* Overlay to close dropdown on click outside */}
+              <div
+                className="fixed inset-0 z-40 cursor-default"
+                onClick={() => setProfileOpen(false)}
+              />
+              <div className="absolute right-0 mt-2 w-48 rounded-card border border-border bg-surface shadow-hover z-50">
+                <div className="px-4 py-3 text-sm border-b border-border">
+                  <p className="font-semibold text-ink truncate">{displayName}</p>
+                  {currentUser?.email && (
+                    <p className="text-xs text-ink-muted truncate mt-0.5">{currentUser.email}</p>
+                  )}
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-danger hover:bg-canvas rounded-b-card transition-colors z-50"
+                >
+                  <LogOut size={14} />
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
+        </div>
       </div>
     </header>
   )

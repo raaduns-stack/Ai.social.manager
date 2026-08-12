@@ -1,7 +1,17 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '../store/auth-store';
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string) || 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL as string;
+
+if (!API_BASE_URL) {
+  const errorMsg = `[Configuration Error] "VITE_API_BASE_URL" is not defined. ` +
+    `Please ensure your environment variables are configured correctly before running or building the application.`;
+  console.error(
+    `%c${errorMsg}`,
+    'color: #ff3333; font-size: 14px; font-weight: bold; padding: 8px; border: 2px solid #ff3333; border-radius: 4px;'
+  );
+  throw new Error(errorMsg);
+}
 
 export const customerApiClient = axios.create({
   baseURL: API_BASE_URL,

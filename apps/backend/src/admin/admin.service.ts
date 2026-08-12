@@ -3,6 +3,7 @@ import { eq, sum, count } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
+import { seedPlans as runPlansSeeding } from '../database/seeding';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -186,127 +187,7 @@ export class AdminService {
   }
 
   async seedPlans() {
-    const canonicalPlans = [
-      {
-        slug: 'free',
-        name: 'Free',
-        price: 0,
-        interval: 'monthly' as const,
-        isActive: true,
-        maxSocialAccounts: 1,
-        features: [
-          'Connect 1 social media account',
-          'Generate 5 AI posts per month',
-          'AI-generated caption + hashtags',
-          'Basic AI image generation',
-          'Content preview',
-          'Basic analytics',
-          'AI/WhatsApp Support',
-        ],
-      },
-      {
-        slug: 'starter',
-        name: 'Starter',
-        price: 3000000,
-        interval: 'monthly' as const,
-        isActive: true,
-        maxSocialAccounts: 3,
-        features: [
-          'Everything in Free, plus:',
-          'Connect 3 social media accounts',
-          '30 AI-generated posts/month',
-          'AI-generated captions & hashtags',
-          'AI-generated images',
-          'Content Calendar',
-          'Post Scheduling',
-          'Upload Brand Assets',
-          'Basic Analytics Dashboard',
-          'AI Content Suggestions',
-          'AI/WhatsApp Support',
-        ],
-      },
-      {
-        slug: 'growth',
-        name: 'Growth',
-        price: 10000000,
-        interval: 'monthly' as const,
-        isActive: true,
-        maxSocialAccounts: 7,
-        features: [
-          'Everything in Starter, plus:',
-          'Connect 7 social media accounts',
-          '150 AI-generated posts/month (Fair Use)',
-          'Advanced AI Image Generation',
-          'AI Content Calendar',
-          'Competitor Analysis & Website Analysis',
-          'AI Content Improvement Suggestions',
-          'Performance Insights & Weekly Reports',
-          'Team Members (up to 5)',
-          'Priority AI Generation',
-          'Content Approval Workflow',
-          'Advanced Analytics',
-          'AI/WhatsApp Support',
-          'Bonus: Monthly AI Strategy Report',
-          'Early access to new features',
-        ],
-      },
-      {
-        slug: 'enterprise',
-        name: 'Brand Domination',
-        price: 15000000,
-        interval: 'monthly' as const,
-        isActive: true,
-        maxSocialAccounts: 15,
-        features: [
-          'Everything in Growth, plus:',
-          'Connect 15 social media accounts',
-          '300 AI-generated posts/month (Fair Use)',
-          'Unlimited Team Members',
-          'AI Marketing Strategy & Campaign Planner',
-          'AI Seasonal Campaign Suggestions',
-          'Advanced Competitor Intelligence',
-          'Multi-location Business Support',
-          'Multiple Brand Management',
-          'Dedicated Account Manager',
-          'Feature Request Priority',
-          'Custom AI Workflows',
-          'AI/WhatsApp Support',
-          'Bonus: Dedicated Success Manager',
-          'Beta Features Access',
-        ],
-      },
-    ];
-
-    for (const p of canonicalPlans) {
-      const existing = await this.db.query.plans.findFirst({
-        where: eq(schema.plans.slug, p.slug),
-      });
-      if (existing) {
-        await this.db
-          .update(schema.plans)
-          .set({
-            name: p.name,
-            price: p.price,
-            interval: p.interval,
-            isActive: p.isActive,
-            features: p.features,
-            maxSocialAccounts: p.maxSocialAccounts,
-            updatedAt: new Date(),
-          })
-          .where(eq(schema.plans.id, existing.id));
-      } else {
-        await this.db.insert(schema.plans).values({
-          name: p.name,
-          slug: p.slug,
-          price: p.price,
-          interval: p.interval,
-          isActive: p.isActive,
-          features: p.features,
-          maxSocialAccounts: p.maxSocialAccounts,
-        });
-      }
-    }
-
+    await runPlansSeeding(this.db);
     return { success: true, message: 'Canonical plans seeded successfully' };
   }
 }
