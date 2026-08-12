@@ -402,7 +402,7 @@ export default function DashboardHome() {
               <div className="flex-1 space-y-4 text-center md:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary-700 text-xs font-semibold">
                   <Sparkles size={14} className="animate-spin duration-1000" />
-                  <span>Welcome to SocialPilot AI</span>
+                  <span>Welcome to Raasocial</span>
                 </div>
                 
                 <h2 className="text-3xl font-extrabold text-ink tracking-tight">

@@ -16,7 +16,7 @@ const INITIAL_NOTIFICATIONS = [
     id: 1,
     type: 'Announcement', // 'Announcement' | 'Reminder' | 'Approval' | 'Publishing' | 'Maintenance'
     audience: 'All Users',
-    message: 'SocialAI v2.4 is now live! Explore the new bento layout...',
+    message: 'Raasocial v2.4 is now live! Explore the new bento layout...',
     sentDate: 'Oct 24, 2023 · 09:12 AM',
     status: 'Delivered',
   },

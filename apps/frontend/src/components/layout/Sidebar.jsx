@@ -43,7 +43,7 @@ export default function Sidebar({ className }) {
           <Sparkles className="fill-current w-4.5 h-4.5" />
         </div>
         <div>
-          <h1 className="text-sm font-bold text-primary leading-tight">SocialAI</h1>
+          <h1 className="text-sm font-bold text-primary leading-tight">Raasocial</h1>
           <p className="text-[10px] text-ink-muted mt-0.5 leading-none">Pro Workspace</p>
         </div>
       </div>
