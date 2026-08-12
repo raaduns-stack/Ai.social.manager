@@ -3,8 +3,8 @@ import { Link } from 'react-router-dom'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Badge from '../components/ui/Badge'
-import heroMockup from '../assets/hero-dashboard-mockup.png'
-import analytics from '../assets/analytics.png'
+import heroMockup from '../assets/hero-dashboard-mockup.PNG'
+import analytics from '../assets/analytics.PNG'
 import teamPhoto from '../assets/team-collaboration.png'
 export default function Landing() {
   useEffect(() => {
