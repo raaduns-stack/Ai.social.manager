@@ -1,5 +1,6 @@
-import { Body, Controller, Post, Patch, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Patch, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -23,8 +24,8 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Log in with email and password' })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Req() req: Request, @Body() dto: LoginDto) {
+    return this.authService.login(dto, req);
   }
 
   @Post('verify-email')
