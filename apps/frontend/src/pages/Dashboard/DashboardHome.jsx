@@ -25,7 +25,9 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Loader from '../../components/ui/Loader'
 import Banner from '../../components/ui/Banner'
-import { getMyDashboardSummary } from '../../features/dashboard/dashboard-api'
+import { getMyDashboardSummary, getMyAnalyticsSummary } from '../../features/dashboard/dashboard-api'
+import { useAuthStore } from '../../store/auth-store'
+import EmptyState from '../../components/ui/EmptyState'
 
 // ---------------------------------------------------------------------------
 // Data — metrics change depending on the selected period filter
@@ -254,6 +256,23 @@ function DatePicker({ selectedDate, onSelectDate }) {
  * Renders inside DashboardLayout.
  */
 export default function DashboardHome() {
+  const user = useAuthStore((state) => state.user)
+  const [connectedAccountsCount, setConnectedAccountsCount] = useState(null)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true)
+
+  useEffect(() => {
+    async function fetchAnalytics() {
+      try {
+        const data = await getMyAnalyticsSummary()
+        setConnectedAccountsCount(data.connectedAccountsCount)
+      } catch (err) {
+        console.error('Failed to load analytics summary:', err)
+      } finally {
+        setLoadingAnalytics(false)
+      }
+    }
+    fetchAnalytics()
+  }, [])
 
   // Header calendar filter — defaults to the current date
   const [selectedDate, setSelectedDate] = useState(new Date())
@@ -322,7 +341,7 @@ export default function DashboardHome() {
       {/* Header Section */}
       <PageHeader
         title="Workspace Overview"
-        description="Welcome back, Alex"
+        description={user?.fullName ? `Welcome back, ${user.fullName.split(' ')[0]}` : 'Welcome back'}
         action={<DatePicker selectedDate={selectedDate} onSelectDate={setSelectedDate} />}
       />
 
@@ -362,7 +381,30 @@ export default function DashboardHome() {
 
 
 
-      {/* Dashboard Period Filter */}
+      {loadingAnalytics ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <Loader />
+          <p className="text-sm text-ink-muted">Loading workspace data...</p>
+        </div>
+      ) : connectedAccountsCount === 0 ? (
+        <EmptyState
+          icon={<Calendar size={48} className="text-primary-500" />}
+          title="No Connected Social Channels"
+          description="Your workspace overview, analytics dashboard, and scheduling feed will appear here once you connect a social media account. Please connect your first channel to get started."
+          action={
+            <Button
+              variant="primary"
+              onClick={() => navigate('/dashboard/channels')}
+              className="font-semibold cursor-pointer"
+            >
+              Connect a Social Channel
+            </Button>
+          }
+          className="mt-6"
+        />
+      ) : (
+        <>
+          {/* Dashboard Period Filter */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-ink-muted uppercase tracking-wider">Quick Stats</h4>
         <div className="flex items-center gap-2 bg-surface border border-border rounded-control px-3 py-1.5 shadow-soft">
@@ -696,6 +738,8 @@ export default function DashboardHome() {
           </Card>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

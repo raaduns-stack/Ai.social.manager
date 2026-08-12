@@ -12,6 +12,11 @@ export async function getMyDashboardSummary(): Promise<DashboardSummary> {
   return response.data
 }
 
+export async function getMyAnalyticsSummary() {
+  const response = await api.get('/dashboard/my-analytics-summary')
+  return response.data
+}
+
 export async function getSuggestions() {
   const response = await api.get('/content-suggestions')
   return response.data
