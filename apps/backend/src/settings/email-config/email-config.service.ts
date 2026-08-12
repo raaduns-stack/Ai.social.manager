@@ -152,6 +152,9 @@ export class EmailConfigService {
         user: config.smtpUsername,
         pass: plainPassword,
       },
+      tls: {
+        rejectUnauthorized: false,
+      },
     });
 
     try {
