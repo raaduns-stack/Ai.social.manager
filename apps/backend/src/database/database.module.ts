@@ -1,8 +1,9 @@
-import { Global, Module } from '@nestjs/common';
+import { Global, Module, OnModuleInit, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
+import { seedPlans, seedSingletons } from './seeding';
 
 export const DATABASE_CONNECTION = 'DATABASE_CONNECTION';
 
@@ -23,4 +24,23 @@ export const DATABASE_CONNECTION = 'DATABASE_CONNECTION';
   ],
   exports: [DATABASE_CONNECTION],
 })
-export class DatabaseModule {}
+export class DatabaseModule implements OnModuleInit {
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: any,
+    private readonly configService: ConfigService,
+  ) {}
+
+  async onModuleInit() {
+    try {
+      // Execute database seeding automatically on application startup
+      await seedPlans(this.db);
+      await seedSingletons(this.db, this.configService);
+    } catch (error) {
+      // Log warning but allow app to start (e.g. if migrations haven't run yet)
+      console.warn(
+        'Database seeding skipped/failed (this is expected if migrations have not run yet):',
+        error.message,
+      );
+    }
+  }
+}

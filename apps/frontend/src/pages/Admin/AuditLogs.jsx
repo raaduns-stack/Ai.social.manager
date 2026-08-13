@@ -53,7 +53,7 @@ const INITIAL_LOGS = [
   {
     id: 5,
     type: 'Login',
-    detail: 'Multiple failed login attempts detected for account: admin@socialai.com',
+    detail: 'Multiple failed login attempts detected for account: admin@raasocial.io',
     actor: 'System',
     time: 'Oct 24, 2023',
     status: 'failed',

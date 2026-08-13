@@ -136,8 +136,8 @@ export default function ChoosePlan() {
           <p className="text-sm text-ink-muted">Loading plans...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-          {plans.map((plan) => {
+        <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
+          {plans.filter((p) => p.slug === 'free').map((plan) => {
             const isFree = plan.slug === 'free'
             const isGrowth = plan.slug === 'growth'
             const features = getFeaturesList(plan)

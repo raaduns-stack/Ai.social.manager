@@ -32,6 +32,9 @@ export class MailerService {
             user: config.smtpUsername,
             pass: plainPassword,
           },
+          tls: {
+            rejectUnauthorized: false,
+          },
         });
         
         if (config.senderName && config.senderEmail) {

@@ -18,6 +18,11 @@ import {
   Heart,
   ChevronLeft,
   ChevronRight,
+  Camera,
+  Linkedin,
+  Youtube,
+  Facebook,
+  Music,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -25,7 +30,9 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Loader from '../../components/ui/Loader'
 import Banner from '../../components/ui/Banner'
-import { getMyDashboardSummary } from '../../features/dashboard/dashboard-api'
+import { getMyDashboardSummary, getMyAnalyticsSummary } from '../../features/dashboard/dashboard-api'
+import { useAuthStore } from '../../store/auth-store'
+import EmptyState from '../../components/ui/EmptyState'
 
 // ---------------------------------------------------------------------------
 // Data — metrics change depending on the selected period filter
@@ -254,9 +261,26 @@ function DatePicker({ selectedDate, onSelectDate }) {
  * Renders inside DashboardLayout.
  */
 export default function DashboardHome() {
+  const user = useAuthStore((state) => state.user)
+  const [connectedAccountsCount, setConnectedAccountsCount] = useState(0)
+  const [loadingAnalytics, setLoadingAnalytics] = useState(true)
 
-  // Header calendar filter — defaults to the design's original date
-  const [selectedDate, setSelectedDate] = useState(new Date(2023, 9, 24)) // Oct 24, 2023
+  useEffect(() => {
+    async function fetchAnalytics() {
+      try {
+        const data = await getMyAnalyticsSummary()
+        setConnectedAccountsCount(data.connectedAccountsCount)
+      } catch (err) {
+        console.error('Failed to load analytics summary:', err)
+      } finally {
+        setLoadingAnalytics(false)
+      }
+    }
+    fetchAnalytics()
+  }, [])
+
+  // Header calendar filter — defaults to the current date
+  const [selectedDate, setSelectedDate] = useState(new Date())
 
   // Dashboard period filter — drives the Quick Stats row
   const [period, setPeriod] = useState('week')
@@ -322,7 +346,7 @@ export default function DashboardHome() {
       {/* Header Section */}
       <PageHeader
         title="Workspace Overview"
-        description="Welcome back, Alex"
+        description={user?.fullName ? `Welcome back, ${user.fullName.split(' ')[0]}` : 'Welcome back'}
         action={<DatePicker selectedDate={selectedDate} onSelectDate={setSelectedDate} />}
       />
 
@@ -362,7 +386,168 @@ export default function DashboardHome() {
 
 
 
-      {/* Dashboard Period Filter */}
+      {loadingAnalytics ? (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <Loader />
+          <p className="text-sm text-ink-muted">Loading workspace data...</p>
+        </div>
+      ) : connectedAccountsCount === 0 ? (
+        <div className="max-w-4xl mx-auto py-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+          {/* Welcome Card */}
+          <Card className="p-8 border-2 border-primary/20 bg-gradient-to-br from-surface to-primary/5 shadow-lg relative overflow-hidden">
+            {/* Background design elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none"></div>
+            
+            <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
+              <div className="flex-1 space-y-4 text-center md:text-left">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary-700 text-xs font-semibold">
+                  <Sparkles size={14} className="animate-spin duration-1000" />
+                  <span>Welcome to Raasocial</span>
+                </div>
+                
+                <h2 className="text-3xl font-extrabold text-ink tracking-tight">
+                  Let's set up your workspace, {user?.fullName ? user.fullName.split(' ')[0] : 'there'}! 
+                </h2>
+                
+                <p className="text-sm text-ink-muted leading-relaxed">
+                  To start automating your posts, generating AI captions, creating stunning brand images, and tracking engagement metrics, you need to connect your social media accounts first.
+                </p>
+
+                <div className="pt-2 flex flex-col sm:flex-row gap-3 justify-center md:justify-start">
+                  <Button
+                    variant="primary"
+                    onClick={() => navigate('/dashboard/channels')}
+                    className="font-semibold px-6 py-3 shadow-md hover:shadow-lg transition-all"
+                  >
+                    Connect a Channel
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/dashboard/settings')}
+                    className="font-semibold px-6 cursor-pointer"
+                  >
+                    View Settings
+                  </Button>
+                </div>
+              </div>
+
+              {/* Supported Platforms Preview */}
+              <div className="w-full md:w-80 grid grid-cols-3 gap-3 bg-surface/50 p-4 rounded-xl border border-border backdrop-blur-sm">
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-canvas transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-[#E1306C]/10 text-[#E1306C] flex items-center justify-center">
+                    <Camera size={20} />
+                  </div>
+                  <span className="text-xs font-semibold text-ink">Instagram</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-canvas transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-[#0A66C2]/10 text-[#0A66C2] flex items-center justify-center">
+                    <Linkedin size={20} />
+                  </div>
+                  <span className="text-xs font-semibold text-ink">LinkedIn</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-canvas transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-[#000000]/10 text-ink flex items-center justify-center">
+                    <span className="font-bold text-sm">X</span>
+                  </div>
+                  <span className="text-xs font-semibold text-ink">Twitter</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-canvas transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-[#000000]/10 text-ink flex items-center justify-center">
+                    <Music size={20} />
+                  </div>
+                  <span className="text-xs font-semibold text-ink">TikTok</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-canvas transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-[#1877F2]/10 text-[#1877F2] flex items-center justify-center">
+                    <Facebook size={20} />
+                  </div>
+                  <span className="text-xs font-semibold text-ink">Facebook</span>
+                </div>
+                <div className="flex flex-col items-center gap-1.5 p-3 rounded-lg hover:bg-canvas transition-colors">
+                  <div className="w-10 h-10 rounded-full bg-[#FF0000]/10 text-[#FF0000] flex items-center justify-center">
+                    <Youtube size={20} />
+                  </div>
+                  <span className="text-xs font-semibold text-ink">YouTube</span>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* Setup Steps Timeline */}
+          <div className="space-y-4">
+            <h3 className="text-lg font-bold text-ink text-center">Your Setup Checklist</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Step 1 */}
+              <Card className="p-6 border-2 border-primary bg-primary/5 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-primary uppercase tracking-wider">Step 1</span>
+                    <Badge tone="primary" className="animate-pulse">Active</Badge>
+                  </div>
+                  <h4 className="text-base font-bold text-ink">Link Channels</h4>
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    Connect your professional social media pages via secure OAuth 2.0 to grant scheduling access.
+                  </p>
+                </div>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => navigate('/dashboard/channels')}
+                  className="w-full mt-4 font-semibold cursor-pointer"
+                >
+                  Link Now
+                </Button>
+              </Card>
+
+              {/* Step 2 */}
+              <Card className="p-6 border-dashed border-border opacity-70 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">Step 2</span>
+                    <span className="text-xs text-ink-muted">Locked</span>
+                  </div>
+                  <h4 className="text-base font-bold text-ink">Create First Post</h4>
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    Use our AI content suite to generate professional captions, hashtags, and images instantly.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="w-full mt-4 font-semibold"
+                >
+                  Locked
+                </Button>
+              </Card>
+
+              {/* Step 3 */}
+              <Card className="p-6 border-dashed border-border opacity-70 flex flex-col justify-between">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-ink-muted uppercase tracking-wider">Step 3</span>
+                    <span className="text-xs text-ink-muted">Locked</span>
+                  </div>
+                  <h4 className="text-base font-bold text-ink">Analyze Results</h4>
+                  <p className="text-xs text-ink-muted leading-relaxed">
+                    Track engagement rates, follower demographics, and post performance to refine your strategy.
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled
+                  className="w-full mt-4 font-semibold"
+                >
+                  Locked
+                </Button>
+              </Card>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Dashboard Period Filter */}
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-ink-muted uppercase tracking-wider">Quick Stats</h4>
         <div className="flex items-center gap-2 bg-surface border border-border rounded-control px-3 py-1.5 shadow-soft">
@@ -696,6 +881,8 @@ export default function DashboardHome() {
           </Card>
         </div>
       </div>
+        </>
+      )}
     </div>
   )
 }

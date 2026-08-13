@@ -417,7 +417,7 @@ export default function Channels() {
             Data Privacy &amp; Security
           </h4>
           <p className="text-xs text-ink-muted leading-relaxed">
-            SocialAI uses OAuth 2.0 to securely access your accounts. We never store your passwords and only request the minimum permissions required to manage your content effectively.
+            Raasocial uses OAuth 2.0 to securely access your accounts. We never store your passwords and only request the minimum permissions required to manage your content effectively.
           </p>
         </div>
         <div className="flex gap-4 shrink-0">

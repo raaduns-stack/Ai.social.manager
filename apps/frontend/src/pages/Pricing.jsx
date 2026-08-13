@@ -294,7 +294,7 @@ export default function Pricing() {
           <ErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
         )}
 
-        <BillingToggle isAnnual={isAnnual} onToggle={() => setIsAnnual((v) => !v)} />
+        {/* <BillingToggle isAnnual={isAnnual} onToggle={() => setIsAnnual((v) => !v)} /> */}
 
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 space-y-4">
@@ -302,8 +302,8 @@ export default function Pricing() {
             <p className="text-sm text-ink-muted">Loading plans...</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 pt-4">
-            {plans.map((plan) => (
+          <div className="grid grid-cols-1 gap-6 max-w-md mx-auto pt-4">
+            {plans.filter((p) => p.slug === 'free').map((plan) => (
               <PlanCard
                 key={plan.id}
                 plan={plan}

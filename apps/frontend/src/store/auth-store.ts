@@ -31,7 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   accessToken: initialSession.accessToken,
   refreshToken: initialSession.refreshToken,
   setAuth: (user, accessToken, refreshToken) => {
-    console.log('auth-store setAuth - storing tokens', { accessToken, refreshToken });
+    // console.log('auth-store setAuth - storing tokens', { accessToken, refreshToken });
     if (user && accessToken && refreshToken) {
       localStorage.setItem(
         SESSION_KEY,
@@ -43,7 +43,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, accessToken, refreshToken });
   },
   setTokens: (accessToken, refreshToken) => {
-    console.log('auth-store setTokens - refreshing tokens', { accessToken, refreshToken });
+    // console.log('auth-store setTokens - refreshing tokens', { accessToken, refreshToken });
     set((state) => {
       const updated = { ...state, accessToken, refreshToken };
       localStorage.setItem(

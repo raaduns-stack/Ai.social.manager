@@ -1,6 +1,6 @@
-import { Body, Controller, Post, Patch, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Patch, UseGuards, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { Request } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -18,14 +18,32 @@ export class AuthController {
 
   @Post('register')
   @ApiOperation({ summary: 'Create a new client account' })
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
+    const data = await this.authService.register(dto);
+    if (data.refreshToken) {
+      res.cookie('refreshToken', data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return data;
   }
 
   @Post('login')
   @ApiOperation({ summary: 'Log in with email and password' })
-  login(@Req() req: Request, @Body() dto: LoginDto) {
-    return this.authService.login(dto, req);
+  async login(@Req() req: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const data = await this.authService.login(dto, req);
+    if (data.refreshToken) {
+      res.cookie('refreshToken', data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return data;
   }
 
   @Post('verify-email')
@@ -51,15 +69,27 @@ export class AuthController {
     return this.authService.changePassword(user.userId, dto);
   }
 
-  // NOTE: this guards the refresh endpoint with the *access-token* strategy for
-  // simplicity in this scaffold. For production, add a separate JwtRefreshStrategy
-  // that validates against JWT_REFRESH_SECRET, and check the refresh token against
-  // an allowlist/blocklist table so tokens can be revoked on logout.
+  // NOTE: This endpoint now extracts the refresh token from an HTTP-only cookie
+  // and issues a fresh access token along with a new HTTP-only refresh token.
   @Post('refresh')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Exchange a valid token for a fresh access/refresh pair' })
-  refresh(@CurrentUser() user: { userId: string; email: string; role: string }) {
-    return this.authService.refresh(user.userId, user.email, user.role);
+  @ApiOperation({ summary: 'Exchange a valid HTTP-Only refresh token for a fresh access token' })
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+    const refreshToken = req.cookies?.refreshToken;
+    
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token provided');
+    }
+
+    const { accessToken, newRefreshToken } = await this.authService.refreshTokens(refreshToken);
+
+    // Set new HTTP-only cookie
+    res.cookie('refreshToken', newRefreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    return { accessToken };
   }
 }

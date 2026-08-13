@@ -34,7 +34,7 @@ const initialNotifications = [
     category: 'Today',
     type: 'alert', // warning
     title: 'Connection Alert: Twitter/X',
-    description: 'Your API token for @SocialAI_Dev has expired. Please re-authenticate to continue scheduled posts.',
+    description: 'Your API token for @Raasocial_Dev has expired. Please re-authenticate to continue scheduled posts.',
     time: '10:45 AM',
     unread: false,
   },

@@ -8,6 +8,7 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import * as express from 'express';
 import { join } from 'path';
+import cookieParser from 'cookie-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -17,6 +18,17 @@ async function bootstrap() {
   app.setGlobalPrefix(apiPrefix);
 
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
+
+  const frontendDir = join(process.cwd(), 'public');
+  app.use(express.static(frontendDir));
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.method !== 'GET') return next();
+    if (req.path.startsWith(`/${apiPrefix}`) || req.path.startsWith('/uploads')) {
+      return next();
+    }
+    res.sendFile(join(frontendDir, 'index.html'));
+  });
+  app.use(cookieParser());
 
   app.enableCors({
     origin: ['http://localhost:5173', 'http://localhost:5174'],

@@ -51,6 +51,34 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   SUPPORT_WHATSAPP_NUMBER?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_HOST?: string;
+
+  @IsNumber()
+  @IsOptional()
+  SMTP_PORT?: number;
+
+  @IsString()
+  @IsOptional()
+  SMTP_SECURE?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_USERNAME?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_PASSWORD?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_SENDER_NAME?: string;
+
+  @IsString()
+  @IsOptional()
+  SMTP_SENDER_EMAIL?: string;
 }
 
 /**

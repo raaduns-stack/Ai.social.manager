@@ -180,7 +180,7 @@ export default function Contact() {
                   </div>
                   <div>
                     <h3 className="text-sm font-semibold text-ink">Email Us</h3>
-                    <p className="text-sm text-ink-muted mt-0.5">contact@socialai.pro</p>
+                    <p className="text-sm text-ink-muted mt-0.5">contact@raasocial.io</p>
                   </div>
                 </div>
 

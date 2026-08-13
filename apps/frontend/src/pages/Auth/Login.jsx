@@ -78,7 +78,7 @@ export default function Login() {
           <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
             <Sparkles className="text-white w-5 h-5" />
           </div>
-          <span className="text-lg font-bold tracking-tight text-ink">SocialAI</span>
+          <span className="text-lg font-bold tracking-tight text-ink">Raasocial</span>
         </div>
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight text-ink text-left">

@@ -1023,7 +1023,7 @@ function EmailConfigTab() {
               <Input
                 label="Sender Name"
                 id="sender-name"
-                placeholder="SocialPilot AI"
+                placeholder="Raasocial"
                 value={senderName}
                 onChange={(e) => setSenderName(e.target.value)}
               />
@@ -1031,7 +1031,7 @@ function EmailConfigTab() {
                 label="Sender Email"
                 id="sender-email"
                 type="email"
-                placeholder="no-reply@socialpilot.test"
+                placeholder="no-reply@raasocial.test"
                 value={senderEmail}
                 onChange={(e) => setSenderEmail(e.target.value)}
               />
@@ -1041,7 +1041,7 @@ function EmailConfigTab() {
               label="Reply-To Email"
               id="reply-to-email"
               type="email"
-              placeholder="support@socialpilot.test"
+              placeholder="support@raasocial.test"
               value={replyToEmail}
               onChange={(e) => setReplyToEmail(e.target.value)}
             />

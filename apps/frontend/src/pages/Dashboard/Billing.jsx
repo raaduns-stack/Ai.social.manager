@@ -333,8 +333,8 @@ export default function Billing() {
 
             {/* 2. Payment Method & Quick Upgrades Container */}
             <div className="space-y-6">
-              {/* Payment Method Card */}
-              <Card className="p-6">
+              {/* Payment Method Card commented out temporarily */}
+              {/* <Card className="p-6">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="text-sm font-semibold text-ink">Payment Method</h3>
                   <Button
@@ -363,7 +363,7 @@ export default function Billing() {
                   <Lock size={12} className="text-ink-muted" />
                   Secure encrypted payments
                 </p>
-              </Card>
+              </Card> */}
 
               {/* Special Support / Sales CTA */}
               <Card className="p-6 bg-gradient-to-br from-primary to-primary-700 text-white relative overflow-hidden group">
@@ -392,8 +392,8 @@ export default function Billing() {
           {/* Change Plan Section */}
           <div className="mt-8">
             <h3 className="text-lg font-bold text-ink mb-6">Change Your Plan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {plans.map((plan) => {
+            <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
+              {plans.filter((p) => p.slug === 'free').map((plan) => {
                 const isCurrent = activePlanSlug === plan.slug
                 const isFree = plan.slug === 'free'
                 const features = getFeaturesList(plan.slug)

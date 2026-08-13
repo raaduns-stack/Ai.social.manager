@@ -195,19 +195,19 @@ function CompanyInfoTab() {
   const [saving, setSaving] = useState(false)
   const [originalProfile, setOriginalProfile] = useState(null)
 
-  const [businessName, setBusinessName] = useState('SocialAI Pro')
+  const [businessName, setBusinessName] = useState('Raasocial Pro')
   const [industry, setIndustry] = useState('Technology & SaaS')
   const [description, setDescription] = useState(
     'A forward-thinking management firm leveraging artificial intelligence to streamline social media workflows for high-growth startups.'
   )
-  const [email, setEmail] = useState('contact@socialai.pro')
+  const [email, setEmail] = useState('contact@raasocial.io')
   // Phone split into country + number
   const [phoneCountry, setPhoneCountry] = useState('US')
   const [phoneNumber, setPhoneNumber] = useState('(555) 123-4567')
   // Business location
   const [location, setLocation] = useState('')
   // URLs
-  const [website, setWebsite] = useState('https://socialai.pro')
+  const [website, setWebsite] = useState('https://raasocial.io')
   const [businessWebsite, setBusinessWebsite] = useState('')
   const [competitorUrls, setCompetitorUrls] = useState('')
   const [competitorSocials, setCompetitorSocials] = useState('')
