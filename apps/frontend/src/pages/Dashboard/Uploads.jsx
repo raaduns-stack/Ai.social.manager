@@ -96,7 +96,7 @@ export default function Uploads() {
           sizeBytes,
           date: created.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
           timestamp: created.getTime(),
-          status: 'Approved',
+          status: u.status ? u.status.toUpperCase() : 'PENDING',
           description: u.description || '',
           url: u.fileUrl,
         };
@@ -213,11 +213,11 @@ export default function Uploads() {
       await Promise.all(
         pendingFiles.map(async (pf) => {
           const formData = new FormData()
-          formData.append('file', pf.file)
           formData.append('category', activeCategory)
           if (pf.description) {
             formData.append('description', pf.description)
           }
+          formData.append('file', pf.file)
           await uploadFile(formData)
         })
       )
@@ -307,15 +307,28 @@ export default function Uploads() {
   }
 
   const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Approved':
+    const s = status?.toLowerCase();
+    switch (s) {
+      case 'approved':
         return (
           <Badge tone="success" className="text-[10px] font-bold uppercase tracking-wider">
             Approved
           </Badge>
         )
-      case 'Uploading':
-      case 'Processing':
+      case 'pending':
+        return (
+          <Badge tone="warning" className="text-[10px] font-bold uppercase tracking-wider">
+            Pending
+          </Badge>
+        )
+      case 'rejected':
+        return (
+          <Badge tone="danger" className="text-[10px] font-bold uppercase tracking-wider">
+            Rejected
+          </Badge>
+        )
+      case 'uploading':
+      case 'processing':
         return (
           <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold text-[10px] uppercase tracking-wider">
             {status}
@@ -882,21 +895,19 @@ export default function Uploads() {
                   {previewAsset.category}
                 </Badge>
               </div>
-              {previewAsset.description && (
-                <div className="border-b border-border pb-2">
-                  <span className="text-xs font-semibold text-ink-muted block mb-1">Description</span>
-                  <p className="text-xs text-ink bg-canvas p-2 rounded-control border border-border">
-                    {previewAsset.description}
-                  </p>
-                </div>
-              )}
               <div className="flex justify-between items-center border-b border-border pb-2">
                 <span className="text-xs font-semibold text-ink-muted">Size</span>
                 <span className="text-xs font-semibold text-ink">{previewAsset.size}</span>
               </div>
-              <div className="flex justify-between items-center pb-2">
+              <div className="flex justify-between items-center border-b border-border pb-2">
                 <span className="text-xs font-semibold text-ink-muted">Status</span>
                 <span>{getStatusBadge(previewAsset.status)}</span>
+              </div>
+              <div className="flex justify-between items-center pb-2">
+                <span className="text-xs font-semibold text-ink-muted">Description</span>
+                <span className="text-xs font-semibold text-ink truncate max-w-[200px]" title={previewAsset.description}>
+                  {previewAsset.description || '—'}
+                </span>
               </div>
             </div>
 
