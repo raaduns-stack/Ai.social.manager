@@ -1,21 +1,41 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { CreateSocialAccountDto } from './dto/create-social-account.dto';
 import { UpdateSocialAccountDto } from './dto/update-social-account.dto';
+import { KycService } from '../kyc/kyc.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class SocialAccountsService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    // KycService is injected to enforce KYC-approval before any channel connection
+    private readonly kycService: KycService,
+  ) {}
 
   /**
    * Create a new social account linked to the given user.
+   *
+   * KYC GATE: The user must have an APPROVED KYC record before they can
+   * connect any social channel. This backend check runs regardless of what
+   * the frontend displays, so it cannot be bypassed via API.
    */
   async create(userId: string, dto: CreateSocialAccountDto) {
+    // --- KYC Guard ---
+    const kycStatus = await this.kycService.getKycStatus(userId);
+    if (kycStatus !== 'approved') {
+      const reason =
+        kycStatus === 'pending'
+          ? 'Your business verification is still under review. You can connect social accounts once your KYC is approved.'
+          : kycStatus === 'rejected'
+          ? 'Your business verification was rejected. Please correct and resubmit your KYC before connecting social accounts.'
+          : 'You must complete and pass business verification (KYC) before connecting social accounts.';
+      throw new ForbiddenException(reason);
+    }
     const activeSub = await this.db.query.subscriptions.findFirst({
       where: and(
         eq(schema.subscriptions.userId, userId),

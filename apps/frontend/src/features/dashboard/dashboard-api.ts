@@ -17,6 +17,22 @@ export async function getSuggestions() {
   return response.data
 }
 
+export async function generateCaption(businessType: string) {
+  const response = await api.post('/content-suggestions/caption', {
+    businessType,
+  })
+
+  return response.data
+}
+
+export async function generateIdea(businessType: string) {
+  const response = await api.post('/content-suggestions/idea', {
+    businessType,
+  })
+
+  return response.data
+}
+
 export async function saveSuggestionFeedback(
   id: string,
   reaction: 'up' | 'down',

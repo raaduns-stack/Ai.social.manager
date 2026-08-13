@@ -8,6 +8,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
+import { contentFeedback } from './content-feedback.schema';
 /**
  * PostgreSQL Enum defining allowable types of generated content suggestions.
  */
@@ -45,12 +46,13 @@ export const contentSuggestions = pgTable('content_suggestions', {
  */
 export const contentSuggestionsRelations = relations(
   contentSuggestions,
-  ({ one }) => ({
-    /** Many-to-One relationship connecting each content suggestion back to its owner. */
+  ({ one, many }) => ({
     user: one(users, {
       fields: [contentSuggestions.userId],
       references: [users.id],
     }),
+
+    feedback: many(contentFeedback),
   }),
 );
 /** TypeScript type inferred for reading/selecting records from the `content_suggestions` table. */
