@@ -16,5 +16,7 @@ export * from './content-calendar.schema';
 export * from './ai-prompt-templates.schema';
 export * from './settings.schema';
 export * from './kyc.schema';
+export * from './login-history.schema';
+export * from './activity-logs.schema';
 export * from './relations';
 

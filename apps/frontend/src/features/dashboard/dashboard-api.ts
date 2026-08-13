@@ -48,3 +48,13 @@ export async function saveSuggestionFeedback(
 
   return response.data
 }
+
+export async function getPostSuggestions(postId: string): Promise<any[]> {
+  const response = await api.get<any[]>(`/content-suggestions/post/${postId}`)
+  return response.data
+}
+
+export async function regeneratePostSuggestions(postId: string): Promise<any[]> {
+  const response = await api.post<any[]>(`/content-suggestions/post/${postId}/regenerate`)
+  return response.data
+}

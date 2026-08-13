@@ -124,6 +124,14 @@ export async function createCalendarPost(userId: string, dto: CreatePostDto): Pr
 }
 
 /**
+ * Update an existing scheduled post for the authenticated user.
+ */
+export async function updateCalendarPost(id: string, dto: Partial<CalendarPost>): Promise<CalendarPost> {
+  const res = await api.patch<CalendarPost>(`/calendar/posts/${id}`, dto)
+  return res.data
+}
+
+/**
  * Delete a calendar post owned by the authenticated user.
  */
 export async function deleteCalendarPost(id: string, userId: string): Promise<void> {

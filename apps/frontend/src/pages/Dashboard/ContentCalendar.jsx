@@ -32,6 +32,9 @@ import {
   Sparkles,
   RefreshCw,
   Facebook,
+  Star,
+  ThumbsUp,
+  ThumbsDown,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -43,7 +46,13 @@ import {
   getCalendarPosts,
   getUpcomingPosts,
   getPublishedPosts,
+  updateCalendarPost,
 } from '../../features/calendar/calendar-api'
+import {
+  getPostSuggestions,
+  regeneratePostSuggestions,
+  saveSuggestionFeedback,
+} from '../../features/dashboard/dashboard-api'
 
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
@@ -323,12 +332,415 @@ function DayView({ posts, currentDate, onPostClick }) {
   )
 }
 
+// ─── AI Suggestion Card Component (Frees rating and handles selection) ──────────
+function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
+  const [rating, setRating] = useState(suggestion.feedback?.rating || 0)
+  const [reaction, setReaction] = useState(suggestion.feedback?.reaction || null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const isRated = !!suggestion.feedback
+  const stars = isRated ? suggestion.feedback.rating : rating
+  const finalReaction = isRated ? (suggestion.feedback.reaction === 'up' ? 'like' : 'dislike') : reaction
+  const isEligible = isRated ? stars >= 3 : true
+
+  async function handleRate(selectedStars, selectedReaction) {
+    if (isRated || isSubmitting) return
+    setIsSubmitting(true)
+    try {
+      const fb = await saveSuggestionFeedback(
+        suggestion.id,
+        selectedReaction === 'like' ? 'up' : 'down',
+        selectedStars
+      )
+      onFeedbackSaved(suggestion.id, fb)
+    } catch (err) {
+      alert(err.message || 'Failed to save feedback.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  return (
+    <Card className={`p-4 border rounded-control transition-all ${isRated && !isEligible ? 'bg-canvas/50 border-gray-200 opacity-60' : 'bg-surface border-border/60 hover:shadow-sm'}`}>
+      <div className="flex justify-between items-start mb-2">
+        <h4 className="font-bold text-ink text-sm">{suggestion.title}</h4>
+        <div className="flex gap-1.5 items-center">
+          {isRated && !isEligible && (
+            <Badge tone="danger" className="text-[9px] uppercase font-bold tracking-wider">Not Eligible</Badge>
+          )}
+          {post.selectedSuggestionId === suggestion.id && (
+            <Badge tone="success" className="text-[9px] uppercase font-bold tracking-wider">Selected Post</Badge>
+          )}
+        </div>
+      </div>
+      <p className="text-xs text-ink-muted mb-2 whitespace-pre-wrap leading-relaxed">{suggestion.content}</p>
+      {suggestion.hashtags && suggestion.hashtags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mb-3">
+          {suggestion.hashtags.map((tag, idx) => (
+            <span key={idx} className="text-[10px] bg-primary-50 text-primary-700 px-1.5 py-0.5 rounded-full font-medium">{tag}</span>
+          ))}
+        </div>
+      )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
+        {/* Rating and reaction */}
+        <div className="flex items-center gap-2">
+          {isRated ? (
+            <div className="text-xs font-semibold text-primary-700 flex items-center gap-1.5 bg-primary-50 border border-primary-100 px-2 py-1 rounded">
+              <span>Rating saved:</span>
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <Star
+                    key={s}
+                    size={11}
+                    className={s <= stars ? 'fill-primary-600 text-primary-600' : 'text-gray-300'}
+                  />
+                ))}
+              </div>
+              <span className="uppercase font-bold text-[9px] text-primary-600">
+                ({finalReaction === 'like' ? '👍 Liked' : '👎 Disliked'})
+              </span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2.5">
+              {/* Star Picker */}
+              <div className="flex">
+                {[1, 2, 3, 4, 5].map(s => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setRating(s)}
+                    className="p-0.5 hover:scale-110 transition-transform"
+                  >
+                    <Star
+                      size={13}
+                      className={s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                    />
+                  </button>
+                ))}
+              </div>
+              {/* Reaction Buttons */}
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => setReaction('like')}
+                  className={`p-1 rounded hover:bg-canvas transition-colors ${reaction === 'like' ? 'text-accent' : 'text-ink-muted'}`}
+                >
+                  <ThumbsUp size={13} className={reaction === 'like' ? 'fill-accent' : ''} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setReaction('dislike')}
+                  className={`p-1 rounded hover:bg-canvas transition-colors ${reaction === 'dislike' ? 'text-danger' : 'text-ink-muted'}`}
+                >
+                  <ThumbsDown size={13} className={reaction === 'dislike' ? 'fill-danger' : ''} />
+                </button>
+              </div>
+              {rating > 0 && reaction && (
+                <Button
+                  size="xs"
+                  variant="primary"
+                  onClick={() => handleRate(rating, reaction)}
+                  disabled={isSubmitting}
+                  className="text-[10px] py-0.5 px-2 font-bold"
+                >
+                  Submit
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Action Button */}
+        {(!isRated || isEligible) && post.selectedSuggestionId !== suggestion.id && (
+          <Button
+            size="xs"
+            variant="outline"
+            onClick={() => onSelected(suggestion)}
+            className="text-xs font-semibold py-1 px-3 border-primary text-primary hover:bg-primary-50"
+          >
+            Use Suggestion
+          </Button>
+        )}
+      </div>
+    </Card>
+  )
+}
+
 // ─── Post Details Modal ────────────────────────────────────────────────────────
-function PostDetailModal({ post, onClose }) {
+function PostDetailModal({ post, onClose, onUpdated }) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [showSuggestions, setShowSuggestions] = useState(false)
+
+  // Edit fields
+  const [editTitle, setEditTitle] = useState('')
+  const [editCaption, setEditCaption] = useState('')
+  const [editPlatform, setEditPlatform] = useState('Instagram')
+  const [editDate, setEditDate] = useState('')
+  const [editTime, setEditTime] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
+  // Suggestions states
+  const [suggestions, setSuggestions] = useState([])
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [errorSuggestions, setErrorSuggestions] = useState(null)
+
+  useEffect(() => {
+    if (post) {
+      setEditTitle(post.title)
+      setEditCaption(post.caption)
+      setEditPlatform(post.platform)
+      if (post.scheduledAt) {
+        const d = new Date(post.scheduledAt)
+        const yyyy = d.getFullYear()
+        const mm = String(d.getMonth() + 1).padStart(2, '0')
+        const dd = String(d.getDate()).padStart(2, '0')
+        setEditDate(`${yyyy}-${mm}-${dd}`)
+
+        const hh = String(d.getHours()).padStart(2, '0')
+        const min = String(d.getMinutes()).padStart(2, '0')
+        setEditTime(`${hh}:${min}`)
+      } else {
+        setEditDate('')
+        setEditTime('')
+      }
+      setIsEditing(false)
+      setShowSuggestions(false)
+    }
+  }, [post])
+
+  // Fetch suggestions when modal changes state
+  useEffect(() => {
+    if (post && showSuggestions) {
+      loadSuggestions()
+    }
+  }, [post, showSuggestions])
+
+  async function loadSuggestions() {
+    setLoadingSuggestions(true)
+    setErrorSuggestions(null)
+    try {
+      const data = await getPostSuggestions(post.id)
+      setSuggestions(data)
+    } catch (err) {
+      setErrorSuggestions(err.message || 'Failed to load AI suggestions.')
+    } finally {
+      setLoadingSuggestions(false)
+    }
+  }
+
+  async function handleRegenerate() {
+    setRegenerating(true)
+    try {
+      const data = await regeneratePostSuggestions(post.id)
+      setSuggestions(data)
+    } catch (err) {
+      alert(err.message || 'Failed to regenerate suggestions.')
+    } finally {
+      setRegenerating(false)
+    }
+  }
+
+  async function handleSaveEdits(e) {
+    e.preventDefault()
+    setIsSaving(true)
+    try {
+      let scheduledAt = null
+      if (editDate) {
+        scheduledAt = editTime ? `${editDate}T${editTime}:00` : `${editDate}T12:00:00`
+      }
+      const updated = await updateCalendarPost(post.id, {
+        title: editTitle,
+        caption: editCaption,
+        platform: editPlatform,
+        scheduledAt,
+      })
+      onUpdated(updated)
+      setIsEditing(false)
+    } catch (err) {
+      alert(err.message || 'Failed to save edits.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  async function handleSelectSuggestion(suggestion) {
+    try {
+      const updated = await updateCalendarPost(post.id, {
+        selectedSuggestionId: suggestion.id,
+        title: suggestion.title,
+        caption: suggestion.content,
+        hashtags: suggestion.hashtags,
+        aiGenerated: true,
+      })
+      onUpdated(updated)
+      setShowSuggestions(false)
+    } catch (err) {
+      alert(err.message || 'Failed to select suggestion.')
+    }
+  }
+
+  function handleFeedbackSaved(suggestionId, feedback) {
+    setSuggestions((prev) =>
+      prev.map((s) =>
+        s.id === suggestionId
+          ? {
+              ...s,
+              feedback: {
+                reaction: feedback.reaction,
+                rating: feedback.rating,
+              },
+            }
+          : s
+      )
+    )
+    // Update the parent's suggestions payload as well so the details screen re-syncs
+    if (post && post.suggestions) {
+      const updatedSuggestions = post.suggestions.map((s) =>
+        s.id === suggestionId
+          ? {
+              ...s,
+              feedback: {
+                reaction: feedback.reaction,
+                rating: feedback.rating,
+              },
+            }
+          : s
+      )
+      onUpdated({ ...post, suggestions: updatedSuggestions })
+    }
+  }
+
   if (!post) return null
   const platform = getPlatformMeta(post.platform)
   const approval = getApprovalMeta(post.approvalStatus)
   const status   = getStatusMeta(post.status)
+
+  if (showSuggestions) {
+    return (
+      <Modal open={!!post} onClose={onClose} title="✨ AI Content Suggestions" className="max-w-2xl">
+        <div className="flex items-center justify-between mb-4 border-b border-border pb-3">
+          <Button variant="ghost" size="sm" onClick={() => setShowSuggestions(false)} className="text-sm font-semibold">
+            ← Back to Details
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={regenerating || loadingSuggestions}
+            className="gap-2 text-xs font-semibold"
+          >
+            <RefreshCw size={12} className={regenerating ? 'animate-spin' : ''} />
+            <span>{regenerating ? 'Regenerating...' : 'Regenerate Suggestions'}</span>
+          </Button>
+        </div>
+
+        {loadingSuggestions ? (
+          <div className="py-16 text-center text-ink-muted">
+            <RefreshCw className="animate-spin mx-auto mb-2 text-primary" size={24} />
+            <p className="text-sm font-medium">Generating 4 tailored suggestions...</p>
+          </div>
+        ) : errorSuggestions ? (
+          <div className="p-4 text-center bg-red-50 text-danger border border-red-200 rounded">
+            <p className="text-sm">{errorSuggestions}</p>
+            <Button size="xs" onClick={loadSuggestions} className="mt-2 block mx-auto">Retry</Button>
+          </div>
+        ) : (
+          <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+            <p className="text-xs text-ink-muted">
+              AI suggestions are generated based on your post topic: <span className="font-semibold text-ink">"{post.title}"</span>.
+            </p>
+            {suggestions.map((suggestion) => (
+              <SuggestionCard
+                key={suggestion.id}
+                suggestion={suggestion}
+                post={post}
+                onSelected={handleSelectSuggestion}
+                onFeedbackSaved={handleFeedbackSaved}
+              />
+            ))}
+          </div>
+        )}
+      </Modal>
+    )
+  }
+
+  if (isEditing) {
+    return (
+      <Modal open={!!post} onClose={onClose} title="Edit Post Details" className="max-w-xl">
+        <form onSubmit={handleSaveEdits} className="space-y-4">
+          <div>
+            <label className="text-xs font-bold text-ink-muted uppercase block mb-1">Title / Topic</label>
+            <input
+              type="text"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="text-xs font-bold text-ink-muted uppercase block mb-1">Caption / Content</label>
+            <textarea
+              value={editCaption}
+              onChange={(e) => setEditCaption(e.target.value)}
+              rows={4}
+              className="w-full p-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              required
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-bold text-ink-muted uppercase block mb-1">Platform</label>
+              <select
+                value={editPlatform}
+                onChange={(e) => setEditPlatform(e.target.value)}
+                className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
+              >
+                <option value="Instagram">Instagram</option>
+                <option value="LinkedIn">LinkedIn</option>
+                <option value="X / Twitter">X / Twitter</option>
+                <option value="TikTok">TikTok</option>
+                <option value="Facebook">Facebook</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-ink-muted uppercase block mb-1">Scheduled Date</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="text-xs font-bold text-ink-muted uppercase block mb-1">Scheduled Time</label>
+              <input
+                type="time"
+                value={editTime}
+                onChange={(e) => setEditTime(e.target.value)}
+                className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
+              />
+            </div>
+          </div>
+
+          <div className="pt-4 border-t border-border flex justify-end gap-2">
+            <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={isSaving}>
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+    )
+  }
 
   return (
     <Modal open={!!post} onClose={onClose} title="Post Details" className="max-w-xl">
@@ -354,36 +766,44 @@ function PostDetailModal({ post, onClose }) {
       </div>
 
       {/* Title */}
-      <h3 className="text-base font-semibold text-ink mb-2">{post.title}</h3>
+      <div className="mb-3">
+        <span className="text-xs font-bold text-ink-muted uppercase block mb-0.5">Title / Topic</span>
+        <h3 className="text-base font-semibold text-ink leading-snug">{post.title}</h3>
+      </div>
 
       {/* Caption */}
-      <p className="text-sm text-ink-muted mb-3 whitespace-pre-wrap">{post.caption}</p>
+      <div className="mb-4">
+        <span className="text-xs font-bold text-ink-muted uppercase block mb-0.5">Caption / Content</span>
+        <p className="text-sm text-ink leading-relaxed whitespace-pre-wrap">{post.caption}</p>
+      </div>
 
       {/* Schedule info */}
-      <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+      <div className="grid grid-cols-2 gap-3 mb-4 text-sm">
         <div>
-          <span className="text-xs text-ink-muted block mb-0.5">Scheduled Date</span>
-          <span className="font-medium text-ink">{formatDate(post.scheduledAt)}</span>
+          <span className="text-xs font-bold text-ink-muted uppercase block mb-0.5">Scheduled Date</span>
+          <span className="font-semibold text-ink">{formatDate(post.scheduledAt)}</span>
         </div>
         <div>
-          <span className="text-xs text-ink-muted block mb-0.5">Scheduled Time</span>
-          <span className="font-medium text-ink">{formatTime(post.scheduledAt)}</span>
+          <span className="text-xs font-bold text-ink-muted uppercase block mb-0.5">Scheduled Time</span>
+          <span className="font-semibold text-ink">{formatTime(post.scheduledAt)}</span>
         </div>
         {post.publishedAt && (
           <div>
-            <span className="text-xs text-ink-muted block mb-0.5">Published At</span>
-            <span className="font-medium text-ink">{formatDate(post.publishedAt)}</span>
+            <span className="text-xs font-bold text-ink-muted uppercase block mb-0.5">Published At</span>
+            <span className="font-semibold text-ink">{formatDate(post.publishedAt)}</span>
           </div>
         )}
       </div>
 
       {/* Hashtags */}
       {post.hashtags && post.hashtags.length > 0 && (
-        <div className="mb-3">
-          <span className="text-xs text-ink-muted block mb-1 flex items-center gap-1"><Tag size={10} /> Hashtags</span>
-          <div className="flex flex-wrap gap-1">
+        <div className="mb-4">
+          <span className="text-xs font-bold text-ink-muted uppercase block mb-1.5 flex items-center gap-1">
+            <Tag size={10} /> Hashtags
+          </span>
+          <div className="flex flex-wrap gap-1.5">
             {post.hashtags.map((tag, i) => (
-              <span key={i} className="text-xs bg-primary-50 text-primary-700 rounded-full px-2 py-0.5">{tag}</span>
+              <span key={i} className="text-xs font-medium bg-primary-50 text-primary-700 border border-primary-100 rounded-full px-2.5 py-0.5">{tag}</span>
             ))}
           </div>
         </div>
@@ -391,11 +811,32 @@ function PostDetailModal({ post, onClose }) {
 
       {/* Admin notes (read-only for customer) */}
       {post.adminNotes && (
-        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3">
-          <span className="text-xs font-medium text-amber-800 block mb-1">Admin Notes</span>
-          <p className="text-xs text-amber-700">{post.adminNotes}</p>
+        <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 mb-4">
+          <span className="text-xs font-bold text-amber-800 block mb-1">Admin Notes</span>
+          <p className="text-xs text-amber-700 leading-relaxed">{post.adminNotes}</p>
         </div>
       )}
+
+      {/* Actions Footer */}
+      <div className="pt-4 border-t border-border flex flex-wrap justify-between items-center gap-3">
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="font-semibold text-xs">
+            Edit Post
+          </Button>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={() => setShowSuggestions(true)}
+            className="gap-1.5 bg-gradient-to-r from-primary-600 to-indigo-600 border-none shadow-soft text-white hover:from-primary-700 hover:to-indigo-700 text-xs font-semibold"
+          >
+            <Sparkles size={12} />
+            <span>AI Suggestions</span>
+          </Button>
+        </div>
+        <Button variant="ghost" size="sm" onClick={onClose} className="text-ink-muted font-medium text-xs">
+          Close
+        </Button>
+      </div>
     </Modal>
   )
 }
@@ -640,7 +1081,16 @@ export default function ContentCalendar() {
       )}
 
       {/* ── Post details modal ── */}
-      <PostDetailModal post={selectedPost} onClose={() => setSelectedPost(null)} />
+      <PostDetailModal
+        post={selectedPost}
+        onClose={() => setSelectedPost(null)}
+        onUpdated={(updatedPost) => {
+          setAllPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
+          setUpcomingPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
+          setPublishedPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
+          setSelectedPost(updatedPost)
+        }}
+      />
     </div>
   )
 }
