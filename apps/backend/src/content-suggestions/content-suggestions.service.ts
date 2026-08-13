@@ -1,4 +1,8 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { desc, eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
@@ -15,22 +19,44 @@ export class ContentSuggestionsService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
-  ) {}
+  ) { }
   /**
    * Fetches all generated content suggestions for a given user,
    * sorted by creation date in descending order (newest first).
    */
   async findAll(userId: string) {
-  return this.db.query.contentSuggestions.findMany({
-    where: eq(schema.contentSuggestions.userId, userId),
-    orderBy: desc(schema.contentSuggestions.createdAt),
-  });
-}
+    const suggestions =
+      await this.db.query.contentSuggestions.findMany({
+        where: eq(schema.contentSuggestions.userId, userId),
+        orderBy: desc(schema.contentSuggestions.createdAt),
+        with: {
+          feedback: {
+            where: eq(schema.contentFeedback.userId, userId),
+            orderBy: desc(schema.contentFeedback.createdAt),
+            limit: 1,
+          },
+        },
+      });
 
-/**
-   * Generates a template caption and relevant hashtags for a business type,
-   * persists the generated suggestion to the database, and returns the stored result.
-   */
+    return suggestions.map((suggestion) => {
+      const feedback = suggestion.feedback?.[0] ?? null;
+
+      return {
+        ...suggestion,
+        feedback: feedback
+          ? {
+            reaction: feedback.reaction,
+            rating: feedback.rating,
+          }
+          : null,
+      };
+    });
+  }
+
+  /**
+     * Generates a template caption and relevant hashtags for a business type,
+     * persists the generated suggestion to the database, and returns the stored result.
+     */
   async generateCaption(userId: string, businessType: string) {
     // Construct mock caption string and format hashtag array (removes spaces from business type)
     const caption = `Grow your ${businessType} with amazing content today!`;
@@ -92,6 +118,44 @@ export class ContentSuggestionsService {
     reaction: 'up' | 'down',
     rating: number,
   ) {
+    // Make sure the suggestion belongs to the logged-in user.
+    const suggestion = await this.db.query.contentSuggestions.findFirst({
+      where: (fields, { and, eq }) =>
+        and(
+          eq(fields.id, suggestionId),
+          eq(fields.userId, userId),
+        ),
+    })
+
+    if (!suggestion) {
+      throw new NotFoundException('Content suggestion not found')
+    }
+
+    // Check whether this user has already rated this suggestion.
+    const existingFeedback =
+      await this.db.query.contentFeedback.findFirst({
+        where: (fields, { and, eq }) =>
+          and(
+            eq(fields.suggestionId, suggestionId),
+            eq(fields.userId, userId),
+          ),
+      })
+
+    // Update existing feedback instead of creating duplicates.
+    if (existingFeedback) {
+      const [updatedFeedback] = await this.db
+        .update(schema.contentFeedback)
+        .set({
+          reaction,
+          rating,
+        })
+        .where(eq(schema.contentFeedback.id, existingFeedback.id))
+        .returning()
+
+      return updatedFeedback
+    }
+
+    // Create the first feedback record.
     const [feedback] = await this.db
       .insert(schema.contentFeedback)
       .values({
@@ -100,8 +164,8 @@ export class ContentSuggestionsService {
         reaction,
         rating,
       })
-      .returning();
+      .returning()
 
-    return feedback;
+    return feedback
   }
 }
