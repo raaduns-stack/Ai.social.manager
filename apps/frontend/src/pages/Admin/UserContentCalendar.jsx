@@ -363,106 +363,103 @@ function PostDetailModal({ post, onClose, onUpdated }) {
   }
 
   return (
-    <Modal open={!!post} onClose={onClose} title="Post Details" className="max-w-xl">
-      {/* Media */}
+    <Modal open={!!post} onClose={onClose} title="Post Details" className="max-w-2xl">
+      {/* Media (compact) */}
       {post.mediaUrl && (
-        <img src={post.mediaUrl} alt="Post media" className="w-full rounded-lg mb-4 object-cover max-h-48" />
+        <img src={post.mediaUrl} alt="Post media" className="w-full rounded-lg mb-3 object-cover max-h-36" />
       )}
 
-      {/* Status badges */}
-      <div className="flex flex-wrap gap-2 mb-3">
-        <Badge tone={platform.colour} className="flex items-center gap-1">{platform.icon} {post.platform}</Badge>
-        <Badge tone={status.tone}>{status.label}</Badge>
-        <Badge tone={approval.tone} className="flex items-center gap-1">{approval.icon} {approval.label}</Badge>
+      {/* Status badges row */}
+      <div className="flex flex-wrap gap-1.5 mb-3">
+        <Badge tone={platform.colour} className="flex items-center gap-1 text-[10px]">{platform.icon} {post.platform}</Badge>
+        <Badge tone={status.tone} className="text-[10px]">{status.label}</Badge>
+        <Badge tone={approval.tone} className="flex items-center gap-1 text-[10px]">{approval.icon} {approval.label}</Badge>
         {post.aiGenerated && (
-          <Badge tone="primary" className="flex items-center gap-1"><Sparkles size={10} /> AI</Badge>
+          <Badge tone="primary" className="flex items-center gap-1 text-[10px]"><Sparkles size={9} /> AI</Badge>
         )}
       </div>
 
-      {/* Title + caption */}
-      <h3 className="text-base font-semibold text-ink mb-1">{post.title}</h3>
-      <p className="text-sm text-ink-muted mb-3 whitespace-pre-wrap">{post.caption}</p>
+      {/* Two-column layout: post content left, scheduling/meta right */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+        {/* Left column */}
+        <div className="space-y-2">
+          <div>
+            <span className="text-[10px] font-bold text-ink-muted uppercase block mb-0.5">Title</span>
+            <p className="text-sm font-semibold text-ink leading-snug">{post.title}</p>
+          </div>
+          <div>
+            <span className="text-[10px] font-bold text-ink-muted uppercase block mb-0.5">Caption</span>
+            <p className="text-xs text-ink leading-relaxed line-clamp-4 whitespace-pre-wrap">{post.caption}</p>
+          </div>
+          {post.hashtags?.length > 0 && (
+            <div>
+              <span className="text-[10px] font-bold text-ink-muted uppercase flex items-center gap-1 mb-0.5"><Tag size={9} /> Hashtags</span>
+              <div className="flex flex-wrap gap-1">
+                {post.hashtags.map((tag, i) => (
+                  <span key={i} className="text-[10px] bg-primary-50 text-primary-700 rounded-full px-2 py-0.5">{tag}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
 
-      {/* Schedule/publish times */}
-      <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-        {post.scheduledAt && (
-          <div>
-            <span className="text-xs text-ink-muted block mb-0.5">Scheduled</span>
-            <span className="font-medium text-ink">{formatDateTime(post.scheduledAt)}</span>
-          </div>
-        )}
-        {post.publishedAt && (
-          <div>
-            <span className="text-xs text-ink-muted block mb-0.5">Published</span>
-            <span className="font-medium text-ink">{formatDateTime(post.publishedAt)}</span>
-          </div>
-        )}
+        {/* Right column */}
+        <div className="space-y-2">
+          {post.scheduledAt && (
+            <div>
+              <span className="text-[10px] font-bold text-ink-muted uppercase block mb-0.5">Scheduled</span>
+              <span className="text-xs font-medium text-ink">{formatDateTime(post.scheduledAt)}</span>
+            </div>
+          )}
+          {post.publishedAt && (
+            <div>
+              <span className="text-[10px] font-bold text-ink-muted uppercase block mb-0.5">Published</span>
+              <span className="text-xs font-medium text-ink">{formatDateTime(post.publishedAt)}</span>
+            </div>
+          )}
+          {post.user && (
+            <div>
+              <span className="text-[10px] font-bold text-ink-muted uppercase block mb-0.5">Customer</span>
+              <span className="text-xs font-medium text-ink">{post.user.fullName}</span>
+              {post.user.businessName && <span className="text-xs text-ink-muted"> · {post.user.businessName}</span>}
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Hashtags */}
-      {post.hashtags?.length > 0 && (
-        <div className="mb-3">
-          <span className="text-xs text-ink-muted flex items-center gap-1 mb-1"><Tag size={10} /> Hashtags</span>
-          <div className="flex flex-wrap gap-1">
-            {post.hashtags.map((tag, i) => (
-              <span key={i} className="text-xs bg-primary-50 text-primary-700 rounded-full px-2 py-0.5">{tag}</span>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Customer info */}
-      {post.user && (
-        <div className="text-xs text-ink-muted mb-3">
-          Customer: <span className="font-medium text-ink">{post.user.fullName}</span>
-          {post.user.businessName && <span> · {post.user.businessName}</span>}
-        </div>
-      )}
-
-      {/* AI Suggestions & Feedback */}
+      {/* AI Suggestions & Feedback — compact collapsible area */}
       {post.suggestions && post.suggestions.length > 0 && (
-        <div className="mt-4 border-t border-canvas pt-4 mb-3">
-          <h4 className="text-sm font-semibold text-ink mb-2">AI Suggestions & Customer Feedback</h4>
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+        <div className="border-t border-canvas pt-2 mb-2">
+          <h4 className="text-xs font-bold text-ink-muted uppercase mb-1.5">AI Suggestions &amp; Customer Feedback</h4>
+          <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
             {post.suggestions.map((suggestion) => {
               const feedback = suggestion.feedback?.[0];
               const isSelected = post.selectedSuggestionId === suggestion.id;
-
               return (
                 <div
                   key={suggestion.id}
-                  className={`p-2.5 rounded border text-xs leading-relaxed ${
+                  className={`p-2 rounded border text-xs ${
                     isSelected ? 'bg-primary-50/60 border-primary-200' : 'bg-canvas/30 border-border/50'
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-1 gap-2">
-                    <span className="font-semibold text-ink">{suggestion.title}</span>
+                  <div className="flex justify-between items-center gap-2">
+                    <span className="font-semibold text-ink truncate">{suggestion.title}</span>
                     <div className="flex items-center gap-1 shrink-0">
                       {isSelected && (
-                        <Badge tone="success" className="text-[9px] uppercase font-bold py-0.5 px-1.5 tracking-wider">
-                          Selected
-                        </Badge>
+                        <Badge tone="success" className="text-[9px] uppercase font-bold py-0.5 px-1.5">Selected</Badge>
                       )}
-                      {feedback && (
+                      {feedback ? (
                         <Badge
                           tone={feedback.rating >= 3 ? 'success' : 'danger'}
                           className="text-[9px] font-bold py-0.5 px-1.5"
                         >
-                          {feedback.reaction === 'up' ? '👍' : '👎'} {feedback.rating} ★
+                          {feedback.reaction === 'up' ? '👍' : '👎'} {feedback.rating}★
                         </Badge>
+                      ) : (
+                        <span className="text-[9px] italic text-ink-muted">Not rated</span>
                       )}
                     </div>
                   </div>
-                  <p className="text-ink-muted text-xs leading-normal">{suggestion.content}</p>
-                  {feedback ? (
-                    <div className="text-[10px] text-primary-700 font-semibold mt-1">
-                      Customer rated: {feedback.rating} star{feedback.rating > 1 ? 's' : ''} ({feedback.reaction === 'up' ? 'Liked' : 'Disliked'})
-                    </div>
-                  ) : (
-                    <div className="text-[10px] text-ink-muted italic mt-1">
-                      Not rated yet by customer.
-                    </div>
-                  )}
                 </div>
               );
             })}

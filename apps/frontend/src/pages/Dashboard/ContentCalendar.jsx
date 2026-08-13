@@ -508,14 +508,17 @@ function PostDetailModal({ post, onClose, onUpdated }) {
       setIsEditing(false)
       setShowSuggestions(false)
     }
-  }, [post])
+  // Only reset when the selected POST changes — NOT on every feedback update
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.id])
 
-  // Fetch suggestions when modal changes state
+  // Fetch suggestions when the panel opens (or a different post is selected)
   useEffect(() => {
     if (post && showSuggestions) {
       loadSuggestions()
     }
-  }, [post, showSuggestions])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.id, showSuggestions])
 
   async function loadSuggestions() {
     setLoadingSuggestions(true)
@@ -647,7 +650,15 @@ function PostDetailModal({ post, onClose, onUpdated }) {
             <Button size="xs" onClick={loadSuggestions} className="mt-2 block mx-auto">Retry</Button>
           </div>
         ) : (
-          <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+        <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+            {/* Post media preview */}
+            {post.mediaUrl && (
+              <img
+                src={post.mediaUrl}
+                alt="Post media"
+                className="w-full rounded-lg object-cover max-h-40 mb-1"
+              />
+            )}
             <p className="text-xs text-ink-muted">
               AI suggestions are generated based on your post topic: <span className="font-semibold text-ink">"{post.title}"</span>.
             </p>
@@ -812,7 +823,7 @@ function PostDetailModal({ post, onClose, onUpdated }) {
       {/* Admin notes (read-only for customer) */}
       {post.adminNotes && (
         <div className="rounded-lg bg-amber-50 border border-amber-200 p-3 mb-4">
-          <span className="text-xs font-bold text-amber-800 block mb-1">Admin Notes</span>
+          <span className="text-xs font-bold text-amber-800 block mb-1">Note</span>
           <p className="text-xs text-amber-700 leading-relaxed">{post.adminNotes}</p>
         </div>
       )}
