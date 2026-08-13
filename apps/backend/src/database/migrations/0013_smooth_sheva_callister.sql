@@ -21,4 +21,8 @@ CREATE TABLE "kyc" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "kyc" ADD CONSTRAINT "kyc_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "content_suggestions" ADD COLUMN "post_id" uuid;--> statement-breakpoint
+ALTER TABLE "content_suggestions" ADD COLUMN "title" varchar(255);--> statement-breakpoint
+ALTER TABLE "content_calendar" ADD COLUMN "selected_suggestion_id" uuid;--> statement-breakpoint
+ALTER TABLE "kyc" ADD CONSTRAINT "kyc_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "content_suggestions" ADD CONSTRAINT "content_suggestions_post_id_content_calendar_id_fk" FOREIGN KEY ("post_id") REFERENCES "public"."content_calendar"("id") ON DELETE cascade ON UPDATE no action;
