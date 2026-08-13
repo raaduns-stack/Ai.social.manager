@@ -144,11 +144,13 @@ export default function ActivityLogs() {
           className="h-9 rounded-control border border-border bg-surface px-3 text-xs text-ink font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary cursor-pointer w-48"
         >
           <option value="All">All Modules</option>
+          <option value="Auth">Auth</option>
           <option value="Users">Users</option>
           <option value="Billing">Billing</option>
           <option value="AI Management">AI Management</option>
           <option value="Staff">Staff</option>
           <option value="Calendar">Calendar</option>
+          <option value="System">System</option>
         </select>
       </div>
 
