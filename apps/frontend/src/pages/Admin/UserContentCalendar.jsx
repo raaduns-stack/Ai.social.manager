@@ -34,6 +34,7 @@ import {
   Share2,
   Facebook,
   CalendarDays,
+  Star,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -415,6 +416,57 @@ function PostDetailModal({ post, onClose, onUpdated }) {
         <div className="text-xs text-ink-muted mb-3">
           Customer: <span className="font-medium text-ink">{post.user.fullName}</span>
           {post.user.businessName && <span> · {post.user.businessName}</span>}
+        </div>
+      )}
+
+      {/* AI Suggestions & Feedback */}
+      {post.suggestions && post.suggestions.length > 0 && (
+        <div className="mt-4 border-t border-canvas pt-4 mb-3">
+          <h4 className="text-sm font-semibold text-ink mb-2">AI Suggestions & Customer Feedback</h4>
+          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            {post.suggestions.map((suggestion) => {
+              const feedback = suggestion.feedback?.[0];
+              const isSelected = post.selectedSuggestionId === suggestion.id;
+
+              return (
+                <div
+                  key={suggestion.id}
+                  className={`p-2.5 rounded border text-xs leading-relaxed ${
+                    isSelected ? 'bg-primary-50/60 border-primary-200' : 'bg-canvas/30 border-border/50'
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-1 gap-2">
+                    <span className="font-semibold text-ink">{suggestion.title}</span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {isSelected && (
+                        <Badge tone="success" className="text-[9px] uppercase font-bold py-0.5 px-1.5 tracking-wider">
+                          Selected
+                        </Badge>
+                      )}
+                      {feedback && (
+                        <Badge
+                          tone={feedback.rating >= 3 ? 'success' : 'danger'}
+                          className="text-[9px] font-bold py-0.5 px-1.5"
+                        >
+                          {feedback.reaction === 'up' ? '👍' : '👎'} {feedback.rating} ★
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <p className="text-ink-muted text-xs leading-normal">{suggestion.content}</p>
+                  {feedback ? (
+                    <div className="text-[10px] text-primary-700 font-semibold mt-1">
+                      Customer rated: {feedback.rating} star{feedback.rating > 1 ? 's' : ''} ({feedback.reaction === 'up' ? 'Liked' : 'Disliked'})
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-ink-muted italic mt-1">
+                      Not rated yet by customer.
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 

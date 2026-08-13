@@ -66,3 +66,8 @@ export async function getFeedbackAnalytics(): Promise<FeedbackAnalytics> {
   const response = await api.get<FeedbackAnalytics>('/admin/prompt-management/feedback-analytics')
   return response.data
 }
+
+export async function getCustomerFeedbackAnalytics(): Promise<any[]> {
+  const response = await api.get<any[]>('/admin/prompt-management/customer-feedback')
+  return response.data
+}

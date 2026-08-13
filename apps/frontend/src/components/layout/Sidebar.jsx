@@ -18,7 +18,6 @@ const mainLinks = [
   { to: '/dashboard/channels', label: 'Channels', icon: Share2 },
   { to: '/dashboard/calendar', label: 'Content Calendar', icon: Calendar },
   { to: '/dashboard/uploads', label: 'Uploads', icon: UploadCloud },
-  { to: '/dashboard/suggestions', label: 'AI Suggestions', icon: Sparkles },
   { to: '/dashboard/analytics', label: 'Analytics', icon: TrendingUp },
 ]
 

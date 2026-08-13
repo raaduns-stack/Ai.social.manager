@@ -16,30 +16,54 @@ import { CreateFeedbackDto } from './dto/create-feedback.dto';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+
 /**
  * Controller handling API routes for AI-driven or mock content suggestions,
  * including captions, content ideas, and user feedback submission.
  * All routes require JWT Authentication.
  */
-
 @ApiTags('content-suggestions')
 @ApiBearerAuth()
 @Controller('content-suggestions')
 @UseGuards(JwtAuthGuard)
-/**
-   * Retrieves all content suggestions created by or assigned to the authenticated user.
-   */
 export class ContentSuggestionsController {
   constructor(
     private readonly contentSuggestionsService: ContentSuggestionsService,
   ) {}
 
-   @Get()
+  /**
+   * Retrieves all content suggestions created by or assigned to the authenticated user.
+   */
+  @Get()
   @ApiOperation({ summary: 'Get all suggestions for the current user' })
   findAll(
     @CurrentUser() user: { userId: string },
   ) {
     return this.contentSuggestionsService.findAll(user.userId);
+  }
+
+  /**
+   * Retrieves suggestions generated for a specific calendar post.
+   */
+  @Get('post/:postId')
+  @ApiOperation({ summary: 'Get suggestions for a specific calendar post' })
+  findForPost(
+    @Param('postId') postId: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.contentSuggestionsService.findForPost(postId, user.userId);
+  }
+
+  /**
+   * Regenerates suggestions for a specific calendar post.
+   */
+  @Post('post/:postId/regenerate')
+  @ApiOperation({ summary: 'Regenerate suggestions for a specific calendar post' })
+  regenerateForPost(
+    @Param('postId') postId: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.contentSuggestionsService.regenerateForPost(postId, user.userId);
   }
 
   /**

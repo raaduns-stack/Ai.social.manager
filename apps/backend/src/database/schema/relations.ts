@@ -7,6 +7,8 @@ import { uploads } from './uploads.schema';
 import { contentCalendar } from './content-calendar.schema';
 import { notificationPreferences, customerCompanyProfile } from './settings.schema';
 import { kyc } from './kyc.schema';
+import { loginHistory } from './login-history.schema';
+import { activityLogs } from './activity-logs.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   tickets: many(supportTickets, { relationName: 'userTickets' }),
