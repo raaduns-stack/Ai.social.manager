@@ -28,6 +28,7 @@ import { LoginFailureReason } from '../common/enums/login-failure-reason.enum';
 import { extractIp } from '../common/utils/request-ip.util';
 import { parseUserAgent } from '../common/utils/user-agent.util';
 import { resolveGeoLocation } from '../common/utils/geolocation.util';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -43,6 +44,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
     private readonly loginHistoryService: LoginHistoryService,
+    private readonly activityLogsService: ActivityLogsService,
   ) { }
 
   /**
@@ -99,6 +101,15 @@ export class AuthService {
     });
 
     await this.mailerService.sendVerificationCode(user, code);
+
+    // Record new user registration
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'USER_REGISTERED',
+      module: 'Auth',
+      description: `New user registered: ${user.email}`,
+    });
 
     return this.issueTokens(user);
   }
@@ -196,6 +207,15 @@ export class AuthService {
       ...baseAudit,
       userId: user.id,
       status: LoginStatus.SUCCESS,
+    });
+
+    // Record activity log for successful login
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'USER_LOGIN',
+      module: 'Auth',
+      description: `User logged in: ${user.email}`,
     });
 
     console.log('[DEBUG Auth] Login successful, issuing tokens for:', dto.email);

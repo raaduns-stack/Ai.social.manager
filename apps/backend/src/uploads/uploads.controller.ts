@@ -79,6 +79,8 @@ export class UploadsController {
       throw new BadRequestException('No file uploaded');
     }
 
+    console.log('[DEBUG UploadsController] createUploadDto:', createUploadDto);
+
     // Save the file metadata to the database
     return this.uploadsService.uploadFile(user.userId, file, createUploadDto);
   }

@@ -43,6 +43,7 @@ export class UploadsService {
         fileUrl,
         mimeType: file.mimetype,
         fileSize: file.size,
+        description: createUploadDto.description,
         // Ensure status has a default value for new column
         status: UploadStatus.PENDING,
       })
