@@ -6,24 +6,26 @@ import {
   Delete,
   Body,
   Param,
+  UseGuards,
   Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiQuery, ApiBearerAuth } from '@nestjs/swagger';
 import {
   CalendarService,
   CreateCalendarPostDto,
+  UpdateCalendarPostDto,
   UpdateApprovalDto,
 } from './calendar.service';
-
-// ---------------------------------------------------------------------------
-// TEMPORARY: hard-coded user UUID for testing until JWT auth guards are wired.
-// Replace with @Req() user.id from the JWT guard when auth is connected.
-// ---------------------------------------------------------------------------
-const DEV_USER_ID = '00000000-0000-0000-0000-000000000001'; // placeholder
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 @ApiTags('Calendar')
+@ApiBearerAuth()
 @Controller('calendar')
+@UseGuards(JwtAuthGuard)
 export class CalendarController {
   constructor(private readonly calendarService: CalendarService) {}
 
@@ -31,66 +33,76 @@ export class CalendarController {
 
   @Get('posts')
   @ApiOperation({ summary: '[Customer] Get all calendar posts for the current user' })
-  @ApiQuery({ name: 'userId', required: false, description: 'UUID of the user (temp — will come from JWT)' })
   @ApiQuery({ name: 'status', required: false, enum: ['ALL', 'DRAFT', 'SCHEDULED', 'PUBLISHED'] })
   findAll(
-    @Query('userId') userId?: string,
+    @CurrentUser() user: { userId: string },
     @Query('status') status?: string,
   ) {
-    // TODO: replace userId query param with JWT guard: const userId = req.user.id
-    return this.calendarService.findAllForUser(userId ?? DEV_USER_ID, status);
+    return this.calendarService.findAllForUser(user.userId, status);
   }
 
   @Get('posts/upcoming')
   @ApiOperation({ summary: '[Customer] Get upcoming (SCHEDULED) posts for the current user' })
-  @ApiQuery({ name: 'userId', required: false })
-  findUpcoming(@Query('userId') userId?: string) {
-    return this.calendarService.findUpcomingForUser(userId ?? DEV_USER_ID);
+  findUpcoming(@CurrentUser() user: { userId: string }) {
+    return this.calendarService.findUpcomingForUser(user.userId);
   }
 
   @Get('posts/published')
   @ApiOperation({ summary: '[Customer] Get published posts for the current user' })
-  @ApiQuery({ name: 'userId', required: false })
-  findPublished(@Query('userId') userId?: string) {
-    return this.calendarService.findPublishedForUser(userId ?? DEV_USER_ID);
+  findPublished(@CurrentUser() user: { userId: string }) {
+    return this.calendarService.findPublishedForUser(user.userId);
   }
 
   @Get('posts/:id')
   @ApiOperation({ summary: '[Customer] Get a single post by ID' })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('userId') userId?: string,
+    @CurrentUser() user: { userId: string },
   ) {
-    return this.calendarService.findOneForUser(id, userId ?? DEV_USER_ID);
+    return this.calendarService.findOneForUser(id, user.userId);
   }
 
   @Post('posts')
   @ApiOperation({ summary: '[Customer] Schedule a new content calendar post' })
   create(
+    @CurrentUser() user: { userId: string },
     @Body() dto: CreateCalendarPostDto,
-    @Query('userId') userId?: string,
   ) {
-    return this.calendarService.createForUser(userId ?? DEV_USER_ID, dto);
+    return this.calendarService.createForUser(user.userId, dto);
+  }
+
+  @Patch('posts/:id')
+  @ApiOperation({ summary: '[Customer] Update a content calendar post' })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { userId: string },
+    @Body() dto: UpdateCalendarPostDto,
+  ) {
+    return this.calendarService.updateForUser(id, user.userId, dto);
   }
 
   @Delete('posts/:id')
   @ApiOperation({ summary: '[Customer] Delete a calendar post' })
   remove(
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('userId') userId?: string,
+    @CurrentUser() user: { userId: string },
   ) {
-    return this.calendarService.removeForUser(id, userId ?? DEV_USER_ID);
+    return this.calendarService.removeForUser(id, user.userId);
   }
 
   // ─── Admin routes ────────────────────────────────────────────────────────────
 
   @Get('admin/customers')
+  @UseGuards(RolesGuard)
+  @Roles('super_admin', 'account_manager')
   @ApiOperation({ summary: '[Admin] List all customers who have calendar posts' })
   listCustomers() {
     return this.calendarService.listCustomers();
   }
 
   @Get('admin/posts')
+  @UseGuards(RolesGuard)
+  @Roles('super_admin', 'account_manager')
   @ApiOperation({ summary: '[Admin] Get all posts, optionally filtered by userId and/or approvalStatus' })
   @ApiQuery({ name: 'userId', required: false, description: 'Filter by customer UUID' })
   @ApiQuery({ name: 'approvalStatus', required: false, enum: ['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'REVISION_REQUIRED'] })
@@ -102,6 +114,8 @@ export class CalendarController {
   }
 
   @Get('admin/overview')
+  @UseGuards(RolesGuard)
+  @Roles('super_admin', 'account_manager')
   @ApiOperation({ summary: '[Admin] Approval status metrics, optionally scoped to one user' })
   @ApiQuery({ name: 'userId', required: false })
   getAdminOverview(@Query('userId') userId?: string) {
@@ -109,6 +123,8 @@ export class CalendarController {
   }
 
   @Patch('admin/posts/:id/approval')
+  @UseGuards(RolesGuard)
+  @Roles('super_admin', 'account_manager', 'designer', 'reviewer')
   @ApiOperation({ summary: '[Admin] Update approval status and leave notes on a post' })
   updateApproval(
     @Param('id', ParseUUIDPipe) id: string,

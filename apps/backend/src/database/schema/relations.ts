@@ -7,6 +7,8 @@ import { uploads } from './uploads.schema';
 import { contentCalendar } from './content-calendar.schema';
 import { notificationPreferences, customerCompanyProfile } from './settings.schema';
 import { kyc } from './kyc.schema';
+import { loginHistory } from './login-history.schema';
+import { activityLogs } from './activity-logs.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   tickets: many(supportTickets, { relationName: 'userTickets' }),
@@ -56,6 +58,20 @@ export const notificationPreferencesRelations = relations(notificationPreference
 export const customerCompanyProfileRelations = relations(customerCompanyProfile, ({ one }) => ({
   user: one(users, {
     fields: [customerCompanyProfile.userId],
+    references: [users.id],
+  }),
+}));
+
+export const loginHistoryRelations = relations(loginHistory, ({ one }) => ({
+  user: one(users, {
+    fields: [loginHistory.userId],
+    references: [users.id],
+  }),
+}));
+
+export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
+  user: one(users, {
+    fields: [activityLogs.userId],
     references: [users.id],
   }),
 }));

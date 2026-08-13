@@ -13,6 +13,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { Request } from 'express';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { RegisterDto } from './dto/register.dto';
@@ -20,8 +21,14 @@ import { LoginDto } from './dto/login.dto';
 import { MailerService } from '../mailer/mailer.service';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-
 import { UserRole } from '../common/enums/roles.enum';
+import { LoginHistoryService } from '../login-history/login-history.service';
+import { LoginStatus } from '../common/enums/login-status.enum';
+import { LoginFailureReason } from '../common/enums/login-failure-reason.enum';
+import { extractIp } from '../common/utils/request-ip.util';
+import { parseUserAgent } from '../common/utils/user-agent.util';
+import { resolveGeoLocation } from '../common/utils/geolocation.util';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -36,16 +43,18 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly mailerService: MailerService,
+    private readonly loginHistoryService: LoginHistoryService,
+    private readonly activityLogsService: ActivityLogsService,
   ) { }
 
   /**
    * Registers a new user.
-   * 
+   *
    * This function checks if the email is already in use, hashes the password,
    * generates an email verification code, inserts the user into the database,
    * and assigns them the default "free" subscription plan.
    * Finally, it sends a verification email and returns the authentication tokens.
-   * 
+   *
    * @param dto The user's registration data (email, password, etc.)
    * @returns An object containing the created user and JWT tokens
    */
@@ -93,53 +102,121 @@ export class AuthService {
 
     await this.mailerService.sendVerificationCode(user, code);
 
+    // Record new user registration
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'USER_REGISTERED',
+      module: 'Auth',
+      description: `New user registered: ${user.email}`,
+    });
+
     return this.issueTokens(user);
   }
 
   /**
-   * Authenticates a user.
-   * 
+   * Authenticates a user and records the login attempt in history.
+   *
    * This function verifies the user's email exists, compares the provided password hash,
    * ensures the account is not suspended, and checks if the email has been verified.
    * If all checks pass, it generates and returns JWT tokens.
-   * 
+   *
    * @param dto The user's login credentials (email, password)
+   * @param req The Express request object (used to extract IP and User-Agent for audit logging)
    * @returns An object containing the authenticated user and JWT tokens
    */
-  async login(dto: LoginDto) {
+  async login(dto: LoginDto, req?: Request) {
+    const ip = req ? extractIp(req) : null;
+    const ua = parseUserAgent(req?.headers['user-agent']);
+    const geo = ip ? await resolveGeoLocation(ip) : { country: null, city: null, region: null };
+
+    const baseAudit = {
+      email: dto.email,
+      ipAddress: ip,
+      country: geo.country,
+      city: geo.city,
+      region: geo.region,
+      userAgentRaw: ua.raw || null,
+      browser: ua.browser,
+      os: ua.os,
+      device: ua.device,
+    };
+
     console.log('[DEBUG Auth] Login Attempt:', { email: dto.email, passwordLength: dto.password?.length });
+
     const user = await this.db.query.users.findFirst({
       where: eq(schema.users.email, dto.email),
     });
+
     if (!user) {
       console.log('[DEBUG Auth] User not found for email:', dto.email);
+      // Record failed attempt — no userId since account doesn't exist
+      await this.loginHistoryService.record({
+        ...baseAudit,
+        userId: null,
+        status: LoginStatus.FAILURE,
+        failureReason: LoginFailureReason.INVALID_CREDENTIALS,
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
     console.log('[DEBUG Auth] Password comparison result:', {
       email: dto.email,
-      hashInDB: user.passwordHash,
-      passwordMatches
+      passwordMatches,
     });
 
     if (!passwordMatches) {
+      await this.loginHistoryService.record({
+        ...baseAudit,
+        userId: user.id,
+        status: LoginStatus.FAILURE,
+        failureReason: LoginFailureReason.INVALID_CREDENTIALS,
+      });
       throw new UnauthorizedException('Invalid email or password');
     }
 
     if (!user.isActive) {
       console.log('[DEBUG Auth] User is inactive:', dto.email);
+      await this.loginHistoryService.record({
+        ...baseAudit,
+        userId: user.id,
+        status: LoginStatus.FAILURE,
+        failureReason: LoginFailureReason.ACCOUNT_INACTIVE,
+      });
       throw new UnauthorizedException('This account has been suspended');
     }
 
     if (!user.isEmailVerified) {
       console.log('[DEBUG Auth] User email not verified:', dto.email);
+      await this.loginHistoryService.record({
+        ...baseAudit,
+        userId: user.id,
+        status: LoginStatus.FAILURE,
+        failureReason: LoginFailureReason.EMAIL_NOT_VERIFIED,
+      });
       throw new ForbiddenException({
         statusCode: 403,
         message: 'Your email address is not verified. Please verify your email to log in.',
         errorCode: 'EMAIL_NOT_VERIFIED',
       });
     }
+
+    // All checks passed — record a successful login
+    await this.loginHistoryService.record({
+      ...baseAudit,
+      userId: user.id,
+      status: LoginStatus.SUCCESS,
+    });
+
+    // Record activity log for successful login
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'USER_LOGIN',
+      module: 'Auth',
+      description: `User logged in: ${user.email}`,
+    });
 
     console.log('[DEBUG Auth] Login successful, issuing tokens for:', dto.email);
     return this.issueTokens(user);
@@ -278,11 +355,11 @@ export class AuthService {
 
   /**
    * Issues new access and refresh JWT tokens for a user.
-   * 
+   *
    * It signs the tokens with the user's ID, email, and role. It also looks up
-   * the user's active subscription plan from the database and embeds it in the 
+   * the user's active subscription plan from the database and embeds it in the
    * returned user object so the frontend has immediate access to their plan tier.
-   * 
+   *
    * @param user The user entity from the database
    * @returns An object containing the user data and the newly generated tokens
    */
@@ -294,14 +371,22 @@ export class AuthService {
     });
 
     // Fetch the active plan to embed in the login payload
-    const activeSub = await this.db.query.subscriptions.findFirst({
-      where: and(
-        eq(schema.subscriptions.userId, user.id),
-        eq(schema.subscriptions.status, 'active')
-      ),
-      with: { plan: true },
-      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
-    });
+    let activeSub: any = null;
+    try {
+      activeSub = await this.db.query.subscriptions.findFirst({
+        where: and(
+          eq(schema.subscriptions.userId, user.id),
+          eq(schema.subscriptions.status, 'active')
+        ),
+        with: { plan: true },
+        orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+      });
+    } catch (err) {
+      console.error('[ERROR Auth] Failed to fetch active subscription for user:', user.id, err);
+      throw new InternalServerErrorException(
+        `Failed to fetch subscription: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
 
     return {
       user: {

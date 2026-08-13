@@ -9,11 +9,35 @@ import { SupportModule } from '../support/support.module';
 import { AdminUploadsController } from './uploads/admin-uploads.controller';
 import { UploadsModule } from '../uploads/uploads.module';
 import { PromptManagementModule } from './prompt-management/prompt-management.module';
+import { AdminLoginHistoryController } from './login-history/admin-login-history.controller';
+import { LoginHistoryModule } from '../login-history/login-history.module';
+import { AdminActivityLogsController } from './activity-logs/admin-activity-logs.controller';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  imports: [DatabaseModule, SupportModule, UploadsModule, PromptManagementModule],
-  controllers: [AdminController, AdminDashboardController, AdminSupportController, AdminUploadsController],
-  providers: [AdminService, DashboardService],
-  exports: [AdminService, DashboardService],
+  imports: [
+    DatabaseModule,
+    SupportModule,
+    UploadsModule,
+    PromptManagementModule,
+    LoginHistoryModule,
+    ActivityLogsModule,
+  ],
+  controllers: [
+    AdminController,
+    AdminDashboardController,
+    AdminSupportController,
+    AdminUploadsController,
+    AdminLoginHistoryController,
+    AdminActivityLogsController,
+  ],
+  providers: [
+    AdminService,
+    DashboardService,
+  ],
+  exports: [
+    AdminService,
+    DashboardService,
+  ],
 })
-export class AdminModule { }
+export class AdminModule { }

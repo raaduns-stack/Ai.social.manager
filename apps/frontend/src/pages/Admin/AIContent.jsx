@@ -26,6 +26,7 @@ import {
   togglePrompt as togglePromptApi,
   deletePrompt as deletePromptApi,
   getFeedbackAnalytics,
+  getCustomerFeedbackAnalytics,
 } from '../../features/admin/prompt-api'
 
 const INITIAL_FALLBACK_TEMPLATES = [
@@ -60,6 +61,7 @@ const INITIAL_FALLBACK_TEMPLATES = [
 
 export default function AIContent() {
   const [templates, setTemplates] = useState([])
+  const [customerAnalytics, setCustomerAnalytics] = useState([])
   const [analytics, setAnalytics] = useState({
     totalSuggestions: 0,
     totalFeedback: 0,
@@ -93,9 +95,10 @@ export default function AIContent() {
   const loadData = async () => {
     try {
       setLoading(true)
-      const [promptsRes, analyticsRes] = await Promise.all([
+      const [promptsRes, analyticsRes, customerAnalyticsRes] = await Promise.all([
         getPrompts().catch(() => []),
         getFeedbackAnalytics().catch(() => null),
+        getCustomerFeedbackAnalytics().catch(() => []),
       ])
 
       if (promptsRes && promptsRes.length > 0) {
@@ -106,6 +109,10 @@ export default function AIContent() {
 
       if (analyticsRes) {
         setAnalytics(analyticsRes)
+      }
+
+      if (customerAnalyticsRes) {
+        setCustomerAnalytics(customerAnalyticsRes)
       }
     } catch (err) {
       console.error('Failed to load AI content data:', err)
@@ -491,6 +498,83 @@ export default function AIContent() {
                 <p className="text-xs text-ink-muted">{analytics.totalSuggestions} total content items generated</p>
               </div>
             </div>
+          </div>
+        </Card>
+
+        {/* Customer AI Feedback Table */}
+        <Card className="p-0 overflow-hidden shadow-soft">
+          <div className="p-5 border-b border-border bg-canvas/30">
+            <h4 className="text-sm font-semibold text-ink">AI Feedback by Customer</h4>
+            <p className="text-xs text-ink-muted mt-0.5">Aggregate metrics and topics preferred by each customer.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border bg-canvas/10 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-5 py-3">Customer / Business</th>
+                  <th className="px-5 py-3 text-center">Suggestions</th>
+                  <th className="px-5 py-3 text-center">Ratings Count</th>
+                  <th className="px-5 py-3">Avg. Rating</th>
+                  <th className="px-5 py-3 text-center">Reactions (👍/👎)</th>
+                  <th className="px-5 py-3">Preferred Topics</th>
+                  <th className="px-5 py-3">Performance</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border text-sm text-ink">
+                {customerAnalytics.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-5 py-10 text-center text-ink-muted text-xs font-medium">
+                      No customer AI feedback records found.
+                    </td>
+                  </tr>
+                ) : (
+                  customerAnalytics.map((ca) => (
+                    <tr key={ca.userId} className="hover:bg-canvas/40 transition-colors">
+                      <td className="px-5 py-4">
+                        <div>
+                          <div className="font-semibold text-ink">{ca.fullName}</div>
+                          {ca.businessName && (
+                            <div className="text-xs text-ink-muted font-medium mt-0.5">{ca.businessName}</div>
+                          )}
+                          <div className="text-[10px] text-ink-muted">{ca.email}</div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-center font-medium text-ink-muted">
+                        {ca.totalSuggestions}
+                      </td>
+                      <td className="px-5 py-4 text-center font-medium text-ink-muted">
+                        {ca.totalRatings}
+                      </td>
+                      <td className="px-5 py-4">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-ink">{ca.avgRating}</span>
+                          <div className="flex text-amber-400">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <Star
+                                key={star}
+                                size={12}
+                                className={star <= Math.round(ca.avgRating) ? 'fill-amber-400 text-amber-400' : 'text-gray-200'}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-5 py-4 text-center text-xs font-semibold">
+                        <span className="text-accent">👍 {ca.likes}</span>
+                        <span className="text-ink-muted mx-1">/</span>
+                        <span className="text-danger">👎 {ca.dislikes}</span>
+                      </td>
+                      <td className="px-5 py-4 text-xs text-ink-muted max-w-xs truncate" title={ca.preferredTopics}>
+                        {ca.preferredTopics}
+                      </td>
+                      <td className="px-5 py-4 text-xs font-semibold text-ink-muted">
+                        {ca.suggestionPerformance}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </Card>
       </section>

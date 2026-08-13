@@ -33,8 +33,8 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Log in with email and password' })
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const data = await this.authService.login(dto);
+  async login(@Req() req: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+    const data = await this.authService.login(dto, req);
     if (data.refreshToken) {
       res.cookie('refreshToken', data.refreshToken, {
         httpOnly: true,

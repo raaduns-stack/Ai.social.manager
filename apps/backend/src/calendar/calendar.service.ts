@@ -4,12 +4,13 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { ContentCalendarPost } from '../database/schema/content-calendar.schema';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -24,6 +25,18 @@ export interface CreateCalendarPostDto {
   aiGenerated?: boolean;
 }
 
+/** Shape of the body when updating an existing calendar post. */
+export interface UpdateCalendarPostDto {
+  title?: string;
+  caption?: string;
+  platform?: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
+  scheduledAt?: string | null;
+  mediaUrl?: string | null;
+  hashtags?: string[];
+  aiGenerated?: boolean;
+  selectedSuggestionId?: string | null;
+}
+
 /** Shape of the body when updating approval status (admin only). */
 export interface UpdateApprovalDto {
   approvalStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUIRED';
@@ -35,7 +48,63 @@ export class CalendarService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
+
+  /**
+   * Helper function to check whether a customer has reached their monthly calendar post limit.
+   */
+  async checkPostLimit(userId: string, targetDate: Date, postId?: string) {
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(userId);
+    } catch (err) {
+      // Fallback to Free tier if no active subscription found
+      subscription = { plan: { slug: 'free', features: [] } };
+    }
+
+    const plan = subscription?.plan as any;
+    const slug = plan?.slug || 'free';
+    
+    // Determine the monthly limit
+    let limit = 8; // Default for Free plan (approx. 8 posts per month)
+    if (slug !== 'free') {
+      const features = plan?.features || [];
+      let found = false;
+      for (const feature of features) {
+        const match = feature.match(/(\d+)\s+AI-generated\s+posts/i);
+        if (match) {
+          limit = parseInt(match[1], 10);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        if (slug === 'starter') limit = 30;
+        else if (slug === 'growth') limit = 150;
+        else if (slug === 'enterprise') limit = 300;
+      }
+    }
+
+    const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const posts = await this.db.query.contentCalendar.findMany({
+      where: (fields, { and, eq, gte, lte, ne }) =>
+        and(
+          eq(fields.userId, userId),
+          gte(fields.scheduledAt, startOfMonth),
+          lte(fields.scheduledAt, endOfMonth),
+          postId ? ne(fields.id, postId) : undefined,
+        ),
+    });
+
+    if (posts.length >= limit) {
+      throw new BadRequestException(
+        `Monthly post limit reached. Your plan (${plan?.name || 'Free'}) allows a maximum of ${limit} posts per month. You currently have ${posts.length} scheduled/published in this month.`
+      );
+    }
+  }
 
   // ─── Customer endpoints ──────────────────────────────────────────────────────
 
@@ -65,7 +134,15 @@ export class CalendarService {
     return this.db.query.contentCalendar.findMany({
       where: and(...conditions),
       orderBy: desc(schema.contentCalendar.createdAt),
-      with: { user: { columns: { fullName: true, businessName: true } } },
+      with: {
+        user: { columns: { fullName: true, businessName: true } },
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
     });
   }
 
@@ -79,6 +156,14 @@ export class CalendarService {
         eq(schema.contentCalendar.status, 'SCHEDULED'),
       ),
       orderBy: desc(schema.contentCalendar.scheduledAt),
+      with: {
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
     });
   }
 
@@ -92,6 +177,14 @@ export class CalendarService {
         eq(schema.contentCalendar.status, 'PUBLISHED'),
       ),
       orderBy: desc(schema.contentCalendar.publishedAt),
+      with: {
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
     });
   }
 
@@ -107,6 +200,14 @@ export class CalendarService {
         eq(schema.contentCalendar.id, id),
         eq(schema.contentCalendar.userId, userId),
       ),
+      with: {
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
     });
     if (!post) throw new NotFoundException(`Post ${id} not found`);
     return post;
@@ -119,6 +220,11 @@ export class CalendarService {
     userId: string,
     dto: CreateCalendarPostDto,
   ): Promise<ContentCalendarPost> {
+    // Enforce monthly post limits on creation
+    if (dto.scheduledAt) {
+      await this.checkPostLimit(userId, new Date(dto.scheduledAt));
+    }
+
     const [post] = await this.db
       .insert(schema.contentCalendar)
       .values({
@@ -135,6 +241,82 @@ export class CalendarService {
       })
       .returning();
     return post;
+  }
+
+  /**
+   * Update a post for the authenticated customer.
+   */
+  async updateForUser(
+    id: string,
+    userId: string,
+    dto: UpdateCalendarPostDto,
+  ): Promise<ContentCalendarPost> {
+    const post = await this.findOneForUser(id, userId);
+
+    // Enforce monthly post limits if date is updated
+    if (dto.scheduledAt) {
+      await this.checkPostLimit(userId, new Date(dto.scheduledAt), id);
+    }
+
+    // Validate eligibility if selecting a suggestion
+    if (dto.selectedSuggestionId) {
+      const suggestion = await this.db.query.contentSuggestions.findFirst({
+        where: and(
+          eq(schema.contentSuggestions.id, dto.selectedSuggestionId),
+          eq(schema.contentSuggestions.userId, userId),
+        ),
+        with: {
+          feedback: true,
+        },
+      });
+
+      if (!suggestion) {
+        throw new NotFoundException('Content suggestion not found.');
+      }
+
+      // Check user ratings (1 or 2 stars cannot be selected)
+      const userRating = suggestion.feedback?.[0];
+      if (userRating && userRating.rating >= 1 && userRating.rating <= 2) {
+        throw new BadRequestException(
+          'This suggestion is not eligible for posting due to a low rating (1-2 stars).'
+        );
+      }
+    }
+
+    // Topic change regeneration detection: if title is updated, delete suggestions
+    if (dto.title && dto.title !== post.title) {
+      await this.db
+        .delete(schema.contentSuggestions)
+        .where(eq(schema.contentSuggestions.postId, id));
+    }
+
+    const [updated] = await this.db
+      .update(schema.contentCalendar)
+      .set({
+        title: dto.title !== undefined ? dto.title : post.title,
+        caption: dto.caption !== undefined ? dto.caption : post.caption,
+        platform: dto.platform !== undefined ? dto.platform : post.platform,
+        scheduledAt: dto.scheduledAt !== undefined
+          ? (dto.scheduledAt ? new Date(dto.scheduledAt) : null)
+          : post.scheduledAt,
+        status: dto.scheduledAt !== undefined
+          ? (dto.scheduledAt ? 'SCHEDULED' : 'DRAFT')
+          : post.status,
+        mediaUrl: dto.mediaUrl !== undefined ? dto.mediaUrl : post.mediaUrl,
+        hashtags: dto.hashtags !== undefined ? dto.hashtags : post.hashtags,
+        selectedSuggestionId: dto.selectedSuggestionId !== undefined
+          ? dto.selectedSuggestionId
+          : post.selectedSuggestionId,
+        aiGenerated: dto.selectedSuggestionId !== undefined
+          ? true
+          : (dto.aiGenerated !== undefined ? dto.aiGenerated : post.aiGenerated),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentCalendar.id, id))
+      .returning();
+
+    // Re-fetch to return fully-populated relations
+    return this.findOneForUser(updated.id, userId);
   }
 
   /**
@@ -184,7 +366,15 @@ export class CalendarService {
     return this.db.query.contentCalendar.findMany({
       where: conditions.length ? and(...conditions) : undefined,
       orderBy: desc(schema.contentCalendar.createdAt),
-      with: { user: { columns: { fullName: true, businessName: true, email: true } } },
+      with: {
+        user: { columns: { fullName: true, businessName: true, email: true } },
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
     });
   }
 

@@ -4,12 +4,16 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { seedPlans as runPlansSeeding } from '../database/seeding';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class AdminService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   async getUsers() {
     const allUsers = await this.db.query.users.findMany();
@@ -113,6 +117,18 @@ export class AdminService {
       .update(schema.users)
       .set({ isActive: !suspend })
       .where(eq(schema.users.id, userId));
+
+    // Record the action automatically
+    await this.activityLogsService.record({
+      userId,
+      userName: user.fullName,
+      action: suspend ? 'USER_SUSPENDED' : 'USER_ACTIVATED',
+      module: 'Users',
+      description: suspend
+        ? `Admin suspended user account: ${user.email}`
+        : `Admin activated user account: ${user.email}`,
+    });
+
     return { success: true, isActive: !suspend };
   }
 
@@ -123,6 +139,16 @@ export class AdminService {
     if (!user) {
       throw new NotFoundException('User not found');
     }
+
+    // Record BEFORE delete so user info is still available
+    await this.activityLogsService.record({
+      userId: null, // user is being deleted; don't keep a FK reference
+      userName: user.fullName,
+      action: 'USER_DELETED',
+      module: 'Users',
+      description: `Admin permanently deleted user account: ${user.email}`,
+    });
+
     await this.db.delete(schema.users).where(eq(schema.users.id, userId));
     return { success: true };
   }

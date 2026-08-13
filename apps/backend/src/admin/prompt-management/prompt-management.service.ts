@@ -158,4 +158,73 @@ export class PromptManagementService {
       ratingDistribution,
     };
   }
+
+  // ==================================================
+  // CUSTOMER AI FEEDBACK ANALYTICS
+  // Computes feedback stats grouped by each customer.
+  // ==================================================
+  async getCustomerFeedbackAnalytics() {
+    const allUsers = await this.db.query.users.findMany();
+    const analytics = [];
+
+    for (const u of allUsers) {
+      // Get all suggestions generated for this user
+      const suggestions = await this.db.query.contentSuggestions.findMany({
+        where: eq(schema.contentSuggestions.userId, u.id),
+      });
+
+      // Get all feedback submitted by this user
+      const feedbacks = await this.db.query.contentFeedback.findMany({
+        where: eq(schema.contentFeedback.userId, u.id),
+        with: { suggestion: true },
+      });
+
+      if (suggestions.length === 0 && feedbacks.length === 0) {
+        continue; // Only include customers who have interacted with the AI
+      }
+
+      const totalSuggestions = suggestions.length;
+      const totalRatings = feedbacks.length;
+
+      const ratings = feedbacks.map((f) => f.rating);
+      const avgRating = totalRatings > 0
+        ? Number((ratings.reduce((sum, r) => sum + r, 0) / totalRatings).toFixed(1))
+        : 0;
+
+      const likes = feedbacks.filter((f) => f.reaction === 'up').length;
+      const dislikes = feedbacks.filter((f) => f.reaction === 'down').length;
+
+      // Extract unique preferred topics (titles or snippets of suggestions they rated >= 3 or liked)
+      const preferredTopicsList = feedbacks
+        .filter((f) => f.rating >= 3 || f.reaction === 'up')
+        .map((f) => f.suggestion?.title || f.suggestion?.content?.substring(0, 30) || 'AI Post')
+        .filter((value, index, self) => self.indexOf(value) === index)
+        .slice(0, 3);
+
+      const preferredTopics = preferredTopicsList.length > 0
+        ? preferredTopicsList.join(', ')
+        : 'None';
+
+      const perfRatio = totalRatings > 0 ? Math.round((likes / totalRatings) * 100) : 0;
+      const suggestionPerformance = totalRatings > 0
+        ? `${perfRatio}% positive (${likes}/${totalRatings} rated)`
+        : 'No ratings yet';
+
+      analytics.push({
+        userId: u.id,
+        fullName: u.fullName,
+        businessName: u.businessName,
+        email: u.email,
+        totalSuggestions,
+        totalRatings,
+        avgRating,
+        likes,
+        dislikes,
+        preferredTopics,
+        suggestionPerformance,
+      });
+    }
+
+    return analytics;
+  }
 }

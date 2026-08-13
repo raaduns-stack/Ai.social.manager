@@ -81,7 +81,6 @@ export default function AppRoutes() {
         <Route path="channels" element={<Channels />} />
         <Route path="calendar" element={<ContentCalendar />} />
         <Route path="uploads" element={<Uploads />} />
-        <Route path="suggestions" element={<AISuggestions />} />
         <Route path="billing" element={<Billing />} />
         <Route path="support" element={<Support />} />
         <Route path="notifications" element={<Notifications />} />

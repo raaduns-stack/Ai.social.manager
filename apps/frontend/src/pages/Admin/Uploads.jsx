@@ -83,7 +83,7 @@ export default function Uploads() {
           sizeBytes,
           date: created.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
           timestamp: created.getTime(),
-          status: u.status ? u.status.charAt(0).toUpperCase() + u.status.slice(1) : 'Pending',
+          status: u.status ? u.status.toUpperCase() : 'PENDING',
           description: u.description || '',
           url: u.fileUrl,
           uploader: u.user ? u.user.fullName : 'Unknown',
@@ -176,7 +176,7 @@ export default function Uploads() {
 
     // 3. Status filter
     const matchesStatus =
-      statusFilter === 'All Status' || up.status === statusFilter
+      statusFilter === 'All Status' || up.status?.toUpperCase() === statusFilter.toUpperCase()
 
     // 4. Name search query
     const matchesSearch = up.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -322,15 +322,15 @@ export default function Uploads() {
                   <span className="text-[10px] text-ink-muted font-bold tracking-wider">DOCUMENT</span>
                   <div className="absolute top-3 right-3">
                     <Badge
-                      tone={up.status === 'Approved' ? 'success' : up.status === 'Rejected' ? 'danger' : 'warning'}
+                      tone={up.status?.toUpperCase() === 'APPROVED' ? 'success' : up.status?.toUpperCase() === 'REJECTED' ? 'danger' : 'warning'}
                       className="shadow-soft gap-1 flex items-center"
                     >
-                      {up.status === 'Approved' ? (
+                      {up.status?.toUpperCase() === 'APPROVED' ? (
                         <>
                           <CheckCircle2 size={12} />
                           Approved
                         </>
-                      ) : up.status === 'Rejected' ? (
+                      ) : up.status?.toUpperCase() === 'REJECTED' ? (
                         <>
                           <AlertCircle size={12} />
                           Rejected
@@ -353,15 +353,15 @@ export default function Uploads() {
                   />
                   <div className="absolute top-3 right-3">
                     <Badge
-                      tone={up.status === 'Approved' ? 'success' : up.status === 'Rejected' ? 'danger' : 'warning'}
+                      tone={up.status?.toUpperCase() === 'APPROVED' ? 'success' : up.status?.toUpperCase() === 'REJECTED' ? 'danger' : 'warning'}
                       className="shadow-soft gap-1 flex items-center"
                     >
-                      {up.status === 'Approved' ? (
+                      {up.status?.toUpperCase() === 'APPROVED' ? (
                         <>
                           <CheckCircle2 size={12} />
                           Approved
                         </>
-                      ) : up.status === 'Rejected' ? (
+                      ) : up.status?.toUpperCase() === 'REJECTED' ? (
                         <>
                           <AlertCircle size={12} />
                           Rejected
@@ -380,15 +380,41 @@ export default function Uploads() {
               {/* Card Footer Details */}
               <div className="p-6 space-y-4">
                 <div>
-                  <h3 className="text-sm font-bold text-ink truncate" title={up.name}>
+                  <h3 className="text-sm font-bold text-ink truncate mb-2" title={up.name}>
                     {up.name}
                   </h3>
-                  <p className="text-xs text-ink-muted mt-1">
+                  <p className="text-xs text-ink-muted mb-3">
                     Uploaded by <span className="font-semibold text-ink">{up.uploader}</span>
                   </p>
-                  <p className="text-[10px] text-ink-muted/80 mt-1 uppercase tracking-wider">
-                    {up.date} • {up.size}
-                  </p>
+                  
+                  <div className="space-y-2 border-t border-border pt-3">
+                    <div className="flex justify-between items-center border-b border-border pb-2">
+                      <span className="text-xs font-semibold text-ink-muted">File Name</span>
+                      <span className="text-xs font-bold text-ink truncate max-w-[200px]" title={up.name}>
+                        {up.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-border pb-2">
+                      <span className="text-xs font-semibold text-ink-muted">Category</span>
+                      <Badge tone="primary" className="text-xs">
+                        {up.category}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-border pb-2">
+                      <span className="text-xs font-semibold text-ink-muted">Size</span>
+                      <span className="text-xs font-semibold text-ink">{up.size}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-border pb-2">
+                      <span className="text-xs font-semibold text-ink-muted">Status</span>
+                      <span className="text-xs font-bold text-ink uppercase">{up.status}</span>
+                    </div>
+                    <div className="flex justify-between items-center pb-2">
+                      <span className="text-xs font-semibold text-ink-muted">Description</span>
+                      <span className="text-xs font-semibold text-ink truncate max-w-[200px]" title={up.description}>
+                        {up.description || '—'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Approve/Reject Actions Row */}
@@ -406,7 +432,7 @@ export default function Uploads() {
                   </div>
 
                   <div className="flex gap-2 items-center">
-                    {up.status === 'Rejected' ? (
+                    {up.status?.toUpperCase() === 'REJECTED' ? (
                       <>
                         <Button
                           variant="ghost"
@@ -428,7 +454,7 @@ export default function Uploads() {
                           Re-evaluate
                         </Button>
                       </>
-                    ) : up.status === 'Approved' ? (
+                    ) : up.status?.toUpperCase() === 'APPROVED' ? (
                       <>
                         <Button
                           variant="outline"

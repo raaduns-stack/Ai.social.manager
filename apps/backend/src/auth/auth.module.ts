@@ -6,9 +6,11 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { MailerModule } from '../mailer/mailer.module';
+import { LoginHistoryModule } from '../login-history/login-history.module';
+import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  imports: [PassportModule, JwtModule.register({}), MailerModule],
+  imports: [PassportModule, JwtModule.register({}), MailerModule, LoginHistoryModule, ActivityLogsModule],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
   exports: [AuthService],
