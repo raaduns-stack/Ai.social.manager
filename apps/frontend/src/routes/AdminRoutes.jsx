@@ -15,6 +15,7 @@
 import { Routes, Route } from "react-router-dom";
 import { AdminAuthProvider } from "../context/AdminAuthContext";
 import RequireAdminAuth from "./RequireAdminAuth";
+import RequirePermissionGuard from "./RequirePermissionGuard";
 import AdminLayout from "../layouts/AdminLayout";
 
 // --- Pascal's pages ---
@@ -43,7 +44,7 @@ import AdminSupport from "../pages/Admin/Support";
 import AdminFaqs from "../pages/Admin/Faqs";
 import AdminSettings from "../pages/Admin/Settings";
 import AdminKyc from "../pages/Admin/Kyc";
-import RequireAdminRoles from "./RequireAdminRoles";
+import AccessRestricted from "../pages/Admin/AccessRestricted";
 
 // --- Auth (shared) ---
 import AdminLogin from "../pages/Admin/AdminLogin";
@@ -66,58 +67,59 @@ export default function AdminRoutes() {
             </RequireAdminAuth>
           }
         >
-          <Route index element={<AdminDashboard />} />
-          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route index element={<RequirePermissionGuard module="dashboard"><AdminDashboard /></RequirePermissionGuard>} />
+          <Route path="dashboard" element={<RequirePermissionGuard module="dashboard"><AdminDashboard /></RequirePermissionGuard>} />
 
           {/* User Management (Pascal) */}
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="users/:userId" element={<AdminUserDetail />} />
-          <Route path="users/:userId/calendar" element={<UserContentCalendar />} />
+          <Route path="users" element={<RequirePermissionGuard module="user_management"><AdminUsers /></RequirePermissionGuard>} />
+          <Route path="users/:userId" element={<RequirePermissionGuard module="user_management"><AdminUserDetail /></RequirePermissionGuard>} />
+          <Route path="users/:userId/calendar" element={<RequirePermissionGuard module="user_management"><UserContentCalendar /></RequirePermissionGuard>} />
 
           {/* Content Calendar + AI Content (Pascal) */}
-          <Route path="calendar" element={<AdminContentCalendar />} />
-          <Route path="ai-content" element={<AdminAIContent />} />
+          <Route path="calendar" element={<RequirePermissionGuard module="content_calendar"><AdminContentCalendar /></RequirePermissionGuard>} />
+          <Route path="ai-content" element={<RequirePermissionGuard module="content_creation"><AdminAIContent /></RequirePermissionGuard>} />
 
           {/* Notifications + Audit Logs (Pascal) */}
-          <Route path="notifications" element={<AdminNotifications />} />
-          <Route path="logs" element={<AdminAuditLogs />} />
-          <Route path="staff" element={<StaffDashboard />} />
-          <Route path="staff/manage" element={<ManageStaff />} />
-          <Route path="staff/roles-permissions" element={<RolesPermissions />} />
-          <Route path="staff/login-history" element={<LoginHistory />} />
-          <Route path="staff/activity-logs" element={<ActivityLogs />} />
+          <Route path="notifications" element={<RequirePermissionGuard module="notification_management"><AdminNotifications /></RequirePermissionGuard>} />
+          <Route path="logs" element={<RequirePermissionGuard module="audit_logs"><AdminAuditLogs /></RequirePermissionGuard>} />
+          <Route path="staff" element={<RequirePermissionGuard module="staff_management"><StaffDashboard /></RequirePermissionGuard>} />
+          <Route path="staff/manage" element={<RequirePermissionGuard module="staff_management"><ManageStaff /></RequirePermissionGuard>} />
+          <Route path="staff/roles-permissions" element={<RequirePermissionGuard module="staff_management"><RolesPermissions /></RequirePermissionGuard>} />
+          <Route path="staff/login-history" element={<RequirePermissionGuard module="audit_logs"><LoginHistory /></RequirePermissionGuard>} />
+          <Route path="staff/activity-logs" element={<RequirePermissionGuard module="audit_logs"><ActivityLogs /></RequirePermissionGuard>} />
 
           {/* Billing + Social Accounts + Uploads (Treasure) */}
-          <Route path="billing" element={<AdminBilling />} />
-          <Route path="social-accounts" element={<AdminSocialAccounts />} />
-          <Route path="uploads" element={<AdminUploads />} />
-          <Route path="kyc" element={<AdminKyc />} />
+          <Route path="billing" element={<RequirePermissionGuard module="billing"><AdminBilling /></RequirePermissionGuard>} />
+          <Route path="social-accounts" element={<RequirePermissionGuard module="social_accounts"><AdminSocialAccounts /></RequirePermissionGuard>} />
+          <Route path="uploads" element={<RequirePermissionGuard module="upload_management"><AdminUploads /></RequirePermissionGuard>} />
+          <Route path="kyc" element={<RequirePermissionGuard module="user_management"><AdminKyc /></RequirePermissionGuard>} />
 
           {/* Money Management (Treasure) */}
-          <Route path="money-management" element={<AdminMoneyManagement />} />
+          <Route path="money-management" element={<RequirePermissionGuard module="money_management"><AdminMoneyManagement /></RequirePermissionGuard>} />
 
           {/* Analytics + AI Config (Treasure) */}
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="ai-config" element={<AdminAIConfig />} />
+          <Route path="analytics" element={<RequirePermissionGuard module="analytics"><AdminAnalytics /></RequirePermissionGuard>} />
+          <Route path="ai-config" element={<RequirePermissionGuard module="ai_config"><AdminAIConfig /></RequirePermissionGuard>} />
 
           {/* Support + Settings (Treasure) */}
           <Route
             path="support"
             element={
-              <RequireAdminRoles allowedRoles={["super_admin", "account_manager"]}>
+              <RequirePermissionGuard module="support">
                 <AdminSupport />
-              </RequireAdminRoles>
+              </RequirePermissionGuard>
             }
           />
           <Route
             path="faqs"
             element={
-              <RequireAdminRoles allowedRoles={["super_admin", "account_manager"]}>
+              <RequirePermissionGuard module="support">
                 <AdminFaqs />
-              </RequireAdminRoles>
+              </RequirePermissionGuard>
             }
           />
           <Route path="settings" element={<AdminSettings />} />
+          <Route path="access-restricted" element={<AccessRestricted />} />
         </Route>
 
         {/* Catch-all 404 for unmatched /admin/* routes */}
@@ -126,3 +128,4 @@ export default function AdminRoutes() {
     </AdminAuthProvider>
   );
 }
+

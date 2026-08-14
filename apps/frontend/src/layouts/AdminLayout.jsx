@@ -7,6 +7,7 @@
 import { Outlet } from "react-router-dom";
 import AdminSidebar from "../components/layout/AdminSidebar";
 import AdminNavbar from "../components/layout/AdminNavbar";
+import GlobalToast from "../components/ui/GlobalToast";
 
 export default function AdminLayout() {
   return (
@@ -19,6 +20,7 @@ export default function AdminLayout() {
           <Outlet />
         </main>
       </div>
+      <GlobalToast />
     </div>
   );
 }

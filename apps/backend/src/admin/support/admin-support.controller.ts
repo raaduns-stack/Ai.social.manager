@@ -1,8 +1,8 @@
 import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { SupportService } from '../../support/support.service';
 import { AssignTicketDto } from '../../support/dto/assign-ticket.dto';
@@ -12,13 +12,13 @@ import { User } from '../../database/schema';
 
 @ApiTags('admin-support')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('super_admin', 'account_manager')
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/support/tickets')
 export class AdminSupportController {
   constructor(private readonly supportService: SupportService) {}
 
   @Get()
+  @RequirePermission('support', 'view')
   @ApiOperation({ summary: 'Get all support tickets (optional status filter)' })
   getTickets(
     @Query('status') status?: 'open' | 'in_progress' | 'resolved' | 'closed',
@@ -27,12 +27,14 @@ export class AdminSupportController {
   }
 
   @Get(':id')
+  @RequirePermission('support', 'view')
   @ApiOperation({ summary: 'Get details and messages for any support ticket' })
   getTicketDetails(@Param('id') id: string) {
     return this.supportService.getTicketDetailsForAdmin(id);
   }
 
   @Patch(':id/assign')
+  @RequirePermission('support', 'manage')
   @ApiOperation({ summary: 'Assign a support ticket to a staff member' })
   assignTicket(
     @CurrentUser() admin: { userId: string; role: string },
@@ -43,12 +45,14 @@ export class AdminSupportController {
   }
 
   @Patch(':id/status')
+  @RequirePermission('support', 'manage')
   @ApiOperation({ summary: 'Update a support ticket status' })
   updateStatus(@Param('id') id: string, @Body() dto: UpdateTicketStatusDto) {
     return this.supportService.updateTicketStatus(id, dto.status);
   }
 
   @Post(':id/messages')
+  @RequirePermission('support', 'manage')
   @ApiOperation({ summary: 'Add a reply/message to a support ticket as admin' })
   addMessage(
     @CurrentUser() admin: { userId: string },

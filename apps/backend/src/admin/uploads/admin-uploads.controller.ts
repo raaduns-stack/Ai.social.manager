@@ -14,8 +14,8 @@ import { Response } from 'express';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 import { UserRole } from '../../common/enums/roles.enum';
 import { UploadsService } from '../../uploads/uploads.service';
@@ -24,8 +24,7 @@ import { ReviewUploadDto } from '../../uploads/dto/review-upload.dto';
 
 @ApiTags('admin-uploads')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER, UserRole.REVIEWER)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/uploads')
 export class AdminUploadsController {
     constructor(private readonly uploadsService: UploadsService) { }
@@ -34,6 +33,7 @@ export class AdminUploadsController {
     // Get All Customer Uploads (moderation queue)
     // =========================
     @Get()
+    @RequirePermission('upload_management', 'view')
     @ApiOperation({ summary: 'Get all customer uploads for moderation (filterable by category, status, customer)' })
     getAllUploads(@Query() query: QueryAdminUploadDto) {
         return this.uploadsService.getAllUploadsForAdmin(query);
@@ -43,6 +43,7 @@ export class AdminUploadsController {
     // Get Single Upload (any customer)
     // =========================
     @Get(':id')
+    @RequirePermission('upload_management', 'view')
     @ApiOperation({ summary: 'Get details/metadata of any customer upload' })
     getUploadById(@Param('id') id: string) {
         return this.uploadsService.getUploadByIdForAdmin(id);
@@ -52,6 +53,7 @@ export class AdminUploadsController {
     // Approve / Reject Upload
     // =========================
     @Patch(':id/review')
+    @RequirePermission('upload_management', 'approve')
     @ApiOperation({ summary: 'Approve or reject a customer upload' })
     reviewUpload(
         @CurrentUser() admin: { userId: string },
@@ -65,6 +67,7 @@ export class AdminUploadsController {
     // Download Any Customer's File
     // =========================
     @Get(':id/download')
+    @RequirePermission('upload_management', 'view')
     @ApiOperation({ summary: "Download a customer's uploaded file" })
     async downloadFile(@Param('id') id: string, @Res() res: Response) {
         const fileInfo = await this.uploadsService.getUploadByIdForAdmin(id);

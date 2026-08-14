@@ -1,5 +1,5 @@
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import * as schema from './schema';
 import { encryptSecret } from '../common/utils/encryption.util';
 
@@ -185,3 +185,118 @@ export async function seedSingletons(db: Database, configService: any) {
     });
   }
 }
+
+export async function seedRolePermissions(db: Database) {
+  const matrix: Record<string, Record<string, string>> = {
+    super_admin: {
+      dashboard: 'full',
+      user_management: 'full',
+      billing: 'full',
+      social_accounts: 'full',
+      content_calendar: 'full',
+      content_creation: 'full',
+      upload_management: 'full',
+      analytics: 'full',
+      ai_config: 'full',
+      support: 'full',
+      notification_management: 'full',
+      settings: 'full',
+      audit_logs: 'full',
+      staff_management: 'full',
+      money_management: 'full',
+    },
+    account_manager: {
+      dashboard: 'view',
+      user_management: 'own_only',
+      billing: 'view',
+      social_accounts: 'manage',
+      content_calendar: 'manage',
+      content_creation: 'manage',
+      upload_management: 'manage',
+      analytics: 'view',
+      ai_config: 'none',
+      support: 'own_only',
+      notification_management: 'manage',
+      settings: 'own_only',
+      audit_logs: 'none',
+      staff_management: 'none',
+      money_management: 'none',
+    },
+    reviewer: {
+      dashboard: 'view',
+      user_management: 'none',
+      billing: 'none',
+      social_accounts: 'view',
+      content_calendar: 'view',
+      content_creation: 'view',
+      upload_management: 'view',
+      analytics: 'view',
+      ai_config: 'none',
+      support: 'none',
+      notification_management: 'none',
+      settings: 'own_only',
+      audit_logs: 'none',
+      staff_management: 'none',
+      money_management: 'none',
+    },
+    support_staff: {
+      dashboard: 'view',
+      user_management: 'view',
+      billing: 'none',
+      social_accounts: 'none',
+      content_calendar: 'none',
+      content_creation: 'none',
+      upload_management: 'none',
+      analytics: 'none',
+      ai_config: 'none',
+      support: 'full',
+      notification_management: 'view',
+      settings: 'own_only',
+      audit_logs: 'none',
+      staff_management: 'none',
+      money_management: 'none',
+    },
+    designer: {
+      dashboard: 'none',
+      user_management: 'none',
+      billing: 'none',
+      social_accounts: 'none',
+      content_calendar: 'own_only',
+      content_creation: 'view',
+      upload_management: 'manage',
+      analytics: 'none',
+      ai_config: 'none',
+      support: 'none',
+      notification_management: 'none',
+      settings: 'own_only',
+      audit_logs: 'none',
+      staff_management: 'none',
+      money_management: 'none',
+    },
+  };
+
+  for (const [role, modules] of Object.entries(matrix)) {
+    for (const [moduleName, accessLevel] of Object.entries(modules)) {
+      const existing = await db.query.rolePermissions.findFirst({
+        where: and(
+          eq(schema.rolePermissions.role, role as any),
+          eq(schema.rolePermissions.module, moduleName),
+        ),
+      });
+
+      if (existing) {
+        await db
+          .update(schema.rolePermissions)
+          .set({ accessLevel: accessLevel as any } as any)
+          .where(eq(schema.rolePermissions.id, existing.id));
+      } else {
+        await db.insert(schema.rolePermissions).values({
+          role: role as any,
+          module: moduleName,
+          accessLevel: accessLevel as any,
+        });
+      }
+    }
+  }
+}
+

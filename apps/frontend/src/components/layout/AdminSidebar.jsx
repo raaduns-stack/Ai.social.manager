@@ -73,10 +73,44 @@ const NAV_SECTIONS = [
   },
 ];
 
+const ROUTE_MODULE_MAP = {
+  "/admin/dashboard": "dashboard",
+  "/admin/users": "user_management",
+  "/admin/kyc": "user_management",
+  "/admin/calendar": "content_calendar",
+  "/admin/ai-content": "content_creation",
+  "/admin/billing": "billing",
+  "/admin/social-accounts": "social_accounts",
+  "/admin/money-management": "money_management",
+  "/admin/uploads": "upload_management",
+  "/admin/analytics": "analytics",
+  "/admin/ai-config": "ai_config",
+  "/admin/support": "support",
+  "/admin/faqs": "support",
+  "/admin/staff": "staff_management",
+  "/admin/staff/manage": "staff_management",
+  "/admin/staff/roles-permissions": "staff_management",
+  "/admin/staff/login-history": "audit_logs",
+  "/admin/staff/activity-logs": "audit_logs",
+  "/admin/notifications": "notification_management",
+  "/admin/logs": "audit_logs",
+};
+
 export default function AdminSidebar() {
   const [collapsed, setCollapsed] = useState(false);
-  const { admin } = useAdminAuth();
-  const isAllowedRole = admin && ["super_admin", "account_manager"].includes(admin.role);
+  const { admin, permissions } = useAdminAuth();
+
+  const filteredSections = NAV_SECTIONS.map((section) => {
+    const visibleItems = section.items.filter((item) => {
+      if (item.to === "/admin/settings") return true;
+      const mod = ROUTE_MODULE_MAP[item.to];
+      if (mod && permissions && permissions[mod] === "none") {
+        return false;
+      }
+      return true;
+    });
+    return { ...section, items: visibleItems };
+  }).filter((section) => section.items.length > 0);
 
   return (
     <aside
@@ -97,7 +131,7 @@ export default function AdminSidebar() {
         </button>
       </div>
 
-      {NAV_SECTIONS.map((section) => (
+      {filteredSections.map((section) => (
         <div key={section.label} className="mb-6">
           {!collapsed && (
             <p className="px-2 mb-2 text-xs font-medium uppercase tracking-wide text-[#6B7280]">
@@ -106,9 +140,6 @@ export default function AdminSidebar() {
           )}
           <nav className="flex flex-col gap-1">
             {section.items.map(({ label, to, icon: Icon }) => {
-              if ((to === "/admin/support" || to === "/admin/faqs") && !isAllowedRole) {
-                return null;
-              }
               return (
                 <NavLink
                   key={to}

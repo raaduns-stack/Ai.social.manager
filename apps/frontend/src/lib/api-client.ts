@@ -226,12 +226,22 @@ apiClient.interceptors.response.use(
         ? exceptionPayload.message || exceptionPayload.error || 'An unknown error occurred'
         : exceptionPayload || error.message || 'An unknown error occurred';
 
-    if (
-      error.response?.status === 403 &&
-      originalRequest &&
-      originalRequest.url?.includes('/auth/login') &&
-      errorCode === 'EMAIL_NOT_VERIFIED'
-    ) {
+    if (error.response?.status === 403) {
+      const friendlyMsg = error.response?.data?.message || 'Access Denied: You do not have permission to perform this action.';
+      window.dispatchEvent(
+        new CustomEvent('app-toast', {
+          detail: {
+            message: friendlyMsg,
+            type: 'error',
+          },
+        })
+      );
+
+      if (
+        originalRequest &&
+        originalRequest.url?.includes('/auth/login') &&
+        errorCode === 'EMAIL_NOT_VERIFIED'
+      ) {
       let email = '';
       try {
         const payload = typeof originalRequest.data === 'string'
@@ -243,6 +253,7 @@ apiClient.interceptors.response.use(
       }
       window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
       return new Promise(() => { }); // Halt execution to prevent login screen error toasts
+      }
     }
 
     const apiError: ApiErrorResponse = {

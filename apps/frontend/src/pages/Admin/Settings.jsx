@@ -4,8 +4,11 @@ import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
-import { Info, ShieldCheck } from 'lucide-react'
+import { Info, ShieldCheck, Lock } from 'lucide-react'
 import { changePassword } from '../../features/auth/auth-api'
+import { useAdminAuth } from '../../context/useAdminAuth'
+import apiClient from '../../lib/api-client'
+import { Link } from 'react-router-dom'
 import {
   getCompanyProfile,
   updateCompanyProfile,
@@ -1437,7 +1440,78 @@ function SecurityTab() {
 }
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('company-info')
+  const { admin } = useAdminAuth();
+  const isSuperAdmin = admin?.role === 'super_admin';
+  const [activeTab, setActiveTab] = useState(isSuperAdmin ? 'company-info' : 'security');
+  const [channelsConnected, setChannelsConnected] = useState(true);
+  const [checkingChannels, setCheckingChannels] = useState(isSuperAdmin);
+
+  useEffect(() => {
+    if (isSuperAdmin) {
+      setActiveTab('company-info');
+      setCheckingChannels(true);
+      apiClient.get('/social-accounts')
+        .then((res) => {
+          setChannelsConnected(res.data && res.data.length > 0);
+        })
+        .catch((err) => {
+          console.error("Failed to check social accounts connection status:", err);
+        })
+        .finally(() => {
+          setCheckingChannels(false);
+        });
+    } else {
+      setActiveTab('security');
+      setChannelsConnected(true);
+      setCheckingChannels(false);
+    }
+  }, [isSuperAdmin]);
+
+  const visibleTabs = isSuperAdmin ? TABS : TABS.filter(t => t.id === 'security');
+
+  const renderTabContent = () => {
+    if (activeTab === 'security') {
+      return <SecurityTab />;
+    }
+
+    if (checkingChannels) {
+      return (
+        <Card className="p-6 flex justify-center items-center h-48">
+          <div className="w-8 h-8 border-4 border-[#4F46E5] border-t-transparent rounded-full animate-spin"></div>
+        </Card>
+      );
+    }
+
+    if (!channelsConnected) {
+      return (
+        <Card className="relative overflow-hidden p-8 border border-gray-200 bg-gray-50 flex flex-col items-center justify-center min-h-[350px] text-center">
+          <div className="flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-gray-200 text-gray-500">
+            <Lock size={28} />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">Settings Locked</h3>
+          <p className="text-sm text-gray-600 max-w-sm mb-6 leading-relaxed">
+            Please connect at least one social media channel (Twitter, Facebook, etc.) to unlock administrative and regional configurations.
+          </p>
+          <Link
+            to="/admin/social-accounts"
+            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] focus:ring-4 focus:ring-[#4F46E5]/50 rounded-lg transition-colors shadow-md hover:shadow-lg"
+          >
+            Connect Social Channels
+          </Link>
+        </Card>
+      );
+    }
+
+    switch (activeTab) {
+      case 'company-info': return <CompanyInfoTab />;
+      case 'system': return <SystemSettingsTab />;
+      case 'notifications': return <NotificationSettingsTab />;
+      case 'email': return <EmailConfigTab />;
+      case 'social': return <SocialApiSettingsTab />;
+      case 'payment': return <PaymentGatewaySettingsTab />;
+      default: return null;
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -1447,7 +1521,7 @@ export default function Settings() {
       />
 
       <div className="flex border-b border-border -mb-px">
-        {TABS.map((tab) => {
+        {visibleTabs.map((tab) => {
           const isActive = activeTab === tab.id
           return (
             <button
@@ -1468,13 +1542,7 @@ export default function Settings() {
       </div>
 
       <div>
-        {activeTab === 'company-info' && <CompanyInfoTab />}
-        {activeTab === 'system' && <SystemSettingsTab />}
-        {activeTab === 'notifications' && <NotificationSettingsTab />}
-        {activeTab === 'email' && <EmailConfigTab />}
-        {activeTab === 'social' && <SocialApiSettingsTab />}
-        {activeTab === 'payment' && <PaymentGatewaySettingsTab />}
-        {activeTab === 'security' && <SecurityTab />}
+        {renderTabContent()}
       </div>
     </div>
   )

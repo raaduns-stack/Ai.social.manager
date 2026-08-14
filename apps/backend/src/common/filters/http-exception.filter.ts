@@ -31,11 +31,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       this.logger.error(`${request.method} ${request.url}`, (exception as Error)?.stack);
     }
 
-    response.status(status).json({
-      statusCode: status,
-      path: request.url,
-      timestamp: new Date().toISOString(),
-      message,
-    });
+    const exceptionResponse = exception instanceof HttpException ? exception.getResponse() : null;
+    const responsePayload = typeof exceptionResponse === 'object' && exceptionResponse !== null
+      ? { ...exceptionResponse, path: request.url, timestamp: new Date().toISOString() }
+      : { statusCode: status, path: request.url, timestamp: new Date().toISOString(), message };
+
+    response.status(status).json(responsePayload);
   }
 }
+

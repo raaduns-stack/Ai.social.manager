@@ -1,6 +1,7 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { ActivityLogsService } from './activity-logs.service';
 
+@Global()
 @Module({
   // DatabaseModule is @Global(), so DATABASE_CONNECTION is available without importing here.
   providers: [ActivityLogsService],
