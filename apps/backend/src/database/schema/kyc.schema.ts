@@ -19,6 +19,7 @@ import {
   text,
   timestamp,
   pgEnum,
+  boolean,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
@@ -30,6 +31,7 @@ export const kycStatusEnum = pgEnum('kyc_status', [
   'pending',    // submitted, awaiting admin review
   'approved',   // admin approved — user may connect social accounts
   'rejected',   // admin rejected — user must correct and resubmit
+  'resubmission_required', // admin requested resubmission
 ]);
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,9 @@ export const kyc = pgTable('kyc', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
+
+  parentId: uuid('parent_id'),
+  isUpdateRequest: boolean('is_update_request').notNull().default(false),
 
   // ---- Section 1 — Business Information ----
   businessName: varchar('business_name', { length: 255 }).notNull(),
@@ -84,6 +89,11 @@ export const kycRelations = relations(kyc, ({ one }) => ({
   user: one(users, {
     fields: [kyc.userId],
     references: [users.id],
+  }),
+  parent: one(kyc, {
+    fields: [kyc.parentId],
+    references: [kyc.id],
+    relationName: 'kyc_parent_child',
   }),
 }));
 

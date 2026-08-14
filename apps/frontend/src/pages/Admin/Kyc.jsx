@@ -163,8 +163,8 @@ export default function AdminKyc() {
     e.preventDefault()
     if (!selectedKyc) return
 
-    if (reviewAction === 'rejected' && !rejectionReason.trim()) {
-      setReviewError(new Error('Please provide a rejection reason.'))
+    if ((reviewAction === 'rejected' || reviewAction === 'resubmission_required') && !rejectionReason.trim()) {
+      setReviewError(new Error('Please provide a reason explaining the issue.'))
       return
     }
 
@@ -245,6 +245,13 @@ export default function AdminKyc() {
             </Badge>
           )
         }
+        if (row.status === 'resubmission_required') {
+          return (
+            <Badge variant="warning" className="inline-flex items-center gap-1">
+              <AlertCircle size={12} /> Resubmission Required
+            </Badge>
+          )
+        }
         return (
           <Badge variant="warning" className="inline-flex items-center gap-1">
             <Clock size={12} /> Pending
@@ -306,6 +313,11 @@ export default function AdminKyc() {
               {selectedKyc.status === 'rejected' && (
                 <Badge variant="danger" className="inline-flex items-center gap-1">
                   <XCircle size={12} /> Rejected
+                </Badge>
+              )}
+              {selectedKyc.status === 'resubmission_required' && (
+                <Badge variant="warning" className="inline-flex items-center gap-1">
+                  <AlertCircle size={12} /> Resubmission Required
                 </Badge>
               )}
               {selectedKyc.status === 'pending' && (
@@ -379,9 +391,11 @@ export default function AdminKyc() {
                 </dl>
               </div>
 
-              {selectedKyc.status === 'rejected' && selectedKyc.rejectionReason && (
+              {(selectedKyc.status === 'rejected' || selectedKyc.status === 'resubmission_required') && selectedKyc.rejectionReason && (
                 <div className="p-4 rounded-control bg-red-50 border border-red-200">
-                  <span className="text-xs font-bold text-danger uppercase">Rejection Reason</span>
+                  <span className="text-xs font-bold text-danger uppercase">
+                    {selectedKyc.status === 'rejected' ? 'Rejection Reason' : 'Resubmission Instructions'}
+                  </span>
                   <p className="text-sm text-ink-muted mt-1 leading-relaxed">{selectedKyc.rejectionReason}</p>
                 </div>
               )}
@@ -534,6 +548,16 @@ export default function AdminKyc() {
                   <Button
                     variant="secondary"
                     onClick={() => {
+                      setReviewAction('resubmission_required')
+                      setIsReviewOpen(true)
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-2"
+                  >
+                    <Clock size={16} /> Request Resubmission
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() => {
                       setReviewAction('rejected')
                       setIsReviewOpen(true)
                     }}
@@ -567,7 +591,7 @@ export default function AdminKyc() {
           setRejectionReason('')
           setReviewError(null)
         }}
-        title={reviewAction === 'approved' ? 'Approve Verification' : 'Reject Verification'}
+        title={reviewAction === 'approved' ? 'Approve Verification' : reviewAction === 'rejected' ? 'Reject Verification' : 'Request Resubmission'}
       >
         <form onSubmit={handleReviewSubmit} className="space-y-4">
           {reviewError && (
@@ -585,17 +609,24 @@ export default function AdminKyc() {
           ) : (
             <div className="space-y-3">
               <p className="text-sm text-ink-muted leading-relaxed">
-                Provide a reason for rejecting this business verification. This will be shown to the user so they
-                can correct and resubmit their details.
+                {reviewAction === 'rejected'
+                  ? 'Provide a reason for rejecting this business verification. This will block their onboarding permanently unless they resubmit.'
+                  : 'Provide instructions on what information or documents are missing or incorrect for the customer to fix.'
+                }
               </p>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-ink uppercase">Rejection Reason</label>
+                <label className="text-xs font-semibold text-ink uppercase">
+                  {reviewAction === 'rejected' ? 'Rejection Reason' : 'Resubmission Feedback'}
+                </label>
                 <textarea
                   required
                   rows={4}
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
-                  placeholder="e.g. The utility bill uploaded does not match the company name. Please upload a matching proof of address."
+                  placeholder={reviewAction === 'rejected'
+                    ? "e.g. The utility bill uploaded does not match the company name. Please upload a matching proof of address."
+                    : "e.g. Certificate of registration is blurry. Please upload a clearer copy."
+                  }
                   className="w-full text-sm text-ink p-3 rounded-control border border-border bg-surface resize-none focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
               </div>
@@ -627,8 +658,10 @@ export default function AdminKyc() {
                 </span>
               ) : reviewAction === 'approved' ? (
                 'Approve'
-              ) : (
+              ) : reviewAction === 'rejected' ? (
                 'Reject Submission'
+              ) : (
+                'Request Resubmission'
               )}
             </Button>
           </div>

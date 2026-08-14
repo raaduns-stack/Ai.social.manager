@@ -53,6 +53,8 @@ import {
   regeneratePostSuggestions,
   saveSuggestionFeedback,
 } from '../../features/dashboard/dashboard-api'
+import KycOverlay from '../../features/kyc/KycOverlay'
+import { getMyKyc } from '../../features/kyc/kyc-api'
 
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
@@ -870,6 +872,8 @@ export default function ContentCalendar() {
   const [publishedPosts, setPublishedPosts] = useState([])
 
   const [loading, setLoading] = useState(false)
+  const [kycLoading, setKycLoading] = useState(true)
+  const [kycRecord, setKycRecord] = useState(null)
   const [error, setError]     = useState(null)
 
   // ── Fetch logic ────────────────────────────────────────────────────────────
@@ -883,20 +887,23 @@ export default function ContentCalendar() {
     setLoading(true)
     setError(null)
     try {
-      const [all, upcoming, published] = await Promise.all([
+      const [all, upcoming, published, kyc] = await Promise.all([
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
+        getMyKyc()
       ])
       setAllPosts(all)
       setUpcomingPosts(upcoming)
       setPublishedPosts(published)
+      setKycRecord(kyc)
     } catch (err) {
       // Show a friendly error message
       const msg = err?.message || 'Failed to load calendar posts. Please try again.'
       setError(msg)
     } finally {
       setLoading(false)
+      setKycLoading(false)
     }
   }, [userId])
 
@@ -964,14 +971,24 @@ export default function ContentCalendar() {
     )
   }
 
-  return (
-    <div className="p-6">
-      <PageHeader
-        title="Content Calendar"
-        subtitle="Plan, schedule, and track your social media content."
-      />
+  const kycBlocked = !kycLoading && kycRecord?.status !== 'approved'
 
-      {/* ── Tab bar ── */}
+  return (
+    <div className="relative p-6">
+      {kycBlocked && (
+        <KycOverlay kycRecord={kycRecord} onRefresh={fetchAll} />
+      )}
+      
+      <div 
+        className={kycBlocked ? 'opacity-40 pointer-events-none select-none' : ''}
+        aria-hidden={kycBlocked}
+      >
+        <PageHeader
+          title="Content Calendar"
+          subtitle="Plan, schedule, and track your social media content."
+        />
+
+        {/* ── Tab bar ── */}
       <div className="flex gap-1 mb-6 border-b border-canvas">
         {TABS.map(tab => (
           <button
@@ -1102,6 +1119,7 @@ export default function ContentCalendar() {
           setSelectedPost(updatedPost)
         }}
       />
+      </div>
     </div>
   )
 }

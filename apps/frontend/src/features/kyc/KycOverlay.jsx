@@ -29,6 +29,7 @@ import {
   XCircle,
   AlertTriangle,
   Loader2,
+  X,
 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
@@ -106,14 +107,21 @@ function PendingState() {
 }
 
 // ---------------------------------------------------------------------------
-// RejectedBanner — shown at the top of the form when re-submitting
+// FeedbackBanner — shown at the top of the form when re-submitting
 // ---------------------------------------------------------------------------
-function RejectedBanner({ reason }) {
+function FeedbackBanner({ status, reason }) {
+  const isRejected = status === 'rejected'
   return (
-    <div className="flex gap-3 p-4 rounded-control bg-red-50 border border-red-200 mb-4">
-      <XCircle size={20} className="text-danger shrink-0 mt-0.5" />
+    <div className={`flex gap-3 p-4 rounded-control ${isRejected ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'} border mb-4`}>
+      {isRejected ? (
+        <XCircle size={20} className="text-danger shrink-0 mt-0.5" />
+      ) : (
+        <AlertTriangle size={20} className="text-warning shrink-0 mt-0.5" />
+      )}
       <div>
-        <p className="text-sm font-semibold text-danger">Verification Rejected</p>
+        <p className={`text-sm font-semibold ${isRejected ? 'text-danger' : 'text-warning'}`}>
+          {isRejected ? 'Verification Rejected' : 'Resubmission Required'}
+        </p>
         {reason && (
           <p className="text-sm text-ink-muted mt-1 leading-relaxed">{reason}</p>
         )}
@@ -130,6 +138,8 @@ function RejectedBanner({ reason }) {
 // ---------------------------------------------------------------------------
 function KycForm({ existingData, onSubmitted }) {
   const isRejected = existingData?.status === 'rejected'
+  const isResubmitReq = existingData?.status === 'resubmission_required'
+  const needsResubmit = isRejected || isResubmitReq
 
   // ----- Section 1 — Business Information -----
   const [businessName, setBusinessName] = useState(existingData?.businessName ?? '')
@@ -189,9 +199,9 @@ function KycForm({ existingData, onSubmitted }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Rejection notice (re-submission flow) */}
-      {isRejected && (
-        <RejectedBanner reason={existingData?.rejectionReason} />
+      {/* Rejection / Resubmission notice */}
+      {needsResubmit && (
+        <FeedbackBanner status={existingData?.status} reason={existingData?.rejectionReason} />
       )}
 
       {/* Error banner */}
@@ -349,7 +359,7 @@ function KycForm({ existingData, onSubmitted }) {
               <Loader2 size={16} className="animate-spin" />
               Submitting…
             </span>
-          ) : isRejected ? (
+          ) : needsResubmit ? (
             'Resubmit Verification'
           ) : (
             'Submit Verification'
@@ -357,6 +367,8 @@ function KycForm({ existingData, onSubmitted }) {
         </Button>
       </div>
     </form>
+
+
   )
 }
 
@@ -368,7 +380,7 @@ function KycForm({ existingData, onSubmitted }) {
  * @param {function}    onRefresh  Called after a successful submission so the parent
  *                                 can re-fetch the KYC record and re-render.
  */
-export default function KycOverlay({ kycRecord, onRefresh }) {
+export default function KycOverlay({ kycRecord, onRefresh, onClose }) {
   const [submitted, setSubmitted] = useState(false)
 
   const status = kycRecord?.status ?? null
@@ -397,16 +409,27 @@ export default function KycOverlay({ kycRecord, onRefresh }) {
         aria-label="Business Verification Required"
       >
         {/* Panel header */}
-        <div className="flex items-center gap-3 px-6 py-4 border-b border-border bg-canvas">
-          <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
-            <Shield size={20} className="text-primary-600" />
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-canvas relative">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center shrink-0">
+              <Shield size={20} className="text-primary-600" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-ink">Business Verification Required</h2>
+              <p className="text-xs text-ink-muted">
+                Complete your KYC to unlock social channel connections
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-base font-bold text-ink">Business Verification Required</h2>
-            <p className="text-xs text-ink-muted">
-              Complete your KYC to unlock social channel connections
-            </p>
-          </div>
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="text-ink-muted hover:text-ink transition-colors p-1.5 rounded-full hover:bg-border"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          )}
         </div>
 
         {/* Panel body */}

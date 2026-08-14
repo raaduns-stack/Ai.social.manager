@@ -256,11 +256,13 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const apiError: ApiErrorResponse = {
+    const apiError: ApiErrorResponse & { error?: string; kycStatus?: string } = {
       statusCode: errorData?.statusCode || error.response?.status || 500,
       path: errorData?.path || originalRequest?.url || '',
       timestamp: errorData?.timestamp || new Date().toISOString(),
       message,
+      error: typeof exceptionPayload === 'object' ? exceptionPayload.error : undefined,
+      kycStatus: typeof exceptionPayload === 'object' ? exceptionPayload.kycStatus : (errorData?.kycStatus || undefined),
     };
 
     throw apiError;

@@ -19,19 +19,24 @@ import {
   Inject,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
 } from '@nestjs/common';
-import { eq, desc } from 'drizzle-orm';
+import { eq, desc, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
 import { ReviewKycDto } from './dto/review-kyc.dto';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class KycService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    private readonly activityLogsService: ActivityLogsService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // USER-FACING METHODS
@@ -56,47 +61,42 @@ export class KycService {
       ownerId?: Express.Multer.File[];
     },
   ) {
-    // Extract the stored filename for each document (if uploaded this time)
     const certPath = files.certOfRegistration?.[0]?.filename ?? undefined;
     const utilityPath = files.utilityBill?.[0]?.filename ?? undefined;
     const ownerIdPath = files.ownerId?.[0]?.filename ?? undefined;
 
-    // Check if a KYC record already exists for this user
-    const existing = await this.db.query.kyc.findFirst({
-      where: eq(schema.kyc.userId, userId),
+    // Check if there is an in-progress review
+    const pending = await this.db.query.kyc.findFirst({
+      where: and(
+        eq(schema.kyc.userId, userId),
+        eq(schema.kyc.status, 'pending'),
+      ),
     });
-
-    if (existing) {
-      // --- RE-SUBMISSION: update all text fields, reset status to pending ---
-      // Only overwrite document paths when a new file was uploaded for that slot
-      const [updated] = await this.db
-        .update(schema.kyc)
-        .set({
-          businessName: dto.businessName,
-          registrationNumber: dto.registrationNumber ?? null,
-          businessType: dto.businessType,
-          businessAddress: dto.businessAddress,
-          country: dto.country,
-          businessEmail: dto.businessEmail,
-          businessPhone: dto.businessPhone,
-          businessDescription: dto.businessDescription,
-          // Preserve old paths when no new file was uploaded for that slot
-          ...(certPath && { certOfRegistrationPath: certPath }),
-          ...(utilityPath && { utilityBillPath: utilityPath }),
-          ...(ownerIdPath && { ownerIdPath }),
-          // Reset review state so admins see fresh data
-          status: 'pending',
-          reviewedBy: null,
-          reviewedAt: null,
-          rejectionReason: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.kyc.userId, userId))
-        .returning();
-      return updated;
+    if (pending) {
+      throw new BadRequestException('You already have a verification submission pending review.');
     }
 
-    // --- FIRST SUBMISSION ---
+    // Find if there is a previously approved profile
+    const previouslyApproved = await this.db.query.kyc.findFirst({
+      where: and(
+        eq(schema.kyc.userId, userId),
+        eq(schema.kyc.status, 'approved'),
+      ),
+      orderBy: [desc(schema.kyc.submittedAt)],
+    });
+
+    // Find the most recent submission (of any status) to reuse documents
+    const latest = await this.db.query.kyc.findFirst({
+      where: eq(schema.kyc.userId, userId),
+      orderBy: [desc(schema.kyc.submittedAt)],
+    });
+
+    const cert = certPath || latest?.certOfRegistrationPath || null;
+    const utility = utilityPath || latest?.utilityBillPath || null;
+    const ownerId = ownerIdPath || latest?.ownerIdPath || null;
+
+    const isUpdate = !!previouslyApproved;
+
     const [created] = await this.db
       .insert(schema.kyc)
       .values({
@@ -109,12 +109,26 @@ export class KycService {
         businessEmail: dto.businessEmail,
         businessPhone: dto.businessPhone,
         businessDescription: dto.businessDescription,
-        certOfRegistrationPath: certPath ?? null,
-        utilityBillPath: utilityPath ?? null,
-        ownerIdPath: ownerIdPath ?? null,
+        certOfRegistrationPath: cert,
+        utilityBillPath: utility,
+        ownerIdPath: ownerId,
         status: 'pending',
+        isUpdateRequest: isUpdate,
+        parentId: previouslyApproved?.id ?? null,
       })
       .returning();
+
+    // Log submission to activity audit logs
+    await this.activityLogsService.record({
+      userId,
+      userName: null,
+      action: isUpdate ? 'KYC_UPDATE_REQUEST' : 'KYC_SUBMITTED',
+      module: 'user_management',
+      description: isUpdate 
+        ? `Submitted KYC update request for business: ${dto.businessName}`
+        : `Submitted initial KYC verification for business: ${dto.businessName}`,
+    });
+
     return created;
   }
 
@@ -125,6 +139,7 @@ export class KycService {
   async getMyKyc(userId: string) {
     const record = await this.db.query.kyc.findFirst({
       where: eq(schema.kyc.userId, userId),
+      orderBy: [desc(schema.kyc.submittedAt)],
     });
     return record ?? null;
   }
@@ -133,15 +148,16 @@ export class KycService {
    * Lightweight status check used by the social-accounts service to gate
    * channel connections without returning the full sensitive record.
    *
-   * Returns the status string ('pending' | 'approved' | 'rejected') or null
+   * Returns the status string ('pending' | 'approved' | 'rejected' | 'resubmission_required') or null
    * when no KYC has been submitted yet.
    */
-  async getKycStatus(userId: string): Promise<'pending' | 'approved' | 'rejected' | null> {
+  async getKycStatus(userId: string): Promise<'pending' | 'approved' | 'rejected' | 'resubmission_required' | null> {
     const record = await this.db.query.kyc.findFirst({
       where: eq(schema.kyc.userId, userId),
       columns: { status: true },
+      orderBy: [desc(schema.kyc.submittedAt)],
     });
-    return record?.status ?? null;
+    return (record?.status as any) ?? null;
   }
 
   // ---------------------------------------------------------------------------
@@ -190,33 +206,93 @@ export class KycService {
   }
 
   /**
-   * Admin approves or rejects a KYC submission.
+   * Admin approves, rejects, or requests resubmission for a KYC submission.
    *
    * @param kycId    The KYC record UUID
    * @param adminId  The reviewing admin's user UUID (stored for audit trail)
-   * @param dto      { status: 'approved' | 'rejected', rejectionReason? }
+   * @param dto      { status: 'approved' | 'rejected' | 'resubmission_required', rejectionReason? }
    */
   async adminReview(kycId: string, adminId: string, dto: ReviewKycDto) {
     // Confirm the record exists before attempting update
-    const existing = await this.db.query.kyc.findFirst({
+    const record = await this.db.query.kyc.findFirst({
       where: eq(schema.kyc.id, kycId),
-      columns: { id: true },
     });
-    if (!existing) throw new NotFoundException('KYC record not found');
+    if (!record) throw new NotFoundException('KYC record not found');
+
+    const statusVal = dto.status as any;
 
     const [updated] = await this.db
       .update(schema.kyc)
       .set({
-        status: dto.status,
+        status: statusVal,
         reviewedBy: adminId,
         reviewedAt: new Date(),
-        // Clear stale rejection reason when approving
+        // Store reason if rejected or resubmission requested
         rejectionReason:
-          dto.status === 'rejected' ? (dto.rejectionReason ?? null) : null,
+          dto.status !== 'approved' ? (dto.rejectionReason ?? null) : null,
         updatedAt: new Date(),
       })
       .where(eq(schema.kyc.id, kycId))
       .returning();
+
+    // Log the review action
+    await this.activityLogsService.record({
+      userId: adminId,
+      action: dto.status === 'approved' 
+        ? 'KYC_APPROVED' 
+        : dto.status === 'rejected' 
+          ? 'KYC_REJECTED' 
+          : 'KYC_RESUBMISSION_REQUESTED',
+      module: 'user_management',
+      description: dto.status === 'approved'
+        ? `Approved KYC verification for user ${record.userId}`
+        : `Requested KYC change/resubmission for user ${record.userId}. Reason: ${dto.rejectionReason}`,
+    });
+
+    // If approved, snapshot the fields to customer_company_profile
+    if (dto.status === 'approved') {
+      const existingProfile = await this.db.query.customerCompanyProfile.findFirst({
+        where: eq(schema.customerCompanyProfile.userId, record.userId),
+      });
+
+      if (existingProfile) {
+        await this.db
+          .update(schema.customerCompanyProfile)
+          .set({
+            businessName: record.businessName,
+            businessDescription: record.businessDescription,
+            contactEmail: record.businessEmail,
+            contactPhone: record.businessPhone,
+            addressLine1: record.businessAddress,
+            country: record.country,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.customerCompanyProfile.id, existingProfile.id));
+      } else {
+        await this.db
+          .insert(schema.customerCompanyProfile)
+          .values({
+            userId: record.userId,
+            businessName: record.businessName,
+            businessDescription: record.businessDescription,
+            contactEmail: record.businessEmail,
+            contactPhone: record.businessPhone,
+            addressLine1: record.businessAddress,
+            country: record.country,
+            industry: 'Technology & SaaS', // Default placeholder
+          });
+      }
+
+      // Also update the businessName in the users table
+      await this.db
+        .update(schema.users)
+        .set({
+          businessName: record.businessName,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.users.id, record.userId));
+    }
+
     return updated;
   }
 

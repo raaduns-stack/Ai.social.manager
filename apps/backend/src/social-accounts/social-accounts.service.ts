@@ -25,17 +25,25 @@ export class SocialAccountsService {
    * the frontend displays, so it cannot be bypassed via API.
    */
   async create(userId: string, dto: CreateSocialAccountDto) {
+
     // --- KYC Guard ---
     const kycStatus = await this.kycService.getKycStatus(userId);
     if (kycStatus !== 'approved') {
-      const reason =
-        kycStatus === 'pending'
-          ? 'Your business verification is still under review. You can connect social accounts once your KYC is approved.'
-          : kycStatus === 'rejected'
-          ? 'Your business verification was rejected. Please correct and resubmit your KYC before connecting social accounts.'
-          : 'You must complete and pass business verification (KYC) before connecting social accounts.';
-      throw new ForbiddenException(reason);
+      const codeStatus = kycStatus === 'pending'
+        ? 'PENDING_REVIEW'
+        : kycStatus === 'rejected'
+        ? 'REJECTED'
+        : kycStatus === 'resubmission_required'
+        ? 'RESUBMISSION_REQUIRED'
+        : 'NOT_STARTED';
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'KYC_REQUIRED',
+        message: 'Complete business verification before connecting a channel.',
+        kycStatus: codeStatus,
+      });
     }
+
     const activeSub = await this.db.query.subscriptions.findFirst({
       where: and(
         eq(schema.subscriptions.userId, userId),
