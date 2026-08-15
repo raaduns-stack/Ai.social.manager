@@ -372,9 +372,9 @@ export default function Support() {
                         <div
                           key={msg.id || index}
                           className={cn(
-                            'flex flex-col max-w-[85%] rounded-card p-3.5 text-sm',
+                            'flex flex-col max-w-[85%] rounded-card p-3.5 text-sm transition-all',
                             isCurrentUser
-                              ? 'bg-primary/5 border border-primary-100 self-end text-ink'
+                              ? 'bg-primary/5 border border-primary/20 self-end text-ink border-t-2 border-t-primary'
                               : 'bg-canvas border border-border self-start text-ink'
                           )}
                         >
@@ -556,12 +556,12 @@ export default function Support() {
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse text-sm">
                   <thead>
-                    <tr className="bg-canvas border-b border-border text-ink-muted font-medium text-xs">
-                      <th className="px-6 py-3">Subject</th>
-                      <th className="px-6 py-3">Category</th>
-                      <th className="px-6 py-3">Last Updated</th>
-                      <th className="px-6 py-3">Status</th>
-                      <th className="px-6 py-3 text-right">Action</th>
+                    <tr className="bg-surface-container-low border-b border-border text-ink font-bold text-xs uppercase tracking-wider">
+                      <th className="px-6 py-3.5">Subject</th>
+                      <th className="px-6 py-3.5">Category</th>
+                      <th className="px-6 py-3.5">Last Updated</th>
+                      <th className="px-6 py-3.5">Status</th>
+                      <th className="px-6 py-3.5 text-right">Action</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border">

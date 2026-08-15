@@ -288,8 +288,8 @@ export default function Channels() {
           />
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="p-6 flex items-center gap-6">
-              <div className="w-12 h-12 rounded-control bg-accent-50 flex items-center justify-center text-accent">
+            <Card className="p-6 border-t-4 border-t-primary flex items-center gap-6 hover:shadow-hover transition-all">
+              <div className="w-12 h-12 rounded-control bg-primary/5 flex items-center justify-center text-primary">
                 <Link size={24} className="stroke-2" />
               </div>
               <div>
@@ -300,19 +300,19 @@ export default function Channels() {
               </div>
             </Card>
 
-            <Card className="p-6 flex items-center gap-6">
-              <div className="w-12 h-12 rounded-control bg-primary-50 flex items-center justify-center text-primary-700">
+            <Card className="p-6 border-t-4 border-t-secondary flex items-center gap-6 hover:shadow-hover transition-all">
+              <div className="w-12 h-12 rounded-control bg-secondary/5 flex items-center justify-center text-secondary">
                 <RefreshCw size={24} className="stroke-2" />
               </div>
               <div>
                 <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Sync Status</p>
-                <p className={`text-2xl font-bold mt-1 ${hasWarnings ? 'text-warning' : 'text-accent-600'}`}>
+                <p className={`text-2xl font-bold mt-1 ${hasWarnings ? 'text-warning' : 'text-primary'}`}>
                   {hasWarnings ? 'Action Required' : 'Healthy'}
                 </p>
               </div>
             </Card>
 
-            <Card className="p-6 flex items-center gap-6">
+            <Card className="p-6 border-t-4 border-t-primary flex items-center gap-6 hover:shadow-hover transition-all">
               <div className="w-12 h-12 rounded-control bg-red-50 flex items-center justify-center text-danger">
                 <AlertTriangle size={24} className="stroke-2" />
               </div>
@@ -326,30 +326,36 @@ export default function Channels() {
           </div>
 
           {loading ? (
-            <Loader />
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader />
+              <p className="text-sm text-ink-muted mt-2">Loading connected channels...</p>
+            </div>
           ) : fetchError ? (
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 p-4 bg-red-50 border border-red-200 rounded-control">
               <ErrorBanner error={fetchError} onDismiss={() => setFetchError(null)} />
               <Button variant="primary" onClick={fetchChannels}>Retry</Button>
             </div>
           ) : channels.length === 0 ? (
             <EmptyState
-              title="No Social Channels"
-              description="You have no connected accounts. Use the Connect button to add one."
+              title="No Social Channels Connected"
+              description="You have no connected accounts. Link your first channel to start automating content."
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {channels.map((channel) => {
                 const details = getPlatformDetails(channel.platform)
+                const isConnected = channel.status === 'Connected'
                 return (
                   <Card
                     key={channel.id}
-                    className="p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border border-border"
+                    className={`p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border ${
+                      isConnected ? 'border-primary/20 bg-gradient-to-br from-surface to-primary/5 border-t-4 border-t-primary' : 'border-border'
+                    }`}
                   >
                     <div>
                       <div className="flex justify-between items-start mb-6">
                         <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-soft"
                           style={details.style}
                         >
                           {details.icon}
@@ -367,27 +373,27 @@ export default function Channels() {
                         </Badge>
                       </div>
                       <h3 className="text-lg font-bold text-ink">{channel.name}</h3>
-                      <p className="text-xs text-ink-muted mt-1">{channel.handle}</p>
+                      <p className="text-xs text-ink-muted mt-1 font-mono">{channel.handle}</p>
 
-                      <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+                      <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
                         <span
-                          className={`text-xs ${channel.status === 'Action Required' ? 'text-danger font-medium' : 'text-ink-muted'
+                          className={`text-xs ${channel.status === 'Action Required' ? 'text-danger font-semibold' : 'text-ink-muted'
                             }`}
                         >
                           {channel.status === 'Connected'
-                            ? `Last synced: ${channel.lastSynced}`
+                            ? `Synced: ${new Date(channel.lastSynced).toLocaleDateString()}`
                             : channel.status === 'Action Required'
                               ? 'Token expired. Reconnect needed.'
                               : 'Waiting for authentication...'}
                         </span>
                         {channel.status === 'Connected' && (
-                          <CheckCircle2 size={16} className="text-accent" />
+                          <CheckCircle2 size={16} className="text-primary" />
                         )}
                       </div>
                     </div>
 
                     <Button
-                      className="mt-6 w-full"
+                      className="mt-6 w-full font-semibold"
                       variant={channel.status === 'Connected' ? 'outline' : 'primary'}
                       onClick={() => handleChannelAction(channel.id, channel.status)}
                     >

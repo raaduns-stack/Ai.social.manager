@@ -651,33 +651,33 @@ export default function MoneyManagement() {
           </div>
         </div>
 
-        <Card className="overflow-hidden p-0">
+        <Card className="overflow-hidden p-0 border border-border">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-canvas border-b border-border">
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                <tr className="bg-surface-container-low border-b border-border">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Transaction ID
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Customer
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Plan
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Amount
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Method
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Status
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Date
                   </th>
-                  <th className="px-6 py-3 text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                  <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Action
                   </th>
                 </tr>
@@ -689,10 +689,10 @@ export default function MoneyManagement() {
                       <td className="px-6 py-4 text-xs font-medium text-ink">{trx.id}</td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
-                          <div className="w-7 h-7 rounded-full bg-primary-50 text-primary-700 font-bold text-[10px] flex items-center justify-center shrink-0">
+                          <div className="w-7 h-7 rounded-[9999px] bg-primary/10 text-primary font-bold text-[10px] flex items-center justify-center shrink-0 border border-primary/20">
                             {trx.initials}
                           </div>
-                          <span className="text-xs font-medium text-ink">{trx.customer}</span>
+                          <span className="text-xs font-semibold text-ink">{trx.customer}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">

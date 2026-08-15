@@ -103,7 +103,7 @@ function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange, 
       )}
       <div
         style={{ borderRadius: '8px', border: readOnly ? 'none' : '1px solid var(--color-border)' }}
-        className={`flex h-10 overflow-hidden ${readOnly ? 'bg-canvas' : 'bg-surface focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500'}`}
+        className={`flex h-10 overflow-hidden ${readOnly ? 'bg-canvas' : 'bg-surface focus-within:ring-2 focus-within:ring-primary focus-within:border-primary'}`}
       >
         {/* Country selector */}
         <div className="relative flex-shrink-0 border-r border-border">
@@ -159,9 +159,9 @@ function Toggle({ id, checked, onChange }) {
       />
       <div
         className={[
-          'w-11 h-6 rounded-full transition-colors duration-200',
+          'w-11 h-6 rounded-[9999px] transition-colors duration-200',
           'after:content-[\'\'] after:absolute after:top-[2px] after:start-[2px]',
-          'after:bg-white after:border after:border-border after:rounded-full',
+          'after:bg-white after:border after:border-border after:rounded-[9999px]',
           'after:h-5 after:w-5 after:transition-all',
           'peer-checked:after:translate-x-full peer-checked:after:border-white',
           checked ? 'bg-primary' : 'bg-border',
@@ -188,7 +188,7 @@ function SettingsSection({ label, description, children }) {
 
 // Shared field style — 1px border, 8px border-radius
 const fieldCls =
-  'h-10 bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
+  'h-10 bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary'
 const fieldStyle = { borderRadius: '8px', border: '1px solid var(--color-border)' }
 const textareaStyle = { borderRadius: '8px', border: '1px solid var(--color-border)' }
 
@@ -363,8 +363,8 @@ function CompanyInfoTab() {
 
       {kycBlocked ? (
         <Card className="p-12 flex flex-col items-center justify-center text-center mt-2">
-          <div className="w-16 h-16 bg-primary-50 rounded-full flex items-center justify-center mb-4">
-             <Shield size={32} className="text-primary-600" />
+          <div className="w-16 h-16 bg-primary/10 rounded-[9999px] flex items-center justify-center mb-4 border border-primary/20">
+             <Shield size={32} className="text-primary" />
           </div>
           <h2 className="text-xl font-bold text-ink mb-2">Business Verification Required</h2>
           <p className="text-sm text-ink-muted mb-6 max-w-md">
@@ -592,7 +592,7 @@ function CompanyInfoTab() {
                 value={competitorUrls}
                 onChange={(e) => setCompetitorUrls(e.target.value)}
                 placeholder="https://competitor1.com, https://competitor2.com"
-                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 style={fieldStyle}
               />
               <p className="text-[11px] text-ink-muted leading-relaxed">
@@ -611,7 +611,7 @@ function CompanyInfoTab() {
                 value={competitorSocials}
                 onChange={(e) => setCompetitorSocials(e.target.value)}
                 placeholder="https://twitter.com/competitor, https://instagram.com/competitor"
-                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 style={fieldStyle}
               />
               <p className="text-[11px] text-ink-muted leading-relaxed">

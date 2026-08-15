@@ -40,27 +40,30 @@ import EmptyState from '../../components/ui/EmptyState'
 const METRICS_BY_PERIOD = {
   day: {
     label: 'yesterday',
-    postsPublished: 3,
-    postsChange: '4%',
+    totalReach: '12,450',
+    reachChange: '5.4%',
     engagement: '3.8%',
     engagementChange: '0.2%',
     followerGrowth: 62,
+    growthChange: '8.1%',
   },
   week: {
     label: 'this week',
-    postsPublished: 24,
-    postsChange: '12%',
+    totalReach: '84,200',
+    reachChange: '12.2%',
     engagement: '4.2%',
     engagementChange: '0.5%',
     followerGrowth: 1240,
+    growthChange: '14.3%',
   },
   month: {
     label: 'this month',
-    postsPublished: 96,
-    postsChange: '18%',
+    totalReach: '324,500',
+    reachChange: '18.5%',
     engagement: '4.6%',
     engagementChange: '1.1%',
     followerGrowth: 5310,
+    growthChange: '22.4%',
   },
 }
 
@@ -569,53 +572,87 @@ export default function DashboardHome() {
       {/* Quick Stats Row — values driven by the period filter above */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Stats Card 1 */}
-        <Card className="p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-canvas rounded-control text-primary-600">
-              <Send size={20} />
+        <Card className="p-6 border-t-4 border-t-primary flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-primary/5 rounded-control text-primary">
+                <Send size={20} />
+              </div>
+              <Badge tone="success" className="gap-1 text-xs font-semibold">
+                <TrendingUp size={12} />
+                +{metrics.reachChange}
+              </Badge>
             </div>
-            <Badge tone="success" className="gap-1 text-xs">
-              <TrendingUp size={12} />
-              {metrics.postsChange}
-            </Badge>
+            <p className="text-ink-muted text-xs font-medium mb-1">Total Reach</p>
           </div>
-          <p className="text-ink-muted text-xs font-medium mb-1">Posts Published</p>
-          <p className="text-2xl font-bold text-ink">
-            {metrics.postsPublished}{' '}
-            <span className="text-ink-muted text-sm font-normal">{metrics.label}</span>
-          </p>
+          <div className="flex items-end justify-between mt-2">
+            <p className="text-3xl font-extrabold text-ink font-headline-lg leading-none">
+              {metrics.totalReach}
+            </p>
+            <div className="h-8 w-24 shrink-0">
+              <svg className="w-full h-full text-primary" viewBox="0 0 100 30" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M0 25 Q 15 15, 30 20 T 60 10 T 90 5 T 100 2" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M0 25 Q 15 15, 30 20 T 60 10 T 90 5 T 100 2 L 100 30 L 0 30 Z" fill="rgba(255, 102, 0, 0.08)" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-[10px] text-ink-muted mt-2">{metrics.label}</p>
         </Card>
 
         {/* Stats Card 2 */}
-        <Card className="p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-canvas rounded-control text-primary-600">
-              <Zap size={20} />
+        <Card className="p-6 border-t-4 border-t-secondary flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-secondary/5 rounded-control text-secondary">
+                <Zap size={20} />
+              </div>
+              <Badge tone="success" className="gap-1 text-xs font-semibold">
+                <TrendingUp size={12} />
+                +{metrics.engagementChange}
+              </Badge>
             </div>
-            <Badge tone="success" className="gap-1 text-xs">
-              <TrendingUp size={12} />
-              {metrics.engagementChange}
-            </Badge>
+            <p className="text-ink-muted text-xs font-medium mb-1">Avg. Engagement</p>
           </div>
-          <p className="text-ink-muted text-xs font-medium mb-1">Avg. Engagement</p>
-          <p className="text-2xl font-bold text-ink">{metrics.engagement}</p>
+          <div className="flex items-end justify-between mt-2">
+            <p className="text-3xl font-extrabold text-ink font-headline-lg leading-none">
+              {metrics.engagement}
+            </p>
+            <div className="h-8 w-24 shrink-0">
+              <svg className="w-full h-full text-secondary" viewBox="0 0 100 30" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M0 20 Q 20 28, 40 10 T 70 15 T 100 5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M0 20 Q 20 28, 40 10 T 70 15 T 100 5 L 100 30 L 0 30 Z" fill="rgba(249, 87, 0, 0.08)" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-[10px] text-ink-muted mt-2">{metrics.label}</p>
         </Card>
 
         {/* Stats Card 3 */}
-        <Card className="p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div className="p-2 bg-canvas rounded-control text-primary-600">
-              <Users size={20} />
+        <Card className="p-6 border-t-4 border-t-primary flex flex-col justify-between">
+          <div>
+            <div className="flex justify-between items-start mb-4">
+              <div className="p-2 bg-primary/5 rounded-control text-primary">
+                <Users size={20} />
+              </div>
+              <Badge tone="success" className="gap-1 text-xs font-semibold">
+                <TrendingUp size={12} />
+                +{metrics.growthChange}
+              </Badge>
             </div>
-            <Badge tone="primary" className="text-xs">
-              New
-            </Badge>
+            <p className="text-ink-muted text-xs font-medium mb-1">Follower Growth</p>
           </div>
-          <p className="text-ink-muted text-xs font-medium mb-1">Follower Growth</p>
-          <p className="text-2xl font-bold text-ink">
-            {metrics.followerGrowth.toLocaleString()}{' '}
-            <span className="text-ink-muted text-sm font-normal">followers</span>
-          </p>
+          <div className="flex items-end justify-between mt-2">
+            <p className="text-3xl font-extrabold text-ink font-headline-lg leading-none">
+              {metrics.followerGrowth.toLocaleString()}
+            </p>
+            <div className="h-8 w-24 shrink-0">
+              <svg className="w-full h-full text-primary" viewBox="0 0 100 30" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M0 28 C 20 25, 45 10, 65 18 C 80 8, 90 2, 100 0" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M0 28 C 20 25, 45 10, 65 18 C 80 8, 90 2, 100 0 L 100 30 L 0 30 Z" fill="rgba(255, 102, 0, 0.08)" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-[10px] text-ink-muted mt-2">followers {metrics.label}</p>
         </Card>
       </div>
 
@@ -803,8 +840,47 @@ export default function DashboardHome() {
         </div>
 
         {/* Right Column */}
-        <div className="col-span-12 lg:col-span-4">
-          <Card className="overflow-hidden flex flex-col h-full p-0">
+        <div className="col-span-12 lg:col-span-4 space-y-6">
+          {/* Kleos Intelligence Recommendations */}
+          <Card className="overflow-hidden flex flex-col p-0 border border-primary/20 bg-gradient-to-br from-surface to-primary/5">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-surface">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                <h4 className="text-base font-semibold text-ink">Kleos Intelligence</h4>
+              </div>
+              <Badge tone="primary">AI Strategy</Badge>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Based on your business context and active channel engagement, our LLM recommends targeting these industry tags for maximum visibility:
+              </p>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { tag: '#SaaSGrowth', weight: 'High impact' },
+                  { tag: '#AIAutomation', weight: 'Trending' },
+                  { tag: '#SocialStrategy', weight: 'Optimal reach' },
+                  { tag: '#TechHooks', weight: 'High engagement' },
+                  { tag: '#StartupMarketing', weight: 'Growing' }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 px-3 py-1.5 bg-surface border border-primary/20 rounded-full shadow-soft text-xs transition-transform hover:scale-105">
+                    <span className="font-semibold text-primary">{item.tag}</span>
+                    <span className="text-[10px] text-ink-muted border-l border-border pl-1.5">{item.weight}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-surface/50 border border-border rounded-control p-3 flex items-start gap-2.5">
+                <Zap size={16} className="text-primary mt-0.5 shrink-0" />
+                <div>
+                  <p className="text-xs font-semibold text-ink">Optimal Posting Window</p>
+                  <p className="text-[11px] text-ink-muted mt-0.5">
+                    Your audience is most active on LinkedIn between **2:00 PM – 4:00 PM EST** on Tuesdays.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          <Card className="overflow-hidden flex flex-col p-0">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center bg-surface">
               <h4 className="text-base font-semibold text-ink">Notifications</h4>
               <Badge tone="primary" className="bg-primary-600 text-white font-bold text-[10px]">

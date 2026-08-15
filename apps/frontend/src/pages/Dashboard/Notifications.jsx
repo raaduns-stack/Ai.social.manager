@@ -79,27 +79,27 @@ const initialNotifications = [
 const typeConfig = {
   success: {
     icon: CheckCircle2,
-    style: 'bg-accent-50 text-accent-600 border-accent-100',
+    style: 'bg-secondary/10 text-secondary border-secondary/20',
   },
   alert: {
     icon: AlertTriangle,
-    style: 'bg-red-50 text-danger border-red-100',
+    style: 'bg-red-500/10 text-danger border-danger/20',
   },
   info: {
     icon: Info,
-    style: 'bg-primary-50 text-primary-700 border-primary-100',
+    style: 'bg-primary/10 text-primary border-primary/20',
   },
   billing: {
     icon: CreditCard,
-    style: 'bg-primary-50 text-primary-700 border-primary-100',
+    style: 'bg-primary/10 text-primary border-primary/20',
   },
   support: {
     icon: HelpCircle,
-    style: 'bg-amber-50 text-warning border-amber-100',
+    style: 'bg-amber-500/10 text-warning border-warning/20',
   },
   success_read: {
     icon: CheckCircle2,
-    style: 'bg-gray-100 text-ink-muted border-border',
+    style: 'bg-canvas text-ink-muted border-border',
   },
 }
 
@@ -223,13 +223,13 @@ export default function Notifications() {
                       onClick={() => markAsRead(item.id)}
                       className={`p-4 flex items-start gap-4 cursor-pointer relative group transition-all border ${
                         item.unread
-                          ? 'bg-primary-50/20 border-primary-100 hover:border-primary-200'
-                          : 'bg-surface hover:border-border border-border/60'
+                          ? 'bg-primary/5 border-primary/20 hover:border-primary/40 border-l-4 border-l-primary'
+                          : 'bg-surface hover:border-border border-border/60 border-l-4 border-l-transparent'
                       }`}
                     >
                       {/* Left Circular Icon Badge */}
                       <div
-                        className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 border ${config.style}`}
+                        className={`w-10 h-10 rounded-[9999px] flex items-center justify-center shrink-0 border ${config.style}`}
                       >
                         <Icon size={20} className={item.type === 'success' || item.type === 'alert' || item.type === 'support' ? 'fill-current' : ''} />
                       </div>
@@ -274,7 +274,7 @@ export default function Notifications() {
                       {/* Right Control indicators */}
                       <div className="flex flex-col items-center gap-2 ml-2 shrink-0">
                         {item.unread && (
-                          <div className="w-2.5 h-2.5 bg-primary-600 rounded-full mt-1.5" />
+                          <div className="w-2 h-2 bg-primary rounded-[9999px] mt-1.5" />
                         )}
 
                         {/* Action Menu (Delete) */}
@@ -286,7 +286,7 @@ export default function Notifications() {
                               e.stopPropagation()
                               setActiveItemMenu(activeItemMenu === item.id ? null : item.id)
                             }}
-                            className="p-1 h-8 w-8 rounded-full text-ink-muted hover:bg-canvas opacity-0 group-hover:opacity-100 transition-opacity"
+                            className="p-1 h-8 w-8 rounded-[9999px] text-ink-muted hover:bg-canvas opacity-0 group-hover:opacity-100 transition-opacity"
                           >
                             <MoreVertical size={16} />
                           </Button>
