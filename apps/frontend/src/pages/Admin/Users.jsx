@@ -6,15 +6,14 @@ import {
   MoreVertical,
   RefreshCw,
 } from 'lucide-react'
-import PageHeader from '../../components/layout/PageHeader'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import DataTable from '../../components/ui/DataTable'
-import Card from '../../components/ui/Card'
 import { getAdminUsers, suspendUser, deleteUser } from '../../features/admin/admin-api'
 import ErrorBanner from '../../components/error-banner'
+import { cn } from '../../utils/cn'
 
 export default function Users() {
   const [users, setUsers] = useState([])
@@ -110,51 +109,52 @@ export default function Users() {
   const columns = [
     {
       key: 'name',
-      label: 'Name',
+      label: 'Customer',
       render: (row) => (
         <Link to={`/admin/users/${row.id}`} className="flex items-center gap-3 group/name hover:opacity-85 transition-opacity">
-          <div className="w-10 h-10 rounded-full bg-primary-50 text-primary-700 font-bold flex items-center justify-center text-sm shrink-0 group-hover/name:bg-primary group-hover/name:text-white transition-colors">
+          <div className="w-8 h-8 rounded-full bg-surface-variant text-on-surface-variant font-label-bold text-xs flex items-center justify-center shrink-0 border border-surface-variant group-hover/name:bg-primary group-hover/name:text-on-primary transition-colors">
             {(row.name || 'U').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
           </div>
-          <span className="font-semibold text-ink group-hover/name:text-primary transition-colors">{row.name}</span>
+          <span className="font-label-bold text-label-bold text-on-surface group-hover/name:text-primary transition-colors">{row.name}</span>
         </Link>
       ),
     },
     {
       key: 'email',
       label: 'Email',
-      render: (row) => <span className="text-ink-muted">{row.email}</span>,
+      render: (row) => <span className="text-on-surface-variant">{row.email}</span>,
     },
     {
       key: 'plan',
       label: 'Plan',
-      render: (row) => {
-        let tone = 'neutral'
-        if (row.plan === 'Brand Domination' || row.plan === 'Enterprise') tone = 'primary'
-        if (row.plan === 'Growth') tone = 'success'
-        if (row.plan === 'Starter') tone = 'warning'
-        return (
-          <Badge tone={tone} className="uppercase tracking-wider text-[10px] font-bold">
-            {row.plan}
-          </Badge>
-        )
-      },
+      render: (row) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-xs font-semibold bg-surface-container-highest text-on-surface border border-surface-variant">
+          {row.plan}
+        </span>
+      ),
     },
     {
       key: 'status',
       label: 'Status',
-      render: (row) => (
-        <Badge tone={row.status === 'Active' ? 'success' : 'danger'}>
-          {row.status}
-        </Badge>
-      ),
+      render: (row) => {
+        const isActive = row.status === 'Active'
+        return (
+          <span className={cn(
+            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
+            isActive ? "bg-primary-fixed text-on-primary-fixed-variant" : "bg-surface-variant text-on-surface-variant"
+          )}>
+            <span className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-primary-container" : "bg-tertiary")}></span>
+            {row.status}
+          </span>
+        )
+      },
     },
     {
       key: 'joinedDate',
-      label: 'Joined Date',
+      label: 'Joined',
       render: (row) => (
-        <span className="text-ink-muted text-sm">
-          {new Date(row.joinedDate).toLocaleDateString('en-NG', { day: 'numeric', month: 'short', year: 'numeric' })}
+        <span className="text-on-surface-variant text-sm">
+          {new Date(row.joinedDate).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
         </span>
       ),
     },
@@ -165,29 +165,29 @@ export default function Users() {
         <div className="relative flex justify-end">
           <button
             onClick={() => toggleActions(row.id)}
-            className="p-1 hover:bg-canvas rounded-full text-ink-muted hover:text-ink cursor-pointer"
+            className="text-on-surface-variant hover:text-on-surface opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full hover:bg-surface-variant cursor-pointer"
           >
             <MoreVertical size={16} />
           </button>
 
           {activeActionsId === row.id && (
-            <div className="absolute right-0 top-8 z-10 w-44 rounded-control border border-border bg-surface shadow-hover py-1 animate-in fade-in duration-100">
+            <div className="absolute right-0 top-8 z-10 w-44 rounded-card border border-surface-variant bg-surface shadow-hover py-1 animate-in fade-in duration-100">
               <Link
                 to={`/admin/users/${row.id}`}
-                className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-canvas flex items-center gap-2"
+                className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2"
               >
                 View Profile
               </Link>
               <button
                 onClick={() => handleSuspend(row.id, row.status)}
-                className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-canvas flex items-center gap-2 cursor-pointer"
+                className="w-full text-left px-4 py-2 text-sm text-on-surface hover:bg-surface-container-low flex items-center gap-2 cursor-pointer"
               >
                 {row.status === 'Suspended' ? 'Re-activate Account' : 'Suspend Account'}
               </button>
-              <div className="border-t border-border/60 my-1" />
+              <div className="border-t border-surface-variant my-1" />
               <button
                 onClick={() => handleDelete(row.id)}
-                className="w-full text-left px-4 py-2 text-sm text-danger hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                className="w-full text-left px-4 py-2 text-sm text-error hover:bg-red-500/10 flex items-center gap-2 cursor-pointer"
               >
                 Delete User
               </button>
@@ -200,20 +200,16 @@ export default function Users() {
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        title="User Management"
-        description="Monitor system registration and update user account statuses."
-      />
-
-      {error && (
-        <ErrorBanner error={error} onDismiss={() => setError(null)} />
-      )}
-
-      {/* Controls Card */}
-      <Card className="p-4 flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col md:flex-row gap-3 w-full md:w-auto items-center">
-          <div className="relative w-full md:w-64">
-            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted">
+      {/* Page Header & Filters */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+        <div>
+          <h2 className="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">User Management</h2>
+          <p className="text-sm text-on-surface-variant">Monitor system registration and update user account statuses.</p>
+        </div>
+        
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative w-full sm:w-64">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant/70">
               <Search size={16} />
             </span>
             <input
@@ -221,56 +217,65 @@ export default function Users() {
               placeholder="Search users..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-control border border-border bg-surface text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
+              className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-surface-variant bg-surface text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-on-surface"
             />
           </div>
 
-          <div className="flex gap-2 w-full md:w-auto">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="rounded-control border border-border bg-surface text-sm text-ink px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-            </select>
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-DEFAULT border border-surface-variant bg-surface text-on-surface font-ui-mono text-xs px-3 py-1.5 hover:border-on-surface focus:outline-none focus:border-on-surface transition-colors cursor-pointer"
+          >
+            <option value="">Status</option>
+            <option value="active">Active</option>
+            <option value="suspended">Suspended</option>
+          </select>
 
-            <select
-              value={planFilter}
-              onChange={(e) => setPlanFilter(e.target.value)}
-              className="rounded-control border border-border bg-surface text-sm text-ink px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">All Plans</option>
-              <option value="free">Free</option>
-              <option value="starter">Starter</option>
-              <option value="growth">Growth</option>
-              <option value="enterprise">Enterprise</option>
-              <option value="brand domination">Brand Domination</option>
-            </select>
-          </div>
+          <select
+            value={planFilter}
+            onChange={(e) => setPlanFilter(e.target.value)}
+            className="rounded-DEFAULT border border-surface-variant bg-surface text-on-surface font-ui-mono text-xs px-3 py-1.5 hover:border-on-surface focus:outline-none focus:border-on-surface transition-colors cursor-pointer"
+          >
+            <option value="">Plan</option>
+            <option value="free">Free</option>
+            <option value="starter">Starter</option>
+            <option value="growth">Growth</option>
+            <option value="enterprise">Enterprise</option>
+            <option value="brand domination">Brand Domination</option>
+          </select>
+
+          <div className="w-px h-6 bg-surface-variant mx-1 hidden sm:block"></div>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="bg-on-surface text-surface font-label-bold text-label-bold py-1.5 px-4 rounded-DEFAULT flex items-center gap-2 hover:bg-tertiary transition-colors"
+          >
+            <Plus size={18} />
+            Add User
+          </button>
         </div>
-      </Card>
+      </div>
+
+      {error && (
+        <ErrorBanner error={error} onDismiss={() => setError(null)} />
+      )}
 
       {/* Main Table */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <RefreshCw className="animate-spin text-primary w-8 h-8" />
-          <p className="text-sm text-ink-muted">Loading user database...</p>
+          <p className="text-sm text-on-surface-variant">Loading user database...</p>
         </div>
       ) : (
         <DataTable
           columns={columns}
           data={filteredUsers}
-          emptyState={
-            <div className="text-center py-12">
-              <p className="text-sm text-ink-muted">No users found matching your filters.</p>
-            </div>
-          }
+          searchKeys={[]}
+          emptyMessage="No users found matching your filters."
         />
       )}
 
-      {/* Add User Modal (Optional Static fallback helper) */}
+      {/* Add User Modal */}
       <Modal open={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} title="Register New User">
         <form onSubmit={handleAddSubmit} className="space-y-4">
           <Input
