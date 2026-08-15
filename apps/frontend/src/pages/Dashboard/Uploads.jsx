@@ -330,9 +330,9 @@ export default function Uploads() {
       case 'uploading':
       case 'processing':
         return (
-          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold text-[10px] uppercase tracking-wider">
+          <Badge tone="neutral" className="text-[10px] font-bold uppercase tracking-wider">
             {status}
-          </span>
+          </Badge>
         )
       default:
         return <Badge tone="neutral">{status}</Badge>
