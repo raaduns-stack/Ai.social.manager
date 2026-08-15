@@ -177,7 +177,7 @@ export default function Channels() {
       default:
         return {
           icon: <Link size={24} />,
-          style: { backgroundColor: '#4F46E5' },
+          style: { backgroundColor: '#FF6600' },
         }
     }
   }

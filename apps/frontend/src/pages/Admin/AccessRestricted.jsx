@@ -17,7 +17,7 @@ export default function AccessRestricted() {
         </p>
         <Link
           to="/admin/dashboard"
-          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] focus:ring-4 focus:ring-[#4F46E5]/50 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg shadow-[#4F46E5]/20"
+          className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-[#FF6600] hover:bg-[#E05300] focus:ring-4 focus:ring-[#FF6600]/50 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg shadow-[#FF6600]/20"
         >
           <ArrowLeft size={16} />
           Back to Dashboard

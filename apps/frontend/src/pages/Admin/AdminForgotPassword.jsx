@@ -85,7 +85,7 @@ export default function AdminForgotPassword() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#4F46E5] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:opacity-95 transition-opacity"
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#FF6600] px-4 py-2 text-sm font-medium text-white disabled:opacity-60 hover:opacity-95 transition-opacity"
             >
               {isSubmitting && <Loader2 size={16} className="animate-spin" />}
               {isSubmitting ? 'Sending...' : 'Send Reset Link'}
@@ -94,7 +94,7 @@ export default function AdminForgotPassword() {
             <div className="pt-2 text-center">
               <Link
                 to="/admin/login"
-                className="inline-flex items-center gap-2 text-xs font-medium text-[#6B7280] hover:text-[#4F46E5] transition-colors"
+                className="inline-flex items-center gap-2 text-xs font-medium text-[#6B7280] hover:text-[#FF6600] transition-colors"
               >
                 <ArrowLeft size={14} />
                 Back to Sign In

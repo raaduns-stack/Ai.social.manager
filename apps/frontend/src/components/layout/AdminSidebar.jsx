@@ -147,7 +147,7 @@ export default function AdminSidebar() {
                   title={collapsed ? label : undefined}
                   className={({ isActive }) =>
                     `flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${isActive
-                      ? "bg-[#4F46E5]/10 text-[#4F46E5] font-medium"
+                      ? "bg-[#FF6600]/10 text-[#FF6600] font-medium"
                       : "text-[#111827] hover:bg-[#F9FAFB]"
                     } ${collapsed ? "justify-center" : ""}`
                   }

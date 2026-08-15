@@ -80,7 +80,7 @@ export default function AdminNavbar() {
             onClick={() => setProfileOpen((o) => !o)}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-[#F9FAFB]"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#4F46E5] text-xs font-medium text-white">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#FF6600] text-xs font-medium text-white">
               {initials}
             </span>
             <span className="hidden sm:block text-sm text-[#111827]">

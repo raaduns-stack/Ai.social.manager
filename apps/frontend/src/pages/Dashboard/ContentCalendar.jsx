@@ -840,7 +840,7 @@ function PostDetailModal({ post, onClose, onUpdated }) {
             variant="primary"
             size="sm"
             onClick={() => setShowSuggestions(true)}
-            className="gap-1.5 bg-gradient-to-r from-primary-600 to-indigo-600 border-none shadow-soft text-white hover:from-primary-700 hover:to-indigo-700 text-xs font-semibold"
+            className="gap-1.5 bg-gradient-to-r from-primary-600 to-primary-500 border-none shadow-soft text-white hover:from-primary-700 hover:to-primary-600 text-xs font-semibold"
           >
             <Sparkles size={12} />
             <span>AI Suggestions</span>

@@ -1477,7 +1477,7 @@ export default function Settings() {
     if (checkingChannels) {
       return (
         <Card className="p-6 flex justify-center items-center h-48">
-          <div className="w-8 h-8 border-4 border-[#4F46E5] border-t-transparent rounded-full animate-spin"></div>
+          <div className="w-8 h-8 border-4 border-[#FF6600] border-t-transparent rounded-full animate-spin"></div>
         </Card>
       );
     }
@@ -1494,7 +1494,7 @@ export default function Settings() {
           </p>
           <Link
             to="/admin/social-accounts"
-            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-[#4F46E5] hover:bg-[#4338CA] focus:ring-4 focus:ring-[#4F46E5]/50 rounded-lg transition-colors shadow-md hover:shadow-lg"
+            className="inline-flex items-center justify-center px-5 py-2.5 text-sm font-semibold text-white bg-[#FF6600] hover:bg-[#E05300] focus:ring-4 focus:ring-[#FF6600]/50 rounded-lg transition-colors shadow-md hover:shadow-lg"
           >
             Connect Social Channels
           </Link>
