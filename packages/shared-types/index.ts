@@ -219,3 +219,27 @@ export interface CustomerCompanyProfile {
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
 }
+
+export type ScheduledPostStatus = 'SCHEDULED' | 'PROCESSING' | 'PUBLISHED' | 'FAILED' | 'CANCELLED';
+
+export interface ScheduledPost {
+  scheduledPostId: string;
+  calendarPostId: string;
+  variationId: string;
+  socialAccountId: string;
+  platform: string;
+  content: string;
+  mediaUrl: string | null;
+  scheduledAt: string;
+  status: ScheduledPostStatus;
+  idempotencyKey: string | null;
+}
+
+export interface PublishingLogEntry {
+  scheduledPostId: string;
+  status: 'PUBLISHED' | 'FAILED';
+  externalPostId: string | null;
+  error: string | null;
+  attemptedAt: string;
+}
+
