@@ -36,14 +36,14 @@ export default function TicketThread({ ticket, onReply }) {
             key={i}
             className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
               m.from === "admin"
-                ? "ml-auto bg-[#4F46E5] text-white"
+                ? "ml-auto bg-[#FF6600] text-white"
                 : "bg-[#F9FAFB] text-[#111827]"
             }`}
           >
             <p>{m.text}</p>
             <p
               className={`mt-1 text-xs ${
-                m.from === "admin" ? "text-indigo-100" : "text-[#6B7280]"
+                m.from === "admin" ? "text-white/80" : "text-[#6B7280]"
               }`}
             >
               {m.at}
@@ -62,7 +62,7 @@ export default function TicketThread({ ticket, onReply }) {
         />
         <button
           onClick={handleSend}
-          className="rounded-lg bg-[#4F46E5] p-2 text-white"
+          className="rounded-lg bg-[#FF6600] p-2 text-white"
         >
           <Send size={16} />
         </button>

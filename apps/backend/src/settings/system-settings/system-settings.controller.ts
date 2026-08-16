@@ -3,28 +3,28 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SystemSettingsService } from './system-settings.service';
 import { UpdateSystemSettingsDto } from './dto/update-system-settings.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 
 @ApiTags('settings/system')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/settings/system')
 export class SystemSettingsController {
   constructor(private readonly systemSettingsService: SystemSettingsService) {}
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Get system settings' })
   getSystemSettings() {
     return this.systemSettingsService.getSystemSettings();
   }
 
   @Patch()
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Update system settings' })
   updateSystemSettings(@Body() dto: UpdateSystemSettingsDto) {
     return this.systemSettingsService.updateSystemSettings(dto);
   }
 }
+

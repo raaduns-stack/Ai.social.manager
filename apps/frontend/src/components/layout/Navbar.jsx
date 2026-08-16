@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Search, ChevronDown, LogOut } from 'lucide-react'
+import { Bell, Search, ChevronDown, LogOut, Menu, Bolt } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import Avatar from '../ui/Avatar'
 
@@ -8,13 +8,14 @@ import Avatar from '../ui/Avatar'
  * Top navbar shown inside the dashboard shell.
  * Fetches user info from AuthContext and supports logout dropdown.
  */
-export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount = 0 }) {
+export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount = 0, onMenuClick }) {
   const { user: authUser, logout } = useAuth()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
 
   const currentUser = authUser || user
   const displayName = currentUser?.fullName || currentUser?.name || 'User'
+  const fallbackAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCgbu9QpWm4wQglUF3LIrDjmn1K83rcrFdD5RAiNPgHcHWuinsZHaPvps1q-NaZ8HzC0lpkNvPXGFRrCSQ0XWyhe0u_wLRdJEWSTDNxCnxG0sMQH-OphJlI2TzTqfgCOaowg7JdkqvKgEjGTFgz2r_9VCScr6dNGVGoGRVaCO_UAth5YCEPvJKswnv4pA5Fmz0iipAIL5vsE48m2rafEIwwIyK7cU2aay4Afy1lOd0dqDcsKenwrk0XNQ'
 
   const handleLogout = () => {
     logout()
@@ -22,41 +23,64 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
   }
 
   return (
-    <header className="flex h-16 items-center justify-between border-b border-border bg-surface px-6">
-      <div className="flex items-center gap-2 rounded-control border border-border px-3 py-1.5 text-sm text-ink-muted w-72">
-        <Search size={16} />
-        <input
-          type="text"
-          placeholder="Search..."
-          className="w-full bg-transparent outline-none placeholder:text-ink-muted"
-        />
+    <header className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 sticky top-0 z-20 shrink-0">
+      <div className="flex items-center gap-4">
+        {/* Mobile Menu Trigger (Visible only on mobile) */}
+        <button 
+          onClick={onMenuClick}
+          className="md:hidden text-[#111111] hover:text-[#FF6600] transition-colors p-1"
+          aria-label="Toggle Menu"
+        >
+          <Menu size={22} />
+        </button>
+
+        {/* Search Field (Hidden on very small mobile if desired, styled rounded-full) */}
+        <div className="relative hidden sm:flex items-center gap-2 border border-gray-200 bg-gray-50 rounded-full px-3.5 py-1.5 text-sm text-[#666666] w-64 focus-within:border-[#111111] transition-colors">
+          <Search size={16} className="text-[#999999]" />
+          <input
+            type="text"
+            placeholder="Search insights, posts..."
+            className="w-full bg-transparent outline-none placeholder:text-[#999999] text-[#111111]"
+          />
+        </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
+        {/* Notifications */}
         <Link
           to="/dashboard/notifications"
           aria-label="Notifications"
-          className="relative rounded-control p-2 text-ink-muted hover:bg-canvas hover:text-ink"
+          className="relative w-10 h-10 rounded-full flex items-center justify-center text-[#666666] hover:text-[#FF6600] hover:bg-gray-50 transition-colors"
         >
           <Bell size={20} />
-          {notificationCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-danger text-[10px] font-semibold text-white">
-              {notificationCount}
-            </span>
+          {(notificationCount > 0 || true) && (
+            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#FF6600] rounded-full"></span>
           )}
         </Link>
 
+        {/* Quick Bolt Action */}
+        <button 
+          className="w-10 h-10 rounded-full flex items-center justify-center text-[#666666] hover:text-[#FF6600] hover:bg-gray-50 transition-colors"
+          aria-label="Quick Actions"
+        >
+          <Bolt size={20} />
+        </button>
+
         {/* Profile Dropdown */}
-        <div className="relative">
+        <div className="relative ml-2">
           <button
             onClick={() => setProfileOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-canvas transition-colors"
+            className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-gray-50 transition-colors"
           >
-            <Avatar name={displayName} />
-            <span className="hidden sm:block text-sm text-ink font-medium">
+            <Avatar 
+              name={displayName} 
+              src={currentUser?.avatarUrl || fallbackAvatar} 
+              size={32}
+            />
+            <span className="hidden sm:block text-sm text-[#111111] font-semibold">
               {displayName}
             </span>
-            <ChevronDown size={14} className="text-ink-muted" />
+            <ChevronDown size={14} className="text-[#999999]" />
           </button>
 
           {profileOpen && (
@@ -66,16 +90,16 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
                 className="fixed inset-0 z-40 cursor-default"
                 onClick={() => setProfileOpen(false)}
               />
-              <div className="absolute right-0 mt-2 w-48 rounded-card border border-border bg-surface shadow-hover z-50">
-                <div className="px-4 py-3 text-sm border-b border-border">
-                  <p className="font-semibold text-ink truncate">{displayName}</p>
+              <div className="absolute right-0 mt-2 w-48 rounded-lg border border-gray-200 bg-white shadow-lg z-50">
+                <div className="px-4 py-3 text-sm border-b border-gray-100">
+                  <p className="font-bold text-[#111111] truncate">{displayName}</p>
                   {currentUser?.email && (
-                    <p className="text-xs text-ink-muted truncate mt-0.5">{currentUser.email}</p>
+                    <p className="text-xs text-[#666666] truncate mt-0.5">{currentUser.email}</p>
                   )}
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-danger hover:bg-canvas rounded-b-card transition-colors z-50"
+                  className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-danger hover:bg-gray-50 rounded-b-lg transition-colors z-50"
                 >
                   <LogOut size={14} />
                   Logout

@@ -44,15 +44,23 @@ export class DashboardService {
       .from(schema.subscriptions)
       .where(eq(schema.subscriptions.status, 'expired'));
     
-    // 5. Total AI Suggestions
-const [suggestionsRes] = await this.db
-  .select({ val: count() })
-  .from(schema.contentSuggestions);
+    // 5. Total AI Suggestions (graceful fallback if table not yet migrated)
+    let suggestionsRes: { val: number } | undefined;
+    try {
+      const [res] = await this.db.select({ val: count() }).from(schema.contentSuggestions);
+      suggestionsRes = res;
+    } catch {
+      suggestionsRes = { val: 0 };
+    }
 
-// 6. Total Feedback
-const [feedbackRes] = await this.db
-  .select({ val: count() })
-  .from(schema.contentFeedback);
+    // 6. Total Feedback (graceful fallback if table not yet migrated)
+    let feedbackRes: { val: number } | undefined;
+    try {
+      const [res] = await this.db.select({ val: count() }).from(schema.contentFeedback);
+      feedbackRes = res;
+    } catch {
+      feedbackRes = { val: 0 };
+    }
 
     // 7. Revenue This Period (sum of successful payments converted from kobo to naira)
     const [revenueRes] = await this.db

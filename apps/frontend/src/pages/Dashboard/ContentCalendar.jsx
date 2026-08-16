@@ -53,6 +53,8 @@ import {
   regeneratePostSuggestions,
   saveSuggestionFeedback,
 } from '../../features/dashboard/dashboard-api'
+import KycOverlay from '../../features/kyc/KycOverlay'
+import { getMyKyc } from '../../features/kyc/kyc-api'
 
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
@@ -187,15 +189,15 @@ function MonthView({ posts, currentDate, onPostClick }) {
   const todayStr = new Date().toISOString().split('T')[0]
 
   return (
-    <div>
+    <div className="border border-border rounded-card overflow-hidden">
       {/* Day-of-week headers */}
-      <div className="grid grid-cols-7 border-b border-canvas mb-1">
+      <div className="grid grid-cols-7 bg-surface-container-low border-b border-border">
         {dayNames.map(d => (
-          <div key={d} className="py-2 text-center text-xs font-medium text-ink-muted">{d}</div>
+          <div key={d} className="py-3 text-center text-xs font-bold uppercase tracking-wider text-ink border-r border-border/60 last:border-r-0">{d}</div>
         ))}
       </div>
       {/* Cells */}
-      <div className="grid grid-cols-7 gap-px bg-canvas">
+      <div className="grid grid-cols-7 gap-px bg-border">
         {cells.map((_, idx) => {
           const dayNum = idx - startPad + 1
           const isValid = dayNum >= 1 && dayNum <= lastDay.getDate()
@@ -208,30 +210,34 @@ function MonthView({ posts, currentDate, onPostClick }) {
           return (
             <div
               key={idx}
-              className={`min-h-[100px] bg-surface p-1 ${!isValid ? 'opacity-30' : ''}`}
+              className={`min-h-[110px] bg-surface p-2 flex flex-col justify-between transition-colors hover:bg-primary/5 ${!isValid ? 'opacity-25 bg-canvas/30' : ''}`}
             >
               {isValid && (
                 <>
-                  <div className={`text-xs font-medium mb-1 w-6 h-6 flex items-center justify-center rounded-full
-                    ${isToday ? 'bg-primary-600 text-white' : 'text-ink-muted'}`}>
-                    {dayNum}
+                  <div className="flex justify-between items-start">
+                    <div className={`text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full
+                      ${isToday ? 'bg-primary text-white font-extrabold shadow-soft' : 'text-ink-muted'}`}>
+                      {dayNum}
+                    </div>
+                    {dayPosts.length > 0 && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                    )}
                   </div>
-                  <div className="space-y-0.5">
+                  <div className="space-y-1 mt-2 flex-grow">
                     {dayPosts.slice(0, 3).map(p => {
                       const { colour } = getPlatformMeta(p.platform)
                       return (
                         <button
                           key={p.id}
                           onClick={() => onPostClick(p)}
-                          className={`w-full text-left text-[10px] rounded px-1 py-0.5 truncate
-                            bg-primary-50 text-primary-700 hover:bg-primary-100 transition-colors`}
+                          className="w-full text-left text-[10px] rounded px-1.5 py-0.5 truncate bg-primary-50 text-primary-700 hover:bg-primary-100 font-medium transition-colors border border-primary-100/50 block"
                         >
                           {p.title}
                         </button>
                       )
                     })}
                     {dayPosts.length > 3 && (
-                      <span className="text-[10px] text-ink-muted pl-1">+{dayPosts.length - 3} more</span>
+                      <span className="text-[9px] font-semibold text-primary pl-1">+{dayPosts.length - 3} more</span>
                     )}
                   </div>
                 </>
@@ -838,7 +844,7 @@ function PostDetailModal({ post, onClose, onUpdated }) {
             variant="primary"
             size="sm"
             onClick={() => setShowSuggestions(true)}
-            className="gap-1.5 bg-gradient-to-r from-primary-600 to-indigo-600 border-none shadow-soft text-white hover:from-primary-700 hover:to-indigo-700 text-xs font-semibold"
+            className="gap-1.5 bg-gradient-to-r from-primary-600 to-primary-500 border-none shadow-soft text-white hover:from-primary-700 hover:to-primary-600 text-xs font-semibold"
           >
             <Sparkles size={12} />
             <span>AI Suggestions</span>
@@ -870,6 +876,8 @@ export default function ContentCalendar() {
   const [publishedPosts, setPublishedPosts] = useState([])
 
   const [loading, setLoading] = useState(false)
+  const [kycLoading, setKycLoading] = useState(true)
+  const [kycRecord, setKycRecord] = useState(null)
   const [error, setError]     = useState(null)
 
   // ── Fetch logic ────────────────────────────────────────────────────────────
@@ -883,20 +891,23 @@ export default function ContentCalendar() {
     setLoading(true)
     setError(null)
     try {
-      const [all, upcoming, published] = await Promise.all([
+      const [all, upcoming, published, kyc] = await Promise.all([
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
+        getMyKyc()
       ])
       setAllPosts(all)
       setUpcomingPosts(upcoming)
       setPublishedPosts(published)
+      setKycRecord(kyc)
     } catch (err) {
       // Show a friendly error message
       const msg = err?.message || 'Failed to load calendar posts. Please try again.'
       setError(msg)
     } finally {
       setLoading(false)
+      setKycLoading(false)
     }
   }, [userId])
 
@@ -964,14 +975,24 @@ export default function ContentCalendar() {
     )
   }
 
-  return (
-    <div className="p-6">
-      <PageHeader
-        title="Content Calendar"
-        subtitle="Plan, schedule, and track your social media content."
-      />
+  const kycBlocked = !kycLoading && kycRecord?.status !== 'approved'
 
-      {/* ── Tab bar ── */}
+  return (
+    <div className="relative p-6">
+      {kycBlocked && (
+        <KycOverlay kycRecord={kycRecord} onRefresh={fetchAll} />
+      )}
+      
+      <div 
+        className={kycBlocked ? 'opacity-40 pointer-events-none select-none' : ''}
+        aria-hidden={kycBlocked}
+      >
+        <PageHeader
+          title="Content Calendar"
+          subtitle="Plan, schedule, and track your social media content."
+        />
+
+        {/* ── Tab bar ── */}
       <div className="flex gap-1 mb-6 border-b border-canvas">
         {TABS.map(tab => (
           <button
@@ -995,66 +1016,111 @@ export default function ContentCalendar() {
 
       {/* ── Calendar / List view selector ── */}
       {activeTab === 'all' && (
-        <Card className="mb-6">
-          {/* View switcher + navigation */}
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
-            {/* Month / Week / Day buttons */}
-            <div className="flex rounded-lg border border-canvas overflow-hidden">
-              {VIEWS.map(v => (
-                <button
-                  key={v}
-                  onClick={() => setActiveView(v)}
-                  className={`px-3 py-1.5 text-sm font-medium transition-colors ${
-                    activeView === v
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-surface text-ink-muted hover:bg-canvas'
-                  }`}
-                >
-                  {v}
+        <div className="grid grid-cols-12 gap-6 mb-6">
+          {/* Main Calendar Card */}
+          <Card className="col-span-12 lg:col-span-9 p-6">
+            {/* View switcher + navigation */}
+            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+              {/* Month / Week / Day buttons */}
+              <div className="flex rounded-lg border border-border overflow-hidden bg-canvas p-1 shadow-soft">
+                {VIEWS.map(v => (
+                  <button
+                    key={v}
+                    onClick={() => setActiveView(v)}
+                    className={`px-4 py-1.5 text-xs font-bold rounded-control transition-all ${
+                      activeView === v
+                        ? 'bg-surface text-primary shadow-soft'
+                        : 'text-ink-muted hover:text-ink'
+                    }`}
+                  >
+                    {v}
+                  </button>
+                ))}
+              </div>
+
+              {/* Navigation arrows + label */}
+              <div className="flex items-center gap-2">
+                <button onClick={navigatePrev} className="p-1.5 rounded-control border border-border hover:bg-canvas text-ink-muted hover:text-ink transition-colors">
+                  <ChevronLeft size={16} />
                 </button>
-              ))}
+                <span className="text-sm font-bold text-ink min-w-[180px] text-center font-headline-lg">{calendarLabel}</span>
+                <button onClick={navigateNext} className="p-1.5 rounded-control border border-border hover:bg-canvas text-ink-muted hover:text-ink transition-colors">
+                  <ChevronRight size={16} />
+                </button>
+                <button onClick={() => setCurrentDate(new Date())} className="text-xs font-semibold text-primary hover:underline ml-2">
+                  Today
+                </button>
+              </div>
             </div>
 
-            {/* Navigation arrows + label */}
-            <div className="flex items-center gap-2">
-              <button onClick={navigatePrev} className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink">
-                <ChevronLeft size={18} />
-              </button>
-              <span className="text-sm font-semibold text-ink min-w-[180px] text-center">{calendarLabel}</span>
-              <button onClick={navigateNext} className="p-1 rounded hover:bg-canvas text-ink-muted hover:text-ink">
-                <ChevronRight size={18} />
-              </button>
-              <button onClick={() => setCurrentDate(new Date())} className="text-xs text-primary-600 hover:underline ml-2">
-                Today
-              </button>
-            </div>
+            {/* Loading skeleton */}
+            {loading ? (
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : activePosts.length === 0 ? (
+              <div className="text-center py-16 text-ink-muted">
+                <CalendarDays className="mx-auto mb-3 opacity-30 text-primary" size={40} />
+                <p className="font-bold text-ink">No scheduled posts</p>
+                <p className="text-xs mt-1 text-ink-muted">Select an AI draft or create a post to get started.</p>
+              </div>
+            ) : (
+              <>
+                {activeView === 'Month' && (
+                  <MonthView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
+                )}
+                {activeView === 'Week' && (
+                  <WeekView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
+                )}
+                {activeView === 'Day' && (
+                  <DayView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
+                )}
+              </>
+            )}
+          </Card>
+
+          {/* Sidebar Recommendations Drafts List */}
+          <div className="col-span-12 lg:col-span-3 space-y-4">
+            <Card className="p-4 border border-primary/20 bg-gradient-to-br from-surface to-primary/5 flex flex-col gap-2">
+              <div className="flex items-center gap-1.5">
+                <Sparkles size={16} className="text-primary animate-pulse" />
+                <h4 className="text-xs font-bold text-ink uppercase tracking-wider">AI Draft Suggestions</h4>
+              </div>
+              <p className="text-[11px] text-ink-muted leading-relaxed">
+                Click to schedule or drag these AI-crafted templates directly into your calendar.
+              </p>
+            </Card>
+
+            {[
+              { title: 'SaaS Automation Roadmap', platform: 'LinkedIn', category: 'Educational', length: '5 Steps' },
+              { title: 'Behind the Scenes: Product Sprint', platform: 'Instagram', category: 'Reel Draft', length: '15s video' },
+              { title: 'Why Quality Beats Velocity', platform: 'X / Twitter', category: 'Growth Hook', length: 'Short form' },
+              { title: 'Customer Onboarding Checklists', platform: 'LinkedIn', category: 'Case Study', length: 'Text post' }
+            ].map((draft, idx) => {
+              const meta = getPlatformMeta(draft.platform)
+              return (
+                <Card
+                  key={idx}
+                  className="p-4 border border-border bg-surface hover:border-primary-200 transition-all shadow-soft cursor-grab active:cursor-grabbing hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-[9px] bg-primary-50 text-primary border border-primary-100/50 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      {draft.category}
+                    </span>
+                    <span className="text-[10px] text-ink-muted">{draft.length}</span>
+                  </div>
+                  <h5 className="text-xs font-bold text-ink leading-snug line-clamp-2">{draft.title}</h5>
+                  <div className="flex items-center gap-1.5 mt-3 text-[10px] text-ink-muted pt-2 border-t border-border/40">
+                    <span className="flex items-center gap-1">
+                      {meta.icon}
+                      <span className="font-semibold">{draft.platform}</span>
+                    </span>
+                  </div>
+                </Card>
+              )
+            })}
           </div>
-
-          {/* Loading skeleton */}
-          {loading ? (
-            <div className="grid grid-cols-7 gap-2">
-              {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
-            </div>
-          ) : activePosts.length === 0 ? (
-            <div className="text-center py-16 text-ink-muted">
-              <CalendarDays className="mx-auto mb-3 opacity-30" size={40} />
-              <p className="font-medium">No posts yet</p>
-              <p className="text-sm mt-1">Schedule your first post to see it here.</p>
-            </div>
-          ) : (
-            <>
-              {activeView === 'Month' && (
-                <MonthView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
-              )}
-              {activeView === 'Week' && (
-                <WeekView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
-              )}
-              {activeView === 'Day' && (
-                <DayView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
-              )}
-            </>
-          )}
-        </Card>
+        </div>
       )}
 
       {/* ── Upcoming / Published list view ── */}
@@ -1102,6 +1168,7 @@ export default function ContentCalendar() {
           setSelectedPost(updatedPost)
         }}
       />
+      </div>
     </div>
   )
 }

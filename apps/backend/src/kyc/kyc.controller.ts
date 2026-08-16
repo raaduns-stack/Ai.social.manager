@@ -43,6 +43,8 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { ALL_ADMIN_ROLES } from '../common/enums/roles.enum';
+import { PermissionsGuard } from '../auth/guards/permissions.guard';
+import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 
 import { KycService } from './kyc.service';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
@@ -171,8 +173,7 @@ export class KycController {
 // ---------------------------------------------------------------------------
 @ApiTags('admin-kyc')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(...ALL_ADMIN_ROLES)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/kyc')
 export class AdminKycController {
   constructor(private readonly kycService: KycService) {}
@@ -182,6 +183,7 @@ export class AdminKycController {
    * Returns all KYC submissions with the associated user's name and email.
    */
   @Get()
+  @RequirePermission('user_management', 'view')
   @ApiOperation({ summary: 'Admin: list all KYC submissions' })
   getAll() {
     return this.kycService.adminGetAll();
@@ -192,6 +194,7 @@ export class AdminKycController {
    * Returns a single KYC submission with full details for review.
    */
   @Get(':id')
+  @RequirePermission('user_management', 'view')
   @ApiOperation({ summary: 'Admin: get a single KYC submission by ID' })
   getOne(@Param('id') id: string) {
     return this.kycService.adminGetOne(id);
@@ -203,6 +206,7 @@ export class AdminKycController {
    * Body: { status: 'approved' | 'rejected', rejectionReason?: string }
    */
   @Patch(':id/review')
+  @RequirePermission('user_management', 'approve')
   @ApiOperation({ summary: 'Admin: approve or reject a KYC submission' })
   review(
     @Param('id') id: string,
@@ -221,6 +225,7 @@ export class AdminKycController {
    * sensitive business documents from leaking.
    */
   @Get(':id/document/:docType')
+  @RequirePermission('user_management', 'view')
   @ApiOperation({ summary: 'Admin: download a KYC document by type' })
   async downloadDocument(
     @Param('id') id: string,

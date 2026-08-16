@@ -3,26 +3,25 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { SocialApiSettingsService } from './social-api-settings.service';
 import { UpdateSocialApiSettingDto } from './dto/update-social-api-setting.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 
 @ApiTags('settings/social-api')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/settings/social-api')
 export class SocialApiSettingsController {
   constructor(private readonly socialApiSettingsService: SocialApiSettingsService) {}
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Get all social API settings' })
   getSocialApiSettings() {
     return this.socialApiSettingsService.getSocialApiSettings();
   }
 
   @Patch(':platform')
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Update a specific social API setting' })
   updateSocialApiSetting(
     @Param('platform') platform: string,
@@ -31,3 +30,4 @@ export class SocialApiSettingsController {
     return this.socialApiSettingsService.updateSocialApiSetting(platform, dto);
   }
 }
+

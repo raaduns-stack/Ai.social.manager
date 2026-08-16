@@ -1,14 +1,10 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff, ArrowRight, Terminal } from 'lucide-react'
-import Input from '../../components/ui/Input'
+import { useNavigate, Link } from 'react-router-dom'
+import { Eye, EyeOff, Mail, Lock, User, Building2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useAuth } from '../../context/useAuth'
 import ErrorBanner from '../../components/error-banner'
 
-/**
- * SignUp page component converted from Stitch-generated HTML design.
- */
 export default function SignUp() {
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -86,13 +82,9 @@ export default function SignUp() {
   return (
     <div className="w-full space-y-8">
       {/* Header */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight text-ink text-left">
-          Create your account
-        </h1>
-        <p className="text-sm text-ink-muted text-left">
-          Join 2,000+ marketing teams using AI to drive growth.
-        </p>
+      <div className="text-left space-y-2">
+        <h2 className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#111111] tracking-tight">Create Account</h2>
+        <p className="text-sm text-[#666666]">Join 2,000+ marketing teams using AI to grow.</p>
       </div>
 
       {apiError && (
@@ -100,65 +92,110 @@ export default function SignUp() {
       )}
 
       {/* Form */}
-      <form className="space-y-6" onSubmit={handleSubmit}>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="Full Name"
-            id="full_name"
-            name="fullName"
-            type="text"
-            placeholder="John Doe"
-            required
-            value={formData.fullName}
-            onChange={handleChange}
-            error={errors.fullName}
-          />
-          <Input
-            label="Company Name"
-            id="company_name"
-            name="companyName"
-            type="text"
-            placeholder="Acme Inc."
-            required
-            value={formData.companyName}
-            onChange={handleChange}
-            error={errors.companyName}
-          />
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Full Name */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-[#111111]" htmlFor="fullName">
+              Full Name
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#999999]">
+                <User size={18} />
+              </div>
+              <input
+                className={`block w-full pl-10 pr-3 py-3 border rounded-control bg-white text-[#111111] placeholder-[#999999] focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] transition-colors text-sm ${
+                  errors.fullName ? 'border-danger' : 'border-gray-200'
+                }`}
+                id="fullName"
+                name="fullName"
+                placeholder="John Doe"
+                required
+                type="text"
+                value={formData.fullName}
+                onChange={handleChange}
+              />
+            </div>
+            {errors.fullName && <p className="text-xs text-danger">{errors.fullName}</p>}
+          </div>
+
+          {/* Company Name */}
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-[#111111]" htmlFor="companyName">
+              Company Name
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#999999]">
+                <Building2 size={18} />
+              </div>
+              <input
+                className={`block w-full pl-10 pr-3 py-3 border rounded-control bg-white text-[#111111] placeholder-[#999999] focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] transition-colors text-sm ${
+                  errors.companyName ? 'border-danger' : 'border-gray-200'
+                }`}
+                id="companyName"
+                name="companyName"
+                placeholder="Acme Inc."
+                required
+                type="text"
+                value={formData.companyName}
+                onChange={handleChange}
+              />
+            </div>
+            {errors.companyName && <p className="text-xs text-danger">{errors.companyName}</p>}
+          </div>
         </div>
 
-        <Input
-          label="Email Address"
-          id="email"
-          name="email"
-          type="email"
-          placeholder="john@example.com"
-          required
-          value={formData.email}
-          onChange={handleChange}
-          error={errors.email}
-        />
+        {/* Email */}
+        <div className="space-y-1.5">
+          <label className="block text-sm font-semibold text-[#111111]" htmlFor="email">
+            Email address
+          </label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#999999]">
+              <Mail size={18} />
+            </div>
+            <input
+              className={`block w-full pl-10 pr-3 py-3 border rounded-control bg-white text-[#111111] placeholder-[#999999] focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] transition-colors text-sm ${
+                errors.email ? 'border-danger' : 'border-gray-200'
+              }`}
+              id="email"
+              name="email"
+              placeholder="john@example.com"
+              required
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </div>
+          {errors.email && <p className="text-xs text-danger">{errors.email}</p>}
+        </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Password */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="password" className="text-sm font-medium text-ink">
+        {/* Passwords */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-[#111111]" htmlFor="password">
               Password
             </label>
             <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#999999]">
+                <Lock size={18} />
+              </div>
               <input
+                className={`block w-full pl-10 pr-10 py-3 border rounded-control bg-white text-[#111111] placeholder-[#999999] focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] transition-colors text-sm ${
+                  errors.password ? 'border-danger' : 'border-gray-200'
+                }`}
                 id="password"
                 name="password"
-                type={showPassword ? 'text' : 'password'}
                 placeholder="••••••••"
-                className="w-full h-10 rounded-control border border-border bg-surface pl-3 pr-10 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 required
+                type={showPassword ? 'text' : 'password'}
                 value={formData.password}
                 onChange={handleChange}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-muted hover:text-primary-600 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#999999] hover:text-[#111111] transition-colors"
               >
                 {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
@@ -166,18 +203,19 @@ export default function SignUp() {
             {errors.password && <p className="text-xs text-danger">{errors.password}</p>}
           </div>
 
-          {/* Confirm Password */}
-          <div className="flex flex-col gap-1.5">
-            <label htmlFor="confirm_password" className="text-sm font-medium text-ink">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-semibold text-[#111111]" htmlFor="confirmPassword">
               Confirm Password
             </label>
             <input
-              id="confirm_password"
+              className={`block w-full px-3 py-3 border border-gray-200 rounded-control bg-white text-[#111111] placeholder-[#999999] focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] transition-colors text-sm ${
+                errors.confirmPassword ? 'border-danger' : 'border-gray-200'
+              }`}
+              id="confirmPassword"
               name="confirmPassword"
-              type="password"
               placeholder="••••••••"
-              className="w-full h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               required
+              type="password"
               value={formData.confirmPassword}
               onChange={handleChange}
             />
@@ -187,32 +225,32 @@ export default function SignUp() {
           </div>
         </div>
 
-        {/* Terms & Conditions */}
-        <div className="space-y-1.5">
+        {/* Terms and Conditions */}
+        <div className="space-y-1.5 text-left">
           <div className="flex items-start gap-2">
             <input
               id="terms"
               name="agreeToTerms"
               type="checkbox"
-              className="mt-1 rounded border-border text-primary-600 focus:ring-primary-500 h-4 w-4"
+              className="mt-1 rounded border-gray-300 text-[#FF6600] focus:ring-[#FF6600] h-4 w-4"
               checked={formData.agreeToTerms}
               onChange={handleChange}
               required
             />
-            <label htmlFor="terms" className="text-xs text-ink-muted leading-tight text-left">
+            <label htmlFor="terms" className="text-xs text-[#666666] leading-tight select-none">
               By creating an account, I agree to the{' '}
-              <a href="#" className="text-primary-600 hover:underline">
+              <a href="#" className="text-[#111111] font-semibold hover:text-[#FF6600] transition-colors">
                 Terms of Service
               </a>{' '}
               and{' '}
-              <a href="#" className="text-primary-600 hover:underline">
+              <a href="#" className="text-[#111111] font-semibold hover:text-[#FF6600] transition-colors">
                 Privacy Policy
               </a>
               .
             </label>
           </div>
           {errors.agreeToTerms && (
-            <p className="text-xs text-danger text-left">{errors.agreeToTerms}</p>
+            <p className="text-xs text-danger">{errors.agreeToTerms}</p>
           )}
         </div>
 
@@ -221,28 +259,22 @@ export default function SignUp() {
           type="submit"
           variant="primary"
           size="lg"
-          className="w-full font-bold shadow-soft flex items-center justify-center gap-2 cursor-pointer"
+          className="w-full flex justify-center py-3 font-semibold text-white transition-opacity hover:opacity-95 mt-2"
           disabled={loading}
         >
           {loading ? 'Creating Account...' : 'Create Account'}
-          <ArrowRight size={18} />
         </Button>
+
+        {/* Secondary Action */}
+        <div className="text-center pt-2">
+          <p className="text-sm text-[#666666]">
+            Already have an account?{' '}
+            <Link className="font-semibold text-[#111111] hover:text-[#FF6600] transition-colors underline decoration-gray-200 hover:decoration-[#FF6600] underline-offset-4" to="/login">
+              Log in
+            </Link>
+          </p>
+        </div>
       </form>
-
-      {/* Footer Link */}
-      <footer className="text-center pt-2">
-        <p className="text-sm text-ink-muted">
-          Already have an account?{' '}
-          <a className="text-primary-600 font-bold hover:underline" href="/login">
-            Log in
-          </a>
-        </p>
-      </footer>
-
-      {/* Bottom Copyright */}
-      <div className="text-center text-xs text-ink-muted/60 pt-4 border-t border-border/60">
-        <span>© 2026 SocialPulse AI</span>
-      </div>
     </div>
   )
 }

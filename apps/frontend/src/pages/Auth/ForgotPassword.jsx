@@ -1,11 +1,8 @@
 import { useState } from 'react'
-import { ArrowLeft } from 'lucide-react'
-import Input from '../../components/ui/Input'
+import { Link } from 'react-router-dom'
+import { ArrowLeft, Mail } from 'lucide-react'
 import Button from '../../components/ui/Button'
 
-/**
- * ForgotPassword page component converted from Stitch-generated HTML design.
- */
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
   const [error, setError] = useState('')
@@ -27,78 +24,84 @@ export default function ForgotPassword() {
     }
 
     console.log('Reset password request for:', email)
-    // Perform password reset API call here
     setSuccess(true)
   }
 
   return (
     <div className="w-full space-y-8">
       {/* Header */}
-      <div className="space-y-2 text-left">
-        <h1 className="text-3xl font-bold tracking-tight text-ink">
-          Reset your password
-        </h1>
-        <p className="text-sm text-ink-muted">
+      <div className="text-left space-y-2">
+        <h2 className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#111111] tracking-tight">
+          Reset password
+        </h2>
+        <p className="text-sm text-[#666666]">
           Enter your email address and we'll send you a link to reset your password.
         </p>
       </div>
 
       {success ? (
         <div className="space-y-6">
-          <div className="p-4 bg-accent-50 text-accent-600 rounded-control text-sm border border-accent-100">
+          <div className="p-4 bg-[#FFF5F0] text-[#FF6600] rounded-control text-sm border border-[#FFEBE0]">
             A password reset link has been sent to <strong className="font-semibold">{email}</strong>. Please check your inbox.
           </div>
           <Button
-            type="button"
+            as={Link}
+            to="/login"
             variant="outline"
-            as="a"
-            href="/login"
-            className="w-full font-bold flex items-center justify-center gap-2 bg-surface hover:bg-canvas"
+            className="w-full font-semibold flex items-center justify-center gap-2 border-gray-300 text-[#111111] hover:bg-gray-50"
           >
-            <ArrowLeft size={18} />
+            <ArrowLeft size={16} />
             Back to Log In
           </Button>
         </div>
       ) : (
         <form className="space-y-6" onSubmit={handleSubmit}>
-          <Input
-            label="Email Address"
-            id="email"
-            name="email"
-            type="email"
-            placeholder="name@company.com"
-            required
-            value={email}
-            onChange={handleChange}
-            error={error}
-          />
+          {/* Email address field */}
+          <div className="space-y-2">
+            <label className="block text-sm font-semibold text-[#111111]" htmlFor="email">
+              Email address
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#999999]">
+                <Mail size={18} />
+              </div>
+              <input
+                className={`block w-full pl-10 pr-3 py-3 border rounded-control bg-white text-[#111111] placeholder-[#999999] focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] transition-colors text-sm ${
+                  error ? 'border-danger' : 'border-gray-200'
+                }`}
+                id="email"
+                name="email"
+                placeholder="name@company.com"
+                required
+                type="email"
+                value={email}
+                onChange={handleChange}
+              />
+            </div>
+            {error && <p className="text-xs text-danger">{error}</p>}
+          </div>
 
           <Button
             type="submit"
             variant="primary"
             size="lg"
-            className="w-full font-bold shadow-soft"
+            className="w-full font-semibold text-white hover:opacity-95"
           >
             Send Reset Link
           </Button>
 
           {/* Navigation back */}
-          <div className="pt-2 text-center">
-            <a
-              className="inline-flex items-center gap-2 text-sm font-medium text-ink-muted hover:text-primary-600 transition-colors duration-150"
-              href="/login"
+          <div className="text-center pt-2">
+            <Link
+              className="inline-flex items-center gap-2 text-sm font-semibold text-[#666666] hover:text-[#111111] transition-colors"
+              to="/login"
             >
               <ArrowLeft size={16} />
               Back to Log In
-            </a>
+            </Link>
           </div>
         </form>
       )}
-
-      {/* Bottom Copyright */}
-      <div className="text-center text-xs text-ink-muted/60 pt-4 border-t border-border/60">
-        <span>© 2026 SocialPulse AI</span>
-      </div>
     </div>
   )
 }

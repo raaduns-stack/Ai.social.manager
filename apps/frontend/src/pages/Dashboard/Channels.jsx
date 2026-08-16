@@ -34,6 +34,7 @@ export default function Channels() {
   // the overlay is hidden and the user can interact with channels normally.
   const [kycRecord, setKycRecord] = useState(undefined) // undefined = loading
   const [kycLoading, setKycLoading] = useState(true)
+  const [isKycModalOpen, setIsKycModalOpen] = useState(false)
 
   /** Fetch the user's KYC status. Re-called after submission to refresh state. */
   const fetchKyc = () => {
@@ -176,7 +177,7 @@ export default function Channels() {
       default:
         return {
           icon: <Link size={24} />,
-          style: { backgroundColor: '#4F46E5' },
+          style: { backgroundColor: '#FF6600' },
         }
     }
   }
@@ -260,15 +261,7 @@ export default function Channels() {
   };
 
   return (
-    // Wrap in a relative container so the KYC overlay positions correctly
-    // over just this page's content (not the whole app shell).
     <div className="relative">
-      {/*
-        KYC OVERLAY — shown whenever KYC is not yet approved.
-        The Channels page below is visible but faded/disabled.
-        We use pointer-events-none + opacity on the channel content when
-        the overlay is active to reinforce the disabled state visually.
-      */}
       {!kycLoading && kycRecord?.status !== 'approved' && (
         <KycOverlay kycRecord={kycRecord} onRefresh={fetchKyc} />
       )}
@@ -278,218 +271,224 @@ export default function Channels() {
         className={kycBlocked ? 'opacity-40 pointer-events-none select-none' : ''}
         aria-hidden={kycBlocked}
       >
-      <div className="space-y-6">
-      <PageHeader
-        title="Social Channels"
-        description="Manage your connected social accounts and synchronization status."
-        action={
-          <Button
-            variant="primary"
-            className="flex items-center gap-1.5 font-medium"
-            onClick={() => setIsConnectModalOpen(true)}
-          >
-            <Plus size={18} />
-            Connect New Account
-          </Button>
-        }
-      />
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="p-6 flex items-center gap-6">
-          <div className="w-12 h-12 rounded-control bg-accent-50 flex items-center justify-center text-accent">
-            <Link size={24} className="stroke-2" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Active Connections</p>
-            <p className="text-2xl font-bold text-ink mt-1">
-              {activeConnections} / {totalChannels}
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-6 flex items-center gap-6">
-          <div className="w-12 h-12 rounded-control bg-primary-50 flex items-center justify-center text-primary-700">
-            <RefreshCw size={24} className="stroke-2" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Sync Status</p>
-            <p className={`text-2xl font-bold mt-1 ${hasWarnings ? 'text-warning' : 'text-accent-600'}`}>
-              {hasWarnings ? 'Action Required' : 'Healthy'}
-            </p>
-          </div>
-        </Card>
-
-        <Card className="p-6 flex items-center gap-6">
-          <div className="w-12 h-12 rounded-control bg-red-50 flex items-center justify-center text-danger">
-            <AlertTriangle size={24} className="stroke-2" />
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Action Required</p>
-            <p className="text-2xl font-bold text-ink mt-1">
-              {actionRequiredCount} {actionRequiredCount === 1 ? 'Account' : 'Accounts'}
-            </p>
-          </div>
-        </Card>
-      </div>
-
-      {loading ? (
-        <Loader />
-      ) : fetchError ? (
-        <div className="flex items-start gap-4">
-          <ErrorBanner error={fetchError} onDismiss={() => setFetchError(null)} />
-          <Button variant="primary" onClick={fetchChannels}>Retry</Button>
-        </div>
-      ) : channels.length === 0 ? (
-        <EmptyState
-          title="No Social Channels"
-          description="You have no connected accounts. Use the Connect button to add one."
-        />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {channels.map((channel) => {
-            const details = getPlatformDetails(channel.platform)
-            return (
-              <Card
-                key={channel.id}
-                className="p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border border-border"
+        <div className="space-y-6">
+          <PageHeader
+            title="Social Channels"
+            description="Manage your connected social accounts and synchronization status."
+            action={
+              <Button
+                variant="primary"
+                className="flex items-center gap-1.5 font-medium"
+                onClick={() => setIsConnectModalOpen(true)}
               >
-                <div>
-                  <div className="flex justify-between items-start mb-6">
-                    <div
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                      style={details.style}
-                    >
-                      {details.icon}
-                    </div>
-                    <Badge
-                      tone={
-                        channel.status === 'Connected'
-                          ? 'success'
-                          : channel.status === 'Action Required'
-                            ? 'danger'
-                            : 'neutral'
-                      }
-                    >
-                      {channel.status}
-                    </Badge>
-                  </div>
-                  <h3 className="text-lg font-bold text-ink">{channel.name}</h3>
-                  <p className="text-xs text-ink-muted mt-1">{channel.handle}</p>
-
-                  <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
-                    <span
-                      className={`text-xs ${channel.status === 'Action Required' ? 'text-danger font-medium' : 'text-ink-muted'
-                        }`}
-                    >
-                      {channel.status === 'Connected'
-                        ? `Last synced: ${channel.lastSynced}`
-                        : channel.status === 'Action Required'
-                          ? 'Token expired. Reconnect needed.'
-                          : 'Waiting for authentication...'}
-                    </span>
-                    {channel.status === 'Connected' && (
-                      <CheckCircle2 size={16} className="text-accent" />
-                    )}
-                  </div>
-                </div>
-
-                <Button
-                  className="mt-6 w-full"
-                  variant={channel.status === 'Connected' ? 'outline' : 'primary'}
-                  onClick={() => handleChannelAction(channel.id, channel.status)}
-                >
-                  {channel.status === 'Connected'
-                    ? 'Disconnect'
-                    : channel.status === 'Action Required'
-                      ? 'Reconnect'
-                      : 'Connect Account'}
-                </Button>
-              </Card>
-            )
-          })}
-        </div>
-      )}
-
-      <Card className="p-6 bg-canvas border border-border flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="max-w-2xl">
-          <h4 className="text-sm font-bold text-ink mb-1 flex items-center gap-1.5">
-            <Shield size={16} className="text-primary-700" />
-            Data Privacy &amp; Security
-          </h4>
-          <p className="text-xs text-ink-muted leading-relaxed">
-            Raasocial uses OAuth 2.0 to securely access your accounts. We never store your passwords and only request the minimum permissions required to manage your content effectively.
-          </p>
-        </div>
-        <div className="flex gap-4 shrink-0">
-          <Button
-            variant="ghost"
-            className="text-primary hover:underline h-auto p-0 font-semibold flex items-center gap-1 bg-transparent hover:bg-transparent"
-            onClick={() => alert('Opening Help Center...')}
-          >
-            <HelpCircle size={16} />
-            Help Center
-          </Button>
-          <Button
-            variant="ghost"
-            className="text-ink-muted hover:text-ink h-auto p-0 font-semibold bg-transparent hover:bg-transparent"
-            onClick={() => alert('Opening Privacy Policy...')}
-          >
-            Privacy Policy
-          </Button>
-        </div>
-      </Card>
-
-      <Modal
-        open={isConnectModalOpen}
-        onClose={() => setIsConnectModalOpen(false)}
-        title="Connect New Account"
-      >
-        <form onSubmit={handleConnectSubmit} className="space-y-4">
-          {connectError && <p className="text-xs text-danger">{connectError}</p>}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-ink">Choose Social Platform</label>
-            <select
-              value={selectedPlatform}
-              onChange={(e) => setSelectedPlatform(e.target.value)}
-              className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
-            >
-              <option value="instagram">Instagram Business</option>
-              <option value="tiktok">TikTok Pro</option>
-              <option value="linkedin">LinkedIn Company</option>
-              <option value="x">X / Twitter</option>
-              <option value="youtube">YouTube Studio</option>
-              <option value="facebook">Facebook Page</option>
-            </select>
-          </div>
-
-          <Input
-            label="Account Handle or Page Name"
-            required
-            value={newHandle}
-            onChange={(e) => setNewHandle(e.target.value)}
-            placeholder="e.g. @mybrand_official or Brand Page"
+                <Plus size={18} />
+                Connect New Account
+              </Button>
+            }
           />
 
-          <p className="text-xs text-ink-muted italic leading-relaxed">
-            * Clicking Connect will redirect you to the platform's official OAuth consent page.
-          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card className="p-6 border-t-4 border-t-primary flex items-center gap-6 hover:shadow-hover transition-all">
+              <div className="w-12 h-12 rounded-control bg-primary/5 flex items-center justify-center text-primary">
+                <Link size={24} className="stroke-2" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Active Connections</p>
+                <p className="text-2xl font-bold text-ink mt-1">
+                  {activeConnections} / {totalChannels}
+                </p>
+              </div>
+            </Card>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsConnectModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary">
-              Connect Account
-            </Button>
+            <Card className="p-6 border-t-4 border-t-secondary flex items-center gap-6 hover:shadow-hover transition-all">
+              <div className="w-12 h-12 rounded-control bg-secondary/5 flex items-center justify-center text-secondary">
+                <RefreshCw size={24} className="stroke-2" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Sync Status</p>
+                <p className={`text-2xl font-bold mt-1 ${hasWarnings ? 'text-warning' : 'text-primary'}`}>
+                  {hasWarnings ? 'Action Required' : 'Healthy'}
+                </p>
+              </div>
+            </Card>
+
+            <Card className="p-6 border-t-4 border-t-primary flex items-center gap-6 hover:shadow-hover transition-all">
+              <div className="w-12 h-12 rounded-control bg-red-50 flex items-center justify-center text-danger">
+                <AlertTriangle size={24} className="stroke-2" />
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Action Required</p>
+                <p className="text-2xl font-bold text-ink mt-1">
+                  {actionRequiredCount} {actionRequiredCount === 1 ? 'Account' : 'Accounts'}
+                </p>
+              </div>
+            </Card>
           </div>
-        </form>
-      </Modal>
-      </div>{/* end channels content */}
-      </div>{/* end relative wrapper */}
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader />
+              <p className="text-sm text-ink-muted mt-2">Loading connected channels...</p>
+            </div>
+          ) : fetchError ? (
+            <div className="flex items-start gap-4 p-4 bg-red-50 border border-red-200 rounded-control">
+              <ErrorBanner error={fetchError} onDismiss={() => setFetchError(null)} />
+              <Button variant="primary" onClick={fetchChannels}>Retry</Button>
+            </div>
+          ) : channels.length === 0 ? (
+            <EmptyState
+              title="No Social Channels Connected"
+              description="You have no connected accounts. Link your first channel to start automating content."
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {channels.map((channel) => {
+                const details = getPlatformDetails(channel.platform)
+                const isConnected = channel.status === 'Connected'
+                return (
+                  <Card
+                    key={channel.id}
+                    className={`p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border ${
+                      isConnected ? 'border-primary/20 bg-gradient-to-br from-surface to-primary/5 border-t-4 border-t-primary' : 'border-border'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex justify-between items-start mb-6">
+                        <div
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-soft"
+                          style={details.style}
+                        >
+                          {details.icon}
+                        </div>
+                        <Badge
+                          tone={
+                            channel.status === 'Connected'
+                              ? 'success'
+                              : channel.status === 'Action Required'
+                                ? 'danger'
+                                : 'neutral'
+                          }
+                        >
+                          {channel.status}
+                        </Badge>
+                      </div>
+                      <h3 className="text-lg font-bold text-ink">{channel.name}</h3>
+                      <p className="text-xs text-ink-muted mt-1 font-mono">{channel.handle}</p>
+
+                      <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
+                        <span
+                          className={`text-xs ${channel.status === 'Action Required' ? 'text-danger font-semibold' : 'text-ink-muted'
+                            }`}
+                        >
+                          {channel.status === 'Connected'
+                            ? `Synced: ${new Date(channel.lastSynced).toLocaleDateString()}`
+                            : channel.status === 'Action Required'
+                              ? 'Token expired. Reconnect needed.'
+                              : 'Waiting for authentication...'}
+                        </span>
+                        {channel.status === 'Connected' && (
+                          <CheckCircle2 size={16} className="text-primary" />
+                        )}
+                      </div>
+                    </div>
+
+                    <Button
+                      className="mt-6 w-full font-semibold"
+                      variant={channel.status === 'Connected' ? 'outline' : 'primary'}
+                      onClick={() => handleChannelAction(channel.id, channel.status)}
+                    >
+                      {channel.status === 'Connected'
+                        ? 'Disconnect'
+                        : channel.status === 'Action Required'
+                          ? 'Reconnect'
+                          : 'Connect Account'}
+                    </Button>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+
+          <Card className="p-6 bg-canvas border-border flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="max-w-2xl">
+              <h4 className="text-sm font-bold text-ink mb-1 flex items-center gap-1.5">
+                <Shield size={16} className="text-primary-700" />
+                Data Privacy &amp; Security
+              </h4>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                Raasocial uses OAuth 2.0 to securely access your accounts. We never store your passwords and only request the minimum permissions required to manage your content effectively.
+              </p>
+            </div>
+            <div className="flex gap-4 shrink-0">
+              <Button
+                variant="ghost"
+                className="text-primary hover:underline h-auto p-0 font-semibold flex items-center gap-1 bg-transparent hover:bg-transparent"
+                onClick={() => alert('Opening Help Center...')}
+              >
+                <HelpCircle size={16} />
+                Help Center
+              </Button>
+              <Button
+                variant="ghost"
+                className="text-ink-muted hover:text-ink h-auto p-0 font-semibold bg-transparent hover:bg-transparent"
+                onClick={() => alert('Opening Privacy Policy...')}
+              >
+                Privacy Policy
+              </Button>
+            </div>
+          </Card>
+
+          <Modal
+            open={isConnectModalOpen}
+            onClose={() => setIsConnectModalOpen(false)}
+            title="Connect New Account"
+          >
+            <form onSubmit={handleConnectSubmit} className="space-y-4">
+              {connectError && <p className="text-xs text-danger">{connectError}</p>}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium text-ink">Choose Social Platform</label>
+                <select
+                  value={selectedPlatform}
+                  onChange={(e) => setSelectedPlatform(e.target.value)}
+                  className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                >
+                  <option value="instagram">Instagram Business</option>
+                  <option value="tiktok">TikTok Pro</option>
+                  <option value="linkedin">LinkedIn Company</option>
+                  <option value="x">X / Twitter</option>
+                  <option value="youtube">YouTube Studio</option>
+                  <option value="facebook">Facebook Page</option>
+                </select>
+              </div>
+
+              <Input
+                label="Account Handle or Page Name"
+                required
+                value={newHandle}
+                onChange={(e) => setNewHandle(e.target.value)}
+                placeholder="e.g. @mybrand_official or Brand Page"
+              />
+
+              <p className="text-xs text-ink-muted italic leading-relaxed">
+                * Clicking Connect will redirect you to the platform's official OAuth consent page.
+              </p>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsConnectModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" variant="primary">
+                  Connect Account
+                </Button>
+              </div>
+            </form>
+          </Modal>
+        </div>
+      </div>
     </div>
   )
 }

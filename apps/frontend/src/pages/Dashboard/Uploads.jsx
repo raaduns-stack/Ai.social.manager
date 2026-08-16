@@ -330,9 +330,9 @@ export default function Uploads() {
       case 'uploading':
       case 'processing':
         return (
-          <span className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full font-bold text-[10px] uppercase tracking-wider">
+          <Badge tone="neutral" className="text-[10px] font-bold uppercase tracking-wider">
             {status}
-          </span>
+          </Badge>
         )
       default:
         return <Badge tone="neutral">{status}</Badge>
@@ -583,10 +583,10 @@ export default function Uploads() {
                 {/* Media Thumbnail */}
                 <div className="aspect-square bg-canvas flex items-center justify-center relative overflow-hidden">
                   {asset.status === 'Uploading' || asset.status === 'Processing' ? (
-                    <div className="absolute inset-0 bg-ink/5 backdrop-blur-[1px] flex items-center justify-center z-10">
+                    <div className="absolute inset-0 bg-canvas/60 backdrop-blur-[1px] flex items-center justify-center z-10">
                       <div className="flex flex-col items-center gap-2">
-                        <div className="w-10 h-10 border-4 border-primary-100 border-t-primary-600 rounded-full animate-spin"></div>
-                        <span className="text-xs font-bold text-primary-700">{asset.progress}%</span>
+                        <div className="w-10 h-10 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                        <span className="text-xs font-bold text-primary">{asset.progress}%</span>
                       </div>
                     </div>
                   ) : null}

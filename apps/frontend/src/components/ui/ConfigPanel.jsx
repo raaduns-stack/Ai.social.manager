@@ -42,7 +42,7 @@ export default function ConfigPanel({ title, description, fields, onSave }) {
               <button
                 onClick={() => setField(field.key, !values[field.key])}
                 className={`h-6 w-11 rounded-full transition-colors ${
-                  values[field.key] ? "bg-[#4F46E5]" : "bg-[#E5E7EB]"
+                  values[field.key] ? "bg-[#FF6600]" : "bg-[#E5E7EB]"
                 }`}
               >
                 <span
@@ -77,7 +77,7 @@ export default function ConfigPanel({ title, description, fields, onSave }) {
 
       <button
         onClick={() => onSave?.(values)}
-        className="mt-5 rounded-lg bg-[#4F46E5] px-4 py-2 text-sm font-medium text-white"
+        className="mt-5 rounded-lg bg-[#FF6600] px-4 py-2 text-sm font-medium text-white"
       >
         Save Changes
       </button>
