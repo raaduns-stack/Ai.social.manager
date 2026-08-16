@@ -48,4 +48,9 @@ export default () => ({
   support: {
     whatsappNumber: process.env.SUPPORT_WHATSAPP_NUMBER,
   },
+
+  n8n: {
+    webhookUrl: process.env.N8N_CALENDAR_GENERATION_WEBHOOK_URL,
+    internalApiKey: process.env.N8N_INTERNAL_API_KEY,
+  },
 });

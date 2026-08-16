@@ -9,6 +9,7 @@ import { notificationPreferences, customerCompanyProfile } from './settings.sche
 import { kyc } from './kyc.schema';
 import { loginHistory } from './login-history.schema';
 import { activityLogs } from './activity-logs.schema';
+import { calendarGenerationJobs } from './calendar-generation-jobs.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   tickets: many(supportTickets, { relationName: 'userTickets' }),
@@ -21,6 +22,7 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   customerCompanyProfile: one(customerCompanyProfile),
   // KYC — one business verification record per user
   kyc: one(kyc),
+  calendarGenerationJobs: many(calendarGenerationJobs),
 }));
 
 export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({
