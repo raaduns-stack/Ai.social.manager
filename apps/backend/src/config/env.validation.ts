@@ -79,6 +79,14 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   SMTP_SENDER_EMAIL?: string;
+
+  @IsString()
+  @IsOptional()
+  N8N_CALENDAR_GENERATION_WEBHOOK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  N8N_INTERNAL_API_KEY?: string;
 }
 
 /**
