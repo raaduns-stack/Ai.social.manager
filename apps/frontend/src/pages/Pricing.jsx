@@ -1,9 +1,3 @@
-/**
- * Pricing Component
- * 
- * Marketing and upgrade page that lists all available subscription plans,
- * their features, and pricing details.
- */
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Card from '../components/ui/Card'
@@ -12,24 +6,27 @@ import Badge from '../components/ui/Badge'
 import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { getPlans } from '../features/plans/plans-api'
 import ErrorBanner from '../components/error-banner'
+import FinalCTA from '../components/marketing/FinalCTA'
 
 function PriceDisplay({ value, isAnnual }) {
   const displayVal = isAnnual ? Math.round(value * 12 * 0.8) : value
   const displayInterval = isAnnual ? '/yr' : '/mo'
 
-  const formatted = new Intl.NumberFormat('en-NG', {
-    style: 'currency',
-    currency: 'NGN',
-    maximumFractionDigits: 0,
-  }).format(displayVal)
+  const formatted = value === 0 
+    ? 'Free' 
+    : new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency: 'NGN',
+        maximumFractionDigits: 0,
+      }).format(displayVal)
 
   return (
     <div
       key={`${isAnnual}-${value}`}
       className="flex items-baseline gap-1 animate-in fade-in slide-in-from-top-1 duration-150"
     >
-      <span className="text-3xl font-extrabold tracking-tight text-ink">{formatted}</span>
-      <span className="text-xs text-ink-muted">{displayInterval}</span>
+      <span className="text-3xl font-extrabold tracking-tight text-[#111111]">{formatted}</span>
+      {value > 0 && <span className="text-xs text-[#666666]">{displayInterval}</span>}
     </div>
   )
 }
@@ -37,6 +34,7 @@ function PriceDisplay({ value, isAnnual }) {
 function PlanCard({ plan, isAnnual, onGetStarted }) {
   const price = plan.price / 100
   const isGrowth = plan.slug === 'growth'
+  const isEnterprise = plan.slug === 'enterprise'
 
   // Bulletproof features list mapper
   let featuresList = []
@@ -52,52 +50,67 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
     // Hardcoded fallback list matching standard tiers
     if (plan.slug === 'free') {
       featuresList = [
-        'Connect 1 social account',
-        '5 AI posts/month',
-        'AI caption + hashtags',
+        'Connect 1 social media account',
+        'Generate 5 AI posts per month',
+        'AI-generated caption + hashtags',
         'Basic AI image generation',
         'Content preview',
         'Basic analytics',
+        'AI/WhatsApp Support',
       ]
     } else if (plan.slug === 'starter') {
       featuresList = [
-        'Connect 3 social accounts',
-        '30 AI posts/month',
+        'Everything in Free, plus:',
+        'Connect 3 social media accounts',
+        '30 AI-generated posts/month',
+        'AI-generated captions & hashtags',
+        'AI-generated images',
         'Content Calendar',
         'Post Scheduling',
-        'Brand Assets Upload',
-        'Basic Analytics',
+        'Upload Brand Assets',
+        'Basic Analytics Dashboard',
         'AI Content Suggestions',
+        'AI/WhatsApp Support',
       ]
     } else if (plan.slug === 'growth') {
       featuresList = [
-        'Connect 7 social accounts',
-        '150 AI posts/month (Fair Use)',
-        'Advanced AI Images',
-        'Competitor Analysis',
-        'Weekly Reports',
-        '5 Team Members',
-        'Approval Workflow',
+        'Everything in Starter, plus:',
+        'Connect 7 social media accounts',
+        '150 AI-generated posts/month (Fair Use)',
+        'Advanced AI Image Generation',
+        'AI Content Calendar',
+        'Competitor Analysis & Website Analysis',
+        'AI Content Improvement Suggestions',
+        'Performance Insights & Weekly Reports',
+        'Team Members (up to 5)',
+        'Priority AI Generation',
+        'Content Approval Workflow',
+        'Advanced Analytics',
+        'AI/WhatsApp Support',
       ]
     } else {
       featuresList = [
-        'Connect 15 social accounts',
-        '300 AI posts/month (Fair Use)',
+        'Everything in Growth, plus:',
+        'Connect 15 social media accounts',
+        '300 AI-generated posts/month (Fair Use)',
         'Unlimited Team Members',
         'AI Marketing Strategy & Campaign Planner',
-        'Multi-location support',
+        'AI Seasonal Campaign Suggestions',
+        'Advanced Competitor Intelligence',
+        'Multi-location Business Support',
+        'Multiple Brand Management',
         'Dedicated Account Manager',
       ]
     }
   }
 
   return (
-    <div className="relative flex flex-col">
+    <div className="relative flex flex-col h-full w-full">
       {isGrowth && (
         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-10">
           <Badge
             tone="primary"
-            className="px-4 py-1 text-xs font-bold uppercase tracking-widest rounded-full animate-pulse"
+            className="px-4 py-1 text-xs font-bold uppercase tracking-widest rounded-full bg-[#FF6600] text-white animate-pulse"
           >
             Recommended
           </Badge>
@@ -106,33 +119,48 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
 
       <Card
         className={[
-          'flex flex-col h-full p-6 border-2 transition-all duration-150',
+          'flex flex-col h-full p-6 border-2 transition-all duration-300 bg-white justify-between rounded-card',
           isGrowth
-            ? 'border-primary shadow-hover bg-primary/5 ring-1 ring-primary/20'
-            : 'border-border hover:shadow-hover hover:border-primary/30',
+            ? 'border-[#FF6600] shadow-hover ring-1 ring-[#FF6600]/20'
+            : 'border-[#E5E7EB] hover:shadow-hover hover:border-[#FF6600]/30',
         ].join(' ')}
       >
-        <div className="mb-5 text-left">
-          <h3 className="text-lg font-bold text-ink mb-2">
-            {plan.name === 'Brand Domination' ? 'Brand Domination / Enterprise' : plan.name}
-          </h3>
-          <PriceDisplay value={price} isAnnual={isAnnual} />
-        </div>
+        <div>
+          <div className="mb-5 text-left border-b border-gray-100 pb-5">
+            <h3 className="text-xl font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+              {plan.name === 'Brand Domination' ? 'Brand Domination' : plan.name}
+            </h3>
+            <p className="text-xs text-[#666666] leading-relaxed mb-4">
+              {plan.slug === 'free'
+                ? 'Best for testing features and starting out.'
+                : plan.slug === 'starter'
+                ? 'Great for solo professionals.'
+                : plan.slug === 'growth'
+                ? 'Perfect for growing businesses.'
+                : 'Full power for larger brands.'}
+            </p>
+            <PriceDisplay value={price} isAnnual={isAnnual} />
+          </div>
 
-        <ul className="flex-grow space-y-3 mb-6 text-left">
-          {featuresList.map((feature, idx) => (
-            <li key={idx} className="flex items-start gap-2.5">
-              <CheckCircle2 size={17} className="mt-0.5 shrink-0 text-primary" />
-              <span className="text-sm text-ink-muted">{feature}</span>
-            </li>
-          ))}
-        </ul>
+          <ul className="space-y-3 mb-8 text-left">
+            {featuresList.map((feature, idx) => (
+              <li key={idx} className="flex items-start gap-2.5">
+                <CheckCircle2 size={16} className={`mt-0.5 shrink-0 ${isGrowth ? 'text-[#FF6600]' : 'text-[#111111]'}`} />
+                <span className="text-sm text-[#666666] leading-snug">{feature}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <Button
           onClick={() => onGetStarted(plan)}
           variant={isGrowth ? 'primary' : 'outline'}
           size="md"
-          className="w-full font-semibold cursor-pointer"
+          className={`w-full font-bold cursor-pointer ${
+            isGrowth 
+              ? 'bg-[#FF6600] hover:bg-[#E05300] text-white border-transparent' 
+              : 'border-[#111111] text-[#111111] hover:bg-gray-50'
+          }`}
         >
           {plan.slug === 'free' ? 'Continue with Free' : 'Choose Plan'}
         </Button>
@@ -143,11 +171,11 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
 
 function BillingToggle({ isAnnual, onToggle }) {
   return (
-    <div className="flex items-center gap-3 justify-center">
+    <div className="flex items-center gap-3 justify-center select-none">
       <span
         className={[
           'text-sm transition-colors',
-          !isAnnual ? 'font-semibold text-ink' : 'text-ink-muted',
+          !isAnnual ? 'font-bold text-[#111111]' : 'text-[#666666]',
         ].join(' ')}
       >
         Monthly billing
@@ -159,13 +187,13 @@ function BillingToggle({ isAnnual, onToggle }) {
         aria-checked={isAnnual}
         onClick={onToggle}
         className={[
-          'relative w-14 h-7 rounded-full border transition-colors duration-200 cursor-pointer',
-          isAnnual ? 'bg-primary border-primary' : 'bg-canvas border-border',
+          'relative w-14 h-7 rounded-full border transition-colors duration-300 cursor-pointer flex items-center',
+          isAnnual ? 'bg-[#FF6600] border-[#FF6600]' : 'bg-gray-200 border-gray-300',
         ].join(' ')}
       >
         <span
           className={[
-            'absolute top-0.5 left-0.5 w-6 h-6 rounded-full bg-white shadow-soft transition-transform duration-200',
+            'absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow-soft transition-transform duration-300',
             isAnnual ? 'translate-x-7' : 'translate-x-0',
           ].join(' ')}
         />
@@ -175,14 +203,14 @@ function BillingToggle({ isAnnual, onToggle }) {
         <span
           className={[
             'text-sm transition-colors',
-            isAnnual ? 'font-semibold text-ink' : 'text-ink-muted',
+            isAnnual ? 'font-bold text-[#111111]' : 'text-[#666666]',
           ].join(' ')}
         >
           Annual billing
         </span>
         <Badge
           tone="success"
-          className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5"
+          className="text-[10px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1 bg-green-100 text-green-800"
         >
           Save 20%
         </Badge>
@@ -195,24 +223,24 @@ function FaqItem({ q, a }) {
   const [open, setOpen] = useState(false)
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="overflow-hidden border border-gray-200 bg-white rounded-card">
       <button
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="w-full flex items-center justify-between gap-4 p-4 text-left focus:outline-none cursor-pointer"
+        className="w-full flex items-center justify-between gap-4 p-5 text-left focus:outline-none cursor-pointer"
       >
-        <span className="text-sm font-semibold text-ink">{q}</span>
+        <span className="text-base font-semibold text-[#111111] font-['Plus_Jakarta_Sans']">{q}</span>
         <span
           className={[
-            'shrink-0 text-ink-muted transition-transform duration-200',
+            'shrink-0 text-[#666666] transition-transform duration-300',
             open ? 'rotate-45' : 'rotate-0',
           ].join(' ')}
         >
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none">
             <path
               d="M8 3v10M3 8h10"
               stroke="currentColor"
-              strokeWidth="1.75"
+              strokeWidth="2"
               strokeLinecap="round"
             />
           </svg>
@@ -220,8 +248,8 @@ function FaqItem({ q, a }) {
       </button>
 
       {open && (
-        <div className="px-4 pb-4">
-          <p className="text-sm text-ink-muted">{a}</p>
+        <div className="px-5 pb-5 animate-in fade-in duration-200">
+          <p className="text-sm text-[#666666] leading-relaxed">{a}</p>
         </div>
       )}
     </Card>
@@ -267,7 +295,7 @@ export default function Pricing() {
     },
     {
       q: 'Do you offer support?',
-      a: 'Yes, we provide 24/7 AI support across all subscription tiers, including our Free plan.',
+      a: 'Yes, we provide 24/7 support across all subscription tiers, including our Free plan.',
     },
   ]
 
@@ -280,50 +308,62 @@ export default function Pricing() {
         }
       `}</style>
 
-      <div className="max-w-5xl mx-auto space-y-10">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-ink mb-2">
-            Simple, transparent pricing
-          </h1>
-          <p className="text-base text-ink-muted max-w-xl mx-auto">
-            Choose the plan that's right for your growth.
-          </p>
+      <div className="w-full">
+        <div className="max-w-7xl mx-auto px-6 py-16 space-y-12">
+          {/* Header */}
+          <div className="text-center max-w-2xl mx-auto space-y-3">
+            <span className="bg-[#FFEBE0] text-[#FF6600] font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full">
+              Pricing Options
+            </span>
+            <h1 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-4">
+              Simple, transparent pricing.
+            </h1>
+            <p className="text-base md:text-lg text-[#666666] leading-relaxed">
+              Select the plan that fits your social publishing frequency. No hidden fees.
+            </p>
+          </div>
+
+          {apiError && (
+            <ErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
+          )}
+
+          {/* Toggle */}
+          <BillingToggle isAnnual={isAnnual} onToggle={() => setIsAnnual((v) => !v)} />
+
+          {/* Plan Grid */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-20 space-y-4">
+              <RefreshCw className="animate-spin text-[#FF6600] w-8 h-8" />
+              <p className="text-sm text-[#666666]">Loading plans...</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 pt-4 items-stretch">
+              {plans.map((plan) => (
+                <PlanCard
+                  key={plan.id}
+                  plan={plan}
+                  isAnnual={isAnnual}
+                  onGetStarted={handleGetStarted}
+                />
+              ))}
+            </div>
+          )}
+
+          {/* FAQ section */}
+          <section aria-labelledby="faq-heading" className="pt-16 border-t border-gray-200 max-w-3xl mx-auto">
+            <h2 id="faq-heading" className="text-2xl md:text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] text-center mb-8">
+              Frequently Asked Questions
+            </h2>
+            <div className="space-y-4">
+              {faqs.map((faq) => (
+                <FaqItem key={faq.q} q={faq.q} a={faq.a} />
+              ))}
+            </div>
+          </section>
         </div>
 
-        {apiError && (
-          <ErrorBanner error={apiError} onDismiss={() => setApiError(null)} />
-        )}
-
-        {/* <BillingToggle isAnnual={isAnnual} onToggle={() => setIsAnnual((v) => !v)} /> */}
-
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-12 space-y-4">
-            <RefreshCw className="animate-spin text-primary w-8 h-8" />
-            <p className="text-sm text-ink-muted">Loading plans...</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 gap-6 max-w-md mx-auto pt-4">
-            {plans.filter((p) => p.slug === 'free').map((plan) => (
-              <PlanCard
-                key={plan.id}
-                plan={plan}
-                isAnnual={isAnnual}
-                onGetStarted={handleGetStarted}
-              />
-            ))}
-          </div>
-        )}
-
-        <section aria-labelledby="faq-heading" className="pt-4 border-t border-border">
-          <h2 id="faq-heading" className="text-xl font-semibold text-ink text-center mb-6">
-            Frequently Asked Questions
-          </h2>
-          <div className="max-w-2xl mx-auto space-y-3">
-            {faqs.map((faq) => (
-              <FaqItem key={faq.q} q={faq.q} a={faq.a} />
-            ))}
-          </div>
-        </section>
+        {/* Final CTA */}
+        <FinalCTA />
       </div>
     </>
   )
