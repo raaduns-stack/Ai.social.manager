@@ -4,9 +4,11 @@ import { Routes, Route } from 'react-router-dom'
 import AuthLayout from '../layouts/AuthLayout'
 import OnboardingLayout from '../layouts/OnboardingLayout'
 import DashboardLayout from '../layouts/DashboardLayout'
+import MarketingLayout from '../layouts/MarketingLayout'
 
 // Public pages
 import Landing from '../pages/Landing'
+import Features from '../pages/Features'
 import Pricing from '../pages/Pricing'
 import Contact from '../pages/Contact'
 
@@ -50,9 +52,12 @@ export default function AppRoutes() {
   return (
     <Routes>
       {/* Public marketing pages */}
-      <Route path="/" element={<Landing />} />
-      <Route path="/pricing" element={<Pricing />} />
-      <Route path="/contact" element={<Contact />} />
+      <Route element={<MarketingLayout />}>
+        <Route path="/" element={<Landing />} />
+        <Route path="/features" element={<Features />} />
+        <Route path="/pricing" element={<Pricing />} />
+        <Route path="/contact" element={<Contact />} />
+      </Route>
 
       {/* Auth (split-screen layout) */}
       <Route element={<AuthLayout />}>

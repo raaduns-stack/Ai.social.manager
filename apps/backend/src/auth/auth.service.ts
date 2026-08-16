@@ -363,6 +363,22 @@ export class AuthService {
    * @param user The user entity from the database
    * @returns An object containing the user data and the newly generated tokens
    */
+  async getPermissions(userId: string, role: string) {
+    const perms = await this.db.query.rolePermissions.findMany({
+      where: eq(schema.rolePermissions.role, role as any),
+    });
+
+    const permissions: Record<string, string> = {};
+    for (const p of perms) {
+      permissions[p.module] = p.accessLevel;
+    }
+
+    return {
+      role,
+      permissions,
+    };
+  }
+
   private async issueTokens(user: schema.User) {
     const tokens = await this.signTokens({
       sub: user.id,
@@ -388,6 +404,8 @@ export class AuthService {
       );
     }
 
+    const perms = await this.getPermissions(user.id, user.role);
+
     return {
       user: {
         id: user.id,
@@ -396,6 +414,7 @@ export class AuthService {
         businessName: user.businessName,
         role: user.role,
         plan: activeSub?.plan || null,
+        permissions: perms.permissions,
       },
       ...tokens,
     };
@@ -416,3 +435,4 @@ export class AuthService {
     return { accessToken, refreshToken };
   }
 }
+

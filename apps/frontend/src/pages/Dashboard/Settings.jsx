@@ -4,7 +4,7 @@ import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
-import { Info, ShieldCheck } from 'lucide-react'
+import { Info, ShieldCheck, Shield } from 'lucide-react'
 import BrandVoiceForm from '../../components/BrandVoiceForm'
 import {
   getCompanyInfo,
@@ -13,6 +13,8 @@ import {
   updateNotificationPreference,
 } from '../../features/settings/settings-api'
 import { changePassword } from '../../features/auth/auth-api'
+import KycOverlay from '../../features/kyc/KycOverlay'
+import { getMyKyc } from '../../features/kyc/kyc-api'
 
 // ---------------------------------------------------------------------------
 // Data
@@ -91,7 +93,7 @@ const COUNTRIES = [
 // ---------------------------------------------------------------------------
 // Phone Input with country selector
 // ---------------------------------------------------------------------------
-function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange }) {
+function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange, readOnly }) {
   return (
     <div className="flex flex-col gap-1.5">
       {label && (
@@ -100,8 +102,8 @@ function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange }
         </label>
       )}
       <div
-        style={{ borderRadius: '8px', border: '1px solid var(--color-border)' }}
-        className="flex h-10 bg-surface overflow-hidden focus-within:ring-2 focus-within:ring-primary-500 focus-within:border-primary-500"
+        style={{ borderRadius: '8px', border: readOnly ? 'none' : '1px solid var(--color-border)' }}
+        className={`flex h-10 overflow-hidden ${readOnly ? 'bg-canvas' : 'bg-surface focus-within:ring-2 focus-within:ring-primary focus-within:border-primary'}`}
       >
         {/* Country selector */}
         <div className="relative flex-shrink-0 border-r border-border">
@@ -109,7 +111,8 @@ function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange }
             aria-label="Country code"
             value={countryCode}
             onChange={(e) => onCountryChange(e.target.value)}
-            className="h-full appearance-none bg-transparent pl-3 pr-6 text-sm text-ink focus:outline-none cursor-pointer"
+            disabled={readOnly}
+            className={`h-full appearance-none bg-transparent pl-3 pr-6 text-sm text-ink focus:outline-none ${readOnly ? 'cursor-default font-semibold' : 'cursor-pointer'}`}
             style={{ minWidth: '84px' }}
           >
             {COUNTRIES.map((c) => (
@@ -119,9 +122,11 @@ function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange }
             ))}
           </select>
           {/* Custom chevron */}
-          <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-muted text-[10px]">
-            ▾
-          </span>
+          {!readOnly && (
+            <span className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 text-ink-muted text-[10px]">
+              ▾
+            </span>
+          )}
         </div>
 
         {/* Number input */}
@@ -130,8 +135,9 @@ function PhoneInput({ id, label, countryCode, onCountryChange, value, onChange }
           type="tel"
           value={value}
           onChange={onChange}
+          readOnly={readOnly}
           placeholder="(555) 123-4567"
-          className="flex-1 bg-transparent px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none"
+          className={`flex-1 bg-transparent px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none ${readOnly ? 'cursor-default font-semibold' : ''}`}
         />
       </div>
     </div>
@@ -153,9 +159,9 @@ function Toggle({ id, checked, onChange }) {
       />
       <div
         className={[
-          'w-11 h-6 rounded-full transition-colors duration-200',
+          'w-11 h-6 rounded-[9999px] transition-colors duration-200',
           'after:content-[\'\'] after:absolute after:top-[2px] after:start-[2px]',
-          'after:bg-white after:border after:border-border after:rounded-full',
+          'after:bg-white after:border after:border-border after:rounded-[9999px]',
           'after:h-5 after:w-5 after:transition-all',
           'peer-checked:after:translate-x-full peer-checked:after:border-white',
           checked ? 'bg-primary' : 'bg-border',
@@ -182,7 +188,7 @@ function SettingsSection({ label, description, children }) {
 
 // Shared field style — 1px border, 8px border-radius
 const fieldCls =
-  'h-10 bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500'
+  'h-10 bg-surface px-3 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary'
 const fieldStyle = { borderRadius: '8px', border: '1px solid var(--color-border)' }
 const textareaStyle = { borderRadius: '8px', border: '1px solid var(--color-border)' }
 
@@ -220,6 +226,26 @@ function CompanyInfoTab() {
 
   const [saved, setSaved] = useState(false)
 
+  // KYC States
+  const [kycStatus, setKycStatus] = useState(null)
+  const [kycRecord, setKycRecord] = useState(null)
+  const [isKycModalOpen, setIsKycModalOpen] = useState(false)
+
+  const isPendingUpdate = kycRecord?.status === 'pending' && kycRecord?.isUpdateRequest
+
+  const isFieldPending = (fieldName, currentValue) => {
+    if (!isPendingUpdate || !kycRecord) return false
+    const kycFieldMap = {
+      businessName: kycRecord.businessName,
+      description: kycRecord.businessDescription,
+      email: kycRecord.businessEmail,
+      phoneNumber: kycRecord.businessPhone,
+      location: kycRecord.businessAddress,
+    }
+    const pendingVal = kycFieldMap[fieldName]
+    return pendingVal !== undefined && pendingVal !== null && pendingVal !== currentValue
+  }
+
   const applyProfile = (profile) => {
     setBusinessName(profile.businessName || '')
     setIndustry(profile.industry || 'Technology & SaaS')
@@ -235,9 +261,20 @@ function CompanyInfoTab() {
     try {
       setLoading(true)
       setError('')
+      setKycStatus(null)
+
+      const kyc = await getMyKyc()
+      setKycRecord(kyc)
+
+      if (kyc?.status !== 'approved') {
+        setKycStatus(kyc?.status?.toUpperCase() || 'NOT_STARTED')
+        return
+      }
+
       const profile = await getCompanyInfo()
       setOriginalProfile(profile)
       applyProfile(profile)
+      setKycStatus('APPROVED')
     } catch (err) {
       setError(err.message || 'Failed to load company info')
     } finally {
@@ -316,8 +353,29 @@ function CompanyInfoTab() {
     )
   }
 
+  const kycBlocked = !loading && kycStatus !== 'APPROVED'
+
   return (
-    <div className="space-y-8">
+    <div className="relative">
+      {isKycModalOpen && (
+        <KycOverlay kycRecord={kycRecord} onRefresh={loadProfile} onClose={() => setIsKycModalOpen(false)} />
+      )}
+
+      {kycBlocked ? (
+        <Card className="p-12 flex flex-col items-center justify-center text-center mt-2">
+          <div className="w-16 h-16 bg-primary/10 rounded-[9999px] flex items-center justify-center mb-4 border border-primary/20">
+             <Shield size={32} className="text-primary" />
+          </div>
+          <h2 className="text-xl font-bold text-ink mb-2">Business Verification Required</h2>
+          <p className="text-sm text-ink-muted mb-6 max-w-md">
+            To unlock and manage your company settings, you must first complete the Know Your Customer (KYC) verification process.
+          </p>
+          <Button variant="primary" onClick={() => setIsKycModalOpen(true)}>
+            Complete KYC
+          </Button>
+        </Card>
+      ) : (
+        <div className="space-y-8">
       {/* Business Profile */}
       <SettingsSection
         label="Business Profile"
@@ -326,15 +384,21 @@ function CompanyInfoTab() {
         <Card className="p-6">
           <form onSubmit={handleSave} className="space-y-4">
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="business-name" className="text-xs font-medium text-ink">
-                Business Name
-              </label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="business-name" className="text-xs font-medium text-ink">
+                  Business Name
+                </label>
+                {isFieldPending('businessName', businessName) && (
+                  <Badge tone="warning" className="text-[10px] px-1.5 py-0.5">Under Review</Badge>
+                )}
+              </div>
               <input
                 id="business-name"
                 type="text"
                 value={businessName}
                 onChange={(e) => setBusinessName(e.target.value)}
-                className={fieldCls}
+                readOnly
+                className={`${fieldCls} bg-canvas border-none cursor-default font-semibold shadow-none`}
                 style={fieldStyle}
               />
             </div>
@@ -358,17 +422,37 @@ function CompanyInfoTab() {
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="company-description" className="text-xs font-medium text-ink">
-                Company Description
-              </label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="company-description" className="text-xs font-medium text-ink">
+                  Company Description
+                </label>
+                {isFieldPending('description', description) && (
+                  <Badge tone="warning" className="text-[10px] px-1.5 py-0.5">Under Review</Badge>
+                )}
+              </div>
               <textarea
                 id="company-description"
                 rows={4}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                readOnly
+                className="bg-canvas border-none cursor-default font-semibold shadow-none px-3 py-2 text-sm text-ink resize-none"
                 style={textareaStyle}
               />
+            </div>
+
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
+              <span className="text-xs text-ink-muted flex items-center gap-1">
+                <Info size={14} /> Verified business profile information.
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsKycModalOpen(true)}
+              >
+                Request a Change
+              </Button>
             </div>
           </form>
         </Card>
@@ -384,15 +468,21 @@ function CompanyInfoTab() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {/* Official Email */}
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="official-email" className="text-xs font-medium text-ink">
-                  Official Email
-                </label>
+                <div className="flex justify-between items-center">
+                  <label htmlFor="official-email" className="text-xs font-medium text-ink">
+                    Official Email
+                  </label>
+                  {isFieldPending('email', email) && (
+                    <Badge tone="warning" className="text-[10px] px-1.5 py-0.5">Under Review</Badge>
+                  )}
+                </div>
                 <input
                   id="official-email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className={fieldCls}
+                  readOnly
+                  className={`${fieldCls} bg-canvas border-none cursor-default font-semibold shadow-none`}
                   style={fieldStyle}
                 />
               </div>
@@ -405,21 +495,29 @@ function CompanyInfoTab() {
                 onCountryChange={setPhoneCountry}
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
+                readOnly
+                pending={isFieldPending('phoneNumber', phoneNumber)}
               />
             </div>
 
             {/* Business Location */}
             <div className="flex flex-col gap-1.5">
-              <label htmlFor="business-location" className="text-xs font-medium text-ink">
-                Business Location
-              </label>
+              <div className="flex justify-between items-center">
+                <label htmlFor="business-location" className="text-xs font-medium text-ink">
+                  Business Location
+                </label>
+                {isFieldPending('location', location) && (
+                  <Badge tone="warning" className="text-[10px] px-1.5 py-0.5">Under Review</Badge>
+                )}
+              </div>
               <input
                 id="business-location"
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
+                readOnly
                 placeholder="e.g. New York, NY, USA"
-                className={fieldCls}
+                className={`${fieldCls} bg-canvas border-none cursor-default font-semibold shadow-none`}
                 style={fieldStyle}
               />
             </div>
@@ -438,6 +536,20 @@ function CompanyInfoTab() {
                 className={fieldCls}
                 style={fieldStyle}
               />
+            </div>
+
+            <div className="flex justify-between items-center mt-4 pt-4 border-t border-border">
+              <span className="text-xs text-ink-muted flex items-center gap-1">
+                <Info size={14} /> Contact information is verified.
+              </span>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsKycModalOpen(true)}
+              >
+                Request a Change
+              </Button>
             </div>
           </div>
         </Card>
@@ -480,7 +592,7 @@ function CompanyInfoTab() {
                 value={competitorUrls}
                 onChange={(e) => setCompetitorUrls(e.target.value)}
                 placeholder="https://competitor1.com, https://competitor2.com"
-                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 style={fieldStyle}
               />
               <p className="text-[11px] text-ink-muted leading-relaxed">
@@ -499,7 +611,7 @@ function CompanyInfoTab() {
                 value={competitorSocials}
                 onChange={(e) => setCompetitorSocials(e.target.value)}
                 placeholder="https://twitter.com/competitor, https://instagram.com/competitor"
-                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                className="border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none"
                 style={fieldStyle}
               />
               <p className="text-[11px] text-ink-muted leading-relaxed">
@@ -536,6 +648,8 @@ function CompanyInfoTab() {
           {saving ? 'Saving...' : saved ? '✓ Saved!' : 'Save Changes'}
         </Button>
       </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -17,6 +17,8 @@ import {
   CheckCircle,
   Link2,
   Star,
+  Activity,
+  FileText,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -24,6 +26,7 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Loader from '../../components/ui/Loader'
 import { getAdminDashboardSummary } from '../../features/admin/dashboard-api'
+import { cn } from '../../utils/cn'
 
 const METRICS_BY_TIMEFRAME = {
   Day: {
@@ -123,7 +126,7 @@ const ACTIVITIES = {
     {
       id: 1,
       icon: UserPlus,
-      color: 'bg-accent-50 text-accent',
+      color: 'bg-primary/10 text-primary',
       title: 'Sarah Jenkins',
       titlePrefix: 'New customer ',
       titleSuffix: ' registered via LinkedIn',
@@ -133,7 +136,7 @@ const ACTIVITIES = {
     {
       id: 2,
       icon: Calendar,
-      color: 'bg-primary-50 text-primary',
+      color: 'bg-primary-container/10 text-[#FF6600]',
       title: '"Summer Campaign Recap"',
       titlePrefix: 'Post scheduled: ',
       titleSuffix: ' for Twitter',
@@ -143,7 +146,7 @@ const ACTIVITIES = {
     {
       id: 3,
       icon: DollarSign,
-      color: 'bg-primary-50 text-primary-700',
+      color: 'bg-[#E6F4EA] text-[#137333]',
       title: 'Enterprise Monthly',
       titlePrefix: 'Subscription renewed: ',
       titleSuffix: '',
@@ -153,7 +156,7 @@ const ACTIVITIES = {
     {
       id: 4,
       icon: AlertCircle,
-      color: 'bg-red-50 text-danger',
+      color: 'bg-error-container/60 text-error',
       title: 'API Connection',
       titlePrefix: 'Failed attempt: ',
       titleSuffix: ' to Meta Graph',
@@ -163,7 +166,7 @@ const ACTIVITIES = {
     {
       id: 5,
       icon: Settings,
-      color: 'bg-canvas text-ink-muted',
+      color: 'bg-surface-container/60 text-on-surface-variant',
       title: 'Admin password',
       titlePrefix: 'Security update: ',
       titleSuffix: ' changed',
@@ -175,7 +178,7 @@ const ACTIVITIES = {
     {
       id: 1,
       icon: CheckCircle,
-      color: 'bg-accent-50 text-accent',
+      color: 'bg-[#E6F4EA] text-[#137333]',
       title: 'Instagram',
       titlePrefix: 'Post published successfully to ',
       titleSuffix: '',
@@ -185,7 +188,7 @@ const ACTIVITIES = {
     {
       id: 2,
       icon: Calendar,
-      color: 'bg-primary-50 text-primary',
+      color: 'bg-primary-container/10 text-[#FF6600]',
       title: '"Summer Campaign Recap"',
       titlePrefix: 'Post scheduled: ',
       titleSuffix: ' for Twitter',
@@ -195,7 +198,7 @@ const ACTIVITIES = {
     {
       id: 3,
       icon: AlertCircle,
-      color: 'bg-red-50 text-danger',
+      color: 'bg-error-container/60 text-error',
       title: 'Facebook',
       titlePrefix: 'Failed to publish post to ',
       titleSuffix: '',
@@ -234,10 +237,10 @@ export default function Dashboard() {
 
   const renderValue = (value) => {
     if (isLoading) {
-      return <span className="animate-pulse text-primary-200 text-sm">Loading...</span>
+      return <span className="animate-pulse text-on-surface-variant/40 text-sm">Loading...</span>
     }
     if (error) {
-      return <span className="text-red-500 text-xs font-semibold">Error</span>
+      return <span className="text-error text-xs font-semibold">Error</span>
     }
     return value
   }
@@ -258,295 +261,296 @@ export default function Dashboard() {
       `}</style>
 
       {/* Dashboard Title Row with Toggle */}
-      <PageHeader
-        title="Overview"
-        action={
-          <div className="flex flex-col sm:flex-row items-center gap-4">
-            <div className="bg-canvas border border-border rounded-full p-1 flex items-center shadow-soft">
-              {[
-                { value: 'daily', label: 'Daily' },
-                { value: 'weekly', label: 'Weekly' },
-                { value: 'monthly', label: 'Monthly' },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  onClick={() => setPeriod(item.value)}
-                  className={`px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    period === item.value
-                      ? 'bg-primary text-white shadow-soft font-bold'
-                      : 'text-ink-muted hover:text-ink'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <Button
-              as={Link}
-              to="/admin/analytics"
-              variant="outline"
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span>View Full Analytics</span>
-            </Button>
-          </div>
-        }
-      />
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
+        <div>
+          <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Good morning, Admin.</h2>
+          <p className="text-sm text-on-surface-variant">Here's what's happening across Raasocial.</p>
+        </div>
 
-      {/* Stat Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Card 1: Total Customers (Live) */}
-        <Card className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Total Customers
-            </span>
-            <Users className="w-5 h-5 text-ink-muted/50" />
+        <div className="flex items-center gap-3">
+          <div className="flex gap-1 border border-surface-variant bg-surface rounded-lg p-1 shadow-soft">
+            {[
+              { value: 'daily', label: 'Daily' },
+              { value: 'weekly', label: 'Weekly' },
+              { value: 'monthly', label: 'Monthly' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                onClick={() => setPeriod(item.value)}
+                className={cn(
+                  "px-3 py-1 text-xs rounded transition-all font-ui-mono",
+                  period === item.value
+                    ? 'bg-primary text-on-primary font-bold shadow-soft'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
+                )}
+              >
+                {item.label.toUpperCase()}
+              </button>
+            ))}
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">
+
+          <Button
+            as={Link}
+            to="/admin/analytics"
+            variant="outline"
+            className="flex items-center gap-2 border border-surface-variant text-on-surface-variant hover:border-on-surface hover:bg-surface-container-low transition-colors"
+          >
+            <TrendingUp className="w-4 h-4" />
+            <span>Full Analytics</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Stat Cards Grid (Bento styled) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {/* Card 1: Total Customers */}
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Total Customers</span>
+            <Users className="text-tertiary-container w-5 h-5 shrink-0" />
+          </div>
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
               {renderValue(summaryData?.totalCustomers)}
             </span>
-          </div>
-        </Card>
-
-        {/* Card 2: Active & Expired Subscriptions (Live) */}
-        <Card className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Subscriptions Status
+            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
+              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.customersChange}
             </span>
-            <CreditCard className="w-5 h-5 text-ink-muted/50" />
           </div>
-          <div className="flex flex-col justify-end mt-1">
-            <div className="flex items-baseline justify-between">
-              <span className="text-2xl font-bold text-ink">
-                {isLoading ? (
-                  <span className="animate-pulse text-primary-200 text-sm">Loading...</span>
-                ) : error ? (
-                  <span className="text-red-500 text-xs font-semibold">Error</span>
-                ) : (
-                  `${summaryData?.activeSubscriptions || 0} Active`
-                )}
-              </span>
-            </div>
-            {!isLoading && !error && (
-              <span className="text-xs text-ink-muted mt-1.5 font-medium block">
-                {summaryData?.expiredSubscriptions || 0} Expired Subscriptions
-              </span>
-            )}
+        </div>
+
+        {/* Card 2: Subscriptions Status */}
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Active Subscriptions</span>
+            <CreditCard className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
-        </Card>
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
+              {isLoading ? (
+                <span className="animate-pulse text-on-surface-variant/40 text-sm">Loading...</span>
+              ) : error ? (
+                <span className="text-error text-xs font-semibold">Error</span>
+              ) : (
+                `${summaryData?.activeSubscriptions || 0}`
+              )}
+            </span>
+            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
+              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.activeSubsChange}
+            </span>
+          </div>
+          {!isLoading && !error && (
+            <span className="text-xs text-on-surface-variant mt-1 block">
+              {summaryData?.expiredSubscriptions || 0} Expired Subscriptions
+            </span>
+          )}
+        </div>
 
         {/* Card 3: Published Posts (Mock with Dev Mode Badge) */}
-        <Card className="relative p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-          <div className="absolute top-2 right-2 z-20">
-            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Dev Mode - Mock Data
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+          <div className="absolute top-2 right-2">
+            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Mock
             </span>
           </div>
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Published Posts
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Published Posts</span>
+            <Send className="text-tertiary-container w-5 h-5 shrink-0" />
+          </div>
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
+              {renderValue(summaryData?.totalFeedback)}
             </span>
-            <Send className="w-5 h-5 text-ink-muted/50" />
+            <span className="font-ui-mono text-ui-mono text-on-surface-variant/60 mb-1 flex items-center">
+              {metrics.postsChange}
+            </span>
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">{renderValue(summaryData?.totalFeedback)}</span>{/* Displays total feedback count using helper function to gracefully handle null/undefined states */}
-            <Badge tone="neutral" className="gap-1 font-semibold">
-              <span>{metrics.postsChange}</span>
-            </Badge>
-          </div>
-        </Card>
+        </div>
 
-        {/* Card 4: New Registrations (Live) */}
-        <Card className="p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              New Registrations ({period})
-            </span>
-            <UserPlus className="w-5 h-5 text-ink-muted/50" />
+        {/* Card 4: New Registrations */}
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">New Registrations ({period})</span>
+            <UserPlus className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
               {renderValue(summaryData?.newCustomersThisPeriod)}
             </span>
+            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
+              <TrendingDown className="text-sm w-3.5 h-3.5 mr-0.5 text-error" /> {metrics.registrationsChange}
+            </span>
           </div>
-        </Card>
+        </div>
 
         {/* Card 5: Connected Accounts (Mock with Dev Mode Badge) */}
-        <Card className="relative p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-          <div className="absolute top-2 right-2 z-20">
-            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Dev Mode - Mock Data
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+          <div className="absolute top-2 right-2">
+            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Mock
             </span>
           </div>
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Connected Accounts
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Connected Accounts</span>
+            <Link2 className="text-tertiary-container w-5 h-5 shrink-0" />
+          </div>
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
+              {metrics.connectedAccounts}
             </span>
-            <Link2 className="w-5 h-5 text-ink-muted/50" />
+            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
+              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.connectedAccountsChange}
+            </span>
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">{metrics.connectedAccounts}</span>
-            <Badge tone="success" className="gap-1 font-semibold">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>{metrics.connectedAccountsChange}</span>
-            </Badge>
-          </div>
-        </Card>
+        </div>
 
         {/* Card 6: AI Content Generated (Mock with Dev Mode Badge) */}
-        <Card className="relative p-5 flex flex-col justify-between hover:-translate-y-0.5 transition-all duration-200" hover>
-          <div className="absolute top-2 right-2 z-20">
-            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Dev Mode - Mock Data
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+          <div className="absolute top-2 right-2">
+            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Mock
             </span>
           </div>
-          <div className="flex justify-between items-start mb-2">
-            <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              AI Content Generated
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">AI Content Generated</span>
+            <Sparkles className="text-tertiary-container w-5 h-5 shrink-0" />
+          </div>
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
+              {renderValue(summaryData?.totalSuggestions)}
             </span>
-            <Sparkles className="w-5 h-5 text-ink-muted/50" />
+            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
+              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.aiContentChange}
+            </span>
           </div>
-          <div className="flex items-baseline justify-between">
-            <span className="text-2xl font-bold text-ink">{renderValue(summaryData?.totalSuggestions)}</span>{/* Displays total suggestions count using helper function to gracefully handle null/undefined states */}
-            <Badge tone="success" className="gap-1 font-semibold">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>{metrics.aiContentChange}</span>
-            </Badge>
-          </div>
-        </Card>
+        </div>
       </div>
 
       {/* Main Content: Two Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-unit">
         {/* Left (Wider): Publishing Activity Chart */}
-        <Card className="relative lg:col-span-2 p-6 flex flex-col justify-between">
-          <div className="absolute top-4 right-4 z-20">
-            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Dev Mode - Mock Data
+        <div className="lg:col-span-2 bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col relative">
+          <div className="absolute top-4 right-4">
+            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Mock Chart
             </span>
           </div>
-          <div>
-            <div className="flex justify-between items-center mb-6">
-              <div>
-                <h3 className="text-base font-semibold text-ink">Publishing Activity</h3>
-                <p className="text-xs text-ink-muted">Engagement across all platforms</p>
+          
+          <div className="flex justify-between items-center mb-6">
+            <div>
+              <h3 className="font-headline-lg text-headline-lg text-on-surface">Publishing Activity</h3>
+              <p className="text-xs text-on-surface-variant">Engagement across all platforms</p>
+            </div>
+            <div className="flex gap-4 mr-20">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-primary-container" />
+                <span className="text-xs text-on-surface-variant font-medium">Success</span>
               </div>
-              <div className="flex gap-4 mr-24">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-primary" />
-                  <span className="text-xs text-ink-muted font-medium">Success</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-2.5 h-2.5 rounded-full bg-ink-muted/60" />
-                  <span className="text-xs text-ink-muted font-medium">Scheduled</span>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-tertiary-container" />
+                <span className="text-xs text-on-surface-variant font-medium">Scheduled</span>
               </div>
             </div>
+          </div>
 
-            <div className="relative h-64 w-full bg-canvas/30 rounded-control overflow-hidden border border-border">
-              {/* Chart Grid Lines */}
-              <div className="absolute inset-0 flex flex-col justify-between py-6 pointer-events-none opacity-40">
-                <hr className="border-border border-dashed" />
-                <hr className="border-border border-dashed" />
-                <hr className="border-border border-dashed" />
-                <hr className="border-border border-dashed" />
-              </div>
-
-              <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 800 250">
-                {/* Success Line */}
-                <path
-                  key={`success-${period}`}
-                  className="text-primary stroke-primary animated-path"
-                  d={metrics.chartPathSuccess}
-                  fill="none"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-                {/* Scheduled Line */}
-                <path
-                  key={`scheduled-${period}`}
-                  className="text-ink-muted/50 stroke-ink-muted animated-path"
-                  d={metrics.chartPathScheduled}
-                  fill="none"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeDasharray="4 4"
-                />
-              </svg>
-
-              <div className="absolute bottom-4 left-0 right-0 flex justify-between px-6 text-xs text-ink-muted font-medium">
-                <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
-              </div>
+          <div className="flex-1 relative min-h-[260px] border-b border-l border-surface-variant/50 pt-4 pr-4">
+            {/* Chart Grid Lines */}
+            <div className="absolute inset-0 flex flex-col justify-between pt-4 pointer-events-none">
+              <div className="w-full h-px bg-[#F2F2F2]"></div>
+              <div className="w-full h-px bg-[#F2F2F2]"></div>
+              <div className="w-full h-px bg-[#F2F2F2]"></div>
+              <div className="w-full h-px bg-[#F2F2F2]"></div>
+              <div className="w-full h-px bg-[#F2F2F2]"></div>
             </div>
+
+            <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 800 250">
+              {/* Success Line */}
+              <path
+                key={`success-${period}`}
+                className="stroke-primary-container animated-path"
+                d={metrics.chartPathSuccess}
+                fill="none"
+                strokeWidth="3"
+                strokeLinecap="round"
+              />
+              {/* Scheduled Line */}
+              <path
+                key={`scheduled-${period}`}
+                className="stroke-tertiary-container animated-path"
+                d={metrics.chartPathScheduled}
+                fill="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray="4 4"
+              />
+            </svg>
+          </div>
+          <div className="flex justify-between mt-2 text-xs text-on-surface-variant font-ui-mono">
+            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
           </div>
 
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-3 rounded-control bg-canvas border border-border/30">
-              <p className="text-xs text-ink-muted mb-1 font-medium">Scheduled</p>
-              <p className="text-lg font-bold text-ink">{metrics.scheduled}</p>
+            <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
+              <p className="text-xs text-on-surface-variant mb-1 font-medium">Scheduled</p>
+              <p className="text-lg font-bold text-on-surface">{metrics.scheduled}</p>
             </div>
-            <div className="p-3 rounded-control bg-canvas border border-border/30">
-              <p className="text-xs text-ink-muted mb-1 font-medium">Success</p>
-              <p className="text-lg font-bold text-accent">{metrics.success}</p>
+            <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
+              <p className="text-xs text-on-surface-variant mb-1 font-medium">Success</p>
+              <p className="text-lg font-bold text-[#FF6600]">{metrics.success}</p>
             </div>
-            <div className="p-3 rounded-control bg-canvas border border-border/30">
-              <p className="text-xs text-ink-muted mb-1 font-medium">Failed</p>
-              <p className="text-lg font-bold text-danger">{metrics.failed}</p>
+            <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
+              <p className="text-xs text-on-surface-variant mb-1 font-medium">Failed</p>
+              <p className="text-lg font-bold text-error">{metrics.failed}</p>
             </div>
-            <div className="p-3 rounded-control bg-canvas border border-border/30">
-              <p className="text-xs text-ink-muted mb-1 font-medium">Pending</p>
-              <p className="text-lg font-bold text-warning">{metrics.pending}</p>
+            <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
+              <p className="text-xs text-on-surface-variant mb-1 font-medium">Pending</p>
+              <p className="text-lg font-bold text-on-surface-variant">{metrics.pending}</p>
             </div>
           </div>
-        </Card>
+        </div>
 
-        {/* Right (Narrower): Revenue Overview Card (Live Revenue, Chart Mocked) */}
-        <Card className="relative p-6 flex flex-col justify-between">
-          <div className="absolute top-4 right-4 z-20">
-            <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Dev Mode - Chart Mocked
+        {/* Right (Narrower): Revenue Overview Card */}
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col justify-between relative">
+          <div className="absolute top-4 right-4">
+            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+              Mock Chart
             </span>
           </div>
+
           <div>
             <div className="flex justify-between items-start mb-6">
               <div>
-                <h3 className="text-base font-semibold text-ink">Revenue Overview</h3>
+                <h3 className="font-headline-lg text-headline-lg text-on-surface">Revenue Overview</h3>
                 {isLoading ? (
                   <div className="h-8 animate-pulse bg-primary/10 rounded w-32 mt-2" />
                 ) : error ? (
-                  <p className="text-xs text-red-500 font-semibold mt-2">{error}</p>
+                  <p className="text-xs text-error font-semibold mt-2">{error}</p>
                 ) : (
                   <div className="mt-1">
-                    <span className="text-3xl font-extrabold text-ink">
+                    <span className="text-3xl font-extrabold text-on-surface">
                       ₦{Number(summaryData?.revenueThisPeriod || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                     </span>
-                    <span className="text-[10px] text-ink-muted block mt-0.5 capitalize font-medium">
+                    <span className="text-[10px] text-on-surface-variant block mt-0.5 capitalize font-medium">
                       Total Successful Revenue ({period})
                     </span>
                   </div>
                 )}
               </div>
-              <button className="text-ink-muted hover:text-ink transition-colors mr-28">
-                <MoreVertical className="w-5 h-5" />
-              </button>
             </div>
 
-            <div className="flex items-end gap-1.5 h-40 mb-6">
+            <div className="flex items-end gap-1.5 h-40 mb-6 px-2">
               {metrics.barHeights.map((hClass, idx) => (
                 <div
                   key={`${period}-${idx}`}
-                  className={`flex-grow rounded-t-sm cursor-pointer group relative transition-all duration-300 ${
+                  className={cn(
+                    "flex-grow rounded-t cursor-pointer group relative transition-all duration-300",
                     idx === 3
-                      ? 'bg-primary border-x border-primary-500'
-                      : 'bg-primary-100 hover:bg-primary'
-                  } ${hClass}`}
+                      ? 'bg-primary-container'
+                      : 'bg-primary-container/20 hover:bg-primary-container',
+                    hClass
+                  )}
                 >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-ink text-white text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 font-mono">
+                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-background text-surface text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 font-mono">
                     ₦{metrics.barValues[idx]}
                   </div>
                 </div>
@@ -556,72 +560,75 @@ export default function Dashboard() {
 
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Growth Rate</span>
-              <span className="text-accent font-semibold text-sm">{metrics.growthRate}</span>
+              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Growth Rate</span>
+              <span className="text-[#FF6600] font-semibold text-sm">{metrics.growthRate}</span>
             </div>
-            <div className="w-full bg-canvas rounded-full h-1.5 border border-border/20">
-              <div className="bg-accent h-1.5 rounded-full transition-all duration-500" style={{ width: metrics.goalProgress }}></div>
+            <div className="w-full bg-surface-container-low rounded-full h-1.5 border border-surface-variant/40">
+              <div className="bg-[#FF6600] h-1.5 rounded-full transition-all duration-500" style={{ width: metrics.goalProgress }}></div>
             </div>
             <div className="flex justify-between items-center text-sm">
-              <span className="text-ink-muted">Annual Goal</span>
-              <span className="text-ink font-semibold">₦15M</span>
+              <span className="text-on-surface-variant">Annual Goal</span>
+              <span className="text-on-surface font-semibold">₦15M</span>
             </div>
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Bottom Section: Tabs and Recent Activity */}
-      <Card className="relative overflow-hidden p-0">
-        <div className="absolute top-4 right-4 z-20">
-          <span className="text-[9px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-            Dev Mode - Mock Data
+      {/* Bottom Section: Tabs and Activity Feed (Styled as Bento List) */}
+      <div className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden flex flex-col relative">
+        <div className="absolute top-4 right-4">
+          <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
+            Mock Events
           </span>
         </div>
-        <div className="border-b border-border px-6 flex items-center gap-4">
+
+        <div className="border-b border-surface-variant px-6 flex items-center gap-4 bg-surface-bright">
           <button
             onClick={() => setActiveTab('recent')}
-            className={`py-4 px-2 border-b-2 text-sm font-semibold transition-all ${
+            className={cn(
+              "py-4 px-2 border-b-2 text-sm font-semibold transition-all",
               activeTab === 'recent'
                 ? 'border-primary text-primary'
-                : 'border-transparent text-ink-muted hover:text-ink'
-            }`}
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
+            )}
           >
             Recent Activity
           </button>
           <button
             onClick={() => setActiveTab('post')}
-            className={`py-4 px-2 border-b-2 text-sm font-semibold transition-all ${
+            className={cn(
+              "py-4 px-2 border-b-2 text-sm font-semibold transition-all",
               activeTab === 'post'
                 ? 'border-primary text-primary'
-                : 'border-transparent text-ink-muted hover:text-ink'
-            }`}
+                : 'border-transparent text-on-surface-variant hover:text-on-surface'
+            )}
           >
             Post Activity
           </button>
         </div>
 
-        <div className="divide-y divide-border/50">
+        <div className="divide-y divide-surface-variant">
           {ACTIVITIES[activeTab].map((act) => {
             const Icon = act.icon
             return (
               <div
                 key={act.id}
-                className="px-6 py-4 flex items-center justify-between hover:bg-canvas/50 transition-colors cursor-default"
+                className="px-6 py-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-default"
               >
                 <div className="flex items-center gap-4">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${act.color}`}>
+                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", act.color)}>
                     <Icon className="w-5 h-5" />
                   </div>
                   <div>
-                    <p className="text-sm text-ink-muted">
+                    <p className="text-sm text-on-surface-variant">
                       {act.titlePrefix}
-                      <span className="font-semibold text-ink">{act.title}</span>
+                      <span className="font-semibold text-on-surface">{act.title}</span>
                       {act.titleSuffix}
                     </p>
-                    <p className="text-xs text-ink-muted mt-0.5">{act.description}</p>
+                    <p className="text-xs text-on-surface-variant/70 mt-0.5">{act.description}</p>
                   </div>
                 </div>
-                <span className="text-xs text-ink-muted font-medium opacity-80 whitespace-nowrap ml-4">
+                <span className="text-xs text-on-surface-variant font-ui-mono whitespace-nowrap ml-4">
                   {act.time}
                 </span>
               </div>
@@ -629,13 +636,12 @@ export default function Dashboard() {
           })}
         </div>
 
-        <div className="p-4 text-center border-t border-border/50 bg-canvas/10">
-          <Button variant="ghost" className="text-primary font-semibold hover:text-primary-700">
+        <div className="p-4 text-center border-t border-surface-variant bg-surface-bright">
+          <Link to="/admin/logs" className="text-primary font-semibold hover:underline text-sm">
             View All Activity
-          </Button>
+          </Link>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }
-

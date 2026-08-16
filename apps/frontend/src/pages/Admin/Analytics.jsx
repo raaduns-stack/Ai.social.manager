@@ -24,7 +24,7 @@ const TIMEFRAMES = [
   { value: 'monthly', label: 'Month' },
 ]
 
-const DONUT_COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#EC4899', '#0EA5E9', '#8B5CF6', '#F97316']
+const DONUT_COLORS = ['#FF6600', '#10B981', '#F59E0B', '#EC4899', '#0EA5E9', '#1A1A1A', '#F97316']
 
 export default function Analytics() {
   // ---------------------------------------------------------------------------

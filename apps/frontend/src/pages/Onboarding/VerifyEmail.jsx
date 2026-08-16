@@ -37,7 +37,6 @@ export default function VerifyEmail() {
   }, [countdown])
 
   const handleChange = (index, value) => {
-    // Only accept numeric inputs
     if (value && !/^\d$/.test(value)) return
 
     const newCode = [...code]
@@ -53,7 +52,6 @@ export default function VerifyEmail() {
 
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !code[index] && index > 0) {
-      // Focus previous input on backspace
       inputRefs[index - 1].current.focus()
     }
   }
@@ -102,17 +100,17 @@ export default function VerifyEmail() {
   return (
     <div className="w-full max-w-md mx-auto space-y-6 text-center">
       <div className="space-y-2">
-        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Mail className="text-primary w-6 h-6" />
+        <div className="w-16 h-16 bg-[#FFF5F0] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#FFEBE0]">
+          <Mail className="text-[#FF6600] w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-bold tracking-tight text-ink">Verify your email</h1>
-        <p className="text-sm text-ink-muted leading-relaxed">
-          We sent a 6-digit verification code to <strong className="text-ink">{email}</strong>.
+        <h1 className="text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight">Verify your email</h1>
+        <p className="text-sm text-[#666666] leading-relaxed">
+          We sent a 6-digit verification code to <strong className="text-[#111111] font-semibold">{email}</strong>.
           Enter the code below to activate your account.
         </p>
       </div>
 
-      <Card className="p-6">
+      <Card className="p-8 border border-gray-200 bg-white">
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex justify-between gap-2 max-w-xs mx-auto">
             {code.map((digit, index) => (
@@ -124,7 +122,7 @@ export default function VerifyEmail() {
                 value={digit}
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-12 text-center text-lg font-bold rounded-control border border-border bg-surface focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-ink"
+                className="w-12 h-12 text-center text-lg font-bold rounded-control border border-gray-300 bg-white focus:outline-none focus:ring-1 focus:ring-[#FF6600] focus:border-[#FF6600] text-[#111111] transition-colors"
                 required
               />
             ))}
@@ -136,22 +134,22 @@ export default function VerifyEmail() {
             type="submit"
             variant="primary"
             size="lg"
-            className="w-full font-semibold flex items-center justify-center gap-2"
+            className="w-full font-semibold flex items-center justify-center gap-2 text-white hover:opacity-95"
             disabled={loading}
           >
             {loading ? 'Verifying...' : 'Verify Email'}
           </Button>
         </form>
 
-        <div className="mt-6 text-xs text-ink-muted">
+        <div className="mt-6 text-xs text-[#666666]">
           Didn't receive the email?{' '}
           <button
             onClick={handleResend}
             disabled={countdown > 0 || resendStatus === 'sending'}
             className={`font-semibold inline-flex items-center gap-1 ${
               countdown > 0 || resendStatus === 'sending'
-                ? 'text-ink-muted/50 cursor-not-allowed'
-                : 'text-primary hover:underline cursor-pointer'
+                ? 'text-[#666666]/50 cursor-not-allowed'
+                : 'text-[#FF6600] hover:underline cursor-pointer'
             }`}
           >
             {resendStatus === 'sending' ? (
@@ -159,7 +157,7 @@ export default function VerifyEmail() {
                 <RefreshCw size={12} className="animate-spin" /> Resending...
               </>
             ) : resendStatus === 'sent' ? (
-              <span className="text-accent">✓ Code resent!</span>
+              <span className="text-[#FF6600] font-semibold">✓ Code resent!</span>
             ) : countdown > 0 ? (
               `Resend code in ${countdown}s`
             ) : (

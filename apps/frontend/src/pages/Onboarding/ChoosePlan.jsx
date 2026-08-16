@@ -1,14 +1,8 @@
-/**
- * ChoosePlan Component (Onboarding)
- * 
- * Presents the subscription options to the user during the onboarding flow.
- */
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, Link } from 'react-router-dom'
 import { CheckCircle2, CreditCard, RefreshCw } from 'lucide-react'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
-import Badge from '../../components/ui/Badge'
 import { getPlans } from '../../features/plans/plans-api'
 import CheckoutButton from '../../features/payments/checkout-button'
 import ErrorBanner from '../../components/error-banner'
@@ -40,7 +34,6 @@ export default function ChoosePlan() {
     navigate('/dashboard')
   }
 
-  // Features list formatter matching plan tiers
   const getFeaturesList = (plan) => {
     if (!plan) return []
     let features = plan.features
@@ -60,7 +53,6 @@ export default function ChoosePlan() {
       ]
     }
 
-    // Default hardcoded tiers mapping
     if (plan.slug === 'free') {
       return [
         'Connect 1 social account',
@@ -69,11 +61,9 @@ export default function ChoosePlan() {
         'Basic AI image generation',
         'Content preview',
         'Basic analytics',
-
       ]
     } else if (plan.slug === 'starter') {
       return [
-        'Everything in Free +',
         'Connect 3 social accounts',
         '30 AI posts/month',
         'Content Calendar',
@@ -84,45 +74,42 @@ export default function ChoosePlan() {
       ]
     } else if (plan.slug === 'growth') {
       return [
-        'Everything in Starter +',
-        'Connect 7 social accounts',
-        '150 AI posts/month (Fair Use)',
-        'Advanced AI Images',
-        'Competitor Analysis',
-        'Weekly Reports',
-        '5 Team Members',
-        'Approval Workflow',
+        'Connect 15 team members',
+        'Advanced AI-driven insights',
+        'Priority 24/7 email support',
+        'Unlimited workspaces',
+        'Custom branding (New)',
       ]
     } else {
       return [
-        'Everything in Growth +',
-        'Connect 15 social accounts',
-        '300 AI posts/month (Fair Use)',
-        'Unlimited Team Members',
-        'AI Marketing Strategy & Campaign Planner',
-        'Multi-location support',
-        'Dedicated Account Manager',
+        'Unlimited team members',
+        'Dedicated account manager',
+        '99.99% Uptime SLA',
+        'Custom API integrations',
+        'SSO & Advanced Security',
       ]
     }
   }
 
-  const formatPrice = (priceCents) => {
+  const formatPrice = (plan) => {
+    if (plan.slug === 'free') return 'Free'
+    if (plan.slug === 'enterprise') return 'Custom'
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
       maximumFractionDigits: 0,
-    }).format(priceCents / 100)
+    }).format(plan.price / 100)
   }
 
   return (
-    <div className="w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="text-center space-y-2">
-        <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <CreditCard className="text-primary w-6 h-6" />
-        </div>
-        <h1 className="text-3xl font-bold tracking-tight text-ink">Choose your workspace plan</h1>
-        <p className="text-sm text-ink-muted leading-relaxed max-w-lg mx-auto">
-          Select a workspace subscription plan to unlock post scheduling and custom AI tools.
+    <div className="w-full space-y-12 py-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
+      {/* Header Section */}
+      <div className="text-center max-w-2xl mx-auto space-y-3">
+        <h1 className="text-3xl md:text-5xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight">
+          Select your growth engine.
+        </h1>
+        <p className="text-base md:text-lg text-[#666666] leading-relaxed">
+          Scalable plans designed for teams that move fast.
         </p>
       </div>
 
@@ -131,73 +118,111 @@ export default function ChoosePlan() {
       )}
 
       {loading ? (
-        <div className="flex flex-col items-center justify-center py-12 space-y-4">
-          <RefreshCw className="animate-spin text-primary w-8 h-8" />
-          <p className="text-sm text-ink-muted">Loading plans...</p>
+        <div className="flex flex-col items-center justify-center py-16 space-y-4">
+          <RefreshCw className="animate-spin text-[#FF6600] w-8 h-8" />
+          <p className="text-sm text-[#666666]">Loading plans...</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
-          {plans.filter((p) => p.slug === 'free').map((plan) => {
-            const isFree = plan.slug === 'free'
-            const isGrowth = plan.slug === 'growth'
-            const features = getFeaturesList(plan)
+        <div className="space-y-12">
+          {/* Pricing Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-[1000px] mx-auto items-stretch relative z-10 pt-4">
+            {plans.filter((p) => p.slug !== 'free').map((plan) => {
+              const isGrowth = plan.slug === 'growth'
+              const isEnterprise = plan.slug === 'enterprise'
+              const features = getFeaturesList(plan)
 
-            return (
-              <Card
-                key={plan.id}
-                className={`p-6 flex flex-col justify-between border-2 transition-all relative ${
-                  isGrowth ? 'border-primary shadow-hover bg-primary/5' : 'border-border bg-surface'
-                }`}
-              >
-                {isGrowth && (
-                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2">
-                    <Badge tone="primary">Recommended</Badge>
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div className="text-center md:text-left">
-                    <h3 className="text-base font-bold text-ink">
-                      {plan.name === 'Brand Domination' ? 'Brand Domination / Enterprise' : plan.name}
-                    </h3>
-                    <div className="mt-2 flex items-baseline justify-center md:justify-start gap-1">
-                      <span className="text-2xl font-extrabold text-ink">{formatPrice(plan.price)}</span>
-                      <span className="text-xs text-ink-muted">/{isFree ? 'free forever' : 'month'}</span>
+              return (
+                <Card
+                  key={plan.id}
+                  className={`bg-white border rounded-xl p-8 flex flex-col justify-between transition-transform hover:-translate-y-1 duration-300 relative ${
+                    isGrowth ? 'border-2 border-[#FF6600] shadow-md scale-105 z-10' : 'border-gray-200 shadow-sm'
+                  }`}
+                >
+                  {isGrowth && (
+                    <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                      <span className="bg-[#FF6600] text-white font-semibold text-xs px-4 py-1.5 rounded-full whitespace-nowrap shadow-sm">
+                        Most Popular
+                      </span>
                     </div>
+                  )}
+
+                  <div className="space-y-6">
+                    <div className="text-left">
+                      <h3 className="text-2xl font-bold text-[#111111] font-['Plus_Jakarta_Sans'] tracking-tight mb-2">
+                        {plan.name === 'Brand Domination' ? 'Enterprise' : plan.name}
+                      </h3>
+                      <p className="text-sm text-[#666666] leading-relaxed mb-4">
+                        {plan.slug === 'starter'
+                          ? 'Perfect for individuals and small teams starting out.'
+                          : plan.slug === 'growth'
+                          ? 'Advanced features for growing teams pushing limits.'
+                          : 'Custom security and performance for large organizations.'}
+                      </p>
+                      <div className="flex items-baseline gap-1 mt-2">
+                        <span className="text-4xl font-extrabold text-[#111111] font-['Plus_Jakarta_Sans'] tracking-tight">
+                          {formatPrice(plan)}
+                        </span>
+                        {!isEnterprise && (
+                          <span className="text-sm text-[#666666]">/mo</span>
+                        )}
+                      </div>
+                    </div>
+
+                    <ul className="flex flex-col space-y-3.5 border-t border-gray-100 pt-6">
+                      {features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-3 text-left">
+                          <CheckCircle2 size={16} className={`shrink-0 mt-0.5 ${isGrowth ? 'text-[#FF6600]' : 'text-[#111111]'}`} />
+                          <span className="text-sm text-[#666666]">{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
 
-                  <ul className="space-y-2.5 text-xs text-ink-muted text-left border-t border-border/60 pt-4">
-                    {features.map((feature, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircle2 size={14} className="text-primary shrink-0 mt-0.5" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                  <div className="pt-8">
+                    {isEnterprise ? (
+                      <Button
+                        as={Link}
+                        to="/contact"
+                        variant="outline"
+                        className="w-full py-3 font-semibold text-[#111111] border-[#111111] hover:bg-gray-50"
+                      >
+                        Contact Sales
+                      </Button>
+                    ) : (
+                      <CheckoutButton
+                        planId={plan.id}
+                        variant={isGrowth ? 'primary' : 'outline'}
+                        className={`w-full py-3 font-semibold ${
+                          isGrowth
+                            ? 'bg-[#FF6600] text-white hover:bg-[#E65C00]'
+                            : 'text-[#111111] border-[#111111] hover:bg-gray-50'
+                        }`}
+                      >
+                        Choose {plan.name}
+                      </CheckoutButton>
+                    )}
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
 
-                <div className="pt-6">
-                  {isFree ? (
-                    <Button
-                      onClick={handleContinueFree}
-                      variant="outline"
-                      className="w-full font-semibold cursor-pointer border-primary text-primary hover:bg-primary/5"
-                    >
-                      Continue with Free
-                    </Button>
-                  ) : (
-                    <CheckoutButton
-                      planId={plan.id}
-                      variant={isGrowth ? 'primary' : 'outline'}
-                      className="font-semibold cursor-pointer"
-                    >
-                      Choose Plan
-                    </CheckoutButton>
-                  )}
-                </div>
-              </Card>
-            )
-          })}
+          {/* Onboarding Bottom Actions */}
+          <div className="flex items-center justify-between w-full max-w-[1000px] mx-auto mt-12 pt-6 border-t border-gray-200">
+            <button
+              onClick={handleContinueFree}
+              className="px-6 py-2 font-semibold text-[#666666] hover:text-[#111111] transition-colors cursor-pointer"
+            >
+              Skip for now
+            </button>
+            <Button
+              onClick={handleContinueFree}
+              variant="primary"
+              className="px-8 py-3 bg-[#FF6600] text-white rounded font-semibold hover:bg-[#E65C00] transition-all active:scale-95 shadow-sm"
+            >
+              Continue with Free
+            </Button>
+          </div>
         </div>
       )}
     </div>

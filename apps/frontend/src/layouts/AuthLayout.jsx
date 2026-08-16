@@ -6,20 +6,33 @@ import { Outlet } from 'react-router-dom'
  */
 export default function AuthLayout() {
   return (
-    <div className="grid min-h-screen grid-cols-1 lg:grid-cols-2">
-      <div className="hidden items-center justify-center bg-primary-50 p-10 lg:flex">
-        {/* Replace with the illustration from Stitch */}
-        <div className="max-w-sm text-center">
-          <h2 className="text-2xl font-bold text-primary-700">
-            AI-powered social media, managed for you.
-          </h2>
-          <p className="mt-2 text-sm text-primary-700/80">
-            Connect your accounts and let AI + our team handle the rest.
-          </p>
+    <div className="bg-[#fbf9f8] text-[#1b1c1c] min-h-screen flex flex-col md:flex-row overflow-hidden font-sans text-body-md w-full">
+      {/* Left Panel: Brand & Value Proposition */}
+      <div className="hidden md:flex md:w-1/2 bg-[#1A1A1A] text-white flex-col justify-between p-16 relative">
+        {/* Logo */}
+        <div>
+          <span className="text-2xl font-extrabold text-white tracking-tight font-['Plus_Jakarta_Sans']">Raasocial</span>
+        </div>
+        {/* Messaging */}
+        <div className="max-w-md">
+          <h1 className="text-5xl font-extrabold tracking-tight mb-6 leading-tight text-white font-['Plus_Jakarta_Sans']">
+            Meet Kleos.<br/>
+            <span className="text-[#999999]">Your AI assistant for staying consistent on social.</span>
+          </h1>
+        </div>
+        {/* Footer/Meta */}
+        <div className="text-xs text-[#999999]">
+          © {new Date().getFullYear()} Raasocial Inc. All rights reserved.
         </div>
       </div>
-      <div className="flex items-center justify-center p-6 sm:p-10">
-        <div className="w-full max-w-sm">
+
+      {/* Right Panel: Form Content */}
+      <div className="w-full md:w-1/2 bg-white flex items-center justify-center p-6 md:p-16 overflow-y-auto min-h-screen">
+        <div className="w-full max-w-[400px]">
+          {/* Mobile Logo (Hidden on Desktop) */}
+          <div className="md:hidden mb-8 text-center">
+            <span className="text-2xl font-extrabold text-[#111111] tracking-tight font-['Plus_Jakarta_Sans']">Raasocial</span>
+          </div>
           <Outlet />
         </div>
       </div>

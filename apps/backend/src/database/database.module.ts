@@ -3,7 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
-import { seedPlans, seedSingletons } from './seeding';
+import { seedPlans, seedSingletons, seedRolePermissions } from './seeding';
 
 export const DATABASE_CONNECTION = 'DATABASE_CONNECTION';
 
@@ -35,6 +35,7 @@ export class DatabaseModule implements OnModuleInit {
       // Execute database seeding automatically on application startup
       await seedPlans(this.db);
       await seedSingletons(this.db, this.configService);
+      await seedRolePermissions(this.db);
     } catch (error) {
       // Log warning but allow app to start (e.g. if migrations haven't run yet)
       console.warn(

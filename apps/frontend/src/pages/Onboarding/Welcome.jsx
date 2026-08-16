@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Sparkles, ArrowRight } from 'lucide-react'
-import Card from '../../components/ui/Card'
+import { ArrowRight, Bot } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useAuthStore } from '../../store/auth-store'
 
@@ -14,44 +13,46 @@ export default function Welcome() {
   }
 
   return (
-    <div className="w-full max-w-lg mx-auto space-y-6 text-center animate-in fade-in slide-in-from-bottom-4 duration-300">
-      <div className="space-y-4">
-        <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <Sparkles className="text-primary w-8 h-8 animate-pulse" />
-        </div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-ink">
-          Congratulations, {name}!
-        </h1>
-        <p className="text-base text-ink-muted leading-relaxed">
-          Your account is fully activated. Let's configure your business workspace and select a plan to get started.
-        </p>
+    <div className="w-full flex flex-col items-center justify-center relative min-h-[70vh] py-12 px-6">
+      {/* Minimal Progress Indicator */}
+      <div className="absolute top-0 left-0 flex items-center space-x-2">
+        <span className="font-mono text-xs font-semibold text-[#111111]">01 Welcome</span>
+        <div className="h-px w-8 bg-gray-300"></div>
+        <span className="font-mono text-xs font-semibold text-[#999999]">02 Setup</span>
       </div>
 
-      <Card className="p-8 space-y-6 bg-surface shadow-hover border border-border">
-        <div className="space-y-2 text-left">
-          <h3 className="text-sm font-semibold text-ink uppercase tracking-wider">What we'll do:</h3>
-          <ul className="space-y-3 text-sm text-ink-muted">
-            <li className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">1</span>
-              <span>Input your business profile details & industry.</span>
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold">2</span>
-              <span>Select your workspace subscription plan.</span>
-            </li>
-          </ul>
+      <div className="max-w-[720px] w-full text-center space-y-6 z-10 mt-8">
+        {/* Icon/Avatar Placeholder */}
+        <div className="w-16 h-16 rounded-full bg-gray-50 border border-gray-200 mx-auto flex items-center justify-center shadow-sm">
+          <Bot className="text-[#FF6600] w-8 h-8" />
         </div>
 
-        <Button
-          onClick={handleNext}
-          variant="primary"
-          size="lg"
-          className="w-full font-bold shadow-soft flex items-center justify-center gap-2 group cursor-pointer"
-        >
-          Let's set up your workspace
-          <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-        </Button>
-      </Card>
+        {/* Typography Content */}
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] leading-tight tracking-tight">
+            Meet Kleos. <br /> Your new social media assistant.
+          </h1>
+          <p className="text-base md:text-lg text-[#666666] max-w-[540px] mx-auto leading-relaxed">
+            Kleos helps turn what you know about your business into content your audience can actually see. Let's get your workspace set up, {name}.
+          </p>
+        </div>
+
+        {/* CTA */}
+        <div className="pt-6">
+          <Button
+            onClick={handleNext}
+            variant="primary"
+            size="lg"
+            className="px-8 py-4 font-semibold text-white transition-all duration-200 hover:opacity-95 shadow-sm inline-flex items-center gap-2 cursor-pointer"
+          >
+            Let's Get Started
+            <ArrowRight size={18} />
+          </Button>
+        </div>
+      </div>
+
+      {/* Atmospheric background glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-[#FFF5F0] rounded-full blur-[100px] -z-10 pointer-events-none opacity-50"></div>
     </div>
   )
 }

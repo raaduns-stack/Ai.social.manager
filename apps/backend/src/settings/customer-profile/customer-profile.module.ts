@@ -20,8 +20,10 @@
 import { Module } from '@nestjs/common';
 import { CustomerProfileController } from './customer-profile.controller';
 import { CustomerProfileService } from './customer-profile.service';
+import { KycModule } from '../../kyc/kyc.module';
 
 @Module({
+  imports: [KycModule],
   controllers: [CustomerProfileController],
   providers: [CustomerProfileService],
   exports: [CustomerProfileService],

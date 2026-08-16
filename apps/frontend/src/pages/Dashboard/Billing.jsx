@@ -392,8 +392,8 @@ export default function Billing() {
           {/* Change Plan Section */}
           <div className="mt-8">
             <h3 className="text-lg font-bold text-ink mb-6">Change Your Plan</h3>
-            <div className="grid grid-cols-1 gap-6 max-w-md mx-auto">
-              {plans.filter((p) => p.slug === 'free').map((plan) => {
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              {plans.map((plan) => {
                 const isCurrent = activePlanSlug === plan.slug
                 const isFree = plan.slug === 'free'
                 const features = getFeaturesList(plan.slug)
@@ -402,7 +402,7 @@ export default function Billing() {
                   <Card
                     key={plan.id}
                     className={`relative p-6 flex flex-col justify-between transition-all duration-300 transform hover:-translate-y-1 ${
-                      isCurrent ? 'border-2 border-primary' : 'border-border'
+                      isCurrent ? 'border-2 border-primary bg-primary/5' : 'border-border'
                     }`}
                   >
                     {isCurrent ? (
@@ -410,7 +410,7 @@ export default function Billing() {
                         Current Plan
                       </div>
                     ) : plan.slug === 'growth' ? (
-                      <div className="absolute top-0 right-0 bg-accent text-white px-4 py-1 rounded-bl-card text-xs font-semibold flex items-center gap-1">
+                      <div className="absolute top-0 right-0 bg-secondary text-white px-4 py-1 rounded-bl-card text-xs font-semibold flex items-center gap-1">
                         <Sparkles size={12} />
                         Recommended
                       </div>
@@ -420,7 +420,13 @@ export default function Billing() {
                       <div className="flex justify-between items-start mb-2">
                         <h4 className="text-sm font-bold text-ink">{plan.name}</h4>
                       </div>
-                      <p className="text-xs text-ink-muted mb-4">{plan.slug === 'free' ? 'Try Whitebox features' : 'Scale your channels'}</p>
+                      <p className="text-xs text-ink-muted mb-4">
+                        {plan.slug === 'free' 
+                          ? 'Try Whitebox features' 
+                          : plan.slug === 'starter' 
+                            ? 'For growing professionals' 
+                            : 'Scale your social presence'}
+                      </p>
 
                       <div className="mb-6">
                         <p className="text-2xl font-bold text-primary">{formatPrice(plan.price)}</p>
@@ -430,7 +436,7 @@ export default function Billing() {
                       <ul className="space-y-3 mb-6">
                         {features.map((feature, idx) => (
                           <li key={idx} className="flex items-start gap-2 text-xs text-ink">
-                            <CheckCircle2 size={16} className="text-accent fill-accent-50 mt-0.5 shrink-0" />
+                            <CheckCircle2 size={16} className="text-primary fill-primary-50 mt-0.5 shrink-0" />
                             <span>{feature}</span>
                           </li>
                         ))}

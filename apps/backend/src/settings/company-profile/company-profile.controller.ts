@@ -19,13 +19,12 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { CompanyProfileService } from './company-profile.service';
 import { UpdateCompanyProfileDto } from './dto/update-company-profile.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 
 @ApiTags('settings/company-profile')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard) // require valid JWT + role check on every route in this controller
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/settings/company-profile')
 export class CompanyProfileController {
   constructor(private readonly companyProfileService: CompanyProfileService) {}
@@ -34,10 +33,10 @@ export class CompanyProfileController {
    * GET /api/admin/settings/company-profile
    * Returns the single company profile record from the database.
    * Throws 404 if no profile has been seeded yet.
-   * Accessible to: SUPER_ADMIN, ACCOUNT_MANAGER
+   * Accessible to: SUPER_ADMIN only (via settings:full check)
    */
   @Get()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Get the company profile' })
   getCompanyProfile() {
     return this.companyProfileService.getCompanyProfile();
@@ -47,12 +46,13 @@ export class CompanyProfileController {
    * PATCH /api/admin/settings/company-profile
    * Partially updates the company profile with the fields provided in the body.
    * Only changed fields need to be included — existing fields are preserved.
-   * Restricted to: SUPER_ADMIN only
+   * Restricted to: SUPER_ADMIN only (via settings:full check)
    */
   @Patch()
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Update the company profile' })
   updateCompanyProfile(@Body() dto: UpdateCompanyProfileDto) {
     return this.companyProfileService.updateCompanyProfile(dto);
   }
 }
+

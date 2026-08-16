@@ -20,13 +20,12 @@ import { EmailConfigService } from './email-config.service';
 import { UpdateEmailConfigDto } from './dto/update-email-config.dto';
 import { TestEmailDto } from './dto/test-email.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 
 @ApiTags('settings/email')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard) // every endpoint in this controller needs JWT + role
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/settings/email')
 export class EmailConfigController {
   constructor(private readonly emailConfigService: EmailConfigService) {}
@@ -42,7 +41,7 @@ export class EmailConfigController {
    * @throws {NotFoundException} If no email config row exists.
    */
   @Get()
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Get email configuration' })
   getEmailConfig() {
     return this.emailConfigService.getEmailConfig();
@@ -59,7 +58,7 @@ export class EmailConfigController {
    * @throws {NotFoundException} If no email config row exists.
    */
   @Patch()
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Update email configuration' })
   updateEmailConfig(@Body() dto: UpdateEmailConfigDto) {
     return this.emailConfigService.updateEmailConfig(dto);
@@ -78,9 +77,10 @@ export class EmailConfigController {
    * @throws {InternalServerErrorException} If nodemailer fails to send.
    */
   @Post('test')
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Send a test email using current configuration' })
   sendTestEmail(@Body() dto: TestEmailDto) {
     return this.emailConfigService.sendTestEmail(dto);
   }
 }
+

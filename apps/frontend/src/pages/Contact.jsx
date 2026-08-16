@@ -1,6 +1,5 @@
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { Mail, Phone, MapPin, Send, CheckCircle2, Linkedin, Twitter, Instagram } from 'lucide-react'
+import { Mail, Phone, MapPin, Send, CheckCircle2, Linkedin, Facebook, Instagram } from 'lucide-react'
 import Button from '../components/ui/Button'
 import Card from '../components/ui/Card'
 import Input from '../components/ui/Input'
@@ -33,72 +32,26 @@ export default function Contact() {
   }
 
   return (
-    <div className="bg-canvas text-ink min-h-screen flex flex-col selection:bg-primary-50 selection:text-primary-700">
-      {/* Shared Header / Navbar */}
-      <header className="fixed top-0 w-full z-50 bg-canvas/80 backdrop-blur-md border-b border-border/30">
-        <nav className="flex justify-between items-center h-16 px-6 max-w-7xl mx-auto">
-          <div className="flex items-center gap-2">
-            <Link to="/" className="text-2xl font-bold text-primary">
-              AI Social Manager
-            </Link>
-          </div>
-          <div className="hidden md:flex items-center gap-8">
-            <a
-              className="text-ink-muted hover:text-primary transition-colors text-sm font-medium"
-              href="/#features"
-            >
-              Features
-            </a>
-            <Link
-              className="text-ink-muted hover:text-primary transition-colors text-sm font-medium"
-              to="/pricing"
-            >
-              Pricing
-            </Link>
-            <Link
-              className="text-primary font-bold border-b-2 border-primary pb-1 text-sm"
-              to="/contact"
-            >
-              Contact
-            </Link>
-          </div>
-          <div className="flex items-center gap-4">
-            <Button
-              as={Link}
-              to="/login"
-              variant="ghost"
-              className="text-ink-muted hover:text-primary text-sm font-medium"
-            >
-              Log In
-            </Button>
-            <Button
-              as={Link}
-              to="/signup"
-              variant="primary"
-              className="text-sm font-medium"
-            >
-              Get Started
-            </Button>
-          </div>
-        </nav>
-      </header>
-
-      {/* Main Content */}
-      <main className="pt-28 pb-16 flex-1 flex flex-col items-center max-w-7xl w-full mx-auto px-6">
+    <div className="w-full">
+      <div className="max-w-7xl mx-auto px-6 py-16 flex flex-col items-center">
         {/* Header Section */}
-        <section className="w-full mb-8 text-center md:text-left">
-          <h1 className="text-3xl md:text-4xl font-bold text-ink mb-2">Let’s connect</h1>
-          <p className="text-base text-ink-muted max-w-2xl">
-            Have questions about our AI-driven social platform? Our team is ready to help you scale
-            your digital presence with precision and logic.
+        <section className="w-full mb-12 text-center select-none space-y-3">
+          <span className="bg-[#FFEBE0] text-[#FF6600] font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full">
+            Get in touch
+          </span>
+          <h1 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-4">
+            Have a question? We're here to help.
+          </h1>
+          <p className="text-base md:text-lg text-[#666666] max-w-2xl mx-auto leading-relaxed">
+            Need details about plans, custom integrations, or scheduling options? Drop us a line and we'll get back to you shortly.
           </p>
         </section>
 
         {/* Form and Contact Details Grid */}
-        <section className="grid grid-cols-1 md:grid-cols-12 gap-8 w-full">
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8 w-full items-stretch">
           {/* Left Column: Form */}
-          <Card className="md:col-span-7 p-6 md:p-8">
-            <form onSubmit={handleSubmit} className="space-y-5">
+          <Card className="lg:col-span-7 p-6 md:p-8 bg-white border border-gray-200 rounded-card shadow-soft">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Full Name"
@@ -108,6 +61,7 @@ export default function Contact() {
                   value={formData.name}
                   onChange={handleChange}
                   required
+                  className="focus:ring-[#FF6600] focus:border-[#FF6600] border-gray-200"
                 />
                 <Input
                   label="Email Address"
@@ -118,6 +72,7 @@ export default function Contact() {
                   value={formData.email}
                   onChange={handleChange}
                   required
+                  className="focus:ring-[#FF6600] focus:border-[#FF6600] border-gray-200"
                 />
               </div>
 
@@ -128,10 +83,11 @@ export default function Contact() {
                 placeholder="Acme Corp"
                 value={formData.company}
                 onChange={handleChange}
+                className="focus:ring-[#FF6600] focus:border-[#FF6600] border-gray-200"
               />
 
               <div className="flex flex-col gap-1.5">
-                <label htmlFor="message" className="text-sm font-medium text-ink">
+                <label htmlFor="message" className="text-sm font-bold text-[#111111] font-sans">
                   Message
                 </label>
                 <textarea
@@ -142,7 +98,7 @@ export default function Contact() {
                   placeholder="How can we help you?"
                   value={formData.message}
                   onChange={handleChange}
-                  className="w-full rounded-control border border-border bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 resize-none"
+                  className="w-full rounded-control border border-gray-200 bg-white px-3.5 py-2 text-sm text-[#111111] placeholder:text-[#999999] focus:outline-none focus:ring-2 focus:ring-[#FF6600]/20 focus:border-[#FF6600] transition-colors resize-none"
                 />
               </div>
 
@@ -151,19 +107,19 @@ export default function Contact() {
                 variant="primary"
                 size="md"
                 disabled={status === 'submitting'}
-                className="w-full md:w-auto font-medium gap-2"
+                className="w-full md:w-auto font-bold gap-2 text-white bg-[#FF6600] hover:bg-[#E05300] border-transparent"
               >
                 {status === 'submitting' && (
                   <span className="animate-spin text-sm">↻</span>
                 )}
                 {status === 'submitted' && (
                   <>
-                    <CheckCircle2 className="w-4 h-4 text-accent" /> Sent Successfully
+                    <CheckCircle2 className="w-4 h-4 text-white" /> Sent Successfully
                   </>
                 )}
                 {status === 'idle' && (
                   <>
-                    Send Message <Send className="w-4 h-4" />
+                    Send Message <Send className="w-4 h-4 text-white" />
                   </>
                 )}
               </Button>
@@ -171,66 +127,81 @@ export default function Contact() {
           </Card>
 
           {/* Right Column: Contact Details */}
-          <div className="md:col-span-5 space-y-6">
-            <Card className="p-6 space-y-6">
-              <div className="space-y-5">
+          <div className="lg:col-span-5 space-y-6 flex flex-col justify-between">
+            <Card className="p-6 md:p-8 space-y-6 bg-white border border-gray-200 rounded-card shadow-soft h-full flex flex-col justify-between">
+              <div className="space-y-6">
                 <div className="flex items-start gap-4">
-                  <div className="p-2.5 bg-primary-50 text-primary-600 rounded-control shrink-0">
+                  <div className="p-3 bg-[#FFEBE0] text-[#FF6600] rounded-control shrink-0">
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-ink">Email Us</h3>
-                    <p className="text-sm text-ink-muted mt-0.5">contact@raasocial.io</p>
+                    <h3 className="text-base font-bold text-[#111111] font-['Plus_Jakarta_Sans']">Email Us</h3>
+                    <p className="text-sm text-[#666666] mt-0.5 font-sans">
+                      <a href="mailto:Support@raaduns.com" className="hover:text-[#FF6600] transition-colors">
+                        Support@raaduns.com
+                      </a>
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="p-2.5 bg-primary-50 text-primary-600 rounded-control shrink-0">
+                  <div className="p-3 bg-[#FFEBE0] text-[#FF6600] rounded-control shrink-0">
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-ink">Call Us</h3>
-                    <p className="text-sm text-ink-muted mt-0.5">+1 (555) 123-4567</p>
+                    <h3 className="text-base font-bold text-[#111111] font-['Plus_Jakarta_Sans']">Call Us</h3>
+                    <p className="text-sm text-[#666666] mt-0.5 font-sans">
+                      <a href="tel:+2349120879032" className="hover:text-[#FF6600] transition-colors">
+                        +234 912 087 9032
+                      </a>
+                    </p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-4">
-                  <div className="p-2.5 bg-primary-50 text-primary-600 rounded-control shrink-0">
+                  <div className="p-3 bg-[#FFEBE0] text-[#FF6600] rounded-control shrink-0">
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-ink">Visit Us</h3>
-                    <p className="text-sm text-ink-muted mt-0.5">
-                      101 Innovation Way, Suite 400<br />
-                      San Francisco, CA 94105
+                    <h3 className="text-base font-bold text-[#111111] font-['Plus_Jakarta_Sans']">Visit Us</h3>
+                    <p className="text-sm text-[#666666] mt-0.5 leading-relaxed font-sans font-medium">
+                      Suite B6, 2XL Mall,<br />
+                      Beside Zenith Bank,<br />
+                      3rd Avenue Gwarinpa Abuja
                     </p>
                   </div>
                 </div>
               </div>
 
-              <div className="pt-5 border-t border-border">
-                <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider mb-3">
+              <div className="pt-6 border-t border-gray-100 mt-6">
+                <h3 className="text-xs font-bold text-[#999999] uppercase tracking-wider mb-4">
                   Follow Us
                 </h3>
                 <div className="flex gap-3">
                   <a
-                    href="#"
+                    href="https://www.linkedin.com/company/raaduns-software-solutions"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     aria-label="LinkedIn"
-                    className="p-2 bg-canvas hover:bg-primary-50 hover:text-primary text-ink-muted rounded-control border border-border transition-colors"
+                    className="p-2.5 bg-white hover:bg-[#FFEBE0] hover:text-[#FF6600] text-[#666666] rounded-control border border-gray-200 transition-colors"
                   >
                     <Linkedin className="w-5 h-5" />
                   </a>
                   <a
-                    href="#"
-                    aria-label="Twitter"
-                    className="p-2 bg-canvas hover:bg-primary-50 hover:text-primary text-ink-muted rounded-control border border-border transition-colors"
+                    href="https://www.facebook.com/raadunssoftware"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Facebook"
+                    className="p-2.5 bg-white hover:bg-[#FFEBE0] hover:text-[#FF6600] text-[#666666] rounded-control border border-gray-200 transition-colors"
                   >
-                    <Twitter className="w-5 h-5" />
+                    <Facebook className="w-5 h-5" />
                   </a>
                   <a
-                    href="#"
+                    href="https://www.instagram.com/raadunssolutions/"
+                    target="_blank"
+                    rel="noopener noreferrer"
                     aria-label="Instagram"
-                    className="p-2 bg-canvas hover:bg-primary-50 hover:text-primary text-ink-muted rounded-control border border-border transition-colors"
+                    className="p-2.5 bg-white hover:bg-[#FFEBE0] hover:text-[#FF6600] text-[#666666] rounded-control border border-gray-200 transition-colors"
                   >
                     <Instagram className="w-5 h-5" />
                   </a>
@@ -239,35 +210,7 @@ export default function Contact() {
             </Card>
           </div>
         </section>
-      </main>
-
-      {/* Shared Footer */}
-      <footer className="bg-canvas border-t border-border py-6 mt-auto">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="flex flex-col items-center md:items-start">
-              <span className="text-lg font-bold text-ink">AI Social Manager</span>
-              <p className="text-xs text-ink-muted">
-                The next generation of social media management powered by advanced AI.
-              </p>
-            </div>
-            <div className="flex items-center gap-6">
-              <p className="text-xs text-ink-muted">
-                © 2026 AI Social Media Manager. All rights reserved.
-              </p>
-              <div className="flex gap-4">
-                <a className="text-ink-muted hover:text-primary transition-colors" href="#">
-                  <span className="material-symbols-outlined text-[20px]">share</span>
-                </a>
-                <a className="text-ink-muted hover:text-primary transition-colors" href="#">
-                  <span className="material-symbols-outlined text-[20px]">public</span>
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
+      </div>
     </div>
   )
 }
-

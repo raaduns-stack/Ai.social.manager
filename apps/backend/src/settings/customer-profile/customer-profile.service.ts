@@ -13,19 +13,42 @@
  *  updateCompanyProfile(userId, dto)      — Upserts the profile: updates if the
  *                                           row exists, inserts if it doesn't.
  */
-import { Inject, Injectable } from '@nestjs/common';
+import { Inject, Injectable, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { eq } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
 import { UpdateCustomerCompanyProfileDto } from './dto/update-customer-company-profile.dto';
+import { KycService } from '../../kyc/kyc.service';
 
 // Strongly-typed alias for the Drizzle database client
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class CustomerProfileService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    private readonly kycService: KycService,
+  ) {}
+
+  private async enforceKycApproved(userId: string) {
+    const kycStatus = await this.kycService.getKycStatus(userId);
+    if (kycStatus !== 'approved') {
+      const codeStatus = kycStatus === 'pending'
+        ? 'PENDING_REVIEW'
+        : kycStatus === 'rejected'
+        ? 'REJECTED'
+        : kycStatus === 'resubmission_required'
+        ? 'RESUBMISSION_REQUIRED'
+        : 'NOT_STARTED';
+      throw new ForbiddenException({
+        statusCode: 403,
+        error: 'KYC_REQUIRED',
+        message: 'Complete business verification to unlock company settings.',
+        kycStatus: codeStatus,
+      });
+    }
+  }
 
   /**
    * Returns the company profile for the given customer.
@@ -38,6 +61,8 @@ export class CustomerProfileService {
    * @returns The profile record, or an empty shell object.
    */
   async getCompanyProfile(userId: string) {
+    await this.enforceKycApproved(userId);
+
     const profile = await this.db.query.customerCompanyProfile.findFirst({
       where: eq(schema.customerCompanyProfile.userId, userId),
     });
@@ -80,12 +105,34 @@ export class CustomerProfileService {
    * @returns The created or updated profile record.
    */
   async updateCompanyProfile(userId: string, dto: UpdateCustomerCompanyProfileDto) {
+    await this.enforceKycApproved(userId);
+
     // Check whether a profile row already exists for this customer
     const existing = await this.db.query.customerCompanyProfile.findFirst({
       where: eq(schema.customerCompanyProfile.userId, userId),
     });
 
     if (existing) {
+      // Check if trying to modify KYC-linked fields directly on an approved profile
+      const kycLinkedFields: (keyof UpdateCustomerCompanyProfileDto)[] = [
+        'businessName',
+        'businessDescription',
+        'contactEmail',
+        'contactPhone',
+        'addressLine1',
+        'country',
+      ];
+      
+      const changedLinkedFields = kycLinkedFields.filter(
+        (field) => dto[field] !== undefined && dto[field] !== existing[field],
+      );
+
+      if (changedLinkedFields.length > 0) {
+        throw new BadRequestException(
+          'Verified business fields cannot be edited directly. Please submit a Change Request.',
+        );
+      }
+
       // UPDATE path — row already exists, apply the DTO fields as a partial update
       const [updated] = await this.db
         .update(schema.customerCompanyProfile)

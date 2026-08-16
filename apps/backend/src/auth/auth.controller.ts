@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Patch, UseGuards, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, UseGuards, Req, Res, UnauthorizedException } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -69,8 +69,6 @@ export class AuthController {
     return this.authService.changePassword(user.userId, dto);
   }
 
-  // NOTE: This endpoint now extracts the refresh token from an HTTP-only cookie
-  // and issues a fresh access token along with a new HTTP-only refresh token.
   @Post('refresh')
   @ApiOperation({ summary: 'Exchange a valid HTTP-Only refresh token for a fresh access token' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
@@ -91,5 +89,13 @@ export class AuthController {
     });
 
     return { accessToken };
+  }
+
+  @Get('me/permissions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user role and permissions' })
+  getPermissions(@CurrentUser() user: { userId: string; role: string }) {
+    return this.authService.getPermissions(user.userId, user.role);
   }
 }

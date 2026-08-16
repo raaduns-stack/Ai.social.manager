@@ -2,21 +2,9 @@
  * DataTable.jsx
  * Generic sortable / filterable / paginated table.
  * Used by: User Management, Audit Logs, Payments, Uploads, Tickets list.
- *
- * Usage:
- *   <DataTable
- *     columns={[
- *       { key: "name", label: "Name" },
- *       { key: "email", label: "Email" },
- *       { key: "status", label: "Status", render: (row) => <Badge ... /> },
- *     ]}
- *     data={customers}
- *     searchKeys={["name", "email"]}
- *     pageSize={8}
- *   />
  */
 import { useMemo, useState } from "react";
-import { ChevronUp, ChevronDown, Search } from "lucide-react";
+import { ChevronUp, ChevronDown, Search, ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function DataTable({
   columns,
@@ -61,11 +49,15 @@ export default function DataTable({
     }
   };
 
+  const startItem = sorted.length === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endItem = Math.min(sorted.length, page * pageSize);
+  const totalItems = sorted.length;
+
   return (
-    <div className="rounded-card border border-[#E5E7EB] bg-white">
+    <div className="bg-surface border border-surface-variant rounded-xl overflow-hidden shadow-sm">
       {searchKeys.length > 0 && (
-        <div className="flex items-center gap-2 border-b border-[#E5E7EB] px-4 py-3">
-          <Search size={16} className="text-[#6B7280]" />
+        <div className="flex items-center gap-2 border-b border-surface-variant px-4 py-3 bg-surface-bright">
+          <Search size={16} className="text-on-surface-variant/70" />
           <input
             value={query}
             onChange={(e) => {
@@ -73,20 +65,20 @@ export default function DataTable({
               setPage(1);
             }}
             placeholder="Search..."
-            className="w-full text-sm outline-none placeholder:text-[#6B7280]"
+            className="w-full text-sm bg-transparent outline-none placeholder:text-on-surface-variant/50 text-on-surface"
           />
         </div>
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-[#E5E7EB] text-left text-[#6B7280]">
+            <tr className="bg-surface-bright border-b border-surface-variant">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   onClick={() => col.sortable !== false && toggleSort(col.key)}
-                  className="px-4 py-3 font-medium select-none cursor-pointer"
+                  className="py-3 px-6 font-ui-mono text-ui-mono text-on-surface-variant uppercase tracking-wider font-semibold text-xs select-none cursor-pointer"
                 >
                   <span className="inline-flex items-center gap-1">
                     {col.label}
@@ -101,21 +93,21 @@ export default function DataTable({
               ))}
             </tr>
           </thead>
-          <tbody>
+          <tbody className="divide-y divide-surface-variant bg-surface">
             {paged.length === 0 ? (
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-4 py-8 text-center text-[#6B7280]"
+                  className="py-8 px-6 text-center text-on-surface-variant/70"
                 >
                   {emptyMessage}
                 </td>
               </tr>
             ) : (
               paged.map((row, i) => (
-                <tr key={row.id ?? i} className="border-b border-[#E5E7EB] last:border-0">
+                <tr key={row.id ?? i} className="hover:bg-surface-container-low transition-colors group">
                   {columns.map((col) => (
-                    <td key={col.key} className="px-4 py-3 text-[#111827]">
+                    <td key={col.key} className="py-3 px-6 whitespace-nowrap text-on-surface-variant">
                       {col.render ? col.render(row) : row[col.key]}
                     </td>
                   ))}
@@ -127,24 +119,24 @@ export default function DataTable({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-4 py-3 text-sm text-[#6B7280]">
+        <div className="bg-surface-bright border-t border-surface-variant px-6 py-3 flex items-center justify-between text-sm text-on-surface-variant font-ui-mono">
           <span>
-            Page {page} of {totalPages}
+            Showing {startItem} to {endItem} of {totalItems} results
           </span>
           <div className="flex gap-2">
             <button
               disabled={page === 1}
               onClick={() => setPage((p) => p - 1)}
-              className="rounded-lg border border-[#E5E7EB] px-3 py-1 disabled:opacity-40"
+              className="p-1 rounded-DEFAULT border border-surface-variant text-on-surface-variant hover:bg-surface-variant disabled:opacity-50 transition-colors"
             >
-              Prev
+              <ChevronLeft size={18} />
             </button>
             <button
               disabled={page === totalPages}
               onClick={() => setPage((p) => p + 1)}
-              className="rounded-lg border border-[#E5E7EB] px-3 py-1 disabled:opacity-40"
+              className="p-1 rounded-DEFAULT border border-surface-variant text-on-surface hover:bg-surface-variant disabled:opacity-50 transition-colors"
             >
-              Next
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>

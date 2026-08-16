@@ -2,10 +2,9 @@
  * AdminSidebar.jsx
  * Navigation for every admin module. Active route is highlighted via
  * NavLink's isActive. Collapsible — click the chevron at the bottom to
- * shrink to icon-only width (state stays local, resets on refresh, which
- * is fine for a demo).
+ * shrink to icon-only width.
  */
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   Users,
@@ -20,16 +19,20 @@ import {
   Settings2,
   Headset,
   Cog,
-  Wallet, // 👈 ADDED
+  Wallet,
   UserCheck,
   ChevronsLeft,
   ChevronsRight,
   Clock,
   HelpCircle,
   ShieldCheck,
+  X,
+  LogOut,
+  Bolt,
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
+import { cn } from "../../utils/cn";
 
 const NAV_SECTIONS = [
   {
@@ -73,62 +76,162 @@ const NAV_SECTIONS = [
   },
 ];
 
-export default function AdminSidebar() {
+const ROUTE_MODULE_MAP = {
+  "/admin/dashboard": "dashboard",
+  "/admin/users": "user_management",
+  "/admin/kyc": "user_management",
+  "/admin/calendar": "content_calendar",
+  "/admin/ai-content": "content_creation",
+  "/admin/billing": "billing",
+  "/admin/social-accounts": "social_accounts",
+  "/admin/money-management": "money_management",
+  "/admin/uploads": "upload_management",
+  "/admin/analytics": "analytics",
+  "/admin/ai-config": "ai_config",
+  "/admin/support": "support",
+  "/admin/faqs": "support",
+  "/admin/staff": "staff_management",
+  "/admin/staff/manage": "staff_management",
+  "/admin/staff/roles-permissions": "staff_management",
+  "/admin/staff/login-history": "audit_logs",
+  "/admin/staff/activity-logs": "audit_logs",
+  "/admin/notifications": "notification_management",
+  "/admin/logs": "audit_logs",
+};
+
+export default function AdminSidebar({ className, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
-  const { admin } = useAdminAuth();
-  const isAllowedRole = admin && ["super_admin", "account_manager"].includes(admin.role);
+  const { admin, permissions, logout } = useAdminAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/admin/login", { replace: true });
+    if (onClose) onClose();
+  };
+
+  const filteredSections = NAV_SECTIONS.map((section) => {
+    const visibleItems = section.items.filter((item) => {
+      if (item.to === "/admin/settings") return true;
+      const mod = ROUTE_MODULE_MAP[item.to];
+      if (mod && permissions && permissions[mod] === "none") {
+        return false;
+      }
+      return true;
+    });
+    return { ...section, items: visibleItems };
+  }).filter((section) => section.items.length > 0);
 
   return (
     <aside
-      className={`shrink-0 border-r border-[#E5E7EB] bg-white py-6 transition-all ${collapsed ? "w-16 px-2" : "w-64 px-4"
-        }`}
+      className={cn(
+        "bg-surface-container-highest dark:bg-inverse-surface border-r border-surface-variant flex flex-col py-6 z-40 transition-all overflow-y-auto no-scrollbar h-screen",
+        collapsed ? "w-16" : "w-64",
+        className
+      )}
     >
-      <div
-        className={`mb-8 flex items-center px-2 text-lg font-semibold text-[#111827] ${collapsed ? "justify-center" : "justify-between"
-          }`}
-      >
-        {!collapsed && <span>Admin Panel</span>}
-        <button
-          onClick={() => setCollapsed((c) => !c)}
-          className="rounded-lg p-1 text-[#6B7280] hover:bg-[#F9FAFB]"
-          aria-label="Toggle sidebar"
-        >
-          {collapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
-        </button>
-      </div>
+      {/* Header */}
+      {collapsed ? (
+        <div className="flex flex-col items-center justify-center mb-8 gap-4 shrink-0">
+          <div className="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center font-bold">R</div>
+          <button
+            onClick={() => setCollapsed(false)}
+            className="rounded-lg p-1 text-on-surface-variant hover:bg-surface-variant/50 transition-colors"
+            aria-label="Expand sidebar"
+          >
+            <ChevronsRight size={18} />
+          </button>
+        </div>
+      ) : (
+        <div className="px-6 mb-8 flex flex-col gap-1 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center font-bold">R</div>
+              <h1 className="font-headline-xl text-headline-xl text-primary-container" style={{ fontSize: "24px", lineHeight: "32px" }}>Raasocial</h1>
+            </div>
+            
+            {!onClose ? (
+              <button
+                onClick={() => setCollapsed(true)}
+                className="rounded-lg p-1 text-on-surface-variant hover:bg-surface-variant/50 transition-colors"
+                aria-label="Collapse sidebar"
+              >
+                <ChevronsLeft size={18} />
+              </button>
+            ) : (
+              <button
+                onClick={onClose}
+                className="rounded-lg p-1 text-on-surface-variant hover:bg-surface-variant/50 transition-colors md:hidden"
+                aria-label="Close sidebar"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+          <p className="font-ui-mono text-ui-mono text-on-surface-variant mt-1">AI Management</p>
+        </div>
+      )}
 
-      {NAV_SECTIONS.map((section) => (
-        <div key={section.label} className="mb-6">
-          {!collapsed && (
-            <p className="px-2 mb-2 text-xs font-medium uppercase tracking-wide text-[#6B7280]">
-              {section.label}
-            </p>
-          )}
-          <nav className="flex flex-col gap-1">
-            {section.items.map(({ label, to, icon: Icon }) => {
-              if ((to === "/admin/support" || to === "/admin/faqs") && !isAllowedRole) {
-                return null;
-              }
-              return (
+      {/* Navigation */}
+      <nav className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar px-2">
+        {filteredSections.map((section) => (
+          <div key={section.label} className="mb-4">
+            {!collapsed && (
+              <p className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
+                {section.label}
+              </p>
+            )}
+            <div className="flex flex-col gap-0.5">
+              {section.items.map(({ label, to, icon: Icon }) => (
                 <NavLink
                   key={to}
                   to={to}
+                  onClick={onClose}
                   title={collapsed ? label : undefined}
                   className={({ isActive }) =>
-                    `flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition-colors ${isActive
-                      ? "bg-[#4F46E5]/10 text-[#4F46E5] font-medium"
-                      : "text-[#111827] hover:bg-[#F9FAFB]"
-                    } ${collapsed ? "justify-center" : ""}`
+                    cn(
+                      "flex items-center px-4 py-2 rounded-lg transition-all cursor-pointer active:opacity-80 group font-label-bold text-label-bold",
+                      isActive
+                        ? "bg-primary text-on-primary shadow-sm"
+                        : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface",
+                      collapsed ? "justify-center" : ""
+                    )
                   }
                 >
-                  <Icon size={16} />
-                  {!collapsed && label}
+                  <Icon size={18} className={cn("shrink-0", collapsed ? "" : "mr-3")} />
+                  {!collapsed && <span>{label}</span>}
                 </NavLink>
-              );
-            })}
-          </nav>
-        </div>
-      ))}
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="px-4 mt-auto pt-4 flex flex-col gap-3 shrink-0">
+        {collapsed ? (
+          <button
+            className="mx-auto bg-primary-container text-on-primary p-2 rounded flex items-center justify-center hover:brightness-95 transition-all"
+            title="Upgrade Plan"
+          >
+            <Bolt size={18} />
+          </button>
+        ) : (
+          <button className="w-full bg-primary-container text-on-primary font-label-bold text-label-bold py-2 px-4 rounded-DEFAULT flex items-center justify-center gap-2 hover:brightness-95 transition-all">
+            <Bolt size={18} />
+            Upgrade Plan
+          </button>
+        )}
+
+        <button
+          onClick={handleLogout}
+          title={collapsed ? "Log Out" : undefined}
+          className="text-on-surface-variant flex items-center px-4 py-2 hover:bg-surface-variant rounded-lg transition-all cursor-pointer active:opacity-80 group font-label-bold text-label-bold w-full text-left"
+        >
+          <LogOut size={18} className={cn("shrink-0", collapsed ? "mx-auto" : "mr-3")} />
+          {!collapsed && <span>Log Out</span>}
+        </button>
+      </div>
     </aside>
   );
 }

@@ -3,26 +3,25 @@ import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationSettingsService } from './notification-settings.service';
 import { UpdateNotificationTypeSettingsDto } from './dto/update-notification-type-settings.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../../auth/guards/roles.guard';
-import { Roles } from '../../auth/decorators/roles.decorator';
-import { UserRole } from '../../common/enums/roles.enum';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
+import { RequirePermission } from '../../auth/decorators/require-permission.decorator';
 
 @ApiTags('settings/notifications')
 @ApiBearerAuth()
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin/settings/notifications')
 export class NotificationSettingsController {
   constructor(private readonly notificationSettingsService: NotificationSettingsService) {}
 
   @Get()
-  @Roles(UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Get all notification type settings' })
   getAllNotificationSettings() {
     return this.notificationSettingsService.getAllNotificationSettings();
   }
 
   @Patch(':notificationType')
-  @Roles(UserRole.SUPER_ADMIN)
+  @RequirePermission('settings', 'full')
   @ApiOperation({ summary: 'Update a specific notification type setting' })
   updateNotificationSetting(
     @Param('notificationType') notificationType: string,
@@ -31,3 +30,4 @@ export class NotificationSettingsController {
     return this.notificationSettingsService.updateNotificationSetting(notificationType, dto);
   }
 }
+

@@ -94,7 +94,7 @@ export default function AdminLogin() {
               </label>
               <Link
                 to="/admin/forgot-password"
-                className="text-xs text-[#4F46E5] hover:underline font-medium"
+                className="text-xs text-[#FF6600] hover:underline font-medium"
               >
                 Forgot password?
               </Link>
@@ -124,7 +124,7 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#4F46E5] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#FF6600] px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
           >
             {isSubmitting && <Loader2 size={16} className="animate-spin" />}
             {isSubmitting ? "Signing in..." : "Sign In"}
