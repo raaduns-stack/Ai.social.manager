@@ -19,6 +19,8 @@ async function bootstrap() {
 
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
+  console.log('THE TOKEN IS:', process.env.NESTJS_SERVICE_TOKEN);
+  
   const frontendDir = join(process.cwd(), 'public');
   app.use(express.static(frontendDir));
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
