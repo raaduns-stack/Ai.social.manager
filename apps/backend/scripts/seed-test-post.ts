@@ -15,8 +15,8 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-// Initialize Postgres client with SSL enabled
-const client = postgres(dbUrl, { ssl: 'require' });
+// Initialize Postgres client
+const client = postgres(dbUrl);
 
 // Initialize Drizzle DB
 const db = drizzle(client);
