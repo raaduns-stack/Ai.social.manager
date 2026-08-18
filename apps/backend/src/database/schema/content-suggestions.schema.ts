@@ -5,6 +5,7 @@ import {
   timestamp,
   json,
   pgEnum,
+  text,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
@@ -16,6 +17,18 @@ export const suggestionTypeEnum = pgEnum('suggestion_type', [
   'caption',
   'idea',
 ]);
+
+/**
+ * PostgreSQL Enum defining variation approval status states.
+ */
+export const variationApprovalStatusEnum = pgEnum('variation_approval_status', [
+  'DRAFT',
+  'PENDING_APPROVAL',
+  'APPROVED',
+  'REVISION_REQUESTED',
+  'REJECTED',
+]);
+
 import { contentCalendar } from './content-calendar.schema';
 
 /**
@@ -47,6 +60,12 @@ export const contentSuggestions = pgTable('content_suggestions', {
   content: varchar('content', { length: 1000 }).notNull(),
   /** Optional list of generated hashtags stored as a JSON array of strings. */
   hashtags: json('hashtags').$type<string[]>().default([]),
+  /** Approval status of this variation. */
+  approvalStatus: variationApprovalStatusEnum('approval_status')
+    .notNull()
+    .default('PENDING_APPROVAL'),
+  /** Optional revision feedback notes left by the user. */
+  revisionNotes: text('revision_notes'),
   /** Timestamp recording when the suggestion was created. */
   createdAt: timestamp('created_at').notNull().defaultNow(),
 });
