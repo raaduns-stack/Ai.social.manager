@@ -33,6 +33,8 @@ export interface UpdateCalendarPostDto {
   caption?: string;
   platform?: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
   scheduledAt?: string | null;
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
   mediaUrl?: string | null;
   hashtags?: string[];
   aiGenerated?: boolean;
@@ -348,10 +350,30 @@ export class CalendarService {
       }
     }
 
-    // Enforce monthly post limits if date is updated
-    if (dto.scheduledAt) {
-      await this.checkPostLimit(userId, new Date(dto.scheduledAt), id);
-      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt), id);
+    // Determine target scheduledAt timestamp if date/time are updated
+    let targetScheduledAt: string | null | undefined = dto.scheduledAt;
+    if (targetScheduledAt === undefined && (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined)) {
+      const datePart = dto.scheduledDate !== undefined
+        ? dto.scheduledDate
+        : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[0] : null);
+      if (datePart) {
+        const timePart = dto.scheduledTime !== undefined && dto.scheduledTime
+          ? dto.scheduledTime
+          : (post.scheduledAt ? new Date(post.scheduledAt).toTimeString().substring(0, 5) : '12:00');
+        targetScheduledAt = `${datePart}T${timePart}:00`;
+      } else {
+        targetScheduledAt = null;
+      }
+    }
+
+    // Enforce monthly and weekly post limits if date is updated
+    if (targetScheduledAt) {
+      const dateObj = new Date(targetScheduledAt);
+      if (isNaN(dateObj.getTime())) {
+        throw new BadRequestException(`Invalid scheduled date/time format.`);
+      }
+      await this.checkPostLimit(userId, dateObj, id);
+      await this.checkWeeklyPostLimit(userId, dateObj, id);
     }
 
     // Validate eligibility if selecting a suggestion
@@ -386,18 +408,22 @@ export class CalendarService {
         .where(eq(schema.contentSuggestions.postId, id));
     }
 
+    const newScheduledAt = targetScheduledAt !== undefined
+      ? (targetScheduledAt ? new Date(targetScheduledAt) : null)
+      : post.scheduledAt;
+
+    const newStatus = targetScheduledAt !== undefined
+      ? (targetScheduledAt ? 'SCHEDULED' : 'DRAFT')
+      : post.status;
+
     const [updated] = await this.db
       .update(schema.contentCalendar)
       .set({
         title: dto.title !== undefined ? dto.title : post.title,
         caption: dto.caption !== undefined ? dto.caption : post.caption,
         platform: dto.platform !== undefined ? dto.platform : post.platform,
-        scheduledAt: dto.scheduledAt !== undefined
-          ? (dto.scheduledAt ? new Date(dto.scheduledAt) : null)
-          : post.scheduledAt,
-        status: dto.scheduledAt !== undefined
-          ? (dto.scheduledAt ? 'SCHEDULED' : 'DRAFT')
-          : post.status,
+        scheduledAt: newScheduledAt,
+        status: newStatus,
         mediaUrl: dto.mediaUrl !== undefined ? dto.mediaUrl : post.mediaUrl,
         hashtags: dto.hashtags !== undefined ? dto.hashtags : post.hashtags,
         selectedSuggestionId: dto.selectedSuggestionId !== undefined
@@ -974,25 +1000,6 @@ export class CalendarService {
           throw new BadRequestException(`Invalid scheduled date/time: ${post.scheduledDate} ${post.scheduledTime}`);
         }
 
-        if (slug === 'free') {
-          const { start, end } = this.getWeekRange(scheduledAt);
-
-          const existingWeekPosts = await tx.query.contentCalendar.findMany({
-            where: (fields, { and, eq, gte, lte }) =>
-              and(
-                eq(fields.userId, job.userId),
-                gte(fields.scheduledAt, start),
-                lte(fields.scheduledAt, end),
-              ),
-          });
-
-          if (existingWeekPosts.length >= 2) {
-            throw new BadRequestException(
-              `Saving these generated posts would exceed the weekly limit of 2 posts for the week starting ${start.toLocaleDateString()}.`
-            );
-          }
-        }
-
         const [inserted] = await tx
           .insert(schema.contentCalendar)
           .values({
@@ -1071,8 +1078,30 @@ export class CalendarService {
     });
 
     return {
+      slug,
       limit,
       currentCount: posts.length,
+    };
+  }
+
+  async getUsageForUser(userId: string, monthStr?: string) {
+    let targetDate = new Date();
+    if (monthStr && /^\d{4}-\d{2}$/.test(monthStr)) {
+      const [year, month] = monthStr.split('-').map(v => parseInt(v, 10));
+      targetDate = new Date(year, month - 1, 1);
+    }
+
+    const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(userId, targetDate);
+
+    const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      month: monthKey,
+      plan: slug,
+      monthlyLimit: limit,
+      monthlyUsed: currentCount,
+      monthlyRemaining: Math.max(0, limit - currentCount),
+      weeklyLimit: slug === 'free' ? 2 : Infinity,
     };
   }
 }
