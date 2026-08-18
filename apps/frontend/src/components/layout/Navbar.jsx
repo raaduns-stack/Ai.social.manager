@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Bell, Search, ChevronDown, LogOut, Menu, Bolt } from 'lucide-react'
+import { Bell, Search, ChevronDown, LogOut, Menu, Bolt, User } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import Avatar from '../ui/Avatar'
 
@@ -72,11 +72,17 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
             onClick={() => setProfileOpen((o) => !o)}
             className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-gray-50 transition-colors"
           >
-            <Avatar 
-              name={displayName} 
-              src={currentUser?.avatarUrl || fallbackAvatar} 
-              size={32}
-            />
+            {currentUser?.avatarUrl ? (
+              <img 
+                src={currentUser.avatarUrl} 
+                alt={displayName} 
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 shrink-0">
+                <User size={16} />
+              </div>
+            )}
             <span className="hidden sm:block text-sm text-[#111111] font-semibold">
               {displayName}
             </span>

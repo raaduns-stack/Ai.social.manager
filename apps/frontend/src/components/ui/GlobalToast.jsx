@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ShieldAlert, X } from 'lucide-react';
+import { ShieldAlert, X, CheckCircle2, Info } from 'lucide-react';
 
 export default function GlobalToast() {
   const [toast, setToast] = useState(null);
@@ -25,11 +25,17 @@ export default function GlobalToast() {
 
   if (!toast) return null;
 
+  const isError = toast.type === 'error';
+  const isSuccess = toast.type === 'success';
+  const borderClass = isError ? 'border-red-500' : isSuccess ? 'border-[#10B981]' : 'border-blue-500';
+  const iconBg = isError ? 'bg-[#EF4444]/10 text-[#EF4444]' : isSuccess ? 'bg-[#10B981]/10 text-[#10B981]' : 'bg-[#3B82F6]/10 text-[#3B82F6]';
+  const Icon = isError ? ShieldAlert : isSuccess ? CheckCircle2 : Info;
+
   return (
     <div className="fixed bottom-6 right-6 z-[9999] transition-all duration-300 transform scale-100">
-      <div className="flex items-center gap-3 max-w-md p-4 bg-white border-l-4 border-red-500 rounded-r-xl rounded-l-md shadow-2xl border border-gray-100 hover:shadow-3xl transition-shadow duration-300">
-        <div className="flex items-center justify-center shrink-0 w-8 h-8 rounded-lg bg-[#EF4444]/10 text-[#EF4444]">
-          <ShieldAlert size={18} />
+      <div className={`flex items-center gap-3 max-w-md p-4 bg-white border-l-4 ${borderClass} rounded-r-xl rounded-l-md shadow-2xl border border-gray-100 hover:shadow-3xl transition-shadow duration-300`}>
+        <div className={`flex items-center justify-center shrink-0 w-8 h-8 rounded-lg ${iconBg}`}>
+          <Icon size={18} />
         </div>
         <div className="flex-1 pr-2 text-sm font-semibold text-[#111827]">
           {toast.message}

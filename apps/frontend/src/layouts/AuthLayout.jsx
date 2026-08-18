@@ -1,4 +1,5 @@
 import { Outlet } from 'react-router-dom'
+import LogoImage from '../assets/logo.jpg'
 
 /**
  * Split-screen shell used by Login, Sign Up, Forgot Password
@@ -11,7 +12,11 @@ export default function AuthLayout() {
       <div className="hidden md:flex md:w-1/2 bg-[#1A1A1A] text-white flex-col justify-between p-16 relative">
         {/* Logo */}
         <div>
-          <span className="text-2xl font-extrabold text-white tracking-tight font-['Plus_Jakarta_Sans']">Raasocial</span>
+          <img
+            alt="RaaSocial Logo"
+            className="h-10 object-contain w-auto max-w-[180px] brightness-0 invert"
+            src={LogoImage}
+          />
         </div>
         {/* Messaging */}
         <div className="max-w-md">
@@ -30,8 +35,12 @@ export default function AuthLayout() {
       <div className="w-full md:w-1/2 bg-white flex items-center justify-center p-6 md:p-16 overflow-y-auto min-h-screen">
         <div className="w-full max-w-[400px]">
           {/* Mobile Logo (Hidden on Desktop) */}
-          <div className="md:hidden mb-8 text-center">
-            <span className="text-2xl font-extrabold text-[#111111] tracking-tight font-['Plus_Jakarta_Sans']">Raasocial</span>
+          <div className="md:hidden mb-8 flex justify-center">
+            <img
+              alt="RaaSocial Logo"
+              className="h-10 object-contain w-auto max-w-[180px]"
+              src={LogoImage}
+            />
           </div>
           <Outlet />
         </div>

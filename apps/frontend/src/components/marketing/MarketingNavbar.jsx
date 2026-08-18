@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import Button from '../ui/Button'
+import LogoImage from '../../assets/logo.jpg'
 
 export default function MarketingNavbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -26,9 +27,13 @@ export default function MarketingNavbar() {
         <Link 
           to="/" 
           onClick={closeMenu}
-          className="text-2xl font-extrabold text-[#111111] tracking-tight font-['Plus_Jakarta_Sans'] hover:opacity-95 transition-opacity"
+          className="hover:opacity-95 transition-opacity flex items-center"
         >
-          RaaSocial<span className="text-[#FF6600]">.</span>
+          <img
+            alt="RaaSocial Logo"
+            className="h-12 object-contain w-auto max-w-[200px]"
+            src={LogoImage}
+          />
         </Link>
 
         {/* Desktop Links */}

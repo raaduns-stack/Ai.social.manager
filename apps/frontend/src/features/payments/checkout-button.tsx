@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import Button, { ButtonProps } from '../../components/ui/Button'
 import { initializePayment } from './payments-api'
 import ErrorBanner from '../../components/error-banner'
+import { trackEvent } from '../../lib/analytics'
 
 import type { ButtonVariant } from '../../components/ui/Button';
 
 interface CheckoutButtonProps {
   planId: string;
+  planName?: string;
+  price?: number;
   className?: string;
   children?: React.ReactNode;
   variant?: ButtonVariant;
@@ -15,6 +18,8 @@ interface CheckoutButtonProps {
 
 export default function CheckoutButton({
   planId,
+  planName,
+  price,
   className,
   children = 'Choose Plan',
   variant = 'primary'
@@ -27,6 +32,11 @@ export default function CheckoutButton({
     setLoading(true)
     setError(null)
     try {
+      if (planName) {
+        trackEvent('select_item', { plan_name: planName, price: price ? price / 100 : 0 })
+        localStorage.setItem('checkout_plan_name', planName)
+        localStorage.setItem('checkout_plan_price', String(price))
+      }
       const response = await initializePayment(planId)
       // Check both response.link and response.data.link
       const link = (response as any)?.link || (response as any)?.data?.link

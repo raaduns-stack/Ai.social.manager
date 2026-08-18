@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
+import LogoImage from "../../assets/logo.jpg";
 import { cn } from "../../utils/cn";
 
 const NAV_SECTIONS = [
@@ -133,7 +134,11 @@ export default function AdminSidebar({ className, onClose }) {
       {/* Header */}
       {collapsed ? (
         <div className="flex flex-col items-center justify-center mb-8 gap-4 shrink-0">
-          <div className="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center font-bold">R</div>
+          <img
+            alt="R"
+            className="w-8 h-8 rounded object-cover"
+            src={LogoImage}
+          />
           <button
             onClick={() => setCollapsed(false)}
             className="rounded-lg p-1 text-on-surface-variant hover:bg-surface-variant/50 transition-colors"
@@ -145,9 +150,12 @@ export default function AdminSidebar({ className, onClose }) {
       ) : (
         <div className="px-6 mb-8 flex flex-col gap-1 shrink-0">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded bg-primary-container text-on-primary flex items-center justify-center font-bold">R</div>
-              <h1 className="font-headline-xl text-headline-xl text-primary-container" style={{ fontSize: "24px", lineHeight: "32px" }}>Raasocial</h1>
+            <div className="flex items-center">
+              <img
+                alt="RaaSocial Logo"
+                className="h-8 object-contain w-auto max-w-[150px]"
+                src={LogoImage}
+              />
             </div>
             
             {!onClose ? (
