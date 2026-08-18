@@ -9,6 +9,7 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 
 export enum KycReviewAction {
+  PENDING = 'pending',
   APPROVE = 'approved',
   REJECT = 'rejected',
   RESUBMISSION_REQUIRED = 'resubmission_required',

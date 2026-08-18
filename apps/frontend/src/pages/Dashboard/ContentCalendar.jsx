@@ -58,6 +58,7 @@ import {
 } from '../../features/dashboard/dashboard-api'
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
+import apiClient from '../../lib/api-client'
 
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
@@ -477,7 +478,7 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
 }
 
 // ─── Post Details Modal ────────────────────────────────────────────────────────
-function PostDetailModal({ post, onClose, onUpdated }) {
+function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) {
   const [isEditing, setIsEditing] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
@@ -494,6 +495,40 @@ function PostDetailModal({ post, onClose, onUpdated }) {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [errorSuggestions, setErrorSuggestions] = useState(null)
+
+  // Sync editPlatform to connected platforms if disconnected
+  useEffect(() => {
+    if (connectedPlatforms.length > 0 && !connectedPlatforms.includes(editPlatform)) {
+      setEditPlatform(connectedPlatforms[0])
+    }
+  }, [connectedPlatforms, editPlatform])
+
+  // Compute week range for scheduling input
+  const weekLimits = useMemo(() => {
+    if (!post || !post.scheduledAt) return { min: '', max: '' }
+    const date = new Date(post.scheduledAt)
+    const day = date.getDay() // 0 = Sunday, 1 = Monday, etc.
+    
+    // Start of week is Sunday
+    const startOfWeek = new Date(date)
+    startOfWeek.setDate(date.getDate() - day)
+    
+    // End of week is Saturday
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6)
+    
+    const formatDateStr = (d) => {
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+    
+    return {
+      min: formatDateStr(startOfWeek),
+      max: formatDateStr(endOfWeek),
+    }
+  }, [post])
 
   useEffect(() => {
     if (post) {
@@ -558,6 +593,23 @@ function PostDetailModal({ post, onClose, onUpdated }) {
     e.preventDefault()
     setIsSaving(true)
     try {
+      if (post?.scheduledAt && editDate) {
+        const getWeekStart = (d) => {
+          const temp = new Date(d);
+          const day = temp.getDay();
+          temp.setDate(temp.getDate() - day);
+          temp.setHours(0, 0, 0, 0);
+          return temp.getTime();
+        };
+        const origWeek = getWeekStart(new Date(post.scheduledAt));
+        const newWeek = getWeekStart(new Date(editDate + 'T00:00:00'));
+        if (origWeek !== newWeek) {
+          alert('You can only reschedule a post within the same week.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
       let scheduledAt = null
       if (editDate) {
         scheduledAt = editTime ? `${editDate}T${editTime}:00` : `${editDate}T12:00:00`
@@ -720,11 +772,9 @@ function PostDetailModal({ post, onClose, onUpdated }) {
                 onChange={(e) => setEditPlatform(e.target.value)}
                 className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
               >
-                <option value="Instagram">Instagram</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="X / Twitter">X / Twitter</option>
-                <option value="TikTok">TikTok</option>
-                <option value="Facebook">Facebook</option>
+                {connectedPlatforms.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
               </select>
             </div>
 
@@ -733,6 +783,8 @@ function PostDetailModal({ post, onClose, onUpdated }) {
               <input
                 type="date"
                 value={editDate}
+                min={weekLimits.min}
+                max={weekLimits.max}
                 onChange={(e) => setEditDate(e.target.value)}
                 className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
               />
@@ -890,7 +942,8 @@ export default function ContentCalendar() {
   const [genJobId, setGenJobId] = useState(null)
   // Selected platforms for generation (defaults to all five)
   const ALL_PLATFORMS = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook']
-  const [genPlatforms, setGenPlatforms] = useState(['Instagram', 'LinkedIn', 'Facebook'])
+  const [genPlatforms, setGenPlatforms] = useState([])
+  const [connectedPlatforms, setConnectedPlatforms] = useState([])
 
   // ── Fetch logic ────────────────────────────────────────────────────────────
 
@@ -903,16 +956,33 @@ export default function ContentCalendar() {
     setLoading(true)
     setError(null)
     try {
-      const [all, upcoming, published, kyc] = await Promise.all([
+      const [all, upcoming, published, kyc, socialAccountsRes] = await Promise.all([
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
-        getMyKyc()
+        getMyKyc(),
+        apiClient.get('/social-accounts')
       ])
       setAllPosts(all)
       setUpcomingPosts(upcoming)
       setPublishedPosts(published)
       setKycRecord(kyc)
+
+      if (Array.isArray(socialAccountsRes.data)) {
+        const platformMap = {
+          instagram: 'Instagram',
+          linkedin: 'LinkedIn',
+          x: 'X / Twitter',
+          tiktok: 'TikTok',
+          facebook: 'Facebook'
+        }
+        const connected = socialAccountsRes.data
+          .filter(acc => acc.status === 'connected')
+          .map(acc => platformMap[acc.platform])
+          .filter(Boolean)
+        setConnectedPlatforms(connected)
+        setGenPlatforms(connected)
+      }
     } catch (err) {
       // Show a friendly error message
       const msg = err?.message || 'Failed to load calendar posts. Please try again.'
@@ -1292,6 +1362,7 @@ export default function ContentCalendar() {
       <PostDetailModal
         post={selectedPost}
         onClose={() => setSelectedPost(null)}
+        connectedPlatforms={connectedPlatforms}
         onUpdated={(updatedPost) => {
           setAllPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
           setUpcomingPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
@@ -1315,30 +1386,36 @@ export default function ContentCalendar() {
 
         {/* Platform checkboxes */}
         <div className="space-y-2 mb-6">
-          {['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'].map(platform => (
-            <label
-              key={platform}
-              className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${
-                genPlatforms.includes(platform)
-                  ? 'border-primary-300 bg-primary-50 text-primary-800'
-                  : 'border-border bg-surface text-ink-muted hover:border-primary-200'
-              }`}
-            >
-              <input
-                type="checkbox"
-                className="accent-primary w-4 h-4"
-                checked={genPlatforms.includes(platform)}
-                onChange={e => {
-                  if (e.target.checked) {
-                    setGenPlatforms(prev => [...prev, platform])
-                  } else {
-                    setGenPlatforms(prev => prev.filter(p => p !== platform))
-                  }
-                }}
-              />
-              <span className="text-sm font-medium">{platform}</span>
-            </label>
-          ))}
+          {connectedPlatforms.length === 0 ? (
+            <p className="text-sm text-danger italic">
+              Please connect at least one social channel to generate a calendar.
+            </p>
+          ) : (
+            connectedPlatforms.map(platform => (
+              <label
+                key={platform}
+                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${
+                  genPlatforms.includes(platform)
+                    ? 'border-primary-300 bg-primary-50 text-primary-800'
+                    : 'border-border bg-surface text-ink-muted hover:border-primary-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="accent-primary w-4 h-4"
+                  checked={genPlatforms.includes(platform)}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setGenPlatforms(prev => [...prev, platform])
+                    } else {
+                      setGenPlatforms(prev => prev.filter(p => p !== platform))
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium">{platform}</span>
+              </label>
+            ))
+          )}
         </div>
 
         <div className="flex justify-end gap-2 border-t border-border pt-4">

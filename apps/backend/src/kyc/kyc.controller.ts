@@ -217,6 +217,23 @@ export class AdminKycController {
   }
 
   /**
+   * PATCH /admin/kyc/:id/document/:docType/reject
+   * Reject a specific KYC document.
+   * Body: { reason: string }
+   */
+  @Patch(':id/document/:docType/reject')
+  @RequirePermission('user_management', 'approve')
+  @ApiOperation({ summary: 'Admin: reject a specific KYC document' })
+  rejectDoc(
+    @Param('id') id: string,
+    @Param('docType') docType: string,
+    @CurrentUser() admin: { userId: string },
+    @Body() dto: { reason?: string; documentName?: string },
+  ) {
+    return this.kycService.rejectDocument(id, docType as any, admin.userId, dto.reason, dto.documentName);
+  }
+
+  /**
    * GET /admin/kyc/:id/document/:docType
    * Streams a KYC document to the admin for viewing/download.
    * docType: 'cert' | 'utility' | 'ownerId'
