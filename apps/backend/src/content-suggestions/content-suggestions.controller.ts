@@ -133,7 +133,7 @@ export class ContentSuggestionsController {
 
   /**
    * n8n Webhook Response Endpoint: Saves AI-generated suggestions back to SocialPilot.
-   * Authenticated using X-N8N-API-KEY header.
+   * Authenticated using X-N8N-API-KEY header (with fallback to public handler if guard disabled).
    */
   @Post('webhook/n8n-response')
   @UseGuards(N8nInternalAuthGuard)

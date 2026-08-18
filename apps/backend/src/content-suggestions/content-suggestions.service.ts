@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { desc, eq, and, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
@@ -6,6 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { ApproveVariationDto } from './dto/approve-variation.dto';
+import { N8nResponseDto } from './dto/n8n-response.dto';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -16,6 +23,7 @@ export class ContentSuggestionsService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
+    private readonly configService: ConfigService,
   ) {}
 
   /**
@@ -109,7 +117,7 @@ export class ContentSuggestionsService {
     suggestionId: string,
     userId: string,
     reaction: 'up' | 'down',
-    rating: number,
+    rating?: number,
   ) {
     // Make sure the suggestion belongs to the logged-in user.
     const suggestion = await this.db.query.contentSuggestions.findFirst({
@@ -131,7 +139,7 @@ export class ContentSuggestionsService {
         .update(schema.contentFeedback)
         .set({
           reaction,
-          rating,
+          rating: rating ?? existingFeedback.rating,
           createdAt: new Date(),
         })
         .where(eq(schema.contentFeedback.id, existingFeedback.id))
@@ -146,7 +154,7 @@ export class ContentSuggestionsService {
         suggestionId,
         userId,
         reaction,
-        rating,
+        rating: rating ?? 0,
       })
       .returning();
 
@@ -254,7 +262,7 @@ export class ContentSuggestionsService {
       if (!response.ok) {
         this.logger.warn(`n8n webhook returned status ${response.status}`);
       } else {
-        const responseData = await response.json().catch(() => null);
+        const responseData = (await response.json().catch(() => null)) as any;
         this.logger.log(`n8n webhook responded successfully: ${JSON.stringify(responseData)}`);
 
         // If n8n returned variations directly in synchronous mode
@@ -326,7 +334,7 @@ export class ContentSuggestionsService {
   }
 
   /**
-   * Saves generated suggestions sent back from n8n callback to SocialPilot database.
+   * Saves generated suggestions sent back from n8n callback to database.
    * Validates that the postId belongs to the specified userId.
    */
   async saveN8nSuggestions(dto: N8nResponseDto) {
@@ -358,8 +366,9 @@ export class ContentSuggestionsService {
           postId: dto.postId,
           title: v.title || post.title,
           type: 'caption',
-          content: v.caption,
+          content: v.caption || v.content || '',
           hashtags: v.hashtags || [],
+          approvalStatus: 'PENDING_APPROVAL',
         })
         .returning();
 
@@ -370,6 +379,13 @@ export class ContentSuggestionsService {
     }
 
     return saved;
+  }
+
+  /**
+   * Handle the webhook response from n8n (delegates to saveN8nSuggestions)
+   */
+  async handleN8nResponse(dto: N8nResponseDto) {
+    return this.saveN8nSuggestions(dto);
   }
 
   /**
@@ -428,14 +444,13 @@ export class ContentSuggestionsService {
       .update(schema.contentSuggestions)
       .set({
         approvalStatus: 'REVISION_REQUESTED',
-        revisionNotes: revisionNotes,
+        revisionNotes,
       })
       .where(eq(schema.contentSuggestions.id, id));
 
     const webhookUrl = this.configService.get<string>('ai.n8nRevisionWebhookUrl');
 
     if (webhookUrl) {
-      // Use the previously agreed revision payload structure
       const payload = {
         action: 'revise',
         postId: suggestion.postId,
@@ -444,48 +459,20 @@ export class ContentSuggestionsService {
         originalTitle: suggestion.title,
         originalContent: suggestion.content,
         originalHashtags: suggestion.hashtags,
-        revisionNotes: revisionNotes,
+        revisionNotes,
         platform: suggestion.post?.platform,
       };
 
       try {
-        await fetch(webhookUrl, {
+        await global.fetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
       } catch (error) {
-        console.error('Failed to trigger n8n revision webhook:', error);
+        this.logger.error('Failed to trigger n8n revision webhook:', error);
       }
     }
-
-    return { success: true };
-  }
-
-  /**
-   * Handle the webhook response from n8n
-   */
-  async handleN8nResponse(dto: N8nResponseDto) {
-    if (!dto.variations || dto.variations.length === 0) {
-      return { success: true, count: 0 };
-    }
-
-    const toInsert = dto.variations.map((v: any) => ({
-      userId: dto.userId,
-      postId: dto.postId,
-      type: 'caption' as const,
-      title: v.title || 'Suggested Post',
-      content: v.caption || v.content || '',
-      hashtags: v.hashtags || [],
-      approvalStatus: 'PENDING_APPROVAL' as const,
-    }));
-
-    // If parentVariationId exists, it denotes a revision response.
-    // Since we don't have a parentVariationId field in the schema,
-    // we just store the new variations normally. They will be linked to the same post via postId.
-    // The original variation remains in 'REVISION_REQUESTED' state.
-
-    await this.db.insert(schema.contentSuggestions).values(toInsert);
 
     return { success: true };
   }
@@ -497,7 +484,7 @@ export class ContentSuggestionsService {
    * 3. Set content_suggestions.approval_status = 'APPROVED' (if variationId passed or created fallback variation)
    * 4. Insert row into scheduled_posts (or return existing row if already scheduled)
    */
-  async scheduleApprovedPost(postId: string, variationId?: string) {
+  async scheduleApprovedPost(postId: string, variationId?: string, scheduledFor?: string) {
     // 1. Fetch parent calendar post
     const post = await this.db.query.contentCalendar.findFirst({
       where: eq(schema.contentCalendar.id, postId),
@@ -558,7 +545,7 @@ export class ContentSuggestionsService {
       );
     }
 
-    const scheduledAt = post.scheduledAt || new Date();
+    const scheduledAt = scheduledFor ? new Date(scheduledFor) : (post.scheduledAt || new Date());
 
     // 5. Execute everything inside a single DB transaction (with fallback for mock DBs in tests)
     const runTx = this.db.transaction
@@ -648,7 +635,7 @@ export class ContentSuggestionsService {
   async approveVariation(
     variationId: string,
     dto?: ApproveVariationDto,
-    approvalSource: 'MANUAL' | 'SYSTEM' = 'MANUAL',
+    _approvalSource: 'MANUAL' | 'SYSTEM' = 'MANUAL',
   ) {
     const variation = await this.db.query.contentSuggestions.findFirst({
       where: eq(schema.contentSuggestions.id, variationId),
@@ -661,6 +648,6 @@ export class ContentSuggestionsService {
       throw new BadRequestException('Variation does not belong to a calendar post.');
     }
 
-    return this.scheduleApprovedPost(variation.postId, variationId);
+    return this.scheduleApprovedPost(variation.postId, variationId, dto?.scheduledFor);
   }
 }

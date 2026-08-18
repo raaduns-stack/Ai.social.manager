@@ -17,7 +17,6 @@ export const variationApprovalStatusEnum = pgEnum('variation_approval_status', [
   'REVISION_REQUESTED',
   'REJECTED',
 ]);
-
 import { contentCalendar } from './content-calendar.schema';
 
 /**
