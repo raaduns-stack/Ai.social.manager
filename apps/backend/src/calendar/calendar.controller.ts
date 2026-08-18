@@ -41,6 +41,16 @@ export class CalendarController {
     return this.calendarService.findAllForUser(user.userId, status);
   }
 
+  @Get('usage')
+  @ApiOperation({ summary: '[Customer] Get monthly post limit and usage stats' })
+  @ApiQuery({ name: 'month', required: false, description: 'Target month in YYYY-MM format' })
+  getUsage(
+    @CurrentUser() user: { userId: string },
+    @Query('month') month?: string,
+  ) {
+    return this.calendarService.getUsageForUser(user.userId, month);
+  }
+
   @Get('posts/upcoming')
   @ApiOperation({ summary: '[Customer] Get upcoming (SCHEDULED) posts for the current user' })
   findUpcoming(@CurrentUser() user: { userId: string }) {
