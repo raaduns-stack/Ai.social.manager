@@ -33,6 +33,7 @@ import Banner from '../../components/ui/Banner'
 import { getMyDashboardSummary, getMyAnalyticsSummary } from '../../features/dashboard/dashboard-api'
 import { useAuthStore } from '../../store/auth-store'
 import EmptyState from '../../components/ui/EmptyState'
+import { getMyKyc } from '../../features/kyc/kyc-api'
 
 // ---------------------------------------------------------------------------
 // Data — metrics change depending on the selected period filter
@@ -308,6 +309,23 @@ export default function DashboardHome() {
   const [loadingSummary, setLoadingSummary] = useState(true)
   const [summaryError, setSummaryError] = useState(null)
 
+  const [kycRecord, setKycRecord] = useState(null)
+  const [loadingKyc, setLoadingKyc] = useState(true)
+
+  useEffect(() => {
+    async function fetchKyc() {
+      try {
+        const record = await getMyKyc()
+        setKycRecord(record)
+      } catch (err) {
+        console.error('Failed to load KYC details:', err)
+      } finally {
+        setLoadingKyc(false)
+      }
+    }
+    fetchKyc()
+  }, [])
+
   useEffect(() => {
     async function fetchSummary() {
       try {
@@ -348,10 +366,48 @@ export default function DashboardHome() {
 
       {/* Header Section */}
       <PageHeader
-        title="Workspace Overview"
+        title={
+          <div className="flex items-center gap-2">
+            <span>Workspace Overview</span>
+            {!loadingKyc && kycRecord?.status === 'approved' && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-white text-orange-600 border border-orange-200 shadow-sm">
+                🛡️ Verified
+              </span>
+            )}
+          </div>
+        }
         description={user?.fullName ? `Welcome back, ${user.fullName.split(' ')[0]}` : 'Welcome back'}
         action={<DatePicker selectedDate={selectedDate} onSelectDate={setSelectedDate} />}
       />
+
+      {/* KYC Rejection Banner */}
+      {!loadingKyc && (kycRecord?.status === 'rejected' || kycRecord?.status === 'resubmission_required') && (
+        <Card className="p-4 flex items-center justify-between gap-4 border-red-200 bg-red-50/50">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-full bg-red-100 text-danger flex items-center justify-center shrink-0">
+              <X size={16} className="text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-ink">KYC verification was rejected</p>
+              {kycRecord.rejectionReason && (
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Reason: {kycRecord.rejectionReason}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="shrink-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/dashboard/channels')}
+              className="text-xs font-bold border-red-300 text-red-700 hover:bg-red-50"
+            >
+              Update KYC Info
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* Business Information Onboarding Banner */}
       {showBusinessBanner && (

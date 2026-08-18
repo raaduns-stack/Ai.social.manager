@@ -53,7 +53,7 @@ const ACCEPTED_TYPES = '.pdf,.jpg,.jpeg,.png'
 // ---------------------------------------------------------------------------
 // FileInput — a styled file picker with name preview
 // ---------------------------------------------------------------------------
-function FileInput({ label, name, onChange, required, file }) {
+function FileInput({ label, name, onChange, required, file, rejectionReason }) {
   const inputRef = useRef(null)
   return (
     <div className="flex flex-col gap-1.5">
@@ -77,6 +77,11 @@ function FileInput({ label, name, onChange, required, file }) {
         className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
+      {rejectionReason && (
+        <p className="text-xs text-danger font-medium mt-0.5 bg-red-50 p-1.5 rounded border border-red-100/50">
+          Reason: {rejectionReason}
+        </p>
+      )}
     </div>
   )
 }
@@ -333,6 +338,7 @@ function KycForm({ existingData, onSubmitted }) {
             onChange={setCertFile}
             required={!existingData}
             file={certFile}
+            rejectionReason={existingData?.certOfRegistrationStatus === 'rejected' ? existingData.certOfRegistrationRejectionReason : null}
           />
           <FileInput
             label={DOC_LABELS.utilityBill}
@@ -340,6 +346,7 @@ function KycForm({ existingData, onSubmitted }) {
             onChange={setUtilityFile}
             required={!existingData}
             file={utilityFile}
+            rejectionReason={existingData?.utilityBillStatus === 'rejected' ? existingData.utilityBillRejectionReason : null}
           />
           <FileInput
             label={DOC_LABELS.ownerId}
@@ -347,6 +354,7 @@ function KycForm({ existingData, onSubmitted }) {
             onChange={setOwnerIdFile}
             required={!existingData}
             file={ownerIdFile}
+            rejectionReason={existingData?.ownerIdStatus === 'rejected' ? existingData.ownerIdRejectionReason : null}
           />
         </div>
       </div>

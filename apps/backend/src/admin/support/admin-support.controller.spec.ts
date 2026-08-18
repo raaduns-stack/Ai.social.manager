@@ -3,6 +3,8 @@ import { AdminSupportController } from './admin-support.controller';
 import { SupportService } from '../../support/support.service';
 import { ForbiddenException, BadRequestException } from '@nestjs/common';
 import { UserRole } from '../../common/enums/roles.enum';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../auth/guards/permissions.guard';
 
 describe('AdminSupportController - Ticket Assignment RBAC', () => {
   let controller: AdminSupportController;
@@ -21,7 +23,12 @@ describe('AdminSupportController - Ticket Assignment RBAC', () => {
           useValue: mockSupportService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<AdminSupportController>(AdminSupportController);
     service = module.get<SupportService>(SupportService);
