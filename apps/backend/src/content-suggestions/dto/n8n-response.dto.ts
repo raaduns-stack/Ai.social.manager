@@ -1,47 +1,46 @@
-import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
+import { ApiProperty } from '@nestjs/swagger';
 
-export class N8nVariationItemDto {
-  @ApiProperty()
+export class SuggestionVariationDto {
+  @ApiProperty({ example: '5 Steps to Automate Your Workflow', required: false })
+  @IsString()
+  @IsOptional()
+  title?: string;
+
+  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...' })
   @IsString()
   @IsNotEmpty()
-  title!: string;
+  caption!: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  content!: string;
-
-  @ApiProperty({ type: [String] })
+  @ApiProperty({ example: ['#automation', '#tech'], type: [String], required: false })
   @IsArray()
   @IsString({ each: true })
-  hashtags!: string[];
-
-  @ApiProperty()
-  @IsEnum(['caption', 'idea'])
-  type!: 'caption' | 'idea';
+  @IsOptional()
+  hashtags?: string[];
 }
 
 export class N8nResponseDto {
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
+  @IsUUID()
   @IsNotEmpty()
   postId!: string;
 
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ example: '987f6543-e21b-34c5-d678-987654321000' })
+  @IsUUID()
   @IsNotEmpty()
   userId!: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsOptional()
-  parentVariationId?: string;
-
-  @ApiProperty({ type: [N8nVariationItemDto] })
+  @ApiProperty({ type: [SuggestionVariationDto] })
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => N8nVariationItemDto)
-  variations!: N8nVariationItemDto[];
+  @Type(() => SuggestionVariationDto)
+  variations!: SuggestionVariationDto[];
 }

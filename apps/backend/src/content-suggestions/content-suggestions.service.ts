@@ -3,8 +3,10 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
-import { desc, eq, and, ne } from 'drizzle-orm';
+import { ConfigService } from '@nestjs/config';
+import { desc, eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
 
@@ -16,11 +18,13 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class ContentSuggestionsService {
+  private readonly logger = new Logger(ContentSuggestionsService.name);
+
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
     private readonly configService: ConfigService,
-  ) { }
+  ) {}
 
   /**
    * Fetches all generated content suggestions for a given user,
@@ -58,13 +62,14 @@ export class ContentSuggestionsService {
    * Generates a template caption and relevant hashtags for a business type,
    * persists the generated suggestion to the database, and returns the stored result.
    */
-  async generateCaption(userId: string, businessType: string) {
-    const caption = `Grow your ${businessType} with amazing content today!`;
+  async generateCaption(userId: string, businessType?: string) {
+    const typeStr = businessType || 'Business';
+    const caption = `Grow your ${typeStr} with amazing content today!`;
 
     const hashtags = [
       '#AI',
       '#Marketing',
-      `#${businessType.replace(/\s+/g, '')}`,
+      `#${typeStr.replace(/\s+/g, '')}`,
     ];
 
     const [suggestion] = await this.db
@@ -88,8 +93,9 @@ export class ContentSuggestionsService {
    * Generates a template marketing idea for a given business type,
    * persists the record, and returns the created suggestion.
    */
-  async generateIdea(userId: string, businessType: string) {
-    const idea = `Share a customer success story about your ${businessType}.`;
+  async generateIdea(userId: string, businessType?: string) {
+    const typeStr = businessType || 'Business';
+    const idea = `Share a customer success story about your ${typeStr}.`;
 
     const [suggestion] = await this.db
       .insert(schema.contentSuggestions)
@@ -159,7 +165,7 @@ export class ContentSuggestionsService {
 
   /**
    * Fetch AI suggestions generated for a specific calendar post.
-   * If none exist, automatically generates 4 suggestions.
+   * If none exist, triggers n8n workflow using real postId and userId.
    */
   async findForPost(postId: string, userId: string) {
     const post = await this.db.query.contentCalendar.findFirst({
@@ -200,58 +206,12 @@ export class ContentSuggestionsService {
       });
     }
 
-    // Generate 4 mock suggestions tailored to the post's topic (title) and platform
-    const platformStr = post.platform.replace(/\s+/g, '');
-    const cleanTopic = post.title.replace(/[^\w]/g, '').substring(0, 30);
-
-    const variations = [
-      {
-        title: `5 Steps to Automate Your ${post.title}`,
-        content: `Want to master ${post.title}? Here are 5 simple steps we use to automate the entire workflow and save hours of manual labor. Which one are you trying first? 👇`,
-        hashtags: ['#automation', `#${platformStr}`, `#${cleanTopic}`],
-      },
-      {
-        title: `Why 'Quantity' is No Longer King in ${post.title}`,
-        content: `Stop chasing the algorithm when it comes to ${post.title}. Focus on high-intent quality content that converts readers into buyers. Here is why focus is your new superpower. 🚀`,
-        hashtags: ['#socialmedia', `#${platformStr}`, `#${cleanTopic}`],
-      },
-      {
-        title: `The Behind-the-Scenes of ${post.title}`,
-        content: `Ever wondered how we manage ${post.title}? Here is a quick look behind the scenes at our creative process and the unedited version of building a startup! ☕️`,
-        hashtags: ['#behindthescenes', `#${platformStr}`, `#${cleanTopic}`],
-      },
-      {
-        title: `How do you handle ${post.title}?`,
-        content: `What is your biggest bottleneck when trying to scale ${post.title}? Comment below and let's swap strategies! 👇`,
-        hashtags: ['#discussion', `#${platformStr}`, `#${cleanTopic}`],
-      },
-    ];
-
-    const generated = [];
-    for (const v of variations) {
-      const [inserted] = await this.db
-        .insert(schema.contentSuggestions)
-        .values({
-          userId,
-          postId,
-          title: v.title,
-          type: 'caption',
-          content: v.content,
-          hashtags: v.hashtags,
-        })
-        .returning();
-
-      generated.push({
-        ...inserted,
-        feedback: null,
-      });
-    }
-
-    return generated;
+    // Trigger n8n workflow for fresh suggestion generation
+    return this.triggerN8nGeneration(postId, userId);
   }
 
   /**
-   * Clear existing suggestions for a post and regenerate 4 new ones.
+   * Clear existing suggestions for a post and trigger n8n regeneration.
    */
   async regenerateForPost(postId: string, userId: string) {
     // Verify post exists and belongs to user
@@ -272,8 +232,162 @@ export class ContentSuggestionsService {
       .delete(schema.contentSuggestions)
       .where(eq(schema.contentSuggestions.postId, postId));
 
-    // Generate new ones
-    return this.findForPost(postId, userId);
+    // Trigger n8n workflow
+    return this.triggerN8nGeneration(postId, userId);
+  }
+
+  /**
+   * Triggers the n8n AI Content Suggestions webhook with real database postId and userId.
+   */
+  async triggerN8nGeneration(postId: string, userId: string) {
+    const post = await this.db.query.contentCalendar.findFirst({
+      where: and(
+        eq(schema.contentCalendar.id, postId),
+        eq(schema.contentCalendar.userId, userId),
+      ),
+    });
+
+    if (!post) {
+      throw new NotFoundException('Calendar post not found or unauthorized.');
+    }
+
+    const webhookUrl =
+      process.env.N8N_CONTENT_SUGGESTIONS_WEBHOOK_URL ||
+      this.configService.get<string>('n8n.suggestionsWebhookUrl') ||
+      this.configService.get<string>('N8N_CONTENT_SUGGESTIONS_WEBHOOK_URL') ||
+      'https://n8n.raasocial.io/webhook/content-suggestions/generate';
+
+    const payload = {
+      postId: post.id,
+      userId: post.userId,
+    };
+
+    this.logger.log(`Triggering n8n AI suggestion workflow at ${webhookUrl} for postId=${post.id}, userId=${userId}`);
+
+    try {
+      const response = await global.fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        this.logger.warn(`n8n webhook returned status ${response.status}`);
+      } else {
+        const responseData = await response.json().catch(() => null);
+        this.logger.log(`n8n webhook responded successfully: ${JSON.stringify(responseData)}`);
+
+        // If n8n returned variations directly in synchronous mode
+        if (responseData && (responseData.variations || responseData.posts)) {
+          const variations = responseData.variations || responseData.posts;
+          return this.saveN8nSuggestions({
+            postId: post.id,
+            userId: post.userId,
+            variations,
+          });
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Failed to reach n8n webhook: ${err.message}`);
+    }
+
+    // Check if suggestions were saved via asynchronous callback during webhook execution
+    const newlySaved = await this.db.query.contentSuggestions.findMany({
+      where: eq(schema.contentSuggestions.postId, postId),
+      with: {
+        feedback: {
+          where: eq(schema.contentFeedback.userId, userId),
+          limit: 1,
+        },
+      },
+    });
+
+    if (newlySaved && newlySaved.length > 0) {
+      return newlySaved.map((s) => ({
+        ...s,
+        feedback: s.feedback?.[0] ? { reaction: s.feedback[0].reaction, rating: s.feedback[0].rating } : null,
+      }));
+    }
+
+    // Fallback generation if n8n service is currently unreachable (e.g. offline dev mode)
+    const platformStr = post.platform.replace(/\s+/g, '');
+    const cleanTopic = post.title.replace(/[^\w]/g, '').substring(0, 30);
+
+    const fallbackVariations = [
+      {
+        title: `5 Steps to Automate Your ${post.title}`,
+        caption: `Want to master ${post.title}? Here are 5 simple steps we use to automate the entire workflow and save hours of manual labor. Which one are you trying first? 👇`,
+        hashtags: ['#automation', `#${platformStr}`, `#${cleanTopic}`],
+      },
+      {
+        title: `Why 'Quantity' is No Longer King in ${post.title}`,
+        caption: `Stop chasing the algorithm when it comes to ${post.title}. Focus on high-intent quality content that converts readers into buyers. Here is why focus is your new superpower. 🚀`,
+        hashtags: ['#socialmedia', `#${platformStr}`, `#${cleanTopic}`],
+      },
+      {
+        title: `The Behind-the-Scenes of ${post.title}`,
+        caption: `Ever wondered how we manage ${post.title}? Here is a quick look behind the scenes at our creative process and the unedited version of building a startup! ☕️`,
+        hashtags: ['#behindthescenes', `#${platformStr}`, `#${cleanTopic}`],
+      },
+      {
+        title: `How do you handle ${post.title}?`,
+        caption: `What is your biggest bottleneck when trying to scale ${post.title}? Comment below and let's swap strategies! 👇`,
+        hashtags: ['#discussion', `#${platformStr}`, `#${cleanTopic}`],
+      },
+    ];
+
+    return this.saveN8nSuggestions({
+      postId: post.id,
+      userId: post.userId,
+      variations: fallbackVariations,
+    });
+  }
+
+  /**
+   * Saves generated suggestions sent back from n8n callback to SocialPilot database.
+   * Validates that the postId belongs to the specified userId.
+   */
+  async saveN8nSuggestions(dto: N8nResponseDto) {
+    const post = await this.db.query.contentCalendar.findFirst({
+      where: eq(schema.contentCalendar.id, dto.postId),
+    });
+
+    if (!post) {
+      throw new NotFoundException(`Calendar post ${dto.postId} not found.`);
+    }
+
+    if (post.userId !== dto.userId) {
+      throw new BadRequestException(
+        `Authorization mismatch: Post ${dto.postId} does not belong to user ${dto.userId}.`,
+      );
+    }
+
+    // Delete existing suggestions for this post before inserting new ones
+    await this.db
+      .delete(schema.contentSuggestions)
+      .where(eq(schema.contentSuggestions.postId, dto.postId));
+
+    const saved = [];
+    for (const v of dto.variations) {
+      const [inserted] = await this.db
+        .insert(schema.contentSuggestions)
+        .values({
+          userId: dto.userId,
+          postId: dto.postId,
+          title: v.title || post.title,
+          type: 'caption',
+          content: v.caption,
+          hashtags: v.hashtags || [],
+        })
+        .returning();
+
+      saved.push({
+        ...inserted,
+        feedback: null,
+      });
+    }
+
+    return saved;
   }
 
   /**

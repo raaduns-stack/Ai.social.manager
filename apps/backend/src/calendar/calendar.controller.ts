@@ -18,6 +18,7 @@ import {
   UpdateApprovalDto,
 } from './calendar.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { JwtOrN8nAuthGuard } from '../auth/guards/jwt-or-n8n-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -64,12 +65,16 @@ export class CalendarController {
   }
 
   @Get('posts/:id')
-  @ApiOperation({ summary: '[Customer] Get a single post by ID' })
+  @UseGuards(JwtOrN8nAuthGuard)
+  @ApiOperation({ summary: '[Customer/n8n] Get a single post by ID' })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: { userId: string },
+    @CurrentUser() user?: { userId: string },
   ) {
-    return this.calendarService.findOneForUser(id, user.userId);
+    if (user?.userId) {
+      return this.calendarService.findOneForUser(id, user.userId);
+    }
+    return this.calendarService.findOneById(id);
   }
 
   @Post('posts')
