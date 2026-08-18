@@ -4,6 +4,7 @@ import { Eye, EyeOff, Mail, Lock, User, Building2 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useAuth } from '../../context/useAuth'
 import ErrorBanner from '../../components/error-banner'
+import { trackEvent } from '../../lib/analytics'
 
 export default function SignUp() {
   const { register } = useAuth()
@@ -71,6 +72,7 @@ export default function SignUp() {
 
     try {
       await register(formData.email, formData.password, formData.fullName, formData.companyName)
+      trackEvent('sign_up', { method: 'email' })
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
       setApiError(err)

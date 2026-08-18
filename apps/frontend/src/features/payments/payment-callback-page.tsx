@@ -4,6 +4,7 @@ import { CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { verifyPayment } from './payments-api'
+import { trackEvent } from '../../lib/analytics'
 
 export default function PaymentCallbackPage() {
   const navigate = useNavigate()
@@ -44,6 +45,18 @@ export default function PaymentCallbackPage() {
           response &&
           (response.status === 'successful' || response.status === 'verified')
         ) {
+          const savedPlanName = localStorage.getItem('checkout_plan_name')
+          if (savedPlanName) {
+            const savedPlanPrice = parseFloat(localStorage.getItem('checkout_plan_price') || '0') / 100
+            trackEvent('purchase', {
+              transaction_id: response.paymentId || transactionId,
+              value: savedPlanPrice,
+              currency: 'USD',
+              items: [{ item_name: savedPlanName }]
+            })
+            localStorage.removeItem('checkout_plan_name')
+            localStorage.removeItem('checkout_plan_price')
+          }
           setStatus('success')
           setMessage(
             'Your payment was successfully verified and your subscription is now active! Welcome aboard.'

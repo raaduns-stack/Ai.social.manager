@@ -33,6 +33,8 @@ import {
 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
+import SearchableSelect from '../../components/ui/SearchableSelect'
+import { COUNTRIES } from '../../utils/countries'
 import Card from '../../components/ui/Card'
 import { submitKyc } from './kyc-api'
 
@@ -276,12 +278,13 @@ function KycForm({ existingData, onSubmitted }) {
             />
           </div>
 
-          <Input
+          <SearchableSelect
             label="Country"
             required
+            options={COUNTRIES}
             value={country}
-            onChange={(e) => setCountry(e.target.value)}
-            placeholder="Nigeria"
+            onChange={setCountry}
+            placeholder="Select your country..."
           />
 
           <Input
