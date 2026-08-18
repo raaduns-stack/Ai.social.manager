@@ -20,6 +20,8 @@ export * from './kyc.schema';
 export * from './login-history.schema';
 export * from './activity-logs.schema';
 export * from './role-permissions.schema';
+export * from './scheduled-posts.schema';
+export * from './publishing-logs.schema';
 export * from './relations';
 
 
