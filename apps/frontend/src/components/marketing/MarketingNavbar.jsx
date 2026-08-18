@@ -31,7 +31,7 @@ export default function MarketingNavbar() {
         >
           <img
             alt="RaaSocial Logo"
-            className="h-10 object-contain w-auto max-w-[180px]"
+            className="h-12 object-contain w-auto max-w-[200px]"
             src={LogoImage}
           />
         </Link>
