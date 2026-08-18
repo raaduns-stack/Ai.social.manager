@@ -1,4 +1,5 @@
 import { Routes, Route } from 'react-router-dom'
+import { usePageTracking } from '../hooks/useAnalytics'
 
 // Layouts
 import AuthLayout from '../layouts/AuthLayout'
@@ -49,6 +50,8 @@ import AdminRoutes from './AdminRoutes'
  * guard once auth/billing state exists (see AuthContext.jsx placeholder).
  */
 export default function AppRoutes() {
+  usePageTracking()
+
   return (
     <Routes>
       {/* Public marketing pages */}
