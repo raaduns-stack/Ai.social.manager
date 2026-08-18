@@ -93,9 +93,11 @@ customerApiClient.interceptors.response.use(
         );
 
         const newAccessToken = response.data.accessToken;
+        // Use the new refreshToken if the server returned one, otherwise keep the existing one
+        const newRefreshToken = response.data.refreshToken ?? useAuthStore.getState().refreshToken ?? '';
         
         // Update token in memory/Zustand store
-        useAuthStore.getState().setTokens({ accessToken: newAccessToken });
+        useAuthStore.getState().setTokens(newAccessToken, newRefreshToken);
 
         // Update header for current request
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;

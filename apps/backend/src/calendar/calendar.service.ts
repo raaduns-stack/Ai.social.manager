@@ -6,11 +6,13 @@ import {
 } from '@nestjs/common';
 import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { ConfigService } from '@nestjs/config';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { ContentCalendarPost } from '../database/schema/content-calendar.schema';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { CustomerProfileService } from '../settings/customer-profile/customer-profile.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -43,13 +45,92 @@ export interface UpdateApprovalDto {
   adminNotes?: string;
 }
 
+const CALENDAR_TO_DB_PLATFORM: Record<string, string> = {
+  'Instagram': 'instagram',
+  'LinkedIn': 'linkedin',
+  'X / Twitter': 'x',
+  'TikTok': 'tiktok',
+  'Facebook': 'facebook',
+};
+
+const DB_TO_CALENDAR_PLATFORM: Record<string, string> = {
+  'instagram': 'Instagram',
+  'linkedin': 'LinkedIn',
+  'x': 'X / Twitter',
+  'tiktok': 'TikTok',
+  'facebook': 'Facebook',
+};
+
 @Injectable()
 export class CalendarService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
     private readonly subscriptionsService: SubscriptionsService,
-  ) {}
+    private readonly configService: ConfigService,
+    private readonly customerProfileService: CustomerProfileService,
+  ) { }
+
+  getWeekRange(date: Date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Start of week (Sunday 00:00:00.000)
+    const start = new Date(d);
+    start.setDate(d.getDate() - day);
+    start.setHours(0, 0, 0, 0);
+    
+    // End of week (Saturday 23:59:59.999)
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+  }
+
+  async getConnectedPlatformsForUser(userId: string): Promise<string[]> {
+    const accounts = await this.db.query.social_accounts.findMany({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.status, 'connected'),
+      ),
+    });
+    return accounts
+      .map(acc => DB_TO_CALENDAR_PLATFORM[acc.platform])
+      .filter(Boolean);
+  }
+
+  async checkWeeklyPostLimit(userId: string, targetDate: Date, postId?: string) {
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free' } };
+    }
+    const slug = subscription?.plan?.slug || 'free';
+    if (slug !== 'free') {
+      return; // Only free plan has weekly post limits
+    }
+
+    const { start, end } = this.getWeekRange(targetDate);
+
+    // Query posts scheduled in this week
+    const posts = await this.db.query.contentCalendar.findMany({
+      where: (fields, { and, eq, gte, lte, ne }) =>
+        and(
+          eq(fields.userId, userId),
+          gte(fields.scheduledAt, start),
+          lte(fields.scheduledAt, end),
+          postId ? ne(fields.id, postId) : undefined,
+        ),
+    });
+
+    if (posts.length >= 2) {
+      throw new BadRequestException(
+        `Weekly post limit reached. Under the Free plan, you can schedule at most 2 posts per week.`
+      );
+    }
+  }
 
   /**
    * Helper function to check whether a customer has reached their monthly calendar post limit.
@@ -65,7 +146,7 @@ export class CalendarService {
 
     const plan = subscription?.plan as any;
     const slug = plan?.slug || 'free';
-    
+
     // Determine the monthly limit
     let limit = 8; // Default for Free plan (approx. 8 posts per month)
     if (slug !== 'free') {
@@ -220,9 +301,16 @@ export class CalendarService {
     userId: string,
     dto: CreateCalendarPostDto,
   ): Promise<ContentCalendarPost> {
+    // Validate platform is connected
+    const connected = await this.getConnectedPlatformsForUser(userId);
+    if (!connected.includes(dto.platform)) {
+      throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
+    }
+
     // Enforce monthly post limits on creation
     if (dto.scheduledAt) {
       await this.checkPostLimit(userId, new Date(dto.scheduledAt));
+      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt));
     }
 
     const [post] = await this.db
@@ -253,9 +341,17 @@ export class CalendarService {
   ): Promise<ContentCalendarPost> {
     const post = await this.findOneForUser(id, userId);
 
+    if (dto.platform) {
+      const connected = await this.getConnectedPlatformsForUser(userId);
+      if (!connected.includes(dto.platform)) {
+        throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
+      }
+    }
+
     // Enforce monthly post limits if date is updated
     if (dto.scheduledAt) {
       await this.checkPostLimit(userId, new Date(dto.scheduledAt), id);
+      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt), id);
     }
 
     // Validate eligibility if selecting a suggestion
@@ -355,10 +451,10 @@ export class CalendarService {
         eq(
           schema.contentCalendar.approvalStatus,
           approvalStatus.toUpperCase() as
-            | 'PENDING'
-            | 'APPROVED'
-            | 'REJECTED'
-            | 'REVISION_REQUIRED',
+          | 'PENDING'
+          | 'APPROVED'
+          | 'REJECTED'
+          | 'REVISION_REQUIRED',
         ),
       );
     }
@@ -445,5 +541,363 @@ export class CalendarService {
       .returning();
 
     return updated;
+  }
+
+  // ─── AI Calendar Generation Jobs ─────────────────────────────────────────────
+
+  async createGenerationJob(userId: string, dto: { month: string; platforms: string[] }) {
+    // Validate month format (YYYY-MM) and range
+    if (!/^\d{4}-\d{2}$/.test(dto.month)) {
+      throw new BadRequestException('Month must be in YYYY-MM format.');
+    }
+    const [yearStr, monthStr] = dto.month.split('-');
+    const monthNum = parseInt(monthStr, 10);
+    if (monthNum < 1 || monthNum > 12) {
+      throw new BadRequestException('Month must be between 01 and 12.');
+    }
+
+    // Validate platforms
+    const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
+    if (!dto.platforms || dto.platforms.length === 0) {
+      throw new BadRequestException('At least one platform must be requested.');
+    }
+    const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
+    for (const p of dto.platforms) {
+      if (!validPlatforms.includes(p)) {
+        throw new BadRequestException(`Invalid platform requested: ${p}`);
+      }
+      if (!connectedPlatforms.includes(p)) {
+        throw new BadRequestException(`Platform ${p} is not currently connected.`);
+      }
+    }
+
+    // Enforce Free plan platform limits
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free' } };
+    }
+    const slug = subscription?.plan?.slug || 'free';
+    if (slug === 'free') {
+      if (dto.platforms.length > 2) {
+        throw new BadRequestException('Free plan only allows up to 2 social channels.');
+      }
+      if (connectedPlatforms.length > 2) {
+        throw new BadRequestException(
+          'Free plan only allows up to 2 connected social channels. Please disconnect channels to meet the limit.'
+        );
+      }
+    }
+
+    // Verify limit
+    const { limit, currentCount } = await this.getMonthlyLimitAndUsage(userId, new Date(`${dto.month}-01`));
+    if (currentCount >= limit) {
+      throw new BadRequestException(
+        `Monthly post limit reached. Your plan allows a maximum of ${limit} posts per month. You currently have ${currentCount} scheduled/published.`
+      );
+    }
+
+    // Insert generation job
+    const [job] = await this.db
+      .insert(schema.calendarGenerationJobs)
+      .values({
+        userId,
+        month: dto.month,
+        platforms: dto.platforms,
+        status: 'PENDING',
+      })
+      .returning();
+
+    // Trigger n8n webhook asynchronously
+    const webhookUrl = this.configService.get<string>('N8N_CALENDAR_GENERATION_WEBHOOK_URL');
+    if (!webhookUrl) {
+      await this.db
+        .update(schema.calendarGenerationJobs)
+        .set({
+          status: 'FAILED',
+          errorInfo: 'N8N_CALENDAR_GENERATION_WEBHOOK_URL is not configured.',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.calendarGenerationJobs.id, job.id));
+      throw new BadRequestException('AI Calendar generation is temporarily unavailable: webhook not configured.');
+    }
+
+    try {
+      const response = await global.fetch(webhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          customerId: userId,
+          month: dto.month,
+          platforms: dto.platforms,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`n8n returned HTTP status ${response.status}`);
+      }
+
+      // Webhook accepted: set status to GENERATING
+      const [updatedJob] = await this.db
+        .update(schema.calendarGenerationJobs)
+        .set({
+          status: 'GENERATING',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.calendarGenerationJobs.id, job.id))
+        .returning();
+
+      return updatedJob;
+    } catch (err: any) {
+      // Set job status to FAILED and store details
+      await this.db
+        .update(schema.calendarGenerationJobs)
+        .set({
+          status: 'FAILED',
+          errorInfo: `n8n webhook call failed: ${err.message}`,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.calendarGenerationJobs.id, job.id));
+
+      throw new BadRequestException(`Failed to connect to generation service: ${err.message}`);
+    }
+  }
+
+  async getJobStatus(jobId: string, userId: string) {
+    const job = await this.db.query.calendarGenerationJobs.findFirst({
+      where: eq(schema.calendarGenerationJobs.id, jobId),
+    });
+
+    if (!job || job.userId !== userId) {
+      throw new NotFoundException('Generation job not found.');
+    }
+
+    return {
+      id: job.id,
+      status: job.status,
+      month: job.month,
+      createdAt: job.createdAt,
+      updatedAt: job.updatedAt,
+    };
+  }
+
+  async getGenerationContext(customerId: string) {
+    const customer = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, customerId),
+    });
+
+    if (!customer) {
+      throw new NotFoundException('Customer not found.');
+    }
+
+    const latestJob = await this.db.query.calendarGenerationJobs.findFirst({
+      where: eq(schema.calendarGenerationJobs.userId, customerId),
+      orderBy: desc(schema.calendarGenerationJobs.createdAt),
+    });
+
+    const businessProfile = await this.customerProfileService.getCompanyProfile(customerId);
+
+    return {
+      customerId,
+      month: latestJob?.month ?? null,
+      platforms: latestJob?.platforms ?? [],
+      business: {
+        name: businessProfile.businessName || '',
+        description: businessProfile.businessDescription || null,
+        industry: businessProfile.industry || null,
+        targetAudience: null,
+      },
+    };
+  }
+
+  async handleN8nResult(jobId: string, dto: { customerId: string; month: string; posts: any[] }) {
+    try {
+      return await this.saveGeneratedCalendar(jobId, dto);
+    } catch (err: any) {
+      // Capture saving/validation errors and mark job as FAILED
+      await this.db
+        .update(schema.calendarGenerationJobs)
+        .set({
+          status: 'FAILED',
+          errorInfo: err.message || 'Unknown error occurred during generation callback.',
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.calendarGenerationJobs.id, jobId));
+
+      throw err;
+    }
+  }
+
+  private async saveGeneratedCalendar(jobId: string, dto: { customerId: string; month: string; posts: any[] }) {
+    const job = await this.db.query.calendarGenerationJobs.findFirst({
+      where: eq(schema.calendarGenerationJobs.id, jobId),
+    });
+
+    if (!job) {
+      throw new NotFoundException('Generation job not found.');
+    }
+
+    if (job.userId !== dto.customerId) {
+      throw new BadRequestException('Job customer ID mismatch.');
+    }
+
+    if (job.status === 'GENERATED') {
+      return { success: true, message: 'Job already processed.' };
+    }
+
+    if (job.month !== dto.month) {
+      throw new BadRequestException(`Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`);
+    }
+
+    // Limit checks
+    const { limit, currentCount } = await this.getMonthlyLimitAndUsage(job.userId, new Date(`${job.month}-01`));
+    const newPostsCount = dto.posts.length;
+
+    if (currentCount + newPostsCount > limit) {
+      throw new BadRequestException(
+        `Saving these posts would exceed your monthly limit of ${limit} posts. Current posts: ${currentCount}, attempted to add: ${newPostsCount}.`
+      );
+    }
+
+    const connectedPlatforms = await this.getConnectedPlatformsForUser(job.userId);
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(job.userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free' } };
+    }
+    const slug = subscription?.plan?.slug || 'free';
+
+    const weeklyCounts = new Map<string, number>();
+
+    return await this.db.transaction(async (tx) => {
+      const savedPostIds: string[] = [];
+
+      for (const post of dto.posts) {
+        const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
+        if (!validPlatforms.includes(post.platform)) {
+          throw new BadRequestException(`Invalid platform: ${post.platform}`);
+        }
+        if (!job.platforms.includes(post.platform)) {
+          throw new BadRequestException(`Platform ${post.platform} was not requested in this generation job.`);
+        }
+        if (!connectedPlatforms.includes(post.platform)) {
+          throw new BadRequestException(`Platform ${post.platform} is not currently connected.`);
+        }
+
+        if (!post.scheduledDate.startsWith(job.month)) {
+          throw new BadRequestException(`Scheduled date ${post.scheduledDate} does not belong to the requested month ${job.month}.`);
+        }
+
+        const scheduledAt = new Date(`${post.scheduledDate}T${post.scheduledTime}:00`);
+        if (isNaN(scheduledAt.getTime())) {
+          throw new BadRequestException(`Invalid scheduled date/time: ${post.scheduledDate} ${post.scheduledTime}`);
+        }
+
+        if (slug === 'free') {
+          const { start, end } = this.getWeekRange(scheduledAt);
+          const weekKey = start.toISOString();
+
+          const existingWeekPosts = await tx.query.contentCalendar.findMany({
+            where: (fields, { and, eq, gte, lte }) =>
+              and(
+                eq(fields.userId, job.userId),
+                gte(fields.scheduledAt, start),
+                lte(fields.scheduledAt, end),
+              ),
+          });
+
+          const localCount = weeklyCounts.get(weekKey) || 0;
+          if (existingWeekPosts.length + localCount >= 2) {
+            throw new BadRequestException(
+              `Saving these generated posts would exceed the weekly limit of 2 posts for the week starting ${start.toLocaleDateString()}.`
+            );
+          }
+          weeklyCounts.set(weekKey, localCount + 1);
+        }
+
+        const [inserted] = await tx
+          .insert(schema.contentCalendar)
+          .values({
+            userId: job.userId,
+            title: post.title,
+            caption: post.caption,
+            platform: post.platform as any,
+            status: 'SCHEDULED',
+            approvalStatus: 'PENDING',
+            scheduledAt,
+            hashtags: post.hashtags ?? [],
+            aiGenerated: true,
+          })
+          .returning();
+
+        savedPostIds.push(inserted.id);
+      }
+
+      await tx
+        .update(schema.calendarGenerationJobs)
+        .set({
+          status: 'GENERATED',
+          resultIds: savedPostIds,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.calendarGenerationJobs.id, job.id));
+
+      return {
+        success: true,
+        count: savedPostIds.length,
+        postIds: savedPostIds,
+      };
+    });
+  }
+
+  async getMonthlyLimitAndUsage(userId: string, targetDate: Date) {
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free', features: [] } };
+    }
+
+    const plan = subscription?.plan as any;
+    const slug = plan?.slug || 'free';
+
+    let limit = 8;
+    if (slug !== 'free') {
+      const features = plan?.features || [];
+      let found = false;
+      for (const feature of features) {
+        const match = feature.match(/(\d+)\s+AI-generated\s+posts/i);
+        if (match) {
+          limit = parseInt(match[1], 10);
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        if (slug === 'starter') limit = 30;
+        else if (slug === 'growth') limit = 150;
+        else if (slug === 'enterprise') limit = 300;
+      }
+    }
+
+    const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+
+    const posts = await this.db.query.contentCalendar.findMany({
+      where: (fields, { and, eq, gte, lte }) =>
+        and(
+          eq(fields.userId, userId),
+          gte(fields.scheduledAt, startOfMonth),
+          lte(fields.scheduledAt, endOfMonth),
+        ),
+    });
+
+    return {
+      limit,
+      currentCount: posts.length,
+    };
   }
 }

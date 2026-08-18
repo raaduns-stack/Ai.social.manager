@@ -9,6 +9,7 @@ import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
 import * as express from 'express';
 import { join } from 'path';
 import cookieParser from 'cookie-parser';
+import basicAuth from 'express-basic-auth';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -22,14 +23,28 @@ async function bootstrap() {
   console.log('THE TOKEN IS:', process.env.NESTJS_SERVICE_TOKEN);
   
   const frontendDir = join(process.cwd(), 'public');
+
   app.use(express.static(frontendDir));
-  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    if (req.method !== 'GET') return next();
-    if (req.path.startsWith(`/${apiPrefix}`) || req.path.startsWith('/uploads')) {
-      return next();
-    }
-    res.sendFile(join(frontendDir, 'index.html'));
-  });
+
+  app.use(
+    (
+      req: express.Request,
+      res: express.Response,
+      next: express.NextFunction,
+    ) => {
+      if (req.method !== 'GET') return next();
+
+      if (
+        req.path.startsWith(`/${apiPrefix}`) ||
+        req.path.startsWith('/uploads')
+      ) {
+        return next();
+      }
+
+      res.sendFile(join(frontendDir, 'index.html'));
+    },
+  );
+
   app.use(cookieParser());
 
   app.enableCors({
@@ -49,22 +64,58 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalInterceptors(new LoggingInterceptor());
 
-  // Swagger docs — available at /api/docs once running
+  // Swagger docs — protected with username + password
+  const swaggerUsername = config.get<string>(
+    'SWAGGER_USERNAME',
+    'admin',
+  );
+
+  const swaggerPassword = config.get<string>(
+    'SWAGGER_PASSWORD',
+    '',
+  );
+
+  app.use(
+    `/${apiPrefix}/docs`,
+    basicAuth({
+      challenge: true,
+      users: {
+        [swaggerUsername]: swaggerPassword,
+      },
+    }),
+  );
+
   const swaggerConfig = new DocumentBuilder()
     .setTitle('SocialPilot AI API')
     .setDescription('Backend API for the SocialPilot AI platform')
     .setVersion('0.1')
     .addBearerAuth()
     .build();
-  const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
+
+  const document = SwaggerModule.createDocument(
+    app,
+    swaggerConfig,
+  );
+
+  SwaggerModule.setup(
+    `${apiPrefix}/docs`,
+    app,
+    document,
+  );
 
   const port = config.get<number>('PORT', 4000);
+
   await app.listen(port);
+
   // eslint-disable-next-line no-console
-  console.log(`SocialPilot AI backend running on http://localhost:${port}/${apiPrefix}`);
+  console.log(
+    `SocialPilot AI backend running on http://localhost:${port}/${apiPrefix}`,
+  );
+
   // eslint-disable-next-line no-console
-  console.log(`Swagger docs available at http://localhost:${port}/${apiPrefix}/docs`);
+  console.log(
+    `Swagger docs available at http://localhost:${port}/${apiPrefix}/docs`,
+  );
 }
 
 bootstrap();

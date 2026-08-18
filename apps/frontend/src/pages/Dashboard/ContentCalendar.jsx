@@ -35,6 +35,7 @@ import {
   Star,
   ThumbsUp,
   ThumbsDown,
+  Wand2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -47,6 +48,8 @@ import {
   getUpcomingPosts,
   getPublishedPosts,
   updateCalendarPost,
+  generateAICalendar,
+  getGenerationJobStatus,
 } from '../../features/calendar/calendar-api'
 import {
   getPostSuggestions,
@@ -56,6 +59,7 @@ import {
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
 import { trackEvent } from '../../lib/analytics'
+import apiClient from '../../lib/api-client'
 
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
@@ -475,7 +479,7 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
 }
 
 // ─── Post Details Modal ────────────────────────────────────────────────────────
-function PostDetailModal({ post, onClose, onUpdated }) {
+function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) {
   const [isEditing, setIsEditing] = useState(false)
   const [showSuggestions, setShowSuggestions] = useState(false)
 
@@ -492,6 +496,40 @@ function PostDetailModal({ post, onClose, onUpdated }) {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [errorSuggestions, setErrorSuggestions] = useState(null)
+
+  // Sync editPlatform to connected platforms if disconnected
+  useEffect(() => {
+    if (connectedPlatforms.length > 0 && !connectedPlatforms.includes(editPlatform)) {
+      setEditPlatform(connectedPlatforms[0])
+    }
+  }, [connectedPlatforms, editPlatform])
+
+  // Compute week range for scheduling input
+  const weekLimits = useMemo(() => {
+    if (!post || !post.scheduledAt) return { min: '', max: '' }
+    const date = new Date(post.scheduledAt)
+    const day = date.getDay() // 0 = Sunday, 1 = Monday, etc.
+    
+    // Start of week is Sunday
+    const startOfWeek = new Date(date)
+    startOfWeek.setDate(date.getDate() - day)
+    
+    // End of week is Saturday
+    const endOfWeek = new Date(startOfWeek)
+    endOfWeek.setDate(startOfWeek.getDate() + 6)
+    
+    const formatDateStr = (d) => {
+      const yyyy = d.getFullYear()
+      const mm = String(d.getMonth() + 1).padStart(2, '0')
+      const dd = String(d.getDate()).padStart(2, '0')
+      return `${yyyy}-${mm}-${dd}`
+    }
+    
+    return {
+      min: formatDateStr(startOfWeek),
+      max: formatDateStr(endOfWeek),
+    }
+  }, [post])
 
   useEffect(() => {
     if (post) {
@@ -557,6 +595,23 @@ function PostDetailModal({ post, onClose, onUpdated }) {
     e.preventDefault()
     setIsSaving(true)
     try {
+      if (post?.scheduledAt && editDate) {
+        const getWeekStart = (d) => {
+          const temp = new Date(d);
+          const day = temp.getDay();
+          temp.setDate(temp.getDate() - day);
+          temp.setHours(0, 0, 0, 0);
+          return temp.getTime();
+        };
+        const origWeek = getWeekStart(new Date(post.scheduledAt));
+        const newWeek = getWeekStart(new Date(editDate + 'T00:00:00'));
+        if (origWeek !== newWeek) {
+          alert('You can only reschedule a post within the same week.');
+          setIsSaving(false);
+          return;
+        }
+      }
+
       let scheduledAt = null
       if (editDate) {
         scheduledAt = editTime ? `${editDate}T${editTime}:00` : `${editDate}T12:00:00`
@@ -719,11 +774,9 @@ function PostDetailModal({ post, onClose, onUpdated }) {
                 onChange={(e) => setEditPlatform(e.target.value)}
                 className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none cursor-pointer"
               >
-                <option value="Instagram">Instagram</option>
-                <option value="LinkedIn">LinkedIn</option>
-                <option value="X / Twitter">X / Twitter</option>
-                <option value="TikTok">TikTok</option>
-                <option value="Facebook">Facebook</option>
+                {connectedPlatforms.map(p => (
+                  <option key={p} value={p}>{p}</option>
+                ))}
               </select>
             </div>
 
@@ -732,6 +785,8 @@ function PostDetailModal({ post, onClose, onUpdated }) {
               <input
                 type="date"
                 value={editDate}
+                min={weekLimits.min}
+                max={weekLimits.max}
                 onChange={(e) => setEditDate(e.target.value)}
                 className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
               />
@@ -882,6 +937,16 @@ export default function ContentCalendar() {
   const [kycRecord, setKycRecord] = useState(null)
   const [error, setError]     = useState(null)
 
+  // ── AI Calendar Generation state ────────────────────────────────────────────
+  const [showGenerateModal, setShowGenerateModal] = useState(false)
+  const [genLoading, setGenLoading] = useState(false)
+  const [genMessage, setGenMessage] = useState(null)   // { type: 'success'|'error', text: string }
+  const [genJobId, setGenJobId] = useState(null)
+  // Selected platforms for generation (defaults to all five)
+  const ALL_PLATFORMS = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook']
+  const [genPlatforms, setGenPlatforms] = useState([])
+  const [connectedPlatforms, setConnectedPlatforms] = useState([])
+
   // ── Fetch logic ────────────────────────────────────────────────────────────
 
   /**
@@ -893,16 +958,33 @@ export default function ContentCalendar() {
     setLoading(true)
     setError(null)
     try {
-      const [all, upcoming, published, kyc] = await Promise.all([
+      const [all, upcoming, published, kyc, socialAccountsRes] = await Promise.all([
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
-        getMyKyc()
+        getMyKyc(),
+        apiClient.get('/social-accounts')
       ])
       setAllPosts(all)
       setUpcomingPosts(upcoming)
       setPublishedPosts(published)
       setKycRecord(kyc)
+
+      if (Array.isArray(socialAccountsRes.data)) {
+        const platformMap = {
+          instagram: 'Instagram',
+          linkedin: 'LinkedIn',
+          x: 'X / Twitter',
+          tiktok: 'TikTok',
+          facebook: 'Facebook'
+        }
+        const connected = socialAccountsRes.data
+          .filter(acc => acc.status === 'connected')
+          .map(acc => platformMap[acc.platform])
+          .filter(Boolean)
+        setConnectedPlatforms(connected)
+        setGenPlatforms(connected)
+      }
     } catch (err) {
       // Show a friendly error message
       const msg = err?.message || 'Failed to load calendar posts. Please try again.'
@@ -960,6 +1042,82 @@ export default function ContentCalendar() {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   }, [activeView, currentDate])
 
+  // ── Derive the current viewed month in YYYY-MM format ───────────────────────
+  const viewedMonth = useMemo(() => {
+    const y = currentDate.getFullYear()
+    const m = String(currentDate.getMonth() + 1).padStart(2, '0')
+    return `${y}-${m}`
+  }, [currentDate])
+
+  // ── AI Calendar Generation handler ──────────────────────────────────────────
+  /**
+   * Called when the user confirms platform selection and clicks Generate.
+   * 1. Calls POST /api/calendar/generate (JWT-authenticated, no secrets in browser).
+   * 2. Polls GET /api/calendar/generation/:jobId every 5 seconds.
+   * 3. When status === 'GENERATED', auto-refreshes the calendar.
+   */
+  async function handleGenerateAICalendar() {
+    if (genPlatforms.length === 0) {
+      setGenMessage({ type: 'error', text: 'Please select at least one platform.' })
+      return
+    }
+    setShowGenerateModal(false)
+    setGenLoading(true)
+    setGenMessage(null)
+    setGenJobId(null)
+
+    try {
+      const job = await generateAICalendar(viewedMonth, genPlatforms)
+      setGenJobId(job.id)
+      setGenMessage({
+        type: 'success',
+        text: 'Calendar generation started. Your AI-generated posts will appear shortly…',
+      })
+
+      // Poll the job status every 5 seconds until GENERATED or FAILED
+      const MAX_POLLS = 60          // 5 min max (60 × 5s)
+      let polls = 0
+      const pollInterval = setInterval(async () => {
+        polls += 1
+        try {
+          const latest = await getGenerationJobStatus(job.id)
+          if (latest.status === 'GENERATED') {
+            clearInterval(pollInterval)
+            setGenLoading(false)
+            setGenJobId(null)
+            setGenMessage({
+              type: 'success',
+              text: '✅ AI calendar generated! Your new posts are now in the calendar.',
+            })
+            await fetchAll()   // Auto-refresh the calendar
+          } else if (latest.status === 'FAILED') {
+            clearInterval(pollInterval)
+            setGenLoading(false)
+            setGenJobId(null)
+            setGenMessage({
+              type: 'error',
+              text: 'Calendar generation failed. Please try again or contact support.',
+            })
+          } else if (polls >= MAX_POLLS) {
+            clearInterval(pollInterval)
+            setGenLoading(false)
+            setGenJobId(null)
+            setGenMessage({
+              type: 'error',
+              text: 'Generation is taking longer than expected. Refresh the page in a few minutes.',
+            })
+          }
+        } catch (_pollErr) {
+          // Ignore transient poll errors; keep polling
+        }
+      }, 5000)
+    } catch (err) {
+      setGenLoading(false)
+      const msg = err?.response?.data?.message || err?.message || 'Failed to start AI calendar generation.'
+      setGenMessage({ type: 'error', text: msg })
+    }
+  }
+
   // ── Error state ─────────────────────────────────────────────────────────────
   if (error) {
     return (
@@ -994,6 +1152,29 @@ export default function ContentCalendar() {
           subtitle="Plan, schedule, and track your social media content."
         />
 
+        {/* ── AI Generation status banner ── */}
+        {genMessage && (
+          <div
+            className={`mb-4 flex items-start gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${
+              genMessage.type === 'success'
+                ? 'border-green-200 bg-green-50 text-green-800'
+                : 'border-red-200 bg-red-50 text-red-800'
+            }`}
+          >
+            {genMessage.type === 'success'
+              ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
+              : <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />}
+            <span className="flex-1 leading-relaxed">{genMessage.text}</span>
+            <button
+              onClick={() => setGenMessage(null)}
+              className="ml-2 shrink-0 text-inherit opacity-60 hover:opacity-100 transition-opacity"
+              aria-label="Dismiss"
+            >
+              <XCircle size={14} />
+            </button>
+          </div>
+        )}
+
         {/* ── Tab bar ── */}
       <div className="flex gap-1 mb-6 border-b border-canvas">
         {TABS.map(tab => (
@@ -1010,6 +1191,26 @@ export default function ContentCalendar() {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-2 pb-2">
+          {/* Generate AI Calendar button */}
+          <button
+            id="generate-ai-calendar-btn"
+            onClick={() => {
+              setGenMessage(null)
+              setShowGenerateModal(true)
+            }}
+            disabled={genLoading}
+            title={genLoading ? 'Generation in progress…' : 'Generate AI Calendar'}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
+              genLoading
+                ? 'cursor-not-allowed bg-primary-100 text-primary-400'
+                : 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-soft hover:from-primary-700 hover:to-primary-600 active:scale-95'
+            }`}
+          >
+            {genLoading
+              ? (<><RefreshCw size={13} className="animate-spin" /><span>Generating…</span></>)
+              : (<><Wand2 size={13} /><span>Generate AI Calendar</span></>)}
+          </button>
+          {/* Regular refresh button — untouched */}
           <Button variant="ghost" size="sm" onClick={fetchAll} title="Refresh">
             <RefreshCw size={14} />
           </Button>
@@ -1163,6 +1364,7 @@ export default function ContentCalendar() {
       <PostDetailModal
         post={selectedPost}
         onClose={() => setSelectedPost(null)}
+        connectedPlatforms={connectedPlatforms}
         onUpdated={(updatedPost) => {
           setAllPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
           setUpcomingPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
@@ -1170,6 +1372,72 @@ export default function ContentCalendar() {
           setSelectedPost(updatedPost)
         }}
       />
+
+      {/* ── Generate AI Calendar platform-selection modal ── */}
+      <Modal
+        open={showGenerateModal}
+        onClose={() => setShowGenerateModal(false)}
+        title="✨ Generate AI Calendar"
+        className="max-w-md"
+      >
+        <p className="text-sm text-ink-muted mb-4 leading-relaxed">
+          Select the platforms you want AI to create posts for in{' '}
+          <strong className="text-ink">{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>.
+          The posts will appear in your calendar once generation completes.
+        </p>
+
+        {/* Platform checkboxes */}
+        <div className="space-y-2 mb-6">
+          {connectedPlatforms.length === 0 ? (
+            <p className="text-sm text-danger italic">
+              Please connect at least one social channel to generate a calendar.
+            </p>
+          ) : (
+            connectedPlatforms.map(platform => (
+              <label
+                key={platform}
+                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${
+                  genPlatforms.includes(platform)
+                    ? 'border-primary-300 bg-primary-50 text-primary-800'
+                    : 'border-border bg-surface text-ink-muted hover:border-primary-200'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  className="accent-primary w-4 h-4"
+                  checked={genPlatforms.includes(platform)}
+                  onChange={e => {
+                    if (e.target.checked) {
+                      setGenPlatforms(prev => [...prev, platform])
+                    } else {
+                      setGenPlatforms(prev => prev.filter(p => p !== platform))
+                    }
+                  }}
+                />
+                <span className="text-sm font-medium">{platform}</span>
+              </label>
+            ))
+          )}
+        </div>
+
+        <div className="flex justify-end gap-2 border-t border-border pt-4">
+          <Button variant="outline" size="sm" onClick={() => setShowGenerateModal(false)}>
+            Cancel
+          </Button>
+          <button
+            onClick={handleGenerateAICalendar}
+            disabled={genPlatforms.length === 0}
+            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
+              genPlatforms.length === 0
+                ? 'cursor-not-allowed bg-primary-100 text-primary-400'
+                : 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-soft hover:from-primary-700 hover:to-primary-600'
+            }`}
+          >
+            <Wand2 size={14} />
+            Generate for {currentDate.toLocaleDateString('en-US', { month: 'long' })}
+          </button>
+        </div>
+      </Modal>
       </div>
     </div>
   )

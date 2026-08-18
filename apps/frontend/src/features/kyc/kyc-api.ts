@@ -122,9 +122,28 @@ export async function adminGetKyc(id: string): Promise<KycRecord> {
  */
 export async function adminReviewKyc(
   id: string,
-  data: { status: 'approved' | 'rejected'; rejectionReason?: string },
+  data: { status: 'approved' | 'rejected' | 'pending' | 'resubmission_required'; rejectionReason?: string },
 ): Promise<KycRecord> {
   const response = await apiClient.patch<KycRecord>(`/admin/kyc/${id}/review`, data);
+  return response.data;
+}
+
+/**
+ * PATCH /admin/kyc/:id/document/:docType/reject
+ * Reject a specific KYC document.
+ * Reason is optional — the backend will auto-generate a fallback if omitted.
+ * documentName is used by the backend to produce a human-readable fallback.
+ */
+export async function adminRejectKycDocument(
+  id: string,
+  docType: 'cert' | 'utility' | 'ownerId',
+  reason?: string,
+  documentName?: string,
+): Promise<KycRecord> {
+  const response = await apiClient.patch<KycRecord>(`/admin/kyc/${id}/document/${docType}/reject`, {
+    reason: reason || undefined,
+    documentName,
+  });
   return response.data;
 }
 

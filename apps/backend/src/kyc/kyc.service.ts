@@ -220,18 +220,34 @@ export class KycService {
     if (!record) throw new NotFoundException('KYC record not found');
 
     const statusVal = dto.status as any;
+    const updatePayload: any = {
+      status: statusVal,
+      reviewedBy: adminId,
+      reviewedAt: new Date(),
+      rejectionReason:
+        (dto.status === 'approved' || dto.status === 'pending') ? null : (dto.rejectionReason ?? null),
+      updatedAt: new Date(),
+    };
+
+    if (dto.status === 'pending') {
+      updatePayload.certOfRegistrationStatus = 'pending';
+      updatePayload.certOfRegistrationRejectionReason = null;
+      updatePayload.utilityBillStatus = 'pending';
+      updatePayload.utilityBillRejectionReason = null;
+      updatePayload.ownerIdStatus = 'pending';
+      updatePayload.ownerIdRejectionReason = null;
+    } else if (dto.status === 'approved') {
+      updatePayload.certOfRegistrationStatus = 'approved';
+      updatePayload.certOfRegistrationRejectionReason = null;
+      updatePayload.utilityBillStatus = 'approved';
+      updatePayload.utilityBillRejectionReason = null;
+      updatePayload.ownerIdStatus = 'approved';
+      updatePayload.ownerIdRejectionReason = null;
+    }
 
     const [updated] = await this.db
       .update(schema.kyc)
-      .set({
-        status: statusVal,
-        reviewedBy: adminId,
-        reviewedAt: new Date(),
-        // Store reason if rejected or resubmission requested
-        rejectionReason:
-          dto.status !== 'approved' ? (dto.rejectionReason ?? null) : null,
-        updatedAt: new Date(),
-      })
+      .set(updatePayload)
       .where(eq(schema.kyc.id, kycId))
       .returning();
 
@@ -328,5 +344,61 @@ export class KycService {
     const filePath = pathMap[docType];
     if (!filePath) throw new NotFoundException('Document not found for this KYC record');
     return filePath;
+  }
+
+  async rejectDocument(
+    kycId: string,
+    docType: 'cert' | 'utility' | 'ownerId',
+    adminId: string,
+    reason?: string,
+    documentName?: string,
+  ) {
+    const record = await this.db.query.kyc.findFirst({
+      where: eq(schema.kyc.id, kycId),
+    });
+    if (!record) throw new NotFoundException('KYC record not found');
+
+    const docLabel = documentName || (docType === 'cert' ? 'Registration Cert' : docType === 'utility' ? 'Proof of Address' : 'Owner ID');
+    let finalReason = reason;
+    if (!finalReason || !finalReason.trim()) {
+      finalReason = `This KYC was rejected because the submitted ${docLabel} did not meet the verification requirements.`;
+    }
+
+    const updateFields: any = {};
+    if (docType === 'cert') {
+      updateFields.certOfRegistrationStatus = 'rejected';
+      updateFields.certOfRegistrationRejectionReason = finalReason;
+    } else if (docType === 'utility') {
+      updateFields.utilityBillStatus = 'rejected';
+      updateFields.utilityBillRejectionReason = finalReason;
+    } else if (docType === 'ownerId') {
+      updateFields.ownerIdStatus = 'rejected';
+      updateFields.ownerIdRejectionReason = finalReason;
+    } else {
+      throw new BadRequestException('Invalid document type');
+    }
+
+    // Set overall status to rejected
+    updateFields.status = 'rejected';
+    updateFields.reviewedBy = adminId;
+    updateFields.reviewedAt = new Date();
+    updateFields.rejectionReason = `Document verification failed: ${docLabel} was rejected. Reason: ${finalReason}`;
+    updateFields.updatedAt = new Date();
+
+    const [updated] = await this.db
+      .update(schema.kyc)
+      .set(updateFields)
+      .where(eq(schema.kyc.id, kycId))
+      .returning();
+
+    // Log the rejection
+    await this.activityLogsService.record({
+      userId: adminId,
+      action: 'KYC_DOCUMENT_REJECTED',
+      module: 'user_management',
+      description: `Rejected document ${docType} for KYC record ${kycId}. Reason: ${finalReason}`,
+    });
+
+    return updated;
   }
 }

@@ -69,6 +69,16 @@ export const kyc = pgTable('kyc', {
   // ---- Review tracking ----
   status: kycStatusEnum('status').notNull().default('pending'),
 
+  // Individual document verification status and reasons
+  certOfRegistrationStatus: varchar('cert_of_registration_status', { length: 50 }).notNull().default('pending'),
+  certOfRegistrationRejectionReason: text('cert_of_registration_rejection_reason'),
+
+  utilityBillStatus: varchar('utility_bill_status', { length: 50 }).notNull().default('pending'),
+  utilityBillRejectionReason: text('utility_bill_rejection_reason'),
+
+  ownerIdStatus: varchar('owner_id_status', { length: 50 }).notNull().default('pending'),
+  ownerIdRejectionReason: text('owner_id_rejection_reason'),
+
   // Admin user who last reviewed this record (null until reviewed)
   reviewedBy: uuid('reviewed_by'),
 

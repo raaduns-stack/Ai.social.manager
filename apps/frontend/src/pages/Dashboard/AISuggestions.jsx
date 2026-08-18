@@ -407,15 +407,7 @@ const loadSuggestions = async () => {
                     : 'bg-surface/80 backdrop-blur-sm'
                 }`}
               >
-                {/* Orange Spark Ornament */}
-                {!isExcluded && (
-                  <div className="absolute top-0 right-0 w-8 h-8 pointer-events-none overflow-hidden">
-                    <div className="absolute top-0 right-0 bg-primary/10 rounded-bl-full w-8 h-8 flex items-center justify-center pl-1 pb-1">
-                      <Sparkles size={10} className="text-primary" />
-                    </div>
-                  </div>
-                )}
-                {/* Header Badges: Social Platform, Category Type, Scheduled Date & Excluded Lock Badge */}
+                 {/* Header Badges: Social Platform, Category Type, Scheduled Date & Excluded Lock Badge */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <PlatformBadge platform={card.platform} />
@@ -551,8 +543,8 @@ const loadSuggestions = async () => {
                         <Lock size={14} /> Never Published
                       </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="text-xs font-bold border-primary text-primary hover:bg-primary-50 flex items-center gap-1.5 rounded-control">
-                        <Sparkles size={12} className="text-primary" /> Ready to Publish
+                      <Button variant="outline" size="sm" className="text-xs font-semibold text-primary">
+                        Ready to Publish
                       </Button>
                     )}
                   </div>
