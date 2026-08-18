@@ -5,23 +5,25 @@ import {
   Param,
   Post,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ContentSuggestionsService } from './content-suggestions.service';
 
 import { GenerateCaptionDto } from './dto/generate-caption.dto';
 import { GenerateIdeaDto } from './dto/generate-idea.dto';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
-import { RequestRevisionDto } from './dto/request-revision.dto';
 import { N8nResponseDto } from './dto/n8n-response.dto';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { N8nInternalAuthGuard } from '../auth/guards/n8n-internal-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
- * Controller handling API routes for AI-driven or mock content suggestions,
- * including captions, content ideas, user feedback submission, approvals, and revisions.
+ * Controller handling API routes for AI-driven content suggestions,
+ * including post-specific variations, n8n webhook response callbacks,
+ * and user feedback submissions.
  */
 @ApiTags('content-suggestions')
 @Controller('content-suggestions')
@@ -51,21 +53,21 @@ export class ContentSuggestionsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get suggestions for a specific calendar post' })
   findForPost(
-    @Param('postId') postId: string,
+    @Param('postId', ParseUUIDPipe) postId: string,
     @CurrentUser() user: { userId: string },
   ) {
     return this.contentSuggestionsService.findForPost(postId, user.userId);
   }
 
   /**
-   * Regenerates suggestions for a specific calendar post.
+   * Regenerates suggestions for a specific calendar post by triggering n8n workflow.
    */
   @Post('post/:postId/regenerate')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Regenerate suggestions for a specific calendar post' })
   regenerateForPost(
-    @Param('postId') postId: string,
+    @Param('postId', ParseUUIDPipe) postId: string,
     @CurrentUser() user: { userId: string },
   ) {
     return this.contentSuggestionsService.regenerateForPost(postId, user.userId);
@@ -77,7 +79,7 @@ export class ContentSuggestionsController {
   @Post('caption')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate a mock caption' })
+  @ApiOperation({ summary: 'Generate a caption' })
   generateCaption(
     @CurrentUser() user: { userId: string },
     @Body() dto: GenerateCaptionDto,
@@ -94,7 +96,7 @@ export class ContentSuggestionsController {
   @Post('idea')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Generate a mock content idea' })
+  @ApiOperation({ summary: 'Generate a content idea' })
   generateIdea(
     @CurrentUser() user: { userId: string },
     @Body() dto: GenerateIdeaDto,
@@ -126,43 +128,14 @@ export class ContentSuggestionsController {
   }
 
   /**
-   * Approves a single content suggestion variation, marking it as APPROVED and others as REJECTED.
-   */
-  @Post(':id/approve')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Approve one variation suggestion' })
-  approveSuggestion(
-    @Param('id') id: string,
-    @CurrentUser() user: { userId: string },
-  ) {
-    return this.contentSuggestionsService.approveSuggestion(id, user.userId);
-  }
-
-  /**
-   * Requests a revision on a suggestion variation, transitioning its status to REVISION_REQUESTED
-   * and triggering n8n revision webhook.
-   */
-  @Post(':id/revision')
-  @UseGuards(JwtAuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Request a revision for a suggestion variation' })
-  requestRevision(
-    @Param('id') id: string,
-    @CurrentUser() user: { userId: string },
-    @Body() dto: RequestRevisionDto,
-  ) {
-    return this.contentSuggestionsService.requestRevision(id, user.userId, dto.revisionNotes);
-  }
-
-  /**
-   * Public webhook endpoint called by n8n to deliver newly generated or revised variations.
+   * n8n Webhook Response Endpoint: Saves AI-generated suggestions back to SocialPilot.
+   * Authenticated using X-N8N-API-KEY header.
    */
   @Post('webhook/n8n-response')
-  @ApiOperation({ summary: 'Inbound webhook receiver for n8n generated/revised variations' })
-  handleN8nResponse(
-    @Body() dto: N8nResponseDto,
-  ) {
-    return this.contentSuggestionsService.handleN8nResponse(dto);
+  @UseGuards(N8nInternalAuthGuard)
+  @ApiHeader({ name: 'X-N8N-API-KEY', description: 'Internal n8n API Key' })
+  @ApiOperation({ summary: '[Internal n8n] Receive generated suggestions from n8n workflow' })
+  saveN8nSuggestions(@Body() dto: N8nResponseDto) {
+    return this.contentSuggestionsService.saveN8nSuggestions(dto);
   }
 }

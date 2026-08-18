@@ -297,6 +297,25 @@ export class CalendarService {
   }
 
   /**
+   * Return a single post by id — for internal service calls (e.g. n8n workflow).
+   */
+  async findOneById(id: string): Promise<ContentCalendarPost> {
+    const post = await this.db.query.contentCalendar.findFirst({
+      where: eq(schema.contentCalendar.id, id),
+      with: {
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
+    });
+    if (!post) throw new NotFoundException(`Post ${id} not found`);
+    return post;
+  }
+
+  /**
    * Create a new calendar post for the authenticated customer.
    */
   async createForUser(
