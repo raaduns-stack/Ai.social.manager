@@ -29,14 +29,14 @@ export default () => ({
 
   mail: {
     resendApiKey: process.env.RESEND_API_KEY,
-    mailFrom: process.env.MAIL_FROM ?? 'noreply@socialpilot.ai',
+    mailFrom: process.env.MAIL_FROM ?? 'no-reply@raasocial.io',
     smtpHost: process.env.SMTP_HOST,
     smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined,
     smtpSecure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === undefined ? true : false,
     smtpUsername: process.env.SMTP_USERNAME,
     smtpPassword: process.env.SMTP_PASSWORD,
-    senderName: process.env.SMTP_SENDER_NAME ?? 'SocialPilot AI',
-    senderEmail: process.env.SMTP_SENDER_EMAIL ?? process.env.MAIL_FROM ?? 'noreply@raasocial.io',
+    senderName: process.env.SMTP_SENDER_NAME ?? 'RaaSocial',
+    senderEmail: process.env.SMTP_SENDER_EMAIL ?? process.env.MAIL_FROM ?? 'no-reply@raasocial.io',
   },
 
   redis: {

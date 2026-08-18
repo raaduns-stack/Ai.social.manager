@@ -29,6 +29,7 @@ import { getPlans } from '../../features/plans/plans-api'
 import { getInvoices } from '../../features/invoices/invoices-api'
 import ErrorBanner from '../../components/error-banner'
 import CheckoutButton from '../../features/payments/checkout-button'
+import { PLAN_DETAILS } from '../../utils/constants'
 
 export default function Billing() {
   const location = useLocation()
@@ -139,49 +140,7 @@ export default function Billing() {
 
   // Features list formatter matching plan tiers
   const getFeaturesList = (planSlug) => {
-    if (planSlug === 'free') {
-      return [
-        'Connect 1 social account',
-        '5 AI posts/month',
-        'AI caption + hashtags',
-        'Basic AI image generation',
-        'Content preview',
-        'Basic analytics',
-
-      ]
-    } else if (planSlug === 'starter') {
-      return [
-        'Everything in Free, plus:',
-        'Connect 3 social accounts',
-        '30 AI posts/month',
-        'Content Calendar',
-        'Post Scheduling',
-        'Brand Assets Upload',
-        'Basic Analytics',
-        'AI Content Suggestions',
-      ]
-    } else if (planSlug === 'growth') {
-      return [
-        'Everything in Starter, plus:',
-        'Connect 7 social accounts',
-        '150 AI posts/month (Fair Use)',
-        'Advanced AI Images',
-        'Competitor Analysis',
-        'Weekly Reports',
-        '5 Team Members',
-        'Approval Workflow',
-      ]
-    } else {
-      return [
-        'Everything in Growth, plus:',
-        'Connect 15 social accounts',
-        '300 AI posts/month (Fair Use)',
-        'Unlimited Team Members',
-        'AI Marketing Strategy & Campaign Planner',
-        'Multi-location support',
-        'Dedicated Account Manager',
-      ]
-    }
+    return PLAN_DETAILS[planSlug]?.features || []
   }
 
   const activePlanFeatures = getFeaturesList(activePlanSlug)
@@ -421,11 +380,7 @@ export default function Billing() {
                         <h4 className="text-sm font-bold text-ink">{plan.name}</h4>
                       </div>
                       <p className="text-xs text-ink-muted mb-4">
-                        {plan.slug === 'free' 
-                          ? 'Try Whitebox features' 
-                          : plan.slug === 'starter' 
-                            ? 'For growing professionals' 
-                            : 'Scale your social presence'}
+                        {PLAN_DETAILS[plan.slug]?.description || ''}
                       </p>
 
                       <div className="mb-6">

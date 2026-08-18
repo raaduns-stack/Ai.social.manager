@@ -20,7 +20,9 @@ export class MailerService {
   private async getTransporterAndFrom(): Promise<{ transporter: nodemailer.Transporter | null, from: string }> {
     try {
       const config = await this.db.query.emailConfig.findFirst();
-      let from = this.configService.get<string>('mail.mailFrom') || 'noreply@socialpilot.ai';
+      const defaultSenderName = this.configService.get<string>('mail.senderName') || 'RaaSocial';
+      const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'no-reply@raasocial.io';
+      let from = `"${defaultSenderName}" <${defaultSenderEmail}>`;
       
       if (config && config.smtpHost && config.smtpUsername && config.smtpPasswordEncrypted) {
         const plainPassword = decryptSecret(config.smtpPasswordEncrypted);
@@ -51,7 +53,9 @@ export class MailerService {
 
     // Fallback to .env config
     const apiKey = this.configService.get<string>('mail.resendApiKey');
-    const from = this.configService.get<string>('mail.mailFrom') || 'noreply@socialpilot.ai';
+    const defaultSenderName = this.configService.get<string>('mail.senderName') || 'RaaSocial';
+    const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'no-reply@raasocial.io';
+    const from = `"${defaultSenderName}" <${defaultSenderEmail}>`;
     
     if (apiKey) {
       const transporter = nodemailer.createTransport({
@@ -71,18 +75,21 @@ export class MailerService {
 
   async sendVerificationCode(user: User, code: string): Promise<void> {
     const { transporter, from } = await this.getTransporterAndFrom();
-    const subject = 'Verify your SocialPilot AI account';
+    const subject = 'Verify your RaaSocial account';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #4f46e5; margin-bottom: 20px;">Verify your SocialPilot AI account</h2>
+        <h2 style="color: #4f46e5; margin-bottom: 20px;">Verify your RaaSocial account</h2>
         <p>Hi ${user.fullName},</p>
-        <p>Thank you for signing up for SocialPilot AI. Please use the verification code below to complete your registration:</p>
+        <p>Thank you for signing up for RaaSocial. Please use the verification code below to complete your registration:</p>
         <div style="font-size: 32px; font-weight: bold; letter-spacing: 4px; text-align: center; margin: 30px 0; color: #1e1b4b; background-color: #f1f5f9; padding: 15px; border-radius: 6px;">
           ${code}
         </div>
+        <p style="margin: 20px 0; text-align: center; font-size: 14px; color: #1e293b;">
+          <b>If you do not see the email in your inbox immediately, please check your Spam or Junk folder.</b>
+        </p>
         <p>This code is valid for 15 minutes. If you did not request this, please ignore this email.</p>
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #64748b;">© 2026 SocialPilot AI. All rights reserved.</p>
+        <p style="font-size: 12px; color: #64748b;">© 2026 RaaSocial. All rights reserved.</p>
       </div>
     `;
 
@@ -106,16 +113,16 @@ export class MailerService {
 
   async sendWelcomeEmail(user: User): Promise<void> {
     const { transporter, from } = await this.getTransporterAndFrom();
-    const subject = 'Welcome to SocialPilot AI!';
+    const subject = 'Welcome to RaaSocial!';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-        <h2 style="color: #4f46e5; margin-bottom: 20px;">Welcome to SocialPilot AI!</h2>
+        <h2 style="color: #4f46e5; margin-bottom: 20px;">Welcome to RaaSocial!</h2>
         <p>Hi ${user.fullName},</p>
         <p>Your email has been successfully verified, and your account is active.</p>
         <p>We are excited to have you on board! You can now start scheduling your posts and using our AI features to grow your social media presence.</p>
         <a href="${this.configService.get<string>('frontendUrl')}/dashboard" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; margin-top: 20px;">Go to Dashboard</a>
         <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
-        <p style="font-size: 12px; color: #64748b;">© 2026 SocialPilot AI. All rights reserved.</p>
+        <p style="font-size: 12px; color: #64748b;">© 2026 RaaSocial. All rights reserved.</p>
       </div>
     `;
 

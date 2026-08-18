@@ -6,6 +6,7 @@ import Button from '../../components/ui/Button'
 import { getPlans } from '../../features/plans/plans-api'
 import CheckoutButton from '../../features/payments/checkout-button'
 import ErrorBanner from '../../components/error-banner'
+import { PLAN_DETAILS } from '../../utils/constants'
 
 export default function ChoosePlan() {
   const navigate = useNavigate()
@@ -53,42 +54,7 @@ export default function ChoosePlan() {
       ]
     }
 
-    if (plan.slug === 'free') {
-      return [
-        'Connect 1 social account',
-        '5 AI posts/month',
-        'AI caption + hashtags',
-        'Basic AI image generation',
-        'Content preview',
-        'Basic analytics',
-      ]
-    } else if (plan.slug === 'starter') {
-      return [
-        'Connect 3 social accounts',
-        '30 AI posts/month',
-        'Content Calendar',
-        'Post Scheduling',
-        'Brand Assets Upload',
-        'Basic Analytics',
-        'AI Content Suggestions',
-      ]
-    } else if (plan.slug === 'growth') {
-      return [
-        'Connect 15 team members',
-        'Advanced AI-driven insights',
-        'Priority 24/7 email support',
-        'Unlimited workspaces',
-        'Custom branding (New)',
-      ]
-    } else {
-      return [
-        'Unlimited team members',
-        'Dedicated account manager',
-        '99.99% Uptime SLA',
-        'Custom API integrations',
-        'SSO & Advanced Security',
-      ]
-    }
+    return PLAN_DETAILS[plan.slug]?.features || []
   }
 
   const formatPrice = (plan) => {
@@ -152,11 +118,7 @@ export default function ChoosePlan() {
                         {plan.name === 'Brand Domination' ? 'Enterprise' : plan.name}
                       </h3>
                       <p className="text-sm text-[#666666] leading-relaxed mb-4">
-                        {plan.slug === 'starter'
-                          ? 'Perfect for individuals and small teams starting out.'
-                          : plan.slug === 'growth'
-                          ? 'Advanced features for growing teams pushing limits.'
-                          : 'Custom security and performance for large organizations.'}
+                        {PLAN_DETAILS[plan.slug]?.description || ''}
                       </p>
                       <div className="flex items-baseline gap-1 mt-2">
                         <span className="text-4xl font-extrabold text-[#111111] font-['Plus_Jakarta_Sans'] tracking-tight">
