@@ -87,6 +87,14 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   N8N_INTERNAL_API_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  AI_SUGGESTIONS_N8N_GENERATION_WEBHOOK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  AI_SUGGESTIONS_N8N_REVISION_WEBHOOK_URL?: string;
 }
 
 /**
