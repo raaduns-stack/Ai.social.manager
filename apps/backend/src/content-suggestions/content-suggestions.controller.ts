@@ -30,7 +30,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 export class ContentSuggestionsController {
   constructor(
     private readonly contentSuggestionsService: ContentSuggestionsService,
-  ) {}
+  ) { }
 
   /**
    * Retrieves all content suggestions created by or assigned to the authenticated user.

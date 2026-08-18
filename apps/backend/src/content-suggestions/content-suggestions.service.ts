@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { desc, eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { ConfigService } from '@nestjs/config';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -49,9 +50,9 @@ export class ContentSuggestionsService {
         ...suggestion,
         feedback: feedback
           ? {
-              reaction: feedback.reaction,
-              rating: feedback.rating,
-            }
+            reaction: feedback.reaction,
+            rating: feedback.rating,
+          }
           : null,
       };
     });
@@ -197,9 +198,9 @@ export class ContentSuggestionsService {
           ...suggestion,
           feedback: feedback
             ? {
-                reaction: feedback.reaction,
-                rating: feedback.rating,
-              }
+              reaction: feedback.reaction,
+              rating: feedback.rating,
+            }
             : null,
         };
       });
@@ -387,5 +388,125 @@ export class ContentSuggestionsService {
     }
 
     return saved;
+  }
+
+  /**
+   * Approve a specific variation and reject others for the same post.
+   */
+  async approveSuggestion(id: string, userId: string) {
+    const suggestion = await this.db.query.contentSuggestions.findFirst({
+      where: (fields, { and, eq }) =>
+        and(eq(fields.id, id), eq(fields.userId, userId)),
+    });
+
+    if (!suggestion) {
+      throw new NotFoundException('Content suggestion not found');
+    }
+
+    if (!suggestion.postId) {
+      throw new BadRequestException('Suggestion must belong to a post to be approved');
+    }
+
+    // Set the selected variation to APPROVED
+    await this.db
+      .update(schema.contentSuggestions)
+      .set({ approvalStatus: 'APPROVED' })
+      .where(eq(schema.contentSuggestions.id, id));
+
+    // Set other variations belonging to the same post to REJECTED
+    await this.db
+      .update(schema.contentSuggestions)
+      .set({ approvalStatus: 'REJECTED' })
+      .where(
+        and(
+          eq(schema.contentSuggestions.postId, suggestion.postId),
+          ne(schema.contentSuggestions.id, id)
+        )
+      );
+
+    return { success: true };
+  }
+
+  /**
+   * Request a revision for a specific suggestion
+   */
+  async requestRevision(id: string, userId: string, revisionNotes: string) {
+    const suggestion = await this.db.query.contentSuggestions.findFirst({
+      where: (fields, { and, eq }) =>
+        and(eq(fields.id, id), eq(fields.userId, userId)),
+      with: {
+        post: true,
+      },
+    });
+
+    if (!suggestion) {
+      throw new NotFoundException('Content suggestion not found');
+    }
+
+    // Update status to REVISION_REQUESTED and save revision notes
+    await this.db
+      .update(schema.contentSuggestions)
+      .set({
+        approvalStatus: 'REVISION_REQUESTED',
+        revisionNotes: revisionNotes,
+      })
+      .where(eq(schema.contentSuggestions.id, id));
+
+    const webhookUrl = this.configService.get<string>('ai.n8nRevisionWebhookUrl');
+
+    if (webhookUrl) {
+      // Use the previously agreed revision payload structure
+      const payload = {
+        action: 'revise',
+        postId: suggestion.postId,
+        userId: suggestion.userId,
+        variationId: suggestion.id,
+        originalTitle: suggestion.title,
+        originalContent: suggestion.content,
+        originalHashtags: suggestion.hashtags,
+        revisionNotes: revisionNotes,
+        platform: suggestion.post?.platform,
+      };
+
+      try {
+        await fetch(webhookUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } catch (error) {
+        console.error('Failed to trigger n8n revision webhook:', error);
+      }
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Handle the webhook response from n8n
+   */
+  async handleN8nResponse(dto: N8nResponseDto) {
+    if (!dto.variations || dto.variations.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const toInsert = dto.variations.map((v) => ({
+      userId: dto.userId,
+      postId: dto.postId,
+      type: v.type,
+      title: v.title,
+      content: v.content,
+      hashtags: v.hashtags || [],
+      approvalStatus: 'PENDING_APPROVAL' as const,
+    }));
+
+    // If parentVariationId exists, it denotes a revision response. 
+    // Since we don't have a parentVariationId field in the schema, 
+    // we just store the new variations normally. They will be linked to the same post via postId.
+    // The original variation remains in 'REVISION_REQUESTED' state.
+
+    await this.db.insert(schema.contentSuggestions).values(toInsert);
+
+    return { success: true };
   }
 }

@@ -20,6 +20,8 @@ export default () => ({
     geminiApiKey: process.env.GEMINI_API_KEY,
     openclawApiKey: process.env.OPENCLAW_API_KEY,
     openclawGatewayUrl: process.env.OPENCLAW_GATEWAY_URL,
+    n8nGenerationWebhookUrl: process.env.AI_SUGGESTIONS_N8N_GENERATION_WEBHOOK_URL,
+    n8nRevisionWebhookUrl: process.env.AI_SUGGESTIONS_N8N_REVISION_WEBHOOK_URL,
   },
 
   payments: {
