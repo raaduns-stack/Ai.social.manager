@@ -67,7 +67,22 @@ export async function getFeedbackAnalytics(): Promise<FeedbackAnalytics> {
   return response.data
 }
 
-export async function getCustomerFeedbackAnalytics(): Promise<any[]> {
-  const response = await api.get<any[]>('/admin/prompt-management/customer-feedback')
+export interface CustomerFeedbackPage {
+  data: any[]
+  meta: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+export async function getCustomerFeedbackAnalytics(
+  page = 1,
+  limit = 20,
+): Promise<CustomerFeedbackPage> {
+  const response = await api.get<CustomerFeedbackPage>(
+    `/admin/prompt-management/customer-feedback?page=${page}&limit=${limit}`,
+  )
   return response.data
 }

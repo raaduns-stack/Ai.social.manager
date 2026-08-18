@@ -77,6 +77,25 @@ export interface UpdateApprovalDto {
   adminNotes?: string
 }
 
+// ─── AI Calendar Generation ────────────────────────────────────────────────────
+
+export interface GenerateCalendarRequestDto {
+  /** Target month in YYYY-MM format */
+  month: string
+  /** At least one platform must be supplied */
+  platforms: Platform[]
+}
+
+export type GenerationJobStatus = 'PENDING' | 'GENERATING' | 'GENERATED' | 'FAILED'
+
+export interface GenerationJob {
+  id: string
+  status: GenerationJobStatus
+  month: string
+  createdAt: string
+  updatedAt: string
+}
+
 // ─── Customer API ──────────────────────────────────────────────────────────────
 
 /**
@@ -128,6 +147,31 @@ export async function createCalendarPost(userId: string, dto: CreatePostDto): Pr
  */
 export async function updateCalendarPost(id: string, dto: Partial<CalendarPost>): Promise<CalendarPost> {
   const res = await api.patch<CalendarPost>(`/calendar/posts/${id}`, dto)
+  return res.data
+}
+
+/**
+ * Trigger the AI calendar generation workflow for the authenticated user.
+ * The backend creates a generation job and fires the n8n webhook — no secrets
+ * are ever passed through the browser.
+ *
+ * @param month - Target month in "YYYY-MM" format (e.g. "2026-09")
+ * @param platforms - One or more platform names to generate posts for
+ */
+export async function generateAICalendar(
+  month: string,
+  platforms: Platform[],
+): Promise<GenerationJob> {
+  const res = await api.post<GenerationJob>('/calendar/generate', { month, platforms })
+  return res.data
+}
+
+/**
+ * Poll the status of an AI calendar generation job.
+ * Returns the current status: PENDING | GENERATING | GENERATED | FAILED.
+ */
+export async function getGenerationJobStatus(jobId: string): Promise<GenerationJob> {
+  const res = await api.get<GenerationJob>(`/calendar/generation/${jobId}`)
   return res.data
 }
 

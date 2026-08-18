@@ -82,6 +82,12 @@ export default function AIContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [activeTemplate, setActiveTemplate] = useState(null) // template to edit or null for new
 
+  // Pagination state for the customer feedback table
+  const [feedbackPage, setFeedbackPage] = useState(1)
+  const [feedbackTotalPages, setFeedbackTotalPages] = useState(1)
+  const [feedbackTotal, setFeedbackTotal] = useState(0)
+  const FEEDBACK_LIMIT = 20
+
   const [formState, setFormState] = useState({
     name: '',
     category: 'General',
@@ -92,13 +98,13 @@ export default function AIContent() {
     loadData()
   }, [])
 
-  const loadData = async () => {
+  const loadData = async (page = 1) => {
     try {
       setLoading(true)
       const [promptsRes, analyticsRes, customerAnalyticsRes] = await Promise.all([
         getPrompts().catch(() => []),
         getFeedbackAnalytics().catch(() => null),
-        getCustomerFeedbackAnalytics().catch(() => []),
+        getCustomerFeedbackAnalytics(page, FEEDBACK_LIMIT).catch(() => ({ data: [], meta: { page: 1, limit: FEEDBACK_LIMIT, total: 0, totalPages: 1 } })),
       ])
 
       if (promptsRes && promptsRes.length > 0) {
@@ -112,12 +118,28 @@ export default function AIContent() {
       }
 
       if (customerAnalyticsRes) {
-        setCustomerAnalytics(customerAnalyticsRes)
+        setCustomerAnalytics(customerAnalyticsRes.data || [])
+        setFeedbackPage(customerAnalyticsRes.meta?.page || 1)
+        setFeedbackTotalPages(customerAnalyticsRes.meta?.totalPages || 1)
+        setFeedbackTotal(customerAnalyticsRes.meta?.total || 0)
       }
     } catch (err) {
       console.error('Failed to load AI content data:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleFeedbackPageChange = async (newPage) => {
+    if (newPage < 1 || newPage > feedbackTotalPages) return
+    try {
+      const res = await getCustomerFeedbackAnalytics(newPage, FEEDBACK_LIMIT)
+      setCustomerAnalytics(res.data || [])
+      setFeedbackPage(res.meta?.page || newPage)
+      setFeedbackTotalPages(res.meta?.totalPages || 1)
+      setFeedbackTotal(res.meta?.total || 0)
+    } catch (err) {
+      console.error('Failed to load feedback page:', err)
     }
   }
 
@@ -576,6 +598,55 @@ export default function AIContent() {
               </tbody>
             </table>
           </div>
+          {/* Pagination Controls */}
+          {feedbackTotalPages > 1 && (
+            <div className="flex items-center justify-between px-5 py-3 border-t border-border bg-canvas/20">
+              <span className="text-xs text-ink-muted">
+                {feedbackTotal} customer{feedbackTotal !== 1 ? 's' : ''} total &mdash; page {feedbackPage} of {feedbackTotalPages}
+              </span>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleFeedbackPageChange(feedbackPage - 1)}
+                  disabled={feedbackPage <= 1}
+                  className="px-3 py-1.5 rounded-control text-xs font-semibold border border-border bg-surface text-ink-muted hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  ← Prev
+                </button>
+                {Array.from({ length: feedbackTotalPages }, (_, i) => i + 1)
+                  .filter((p) => p === 1 || p === feedbackTotalPages || Math.abs(p - feedbackPage) <= 1)
+                  .reduce((acc, p, idx, arr) => {
+                    if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...')
+                    acc.push(p)
+                    return acc
+                  }, [])
+                  .map((p, idx) =>
+                    p === '...' ? (
+                      <span key={`ellipsis-${idx}`} className="px-2 text-xs text-ink-muted">…</span>
+                    ) : (
+                      <button
+                        key={p}
+                        onClick={() => handleFeedbackPageChange(p)}
+                        className={`w-8 h-8 rounded-control text-xs font-semibold border transition-colors ${
+                          feedbackPage === p
+                            ? 'bg-primary border-primary text-white'
+                            : 'border-border bg-surface text-ink-muted hover:border-primary hover:text-primary'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    )
+                  )
+                }
+                <button
+                  onClick={() => handleFeedbackPageChange(feedbackPage + 1)}
+                  disabled={feedbackPage >= feedbackTotalPages}
+                  className="px-3 py-1.5 rounded-control text-xs font-semibold border border-border bg-surface text-ink-muted hover:border-primary hover:text-primary transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
       </section>
 
