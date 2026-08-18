@@ -1,17 +1,20 @@
-import { IsString } from 'class-validator';
+import { IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-/**
- * Data Transfer Object (DTO) for generating a caption request.
- * Formats API documentation and validates that business type details are strings.
- */
 export class GenerateCaptionDto {
-  /**
-   * The type of business or industry context for caption generation.
-   */
   @ApiProperty({
     example: 'Coffee Shop',
+    required: false,
   })
   @IsString()
-  businessType!: string;
-}
+  @IsOptional()
+  businessType?: string;
+
+  @ApiProperty({
+    example: '123e4567-e89b-12d3-a456-426614174000',
+    required: false,
+  })
+  @IsString()
+  @IsOptional()
+  postId?: string;
+}
