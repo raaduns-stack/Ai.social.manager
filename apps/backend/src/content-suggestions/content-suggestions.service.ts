@@ -11,7 +11,6 @@ import { ConfigService } from '@nestjs/config';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
-import { N8nResponseDto } from './dto/n8n-response.dto';
 import { ApproveVariationDto } from './dto/approve-variation.dto';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -23,7 +22,6 @@ export class ContentSuggestionsService {
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
-    private readonly configService: ConfigService,
   ) {}
 
   /**
