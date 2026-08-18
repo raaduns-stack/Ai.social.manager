@@ -4,6 +4,7 @@ import { Eye, EyeOff, Mail, Lock } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { useAuth } from '../../context/useAuth'
 import ErrorBanner from '../../components/error-banner'
+import { trackEvent } from '../../lib/analytics'
 
 export default function Login() {
   const { login } = useAuth()
@@ -58,6 +59,7 @@ export default function Login() {
 
     try {
       await login(formData.email, formData.password)
+      trackEvent('login', { method: 'email' })
       navigate('/dashboard')
     } catch (err) {
       setApiError(err)

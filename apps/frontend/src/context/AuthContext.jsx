@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import apiClient from '../lib/api-client'
 import { useAuthStore } from '../store/auth-store'
+import { setAnalyticsUser, trackEvent } from '../lib/analytics'
 
 export const AuthContext = createContext(null)
 
@@ -13,6 +14,13 @@ export function AuthProvider({ children }) {
   // Sync React state with Zustand store
   useEffect(() => {
     setUser(store.user)
+  }, [store.user])
+
+  // Sync user ID with GA4 analytics when store.user changes
+  useEffect(() => {
+    if (store.user && store.user.id) {
+      setAnalyticsUser(store.user.id)
+    }
   }, [store.user])
 
   /**
@@ -120,6 +128,7 @@ export function AuthProvider({ children }) {
   }
 
   const logout = () => {
+    trackEvent('logout')
     store.logout()
   }
 

@@ -7,6 +7,7 @@ import { CheckCircle2, RefreshCw } from 'lucide-react'
 import { getPlans } from '../features/plans/plans-api'
 import ErrorBanner from '../components/error-banner'
 import FinalCTA from '../components/marketing/FinalCTA'
+import { PLAN_DETAILS } from '../utils/constants'
 
 function PriceDisplay({ value, isAnnual }) {
   const displayVal = isAnnual ? Math.round(value * 12 * 0.8) : value
@@ -47,61 +48,7 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
       ...plan.features.additional,
     ]
   } else {
-    // Hardcoded fallback list matching standard tiers
-    if (plan.slug === 'free') {
-      featuresList = [
-        'Connect 1 social media account',
-        'Generate 5 AI posts per month',
-        'AI-generated caption + hashtags',
-        'Basic AI image generation',
-        'Content preview',
-        'Basic analytics',
-        'AI/WhatsApp Support',
-      ]
-    } else if (plan.slug === 'starter') {
-      featuresList = [
-        'Everything in Free, plus:',
-        'Connect 3 social media accounts',
-        '30 AI-generated posts/month',
-        'AI-generated captions & hashtags',
-        'AI-generated images',
-        'Content Calendar',
-        'Post Scheduling',
-        'Upload Brand Assets',
-        'Basic Analytics Dashboard',
-        'AI Content Suggestions',
-        'AI/WhatsApp Support',
-      ]
-    } else if (plan.slug === 'growth') {
-      featuresList = [
-        'Everything in Starter, plus:',
-        'Connect 7 social media accounts',
-        '150 AI-generated posts/month (Fair Use)',
-        'Advanced AI Image Generation',
-        'AI Content Calendar',
-        'Competitor Analysis & Website Analysis',
-        'AI Content Improvement Suggestions',
-        'Performance Insights & Weekly Reports',
-        'Team Members (up to 5)',
-        'Priority AI Generation',
-        'Content Approval Workflow',
-        'Advanced Analytics',
-        'AI/WhatsApp Support',
-      ]
-    } else {
-      featuresList = [
-        'Everything in Growth, plus:',
-        'Connect 15 social media accounts',
-        '300 AI-generated posts/month (Fair Use)',
-        'Unlimited Team Members',
-        'AI Marketing Strategy & Campaign Planner',
-        'AI Seasonal Campaign Suggestions',
-        'Advanced Competitor Intelligence',
-        'Multi-location Business Support',
-        'Multiple Brand Management',
-        'Dedicated Account Manager',
-      ]
-    }
+    featuresList = PLAN_DETAILS[plan.slug]?.features || []
   }
 
   return (
@@ -131,13 +78,7 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
               {plan.name === 'Brand Domination' ? 'Brand Domination' : plan.name}
             </h3>
             <p className="text-xs text-[#666666] leading-relaxed mb-4">
-              {plan.slug === 'free'
-                ? 'Best for testing features and starting out.'
-                : plan.slug === 'starter'
-                ? 'Great for solo professionals.'
-                : plan.slug === 'growth'
-                ? 'Perfect for growing businesses.'
-                : 'Full power for larger brands.'}
+              {PLAN_DETAILS[plan.slug]?.description || ''}
             </p>
             <PriceDisplay value={price} isAnnual={isAnnual} />
           </div>

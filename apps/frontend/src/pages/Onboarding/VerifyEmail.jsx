@@ -65,10 +65,27 @@ export default function VerifyEmail() {
       await apiClient.post('/auth/resend-verification', { email })
       setResendStatus('sent')
       setCountdown(60)
+      window.dispatchEvent(
+        new CustomEvent('app-toast', {
+          detail: {
+            message: 'Verification code resent successfully!',
+            type: 'success',
+          },
+        })
+      )
       setTimeout(() => setResendStatus(''), 3000)
     } catch (err) {
       setResendStatus('')
-      setError(err?.message || 'Failed to resend verification code. Please try again.')
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to resend verification code. Please try again.'
+      setError(errMsg)
+      window.dispatchEvent(
+        new CustomEvent('app-toast', {
+          detail: {
+            message: errMsg,
+            type: 'error',
+          },
+        })
+      )
     }
   }
 

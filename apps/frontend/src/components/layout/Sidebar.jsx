@@ -1,4 +1,5 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, Link } from 'react-router-dom'
+import LogoImage from '../../assets/logo.jpg'
 import {
   LayoutDashboard,
   Share2,
@@ -40,18 +41,14 @@ export default function Sidebar({ className, onClose }) {
       )}
     >
       {/* Brand Header */}
-      <div className="flex items-center gap-3 px-6 pb-6 shrink-0 border-b border-gray-100 mb-6">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden border border-gray-200">
+      <div className="flex items-center px-6 pb-6 shrink-0 border-b border-gray-100 mb-6">
+        <Link to="/dashboard" className="flex items-center">
           <img
-            alt="Raasocial Workspace Logo"
-            className="object-cover w-full h-full"
-            src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGeopwcq4eYp_ZT8LdWNPGdxbOjwmHBNUk9q8MwUfiTH2SNx_7gEnMhJysNs62qMdmAwr079e7I4oH5vTItQgGYH8B9WEw9NS6Mm6KNfxxVNGUB3QEqhlV4fI7pii7c_y1pYVrx-Xm-9YoGLk9tLfbVlJRuRuruP2_U1xTFjQzT5Tluti_zaFMoWemnQJIOXG1CRU5J0NTEkFhh8ve69osdmNbd7cd4DpASoiuT485CjdUyKSB54Zivw"
+            alt="RaaSocial Logo"
+            className="h-10 object-contain w-auto max-w-[180px]"
+            src={LogoImage}
           />
-        </div>
-        <div>
-          <h1 className="text-base font-extrabold text-[#111111] leading-tight font-['Plus_Jakarta_Sans']">Raasocial</h1>
-          <p className="text-[10px] text-[#999999] tracking-wider uppercase font-mono mt-0.5">Kleos AI Powered</p>
-        </div>
+        </Link>
       </div>
 
       {/* Main Navigation */}
