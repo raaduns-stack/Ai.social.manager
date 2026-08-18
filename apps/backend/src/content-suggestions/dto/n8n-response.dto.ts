@@ -1,5 +1,7 @@
+import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
+  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -7,7 +9,6 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
 
 export class SuggestionVariationDto {
   @ApiProperty({ example: '5 Steps to Automate Your Workflow', required: false })
@@ -15,16 +16,26 @@ export class SuggestionVariationDto {
   @IsOptional()
   title?: string;
 
-  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...' })
+  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...', required: false })
   @IsString()
-  @IsNotEmpty()
-  caption!: string;
+  @IsOptional()
+  caption?: string;
+
+  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...', required: false })
+  @IsString()
+  @IsOptional()
+  content?: string;
 
   @ApiProperty({ example: ['#automation', '#tech'], type: [String], required: false })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   hashtags?: string[];
+
+  @ApiProperty({ enum: ['caption', 'idea'], required: false })
+  @IsEnum(['caption', 'idea'])
+  @IsOptional()
+  type?: 'caption' | 'idea';
 }
 
 export class N8nResponseDto {
@@ -38,9 +49,16 @@ export class N8nResponseDto {
   @IsNotEmpty()
   userId!: string;
 
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', required: false })
+  @IsString()
+  @IsOptional()
+  parentVariationId?: string;
+
   @ApiProperty({ type: [SuggestionVariationDto] })
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => SuggestionVariationDto)
   variations!: SuggestionVariationDto[];
 }
+
+export { SuggestionVariationDto as N8nVariationItemDto };
