@@ -52,7 +52,7 @@ export class N8nResponseDto {
   @IsNotEmpty()
   userId!: string;
 
-  @ApiProperty({ required: false })
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000', required: false })
   @IsString()
   @IsOptional()
   parentVariationId?: string;
@@ -63,3 +63,5 @@ export class N8nResponseDto {
   @Type(() => SuggestionVariationDto)
   variations!: SuggestionVariationDto[];
 }
+
+export { SuggestionVariationDto as N8nVariationItemDto };

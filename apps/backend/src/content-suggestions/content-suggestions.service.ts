@@ -6,8 +6,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { desc, eq, and, ne } from 'drizzle-orm';
-import { ConfigService } from '@nestjs/config';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
+import { ConfigService } from '@nestjs/config';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
