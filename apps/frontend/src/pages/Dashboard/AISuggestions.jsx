@@ -27,6 +27,7 @@ import {
   generateCaption,
   saveSuggestionFeedback,
 } from '../../features/dashboard/dashboard-api'
+import { trackEvent } from '../../lib/analytics'
 
 const initialSuggestions = [
   {
@@ -239,6 +240,8 @@ const loadSuggestions = async () => {
     setIsRegenerating(true)
 
     const data = await generateCaption('Coffee Shop')
+    const targetPlatform = activePlatform === 'All' ? 'Instagram' : activePlatform
+    trackEvent('content_generated', { platform: targetPlatform })
 
     const newSuggestion = {
       id: data.id,

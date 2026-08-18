@@ -191,6 +191,8 @@ export default function ChoosePlan() {
                     ) : (
                       <CheckoutButton
                         planId={plan.id}
+                        planName={plan.name}
+                        price={plan.price}
                         variant={isGrowth ? 'primary' : 'outline'}
                         className={`w-full py-3 font-semibold ${
                           isGrowth

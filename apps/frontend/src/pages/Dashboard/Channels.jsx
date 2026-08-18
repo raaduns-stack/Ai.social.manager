@@ -10,6 +10,7 @@ import Modal from '../../components/ui/Modal'
 import Loader from '../../components/ui/Loader'
 import EmptyState from '../../components/ui/EmptyState'
 import ErrorBanner from '../../components/error-banner'
+import { trackEvent } from '../../lib/analytics'
 // KYC overlay — rendered when user's KYC is not yet approved
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
@@ -190,6 +191,9 @@ export default function Channels() {
       apiClient
         .delete(`/social-accounts/${id}`)
         .then(() => {
+          if (channel) {
+            trackEvent('social_account_disconnected', { platform: channel.platform })
+          }
           fetchChannels();
         })
         .catch((error) => {
@@ -204,6 +208,9 @@ export default function Channels() {
           apiClient
             .patch(`/social-accounts/${id}`, { status: 'connected' })
             .then(() => {
+              if (channel) {
+                trackEvent('social_account_connected', { platform: channel.platform })
+              }
               fetchChannels();
             })
             .catch((error) => {
@@ -218,6 +225,7 @@ export default function Channels() {
           apiClient
             .post('/social-accounts', payload)
             .then(() => {
+              trackEvent('social_account_connected', { platform: selectedPlatform })
               fetchChannels();
             })
             .catch((error) => {
@@ -247,6 +255,7 @@ export default function Channels() {
     apiClient
       .post('/social-accounts', payload)
       .then(() => {
+        trackEvent('social_account_connected', { platform: selectedPlatform })
         fetchChannels();
       })
       .catch((error) => {

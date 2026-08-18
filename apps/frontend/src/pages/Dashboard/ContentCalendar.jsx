@@ -55,6 +55,7 @@ import {
 } from '../../features/dashboard/dashboard-api'
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
+import { trackEvent } from '../../lib/analytics'
 
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
@@ -543,6 +544,7 @@ function PostDetailModal({ post, onClose, onUpdated }) {
     setRegenerating(true)
     try {
       const data = await regeneratePostSuggestions(post.id)
+      trackEvent('content_generated', { platform: post.platform })
       setSuggestions(data)
     } catch (err) {
       alert(err.message || 'Failed to regenerate suggestions.')

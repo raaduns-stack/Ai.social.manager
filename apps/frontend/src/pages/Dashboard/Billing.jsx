@@ -458,6 +458,8 @@ export default function Billing() {
                     ) : (
                       <CheckoutButton
                         planId={plan.id}
+                        planName={plan.name}
+                        price={plan.price}
                         variant="primary"
                         className="w-full font-semibold cursor-pointer"
                       >
