@@ -45,6 +45,22 @@ export interface UpdateApprovalDto {
   adminNotes?: string;
 }
 
+const CALENDAR_TO_DB_PLATFORM: Record<string, string> = {
+  'Instagram': 'instagram',
+  'LinkedIn': 'linkedin',
+  'X / Twitter': 'x',
+  'TikTok': 'tiktok',
+  'Facebook': 'facebook',
+};
+
+const DB_TO_CALENDAR_PLATFORM: Record<string, string> = {
+  'instagram': 'Instagram',
+  'linkedin': 'LinkedIn',
+  'x': 'X / Twitter',
+  'tiktok': 'TikTok',
+  'facebook': 'Facebook',
+};
+
 @Injectable()
 export class CalendarService {
   constructor(
@@ -54,6 +70,67 @@ export class CalendarService {
     private readonly configService: ConfigService,
     private readonly customerProfileService: CustomerProfileService,
   ) { }
+
+  getWeekRange(date: Date) {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Start of week (Sunday 00:00:00.000)
+    const start = new Date(d);
+    start.setDate(d.getDate() - day);
+    start.setHours(0, 0, 0, 0);
+    
+    // End of week (Saturday 23:59:59.999)
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+    
+    return { start, end };
+  }
+
+  async getConnectedPlatformsForUser(userId: string): Promise<string[]> {
+    const accounts = await this.db.query.social_accounts.findMany({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.status, 'connected'),
+      ),
+    });
+    return accounts
+      .map(acc => DB_TO_CALENDAR_PLATFORM[acc.platform])
+      .filter(Boolean);
+  }
+
+  async checkWeeklyPostLimit(userId: string, targetDate: Date, postId?: string) {
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free' } };
+    }
+    const slug = subscription?.plan?.slug || 'free';
+    if (slug !== 'free') {
+      return; // Only free plan has weekly post limits
+    }
+
+    const { start, end } = this.getWeekRange(targetDate);
+
+    // Query posts scheduled in this week
+    const posts = await this.db.query.contentCalendar.findMany({
+      where: (fields, { and, eq, gte, lte, ne }) =>
+        and(
+          eq(fields.userId, userId),
+          gte(fields.scheduledAt, start),
+          lte(fields.scheduledAt, end),
+          postId ? ne(fields.id, postId) : undefined,
+        ),
+    });
+
+    if (posts.length >= 2) {
+      throw new BadRequestException(
+        `Weekly post limit reached. Under the Free plan, you can schedule at most 2 posts per week.`
+      );
+    }
+  }
 
   /**
    * Helper function to check whether a customer has reached their monthly calendar post limit.
@@ -224,9 +301,16 @@ export class CalendarService {
     userId: string,
     dto: CreateCalendarPostDto,
   ): Promise<ContentCalendarPost> {
+    // Validate platform is connected
+    const connected = await this.getConnectedPlatformsForUser(userId);
+    if (!connected.includes(dto.platform)) {
+      throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
+    }
+
     // Enforce monthly post limits on creation
     if (dto.scheduledAt) {
       await this.checkPostLimit(userId, new Date(dto.scheduledAt));
+      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt));
     }
 
     const [post] = await this.db
@@ -257,9 +341,17 @@ export class CalendarService {
   ): Promise<ContentCalendarPost> {
     const post = await this.findOneForUser(id, userId);
 
+    if (dto.platform) {
+      const connected = await this.getConnectedPlatformsForUser(userId);
+      if (!connected.includes(dto.platform)) {
+        throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
+      }
+    }
+
     // Enforce monthly post limits if date is updated
     if (dto.scheduledAt) {
       await this.checkPostLimit(userId, new Date(dto.scheduledAt), id);
+      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt), id);
     }
 
     // Validate eligibility if selecting a suggestion
@@ -469,9 +561,32 @@ export class CalendarService {
     if (!dto.platforms || dto.platforms.length === 0) {
       throw new BadRequestException('At least one platform must be requested.');
     }
+    const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
     for (const p of dto.platforms) {
       if (!validPlatforms.includes(p)) {
         throw new BadRequestException(`Invalid platform requested: ${p}`);
+      }
+      if (!connectedPlatforms.includes(p)) {
+        throw new BadRequestException(`Platform ${p} is not currently connected.`);
+      }
+    }
+
+    // Enforce Free plan platform limits
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free' } };
+    }
+    const slug = subscription?.plan?.slug || 'free';
+    if (slug === 'free') {
+      if (dto.platforms.length > 2) {
+        throw new BadRequestException('Free plan only allows up to 2 social channels.');
+      }
+      if (connectedPlatforms.length > 2) {
+        throw new BadRequestException(
+          'Free plan only allows up to 2 connected social channels. Please disconnect channels to meet the limit.'
+        );
       }
     }
 
@@ -646,6 +761,17 @@ export class CalendarService {
       );
     }
 
+    const connectedPlatforms = await this.getConnectedPlatformsForUser(job.userId);
+    let subscription;
+    try {
+      subscription = await this.subscriptionsService.findByUserId(job.userId);
+    } catch (err) {
+      subscription = { plan: { slug: 'free' } };
+    }
+    const slug = subscription?.plan?.slug || 'free';
+
+    const weeklyCounts = new Map<string, number>();
+
     return await this.db.transaction(async (tx) => {
       const savedPostIds: string[] = [];
 
@@ -657,6 +783,9 @@ export class CalendarService {
         if (!job.platforms.includes(post.platform)) {
           throw new BadRequestException(`Platform ${post.platform} was not requested in this generation job.`);
         }
+        if (!connectedPlatforms.includes(post.platform)) {
+          throw new BadRequestException(`Platform ${post.platform} is not currently connected.`);
+        }
 
         if (!post.scheduledDate.startsWith(job.month)) {
           throw new BadRequestException(`Scheduled date ${post.scheduledDate} does not belong to the requested month ${job.month}.`);
@@ -665,6 +794,28 @@ export class CalendarService {
         const scheduledAt = new Date(`${post.scheduledDate}T${post.scheduledTime}:00`);
         if (isNaN(scheduledAt.getTime())) {
           throw new BadRequestException(`Invalid scheduled date/time: ${post.scheduledDate} ${post.scheduledTime}`);
+        }
+
+        if (slug === 'free') {
+          const { start, end } = this.getWeekRange(scheduledAt);
+          const weekKey = start.toISOString();
+
+          const existingWeekPosts = await tx.query.contentCalendar.findMany({
+            where: (fields, { and, eq, gte, lte }) =>
+              and(
+                eq(fields.userId, job.userId),
+                gte(fields.scheduledAt, start),
+                lte(fields.scheduledAt, end),
+              ),
+          });
+
+          const localCount = weeklyCounts.get(weekKey) || 0;
+          if (existingWeekPosts.length + localCount >= 2) {
+            throw new BadRequestException(
+              `Saving these generated posts would exceed the weekly limit of 2 posts for the week starting ${start.toLocaleDateString()}.`
+            );
+          }
+          weeklyCounts.set(weekKey, localCount + 1);
         }
 
         const [inserted] = await tx

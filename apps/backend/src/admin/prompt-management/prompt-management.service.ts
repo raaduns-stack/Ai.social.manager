@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { eq, count } from 'drizzle-orm';
+import { eq, count, inArray } from 'drizzle-orm';
 
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
@@ -163,41 +163,114 @@ export class PromptManagementService {
   // CUSTOMER AI FEEDBACK ANALYTICS
   // Computes feedback stats grouped by each customer.
   // ==================================================
-  async getCustomerFeedbackAnalytics() {
-    const allUsers = await this.db.query.users.findMany();
-    const analytics = [];
+  async getCustomerFeedbackAnalytics(page: number, limit: number) {
+    // 1. Get distinct user IDs from content suggestions
+    const usersWithSuggestions = await this.db
+      .selectDistinct({ userId: schema.contentSuggestions.userId })
+      .from(schema.contentSuggestions);
 
-    for (const u of allUsers) {
-      // Get all suggestions generated for this user
-      const suggestions = await this.db.query.contentSuggestions.findMany({
-        where: eq(schema.contentSuggestions.userId, u.id),
-      });
+    // 2. Get distinct user IDs from content feedback
+    const usersWithFeedback = await this.db
+      .selectDistinct({ userId: schema.contentFeedback.userId })
+      .from(schema.contentFeedback);
 
-      // Get all feedback submitted by this user
-      const feedbacks = await this.db.query.contentFeedback.findMany({
-        where: eq(schema.contentFeedback.userId, u.id),
-        with: { suggestion: true },
-      });
+    const activeUserIdsSet = new Set<string>();
+    for (const row of usersWithSuggestions) {
+      if (row.userId) activeUserIdsSet.add(row.userId);
+    }
+    for (const row of usersWithFeedback) {
+      if (row.userId) activeUserIdsSet.add(row.userId);
+    }
 
-      if (suggestions.length === 0 && feedbacks.length === 0) {
-        continue; // Only include customers who have interacted with the AI
+    const activeUserIds = Array.from(activeUserIdsSet);
+    const total = activeUserIds.length;
+    const totalPages = Math.ceil(total / limit);
+    const start = (page - 1) * limit;
+    const paginatedUserIds = activeUserIds.slice(start, start + limit);
+
+    if (paginatedUserIds.length === 0) {
+      return {
+        data: [],
+        meta: {
+          page,
+          limit,
+          total,
+          totalPages,
+        },
+      };
+    }
+
+    // 3. Retrieve users only in the paginated subset
+    const usersList = await this.db
+      .select({
+        id: schema.users.id,
+        fullName: schema.users.fullName,
+        businessName: schema.users.businessName,
+        email: schema.users.email,
+      })
+      .from(schema.users)
+      .where(inArray(schema.users.id, paginatedUserIds));
+
+    // 4. Retrieve suggestions count only for this subset
+    const suggestionCounts = await this.db
+      .select({
+        userId: schema.contentSuggestions.userId,
+        count: count(),
+      })
+      .from(schema.contentSuggestions)
+      .where(inArray(schema.contentSuggestions.userId, paginatedUserIds))
+      .groupBy(schema.contentSuggestions.userId);
+
+    const sugMap = new Map<string, number>();
+    for (const row of suggestionCounts) {
+      if (row.userId) {
+        sugMap.set(row.userId, row.count);
       }
+    }
 
-      const totalSuggestions = suggestions.length;
-      const totalRatings = feedbacks.length;
+    // 5. Retrieve feedback records only for this subset
+    const feedbacks = await this.db
+      .select({
+        id: schema.contentFeedback.id,
+        userId: schema.contentFeedback.userId,
+        rating: schema.contentFeedback.rating,
+        reaction: schema.contentFeedback.reaction,
+        suggestionTitle: schema.contentSuggestions.title,
+        suggestionContent: schema.contentSuggestions.content,
+      })
+      .from(schema.contentFeedback)
+      .leftJoin(
+        schema.contentSuggestions,
+        eq(schema.contentFeedback.suggestionId, schema.contentSuggestions.id)
+      )
+      .where(inArray(schema.contentFeedback.userId, paginatedUserIds));
 
-      const ratings = feedbacks.map((f) => f.rating);
+    const feedbackMap = new Map<string, typeof feedbacks>();
+    for (const row of feedbacks) {
+      if (row.userId) {
+        const list = feedbackMap.get(row.userId) || [];
+        list.push(row);
+        feedbackMap.set(row.userId, list);
+      }
+    }
+
+    const analytics = [];
+    for (const u of usersList) {
+      const totalSuggestions = sugMap.get(u.id) || 0;
+      const userFeedbacks = feedbackMap.get(u.id) || [];
+      const totalRatings = userFeedbacks.length;
+
+      const ratings = userFeedbacks.map((f) => f.rating);
       const avgRating = totalRatings > 0
         ? Number((ratings.reduce((sum, r) => sum + r, 0) / totalRatings).toFixed(1))
         : 0;
 
-      const likes = feedbacks.filter((f) => f.reaction === 'up').length;
-      const dislikes = feedbacks.filter((f) => f.reaction === 'down').length;
+      const likes = userFeedbacks.filter((f) => f.reaction === 'up').length;
+      const dislikes = userFeedbacks.filter((f) => f.reaction === 'down').length;
 
-      // Extract unique preferred topics (titles or snippets of suggestions they rated >= 3 or liked)
-      const preferredTopicsList = feedbacks
+      const preferredTopicsList = userFeedbacks
         .filter((f) => f.rating >= 3 || f.reaction === 'up')
-        .map((f) => f.suggestion?.title || f.suggestion?.content?.substring(0, 30) || 'AI Post')
+        .map((f) => f.suggestionTitle || f.suggestionContent?.substring(0, 30) || 'AI Post')
         .filter((value, index, self) => self.indexOf(value) === index)
         .slice(0, 3);
 
@@ -225,6 +298,14 @@ export class PromptManagementService {
       });
     }
 
-    return analytics;
+    return {
+      data: analytics,
+      meta: {
+        page,
+        limit,
+        total,
+        totalPages,
+      },
+    };
   }
 }

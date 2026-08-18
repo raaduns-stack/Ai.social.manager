@@ -1,0 +1,203 @@
+﻿commit 5174da7a9657077e9a46daaa1ab9bdd77dde566c
+Author: Naanma10 <naanmadayil@gmail.com>
+Date:   Thu Aug 13 02:39:07 2026 -0700
+
+    feat: update AI suggestions
+
+diff --git a/apps/frontend/src/pages/Dashboard/AISuggestions.jsx b/apps/frontend/src/pages/Dashboard/AISuggestions.jsx
+index b54c9fe..34c013c 100644
+--- a/apps/frontend/src/pages/Dashboard/AISuggestions.jsx
++++ b/apps/frontend/src/pages/Dashboard/AISuggestions.jsx
+@@ -24,6 +24,7 @@ import Modal from '../../components/ui/Modal'
+ import apiClient from '../../lib/api-client'
+ import {
+   getSuggestions,
++  generateCaption,
+   saveSuggestionFeedback,
+ } from '../../features/dashboard/dashboard-api'
+ 
+@@ -178,23 +179,43 @@ const loadSuggestions = async () => {
+   try {
+     const data = await getSuggestions()
+ 
+-    // Map raw backend schema data into UI component properties
+-    const mapped = data.map((item) => ({
+-      id: item.id,
+-      title: item.type === 'caption' ? 'AI Caption' : 'AI Content Idea',
+-      description: item.content,
+-      caption: item.content,
+-      hashtags: item.hashtags || [],
+-      platform: 'Instagram',
+-      type: item.type,
+-      tone: 'primary',
+-      borderClass: 'border-l-primary',
+-      scheduledDate: new Date(item.createdAt).toLocaleDateString(),
+-      image:
+-        'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&w=800&q=80',
+-    }))
++    const mapped = data.map((item) => {
++      const feedback = item.feedback
++
++      return {
++        id: item.id,
++        title: item.type === 'caption' ? 'AI Caption' : 'AI Content Idea',
++        description: item.content,
++        caption: item.content,
++        hashtags: item.hashtags || [],
++        platform: 'Instagram',
++        type: item.type,
++        tone: 'primary',
++        borderClass: 'border-l-primary',
++        scheduledDate: new Date(item.createdAt).toLocaleDateString(),
++
++        image:
++          'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&w=800&q=80',
++
++        feedback,
++      }
++    })
+ 
+     setSuggestions(mapped)
++
++    // Restore previously saved ratings
++    const savedRatings = {}
++
++    mapped.forEach((item) => {
++      if (item.feedback) { 
++        savedRatings[item.id] = {
++          type: item.feedback.reaction === 'up' ? 'like' : 'dislike',
++          stars: item.feedback.rating,
++        }
++      }
++    })
++
++    setRatings(savedRatings)
+   } catch (error) {
+     console.error('Failed to load suggestions:', error)
+   }
+@@ -215,43 +236,31 @@ const loadSuggestions = async () => {
+  */
+  const handleRegenerate = async () => {
+   try {
+-    // Set loading state to disable UI action buttons and trigger spinner
+     setIsRegenerating(true)
+ 
+-    // Call backend endpoint to generate mock/AI caption
+-    const response = await apiClient.post(
+-      '/content-suggestions/caption',
+-      {
+-        businessType: 'Coffee Shop',
+-      }
+-    )
+-
+-    const data = response.data
++    const data = await generateCaption('Coffee Shop')
+ 
+-    // Map backend payload to local UI card schema with default presentation attributes
+     const newSuggestion = {
+       id: data.id,
+-      type: 'AI Caption',
++      type: 'caption',
+       platform: 'Instagram',
+       tone: 'primary',
+       borderClass: 'border-l-primary',
+       title: 'AI Generated Caption',
+-      description: 'Generated from the backend',
++      description:
++        'A fresh AI-generated caption created specifically for your business.',
+       caption: data.caption,
+-      hashtags: data.hashtags,
++      hashtags: data.hashtags || [],
+       scheduledDate: new Date().toLocaleDateString(),
+       image:
+         'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
+     }
+ 
+-    // Prepend new suggestion to top of list for immediate visual feedback
+     setSuggestions((prev) => [newSuggestion, ...prev])
+-  } catch (err) {
+-    // Log error for debugging and notify user of failure
+-    console.error(err)
+-    alert('Failed to generate suggestion')
++  } catch (error) {
++    console.error('Failed to generate suggestion:', error)
++    alert('Failed to generate suggestion.')
+   } finally {
+-    // Re-enable UI button regardless of request success or failure
+     setIsRegenerating(false)
+   }
+ }
+@@ -273,45 +282,37 @@ const loadSuggestions = async () => {
+    * Submits user rating and reaction feedback to the API for the active content suggestion.
+    */
+   const handleSaveRating = async () => {
+-    // Guard clause: Prevent submission if no item is selected or no star rating is set
+-    if (!ratingTarget || selectedStars === 0) return
+-    try {
+-      const isUuid =
+-        typeof ratingTarget.id === 'string' &&
+-        ratingTarget.id.includes('-') &&
+-        ratingTarget.id.length > 20
+-
+-      if (isUuid) {
+-        await apiClient.post(
+-          `/content-suggestions/${ratingTarget.id}/feedback`,
+-          {
+-            reaction: ratingTarget.type === 'like' ? 'up' : 'down',
+-            rating: selectedStars,
+-          }
+-        )
+-      }
++  if (!ratingTarget || selectedStars === 0) {
++    return
++  }
+ 
+-      setRatings((prev) => ({
+-        ...prev,
+-        [ratingTarget.id]: {
+-          type: ratingTarget.type,
+-          stars: selectedStars,
+-        },
+-      }))
+-
+-      // Notify the user of successful feedback submission
+-      alert('Feedback saved successfully!')
+-    } catch (err) {
+-      // Log error details for debugging and notify the user of submission failure
+-      console.error(err)
+-      alert('Failed to save feedback.')
+-    }
+-    // Reset rating modal/form state variables back to their initial default value
+-    setRatingTarget(null)
+-    setSelectedStars(0)
+-    setHoveredStars(0)
++  try {
++    await saveSuggestionFeedback(
++      String(ratingTarget.id),
++      ratingTarget.type === 'like' ? 'up' : 'down',
++      selectedStars,
++    )
++
++    setRatings((prev) => ({
++      ...prev,
++      [ratingTarget.id]: {
++        type: ratingTarget.type,
++        stars: selectedStars,
++      },
++    }))
++
++    alert('Feedback saved successfully!')
++  } catch (error) {
++    console.error('Failed to save feedback:', error)
++    alert('Failed to save feedback.')
++    return
+   }
+ 
++  setRatingTarget(null)
++  setSelectedStars(0)
++  setHoveredStars(0)
++}
++
+   return (
+     <div className="space-y-6">
+       {/* Page Header */}
