@@ -79,7 +79,7 @@ function request(method, path, headers = {}, body = null) {
 
     // Connect a social platform to pass validation
     await sql`DELETE FROM social_accounts WHERE user_id = ${userId}`;
-    await sql`INSERT INTO social_accounts (user_id, platform, account_name, status) 
+    await sql`INSERT INTO social_accounts (user_id, platform, account_handle, status) 
               VALUES (${userId}, 'instagram', 'Test Account', 'connected')`;
 
     // Create a real content calendar post for test user
