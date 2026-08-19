@@ -18,7 +18,7 @@ export const scheduledPostStatusEnum = pgEnum('scheduled_post_status', [
 export const scheduledPosts = pgTable('scheduled_posts', {
   scheduledPostId: uuid('scheduled_post_id').primaryKey().defaultRandom(),
   calendarPostId: uuid('calendar_post_id').notNull(),
-  variationId: uuid('variation_id').notNull(),
+  variationId: uuid('variation_id').notNull().unique(),
   socialAccountId: uuid('social_account_id').notNull(),
   platform: varchar('platform', { length: 255 }).notNull(),
   content: text('content').notNull(),

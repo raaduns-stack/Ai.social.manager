@@ -2,7 +2,7 @@ import React, { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
 import Button from '../ui/Button'
-import LogoImage from '../../assets/logo.jpg'
+import LogoImage from '../../assets/logo.png'
 
 export default function MarketingNavbar() {
   const [isOpen, setIsOpen] = useState(false)
@@ -31,7 +31,7 @@ export default function MarketingNavbar() {
         >
           <img
             alt="RaaSocial Logo"
-            className="h-12 object-contain w-auto max-w-[200px]"
+            className="h-28 object-contain w-auto max-w-[200px]"
             src={LogoImage}
           />
         </Link>
