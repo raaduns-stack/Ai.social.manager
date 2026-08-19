@@ -63,7 +63,7 @@ export default function AdminLogin() {
       <div className="w-full max-w-sm rounded-card border border-[#E5E7EB] bg-white p-8">
         <h1 className="text-lg font-semibold text-[#111827]">Admin Sign In</h1>
         <p className="mt-1 text-sm text-[#6B7280]">
-          Sign in to manage the AI Social Media Manager platform.
+          Sign in to manage the Raa Social Media Manager platform.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4" noValidate>
