@@ -5,11 +5,20 @@ import {
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'crypto';
 
 @Injectable()
 export class JwtOrN8nAuthGuard extends AuthGuard('jwt') {
   constructor(private readonly configService: ConfigService) {
     super();
+  }
+
+  private safeCompare(a: string, b: string): boolean {
+    if (typeof a !== 'string' || typeof b !== 'string') return false;
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -21,7 +30,7 @@ export class JwtOrN8nAuthGuard extends AuthGuard('jwt') {
       process.env.N8N_INTERNAL_API_KEY;
 
     // Check if valid n8n internal API key header is supplied
-    if (apiKey && expectedKey && apiKey === expectedKey) {
+    if (apiKey && expectedKey && this.safeCompare(apiKey as string, expectedKey)) {
       request.isN8n = true;
       return true;
     }
