@@ -32,7 +32,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
-import LogoImage from "../../assets/logo.jpg";
+import LogoImage from "../../assets/logo.png";
 import { cn } from "../../utils/cn";
 
 const NAV_SECTIONS = [
@@ -136,7 +136,7 @@ export default function AdminSidebar({ className, onClose }) {
         <div className="flex flex-col items-center justify-center mb-8 gap-4 shrink-0">
           <img
             alt="R"
-            className="w-8 h-8 rounded object-cover"
+            className="w-16 h-18 rounded object-cover"
             src={LogoImage}
           />
           <button
@@ -153,7 +153,7 @@ export default function AdminSidebar({ className, onClose }) {
             <div className="flex items-center">
               <img
                 alt="RaaSocial Logo"
-                className="h-8 object-contain w-auto max-w-[150px]"
+                className="h-24 object-contain w-auto max-w-[150px]"
                 src={LogoImage}
               />
             </div>

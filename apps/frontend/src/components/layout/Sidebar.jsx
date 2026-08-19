@@ -1,5 +1,5 @@
 import { NavLink, Link } from 'react-router-dom'
-import LogoImage from '../../assets/logo.jpg'
+import LogoImage from '../../assets/logo.png'
 import {
   LayoutDashboard,
   Share2,
@@ -45,7 +45,7 @@ export default function Sidebar({ className, onClose }) {
         <Link to="/dashboard" className="flex items-center">
           <img
             alt="RaaSocial Logo"
-            className="h-10 object-contain w-auto max-w-[180px]"
+            className="h-20 object-contain w-auto max-w-[180px]"
             src={LogoImage}
           />
         </Link>
