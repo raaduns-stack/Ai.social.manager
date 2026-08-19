@@ -1,10 +1,13 @@
-import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq, sum, count } from 'drizzle-orm';
+import { Inject, Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { eq, sum, count, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { seedPlans as runPlansSeeding } from '../database/seeding';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { UserRole } from '../common/enums/roles.enum';
+import { CreateStaffDto } from './dto/create-staff.dto';
+import * as bcrypt from 'bcrypt';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -215,5 +218,87 @@ export class AdminService {
   async seedPlans() {
     await runPlansSeeding(this.db);
     return { success: true, message: 'Canonical plans seeded successfully' };
+  }
+
+  async getRolePermissions() {
+    return this.db.query.rolePermissions.findMany();
+  }
+
+  async updateRolePermissions(dto: { role: string; permissions: { module: string; accessLevel: string }[] }) {
+    for (const p of dto.permissions) {
+      const existing = await this.db.query.rolePermissions.findFirst({
+        where: and(
+          eq(schema.rolePermissions.role, dto.role as any),
+          eq(schema.rolePermissions.module, p.module),
+        ),
+      });
+
+      if (existing) {
+        await this.db
+          .update(schema.rolePermissions)
+          .set({ accessLevel: p.accessLevel as any })
+          .where(eq(schema.rolePermissions.id, existing.id));
+      } else {
+        await this.db.insert(schema.rolePermissions).values({
+          role: dto.role as any,
+          module: p.module,
+          accessLevel: p.accessLevel as any,
+        });
+      }
+    }
+    return { success: true };
+  }
+
+  async createStaff(dto: CreateStaffDto) {
+    const ALLOWED_STAFF_ROLES = [
+      UserRole.SUPER_ADMIN,
+      UserRole.ACCOUNT_MANAGER,
+      UserRole.REVIEWER,
+      UserRole.SUPPORT_STAFF,
+      UserRole.DESIGNER,
+    ];
+
+    if (!ALLOWED_STAFF_ROLES.includes(dto.role as UserRole)) {
+      throw new BadRequestException('Invalid staff role provided.');
+    }
+
+    const existing = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, dto.email),
+    });
+    if (existing) {
+      throw new ConflictException('An account with this email already exists.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const [user] = await this.db
+      .insert(schema.users)
+      .values({
+        email: dto.email,
+        passwordHash,
+        fullName: dto.fullName,
+        role: dto.role as any,
+        isEmailVerified: true,
+        isActive: true,
+      })
+      .returning();
+
+    // Record new staff registration
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'USER_REGISTERED',
+      module: 'Admin',
+      description: `New staff member created: ${user.email} with role ${user.role}`,
+    });
+
+    return {
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+      },
+    };
   }
 }

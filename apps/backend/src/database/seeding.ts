@@ -284,12 +284,7 @@ export async function seedRolePermissions(db: Database) {
         ),
       });
 
-      if (existing) {
-        await db
-          .update(schema.rolePermissions)
-          .set({ accessLevel: accessLevel as any } as any)
-          .where(eq(schema.rolePermissions.id, existing.id));
-      } else {
+      if (!existing) {
         await db.insert(schema.rolePermissions).values({
           role: role as any,
           module: moduleName,

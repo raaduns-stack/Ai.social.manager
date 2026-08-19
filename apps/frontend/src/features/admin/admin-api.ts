@@ -71,3 +71,25 @@ export async function getAdminPayments(): Promise<AdminPayment[]> {
   const response = await api.get<AdminPayment[]>('/admin/billing/payments')
   return response.data
 }
+
+export interface BackendRolePermission {
+  id: string;
+  role: string;
+  module: string;
+  accessLevel: string;
+}
+
+export async function getRolePermissions(): Promise<BackendRolePermission[]> {
+  const response = await api.get<BackendRolePermission[]>('/admin/role-permissions')
+  return response.data
+}
+
+export async function updateRolePermissions(payload: { role: string; permissions: { module: string; accessLevel: string }[] }): Promise<any> {
+  const response = await api.patch<any>('/admin/role-permissions', payload)
+  return response.data
+}
+
+export async function createStaff(payload: any): Promise<any> {
+  const response = await api.post<any>('/admin/users/staff', payload)
+  return response.data
+}

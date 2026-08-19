@@ -1,9 +1,14 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { AdminService } from './admin.service';
+import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
+import { CreateStaffDto } from './dto/create-staff.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { UserRole } from '../common/enums/roles.enum';
 
 @ApiTags('admin')
 @ApiBearerAuth()
@@ -66,6 +71,29 @@ export class AdminController {
   @ApiOperation({ summary: 'Seed canonical plans' })
   seedPlans() {
     return this.adminService.seedPlans();
+  }
+
+  @Get('role-permissions')
+  @RequirePermission('staff_management', 'view')
+  @ApiOperation({ summary: 'Get all role permissions' })
+  getRolePermissions() {
+    return this.adminService.getRolePermissions();
+  }
+
+  @Patch('role-permissions')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update permissions for a specific role' })
+  updateRolePermissions(@Body() dto: UpdateRolePermissionsDto) {
+    return this.adminService.updateRolePermissions(dto);
+  }
+
+  @Post('users/staff')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a new staff/admin account' })
+  createStaff(@Body() dto: CreateStaffDto) {
+    return this.adminService.createStaff(dto);
   }
 }
 
