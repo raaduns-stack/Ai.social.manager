@@ -96,6 +96,13 @@ export class AdminController {
     return this.adminService.createStaff(dto);
   }
 
+  @Get('staff/overview')
+  @RequirePermission('staff_management', 'view')
+  @ApiOperation({ summary: 'Staff dashboard counts and recent staff logins' })
+  getStaffOverview() {
+    return this.adminService.getStaffOverview();
+  }
+
   @Get('plans')
   @UseGuards(RolesGuard)
   @Roles(UserRole.SUPER_ADMIN)

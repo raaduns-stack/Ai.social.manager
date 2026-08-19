@@ -8,232 +8,128 @@ import {
   TrendingUp,
   TrendingDown,
   Sparkles,
-  X,
-  MoreVertical,
-  Calendar,
-  DollarSign,
-  AlertCircle,
-  Settings,
-  CheckCircle,
   Link2,
-  Star,
-  Activity,
-  FileText,
+  UserCheck,
 } from 'lucide-react'
-import PageHeader from '../../components/layout/PageHeader'
-import Card from '../../components/ui/Card'
-import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
-import Loader from '../../components/ui/Loader'
 import { getAdminDashboardSummary } from '../../features/admin/dashboard-api'
 import { cn } from '../../utils/cn'
 
-const METRICS_BY_TIMEFRAME = {
-  Day: {
-    customers: '12,450',
-    customersChange: '0.2%',
-    customersTrend: 'up',
-    activeSubs: '8,908',
-    activeSubsChange: '0.1%',
-    activeSubsTrend: 'up',
-    posts: '2,510',
-    postsChange: '0%',
-    postsTrend: 'flat',
-    registrations: '18',
-    registrationsChange: '5.4%',
-    registrationsTrend: 'down',
-    connectedAccounts: '1,240',
-    connectedAccountsChange: '+0.5%',
-    connectedAccountsTrend: 'up',
-    aiContent: '4,850',
-    aiContentChange: '+5.4%',
-    aiContentTrend: 'up',
-    scheduled: '180',
-    success: '124',
-    failed: '2',
-    pending: '54',
-    growthRate: '+11.2%',
-    goalProgress: '68%',
-    chartPathSuccess: 'M0,180 Q100,160 200,170 T400,140 T600,150 T800,100',
-    chartPathScheduled: 'M0,200 Q100,190 200,195 T400,185 T600,190 T800,170',
-    barHeights: ['h-[30%]', 'h-[50%]', 'h-[40%]', 'h-[75%]', 'h-[60%]', 'h-[45%]', 'h-[25%]'],
-    barValues: ['10k', '15k', '12k', '22k', '18k', '14k', '8k'],
-  },
-  Week: {
-    customers: '12,482',
-    customersChange: '12%',
-    customersTrend: 'up',
-    activeSubs: '8,912',
-    activeSubsChange: '5.2%',
-    activeSubsTrend: 'up',
-    posts: '2,543',
-    postsChange: '0%',
-    postsTrend: 'flat',
-    registrations: '432',
-    registrationsChange: '2.4%',
-    registrationsTrend: 'down',
-    connectedAccounts: '1,254',
-    connectedAccountsChange: '+3.1%',
-    connectedAccountsTrend: 'up',
-    aiContent: '32,410',
-    aiContentChange: '+12.4%',
-    aiContentTrend: 'up',
-    scheduled: '1,240',
-    success: '856',
-    failed: '24',
-    pending: '142',
-    growthRate: '+12.4%',
-    goalProgress: '72%',
-    chartPathSuccess: 'M0,180 Q100,120 200,150 T400,80 T600,120 T800,40',
-    chartPathScheduled: 'M0,200 Q100,180 200,190 T400,160 T600,170 T800,140',
-    barHeights: ['h-[40%]', 'h-[60%]', 'h-[45%]', 'h-[85%]', 'h-[70%]', 'h-[50%]', 'h-[30%]'],
-    barValues: ['12k', '18k', '14k', '25k', '21k', '15k', '9k'],
-  },
-  Month: {
-    customers: '12,740',
-    customersChange: '18.5%',
-    customersTrend: 'up',
-    activeSubs: '9,120',
-    activeSubsChange: '8.4%',
-    activeSubsTrend: 'up',
-    posts: '2,890',
-    postsChange: '1.2%',
-    postsTrend: 'up',
-    registrations: '1,894',
-    registrationsChange: '3.1%',
-    registrationsTrend: 'up',
-    connectedAccounts: '1,380',
-    connectedAccountsChange: '+8.5%',
-    connectedAccountsTrend: 'up',
-    aiContent: '142,900',
-    aiContentChange: '+22.8%',
-    aiContentTrend: 'up',
-    scheduled: '5,420',
-    success: '3,890',
-    failed: '112',
-    pending: '618',
-    growthRate: '+14.8%',
-    goalProgress: '85%',
-    chartPathSuccess: 'M0,120 Q100,80 200,90 T400,50 T600,70 T800,20',
-    chartPathScheduled: 'M0,160 Q100,140 200,150 T400,120 T600,130 T800,90',
-    barHeights: ['h-[50%]', 'h-[75%]', 'h-[60%]', 'h-[95%]', 'h-[80%]', 'h-[65%]', 'h-[40%]'],
-    barValues: ['15k', '22k', '18k', '28k', '24k', '20k', '12k'],
-  },
+function formatGrowth(percent) {
+  if (percent === null || percent === undefined) return '0%'
+  const sign = percent > 0 ? '+' : ''
+  return `${sign}${percent}%`
 }
 
-const ACTIVITIES = {
-  recent: [
-    {
-      id: 1,
-      icon: UserPlus,
-      color: 'bg-primary/10 text-primary',
-      title: 'Sarah Jenkins',
-      titlePrefix: 'New customer ',
-      titleSuffix: ' registered via LinkedIn',
-      description: 'Identity verified via OAuth',
-      time: '2 mins ago',
-    },
-    {
-      id: 2,
-      icon: Calendar,
-      color: 'bg-primary-container/10 text-[#FF6600]',
-      title: '"Summer Campaign Recap"',
-      titlePrefix: 'Post scheduled: ',
-      titleSuffix: ' for Twitter',
-      description: 'Scheduled for 14:00 PM',
-      time: '15 mins ago',
-    },
-    {
-      id: 3,
-      icon: DollarSign,
-      color: 'bg-[#E6F4EA] text-[#137333]',
-      title: 'Enterprise Monthly',
-      titlePrefix: 'Subscription renewed: ',
-      titleSuffix: '',
-      description: 'Invoice #INV-2024-001',
-      time: '1 hour ago',
-    },
-    {
-      id: 4,
-      icon: AlertCircle,
-      color: 'bg-error-container/60 text-error',
-      title: 'API Connection',
-      titlePrefix: 'Failed attempt: ',
-      titleSuffix: ' to Meta Graph',
-      description: 'Token expired or invalid permissions',
-      time: '3 hours ago',
-    },
-    {
-      id: 5,
-      icon: Settings,
-      color: 'bg-surface-container/60 text-on-surface-variant',
-      title: 'Admin password',
-      titlePrefix: 'Security update: ',
-      titleSuffix: ' changed',
-      description: 'Triggered by system administrator',
-      time: '5 hours ago',
-    },
-  ],
-  post: [
-    {
-      id: 1,
-      icon: CheckCircle,
-      color: 'bg-[#E6F4EA] text-[#137333]',
-      title: 'Instagram',
-      titlePrefix: 'Post published successfully to ',
-      titleSuffix: '',
-      description: '"10 Tips for Mastering AI Workflows"',
-      time: '10 mins ago',
-    },
-    {
-      id: 2,
-      icon: Calendar,
-      color: 'bg-primary-container/10 text-[#FF6600]',
-      title: '"Summer Campaign Recap"',
-      titlePrefix: 'Post scheduled: ',
-      titleSuffix: ' for Twitter',
-      description: 'Scheduled for 14:00 PM',
-      time: '15 mins ago',
-    },
-    {
-      id: 3,
-      icon: AlertCircle,
-      color: 'bg-error-container/60 text-error',
-      title: 'Facebook',
-      titlePrefix: 'Failed to publish post to ',
-      titleSuffix: '',
-      description: 'Image resolution limits exceeded',
-      time: '1 hour ago',
-    },
-  ],
+function relativeTime(iso) {
+  if (!iso) return ''
+  const then = new Date(iso).getTime()
+  if (Number.isNaN(then)) return ''
+  const delta = Math.max(0, Date.now() - then)
+  const mins = Math.floor(delta / 60000)
+  if (mins < 1) return 'just now'
+  if (mins < 60) return `${mins} min${mins === 1 ? '' : 's'} ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`
+  const days = Math.floor(hours / 24)
+  return `${days} day${days === 1 ? '' : 's'} ago`
+}
+
+function pointsToPath(values, width = 800, height = 250) {
+  if (!values.length) return ''
+  const max = Math.max(1, ...values)
+  const step = values.length === 1 ? 0 : width / (values.length - 1)
+  return values
+    .map((v, i) => {
+      const x = i * step
+      const y = height - (v / max) * (height - 24) - 12
+      return `${i === 0 ? 'M' : 'L'}${x},${y}`
+    })
+    .join(' ')
+}
+
+function formatDayLabel(label) {
+  const parsed = new Date(label)
+  if (Number.isNaN(parsed.getTime())) return label
+  return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+function GrowthBadge({ percent }) {
+  const up = (percent ?? 0) >= 0
+  const Icon = up ? TrendingUp : TrendingDown
+  return (
+    <span className={cn('font-ui-mono text-ui-mono mb-1 flex items-center', up ? 'text-primary' : 'text-error')}>
+      <Icon className="text-sm w-3.5 h-3.5 mr-0.5" /> {formatGrowth(percent)}
+    </span>
+  )
+}
+
+function UserGroupTable({ title, count, users, emptyLabel, viewAllTo }) {
+  return (
+    <div className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden flex flex-col">
+      <div className="px-6 py-4 border-b border-surface-variant flex items-center justify-between">
+        <div>
+          <h3 className="font-headline-lg text-headline-lg text-on-surface">{title}</h3>
+          <p className="text-xs text-on-surface-variant mt-0.5">
+            {count} {count === 1 ? 'user' : 'users'}
+          </p>
+        </div>
+        <Link to={viewAllTo} className="text-xs font-semibold text-primary hover:underline">
+          View all
+        </Link>
+      </div>
+      {users.length === 0 ? (
+        <div className="px-6 py-10 text-center text-sm text-on-surface-variant">{emptyLabel}</div>
+      ) : (
+        <div className="divide-y divide-surface-variant">
+          {users.map((user) => (
+            <Link
+              key={user.id}
+              to={`/admin/users/${user.id}`}
+              className="px-6 py-3 flex items-center justify-between hover:bg-surface-container-low transition-colors"
+            >
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-on-surface truncate">{user.name || '—'}</p>
+                <p className="text-xs text-on-surface-variant truncate">{user.email}</p>
+              </div>
+              <span className="ml-3 shrink-0 inline-flex items-center px-2 py-0.5 rounded-DEFAULT text-xs font-semibold bg-surface-container-highest text-on-surface border border-surface-variant">
+                {user.plan}
+              </span>
+            </Link>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function Dashboard() {
-  const [period, setPeriod] = useState('weekly') // 'daily' | 'weekly' | 'monthly'
+  const [period, setPeriod] = useState('weekly')
   const [summaryData, setSummaryData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeTab, setActiveTab] = useState('recent')
 
   useEffect(() => {
+    let isMounted = true
     async function fetchSummary() {
       setIsLoading(true)
       setError(null)
       try {
         const data = await getAdminDashboardSummary(period)
-        setSummaryData(data)
+        if (isMounted) setSummaryData(data)
       } catch (err) {
         console.error('Failed to fetch admin summary:', err)
-        setError('Failed to load dashboard metrics.')
+        if (isMounted) setError('Failed to load dashboard metrics.')
       } finally {
-        setIsLoading(false)
+        if (isMounted) setIsLoading(false)
       }
     }
     fetchSummary()
+    return () => {
+      isMounted = false
+    }
   }, [period])
-
-  const timeframeKey = period === 'daily' ? 'Day' : period === 'monthly' ? 'Month' : 'Week'
-  const metrics = METRICS_BY_TIMEFRAME[timeframeKey]
 
   const renderValue = (value) => {
     if (isLoading) {
@@ -242,16 +138,32 @@ export default function Dashboard() {
     if (error) {
       return <span className="text-error text-xs font-semibold">Error</span>
     }
+    if (value === null || value === undefined) return 0
     return value
   }
+
+  const pubTrend = summaryData?.publishingTrend || []
+  const hasPublishingData = pubTrend.some((p) => p.published > 0 || p.scheduled > 0)
+  const successPath = pointsToPath(pubTrend.map((p) => p.published))
+  const scheduledPath = pointsToPath(pubTrend.map((p) => p.scheduled))
+  const chartLabels = pubTrend.filter((_, i) => {
+    if (pubTrend.length <= 8) return true
+    const step = Math.ceil(pubTrend.length / 7)
+    return i % step === 0 || i === pubTrend.length - 1
+  })
+
+  const revenueTrend = summaryData?.revenueTrend || []
+  const hasRevenueBars = revenueTrend.some((p) => p.amount > 0)
+  const maxRevenue = Math.max(1, ...revenueTrend.map((p) => p.amount))
+
+  const recentActivity = summaryData?.recentActivity || []
+  const recentPosts = summaryData?.recentPosts || []
 
   return (
     <div className="space-y-6">
       <style>{`
         @keyframes drawPath {
-          to {
-            stroke-dashoffset: 0;
-          }
+          to { stroke-dashoffset: 0; }
         }
         .animated-path {
           stroke-dasharray: 1000;
@@ -260,11 +172,10 @@ export default function Dashboard() {
         }
       `}</style>
 
-      {/* Dashboard Title Row with Toggle */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
         <div>
           <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Good morning, Admin.</h2>
-          <p className="text-sm text-on-surface-variant">Here's what's happening across Raasocial.</p>
+          <p className="text-sm text-on-surface-variant">Here is what is happening across Raasocial.</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -301,150 +212,113 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Stat Cards Grid (Bento styled) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Card 1: Total Customers */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
             <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Total Customers</span>
             <Users className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
             <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
-              {renderValue(summaryData?.totalCustomers)}
+              {renderValue(summaryData?.totalCustomers ?? 0)}
             </span>
-            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
-              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.customersChange}
-            </span>
+            {!isLoading && !error && <GrowthBadge percent={summaryData?.customerGrowthPercent} />}
           </div>
         </div>
 
-        {/* Card 2: Subscriptions Status */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
-            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Active Subscriptions</span>
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Free Users</span>
+            <UserCheck className="text-tertiary-container w-5 h-5 shrink-0" />
+          </div>
+          <div className="flex items-end gap-2 mt-2">
+            <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
+              {renderValue(summaryData?.freeUsers ?? 0)}
+            </span>
+          </div>
+          <span className="text-xs text-on-surface-variant mt-1 block">Currently on the Free plan</span>
+        </div>
+
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
+          <div className="flex items-center justify-between">
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Paid Users</span>
             <CreditCard className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
             <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
-              {isLoading ? (
-                <span className="animate-pulse text-on-surface-variant/40 text-sm">Loading...</span>
-              ) : error ? (
-                <span className="text-error text-xs font-semibold">Error</span>
-              ) : (
-                `${summaryData?.activeSubscriptions || 0}`
-              )}
-            </span>
-            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
-              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.activeSubsChange}
+              {renderValue(summaryData?.paidUsers ?? 0)}
             </span>
           </div>
-          {!isLoading && !error && (
-            <span className="text-xs text-on-surface-variant mt-1 block">
-              {summaryData?.expiredSubscriptions || 0} Expired Subscriptions
-            </span>
-          )}
+          <span className="text-xs text-on-surface-variant mt-1 block">
+            {summaryData?.expiredSubscriptions ?? 0} expired subscriptions
+          </span>
         </div>
 
-        {/* Card 3: Published Posts (Mock with Dev Mode Badge) */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
-          <div className="absolute top-2 right-2">
-            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Mock
-            </span>
-          </div>
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
             <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Published Posts</span>
             <Send className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
             <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
-              {renderValue(summaryData?.totalFeedback)}
+              {renderValue(summaryData?.publishedPosts ?? 0)}
             </span>
-            <span className="font-ui-mono text-ui-mono text-on-surface-variant/60 mb-1 flex items-center">
-              {metrics.postsChange}
-            </span>
+            {!isLoading && !error && <GrowthBadge percent={summaryData?.publishedPostsGrowthPercent} />}
           </div>
+          <span className="text-xs text-on-surface-variant mt-1 block capitalize">Published this {period.replace('ly', '')}</span>
         </div>
 
-        {/* Card 4: New Registrations */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
-            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">New Registrations ({period})</span>
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">New Registrations</span>
             <UserPlus className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
             <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
-              {renderValue(summaryData?.newCustomersThisPeriod)}
+              {renderValue(summaryData?.newCustomersThisPeriod ?? 0)}
             </span>
-            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
-              <TrendingDown className="text-sm w-3.5 h-3.5 mr-0.5 text-error" /> {metrics.registrationsChange}
-            </span>
+            {!isLoading && !error && <GrowthBadge percent={summaryData?.registrationsGrowthPercent} />}
           </div>
         </div>
 
-        {/* Card 5: Connected Accounts (Mock with Dev Mode Badge) */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
-          <div className="absolute top-2 right-2">
-            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Mock
-            </span>
-          </div>
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
             <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Connected Accounts</span>
             <Link2 className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
             <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
-              {metrics.connectedAccounts}
+              {renderValue(summaryData?.connectedAccounts ?? 0)}
             </span>
-            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
-              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.connectedAccountsChange}
-            </span>
+            {!isLoading && !error && <GrowthBadge percent={summaryData?.connectedAccountsGrowthPercent} />}
           </div>
         </div>
 
-        {/* Card 6: AI Content Generated (Mock with Dev Mode Badge) */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors relative">
-          <div className="absolute top-2 right-2">
-            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Mock
-            </span>
-          </div>
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors sm:col-span-2 lg:col-span-1">
           <div className="flex items-center justify-between">
             <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">AI Content Generated</span>
             <Sparkles className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
             <span className="font-headline-xl text-headline-xl text-on-surface leading-none">
-              {renderValue(summaryData?.totalSuggestions)}
+              {renderValue(summaryData?.aiContentGenerated ?? 0)}
             </span>
-            <span className="font-ui-mono text-ui-mono text-primary mb-1 flex items-center">
-              <TrendingUp className="text-sm w-3.5 h-3.5 mr-0.5" /> {metrics.aiContentChange}
-            </span>
+            {!isLoading && !error && <GrowthBadge percent={summaryData?.aiContentGrowthPercent} />}
           </div>
         </div>
       </div>
 
-      {/* Main Content: Two Columns */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-unit">
-        {/* Left (Wider): Publishing Activity Chart */}
-        <div className="lg:col-span-2 bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col relative">
-          <div className="absolute top-4 right-4">
-            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Mock Chart
-            </span>
-          </div>
-          
+        <div className="lg:col-span-2 bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="font-headline-lg text-headline-lg text-on-surface">Publishing Activity</h3>
-              <p className="text-xs text-on-surface-variant">Engagement across all platforms</p>
+              <p className="text-xs text-on-surface-variant">Scheduled vs published posts in this period</p>
             </div>
-            <div className="flex gap-4 mr-20">
+            <div className="flex gap-4">
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-primary-container" />
-                <span className="text-xs text-on-surface-variant font-medium">Success</span>
+                <span className="text-xs text-on-surface-variant font-medium">Published</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-tertiary-container" />
@@ -454,69 +328,68 @@ export default function Dashboard() {
           </div>
 
           <div className="flex-1 relative min-h-[260px] border-b border-l border-surface-variant/50 pt-4 pr-4">
-            {/* Chart Grid Lines */}
-            <div className="absolute inset-0 flex flex-col justify-between pt-4 pointer-events-none">
-              <div className="w-full h-px bg-[#F2F2F2]"></div>
-              <div className="w-full h-px bg-[#F2F2F2]"></div>
-              <div className="w-full h-px bg-[#F2F2F2]"></div>
-              <div className="w-full h-px bg-[#F2F2F2]"></div>
-              <div className="w-full h-px bg-[#F2F2F2]"></div>
-            </div>
-
-            <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 800 250">
-              {/* Success Line */}
-              <path
-                key={`success-${period}`}
-                className="stroke-primary-container animated-path"
-                d={metrics.chartPathSuccess}
-                fill="none"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-              {/* Scheduled Line */}
-              <path
-                key={`scheduled-${period}`}
-                className="stroke-tertiary-container animated-path"
-                d={metrics.chartPathScheduled}
-                fill="none"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeDasharray="4 4"
-              />
-            </svg>
+            {isLoading ? (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-on-surface-variant">Loading chart...</div>
+            ) : !hasPublishingData ? (
+              <div className="absolute inset-0 flex items-center justify-center text-sm text-on-surface-variant">No data available</div>
+            ) : (
+              <>
+                <div className="absolute inset-0 flex flex-col justify-between pt-4 pointer-events-none">
+                  <div className="w-full h-px bg-[#F2F2F2]"></div>
+                  <div className="w-full h-px bg-[#F2F2F2]"></div>
+                  <div className="w-full h-px bg-[#F2F2F2]"></div>
+                  <div className="w-full h-px bg-[#F2F2F2]"></div>
+                  <div className="w-full h-px bg-[#F2F2F2]"></div>
+                </div>
+                <svg className="absolute inset-0 h-full w-full" preserveAspectRatio="none" viewBox="0 0 800 250">
+                  <path
+                    key={`success-${period}`}
+                    className="stroke-primary-container animated-path"
+                    d={successPath}
+                    fill="none"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                  <path
+                    key={`scheduled-${period}`}
+                    className="stroke-tertiary-container animated-path"
+                    d={scheduledPath}
+                    fill="none"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeDasharray="4 4"
+                  />
+                </svg>
+              </>
+            )}
           </div>
           <div className="flex justify-between mt-2 text-xs text-on-surface-variant font-ui-mono">
-            <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            {chartLabels.map((p) => (
+              <span key={p.label}>{formatDayLabel(p.label)}</span>
+            ))}
           </div>
 
           <div className="mt-6 grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
               <p className="text-xs text-on-surface-variant mb-1 font-medium">Scheduled</p>
-              <p className="text-lg font-bold text-on-surface">{metrics.scheduled}</p>
+              <p className="text-lg font-bold text-on-surface">{isLoading ? '—' : summaryData?.publishing?.scheduled ?? 0}</p>
             </div>
             <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
-              <p className="text-xs text-on-surface-variant mb-1 font-medium">Success</p>
-              <p className="text-lg font-bold text-[#FF6600]">{metrics.success}</p>
+              <p className="text-xs text-on-surface-variant mb-1 font-medium">Published</p>
+              <p className="text-lg font-bold text-[#FF6600]">{isLoading ? '—' : summaryData?.publishing?.published ?? 0}</p>
             </div>
             <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
               <p className="text-xs text-on-surface-variant mb-1 font-medium">Failed</p>
-              <p className="text-lg font-bold text-error">{metrics.failed}</p>
+              <p className="text-lg font-bold text-error">{isLoading ? '—' : summaryData?.publishing?.failed ?? 0}</p>
             </div>
             <div className="p-3 rounded-lg bg-surface-container-low border border-surface-variant/40">
               <p className="text-xs text-on-surface-variant mb-1 font-medium">Pending</p>
-              <p className="text-lg font-bold text-on-surface-variant">{metrics.pending}</p>
+              <p className="text-lg font-bold text-on-surface-variant">{isLoading ? '—' : summaryData?.publishing?.pending ?? 0}</p>
             </div>
           </div>
         </div>
 
-        {/* Right (Narrower): Revenue Overview Card */}
-        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col justify-between relative">
-          <div className="absolute top-4 right-4">
-            <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-              Mock Chart
-            </span>
-          </div>
-
+        <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col justify-between">
           <div>
             <div className="flex justify-between items-start mb-6">
               <div>
@@ -531,7 +404,7 @@ export default function Dashboard() {
                       ₦{Number(summaryData?.revenueThisPeriod || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}
                     </span>
                     <span className="text-[10px] text-on-surface-variant block mt-0.5 capitalize font-medium">
-                      Total Successful Revenue ({period})
+                      Total successful revenue ({period})
                     </span>
                   </div>
                 )}
@@ -539,49 +412,55 @@ export default function Dashboard() {
             </div>
 
             <div className="flex items-end gap-1.5 h-40 mb-6 px-2">
-              {metrics.barHeights.map((hClass, idx) => (
-                <div
-                  key={`${period}-${idx}`}
-                  className={cn(
-                    "flex-grow rounded-t cursor-pointer group relative transition-all duration-300",
-                    idx === 3
-                      ? 'bg-primary-container'
-                      : 'bg-primary-container/20 hover:bg-primary-container',
-                    hClass
-                  )}
-                >
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-background text-surface text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 font-mono">
-                    ₦{metrics.barValues[idx]}
+              {isLoading ? (
+                <div className="w-full h-full flex items-center justify-center text-xs text-on-surface-variant">Loading...</div>
+              ) : !hasRevenueBars ? (
+                <div className="w-full h-full flex items-center justify-center text-xs text-on-surface-variant">No data available</div>
+              ) : (
+                revenueTrend.map((point, idx) => (
+                  <div
+                    key={`${point.label}-${idx}`}
+                    className="flex-grow rounded-t cursor-pointer group relative transition-all duration-300 bg-primary-container/20 hover:bg-primary-container"
+                    style={{ height: `${Math.max(4, (point.amount / maxRevenue) * 100)}%` }}
+                  >
+                    <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-on-background text-surface text-[10px] px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10 font-mono">
+                      ₦{Number(point.amount).toLocaleString('en-NG')}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Growth Rate</span>
-              <span className="text-[#FF6600] font-semibold text-sm">{metrics.growthRate}</span>
-            </div>
-            <div className="w-full bg-surface-container-low rounded-full h-1.5 border border-surface-variant/40">
-              <div className="bg-[#FF6600] h-1.5 rounded-full transition-all duration-500" style={{ width: metrics.goalProgress }}></div>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-on-surface-variant">Annual Goal</span>
-              <span className="text-on-surface font-semibold">₦15M</span>
+              <span className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">Growth vs last period</span>
+              <span className={cn('font-semibold text-sm', (summaryData?.revenueGrowthPercent ?? 0) >= 0 ? 'text-[#FF6600]' : 'text-error')}>
+                {isLoading ? '—' : formatGrowth(summaryData?.revenueGrowthPercent)}
+              </span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Section: Tabs and Activity Feed (Styled as Bento List) */}
-      <div className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden flex flex-col relative">
-        <div className="absolute top-4 right-4">
-          <span className="text-[8px] font-bold tracking-wider uppercase bg-amber-500/10 text-amber-600 px-1.5 py-0.5 rounded-full border border-amber-500/20">
-            Mock Events
-          </span>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <UserGroupTable
+          title="Free Users"
+          count={summaryData?.freeUsers ?? 0}
+          users={summaryData?.freeUsersPreview || []}
+          emptyLabel="No users yet"
+          viewAllTo="/admin/users?group=free"
+        />
+        <UserGroupTable
+          title="Paid Users"
+          count={summaryData?.paidUsers ?? 0}
+          users={summaryData?.paidUsersPreview || []}
+          emptyLabel="No paid users yet"
+          viewAllTo="/admin/users?group=paid"
+        />
+      </div>
 
+      <div className="bg-surface-container-lowest border border-surface-variant rounded-xl overflow-hidden flex flex-col">
         <div className="border-b border-surface-variant px-6 flex items-center gap-4 bg-surface-bright">
           <button
             onClick={() => setActiveTab('recent')}
@@ -607,33 +486,48 @@ export default function Dashboard() {
           </button>
         </div>
 
-        <div className="divide-y divide-surface-variant">
-          {ACTIVITIES[activeTab].map((act) => {
-            const Icon = act.icon
-            return (
-              <div
-                key={act.id}
-                className="px-6 py-4 flex items-center justify-between hover:bg-surface-container-low transition-colors cursor-default"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={cn("w-10 h-10 rounded-full flex items-center justify-center shrink-0", act.color)}>
-                    <Icon className="w-5 h-5" />
-                  </div>
+        <div className="divide-y divide-surface-variant min-h-[120px]">
+          {isLoading ? (
+            <div className="px-6 py-10 text-center text-sm text-on-surface-variant">Loading...</div>
+          ) : activeTab === 'recent' ? (
+            recentActivity.length === 0 ? (
+              <div className="px-6 py-10 text-center text-sm text-on-surface-variant">No recent activity</div>
+            ) : (
+              recentActivity.map((act) => (
+                <div key={act.id} className="px-6 py-4 flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-on-surface-variant">
-                      {act.titlePrefix}
-                      <span className="font-semibold text-on-surface">{act.title}</span>
-                      {act.titleSuffix}
+                    <p className="text-sm text-on-surface">
+                      <span className="font-semibold">{act.userName || 'System'}</span>
+                      <span className="text-on-surface-variant"> · {act.action}</span>
                     </p>
                     <p className="text-xs text-on-surface-variant/70 mt-0.5">{act.description}</p>
                   </div>
+                  <span className="text-xs text-on-surface-variant font-ui-mono whitespace-nowrap ml-4">
+                    {relativeTime(act.createdAt)}
+                  </span>
+                </div>
+              ))
+            )
+          ) : recentPosts.length === 0 ? (
+            <div className="px-6 py-10 text-center text-sm text-on-surface-variant">No recent activity</div>
+          ) : (
+            recentPosts.map((post) => (
+              <div key={post.id} className="px-6 py-4 flex items-center justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm text-on-surface">
+                    <span className="font-semibold">{post.platform || 'Post'}</span>
+                    <span className="text-on-surface-variant"> · {post.status}</span>
+                  </p>
+                  <p className="text-xs text-on-surface-variant/70 mt-0.5 truncate">
+                    {post.error || post.content || 'No additional detail'}
+                  </p>
                 </div>
                 <span className="text-xs text-on-surface-variant font-ui-mono whitespace-nowrap ml-4">
-                  {act.time}
+                  {relativeTime(post.attemptedAt)}
                 </span>
               </div>
-            )
-          })}
+            ))
+          )}
         </div>
 
         <div className="p-4 text-center border-t border-surface-variant bg-surface-bright">

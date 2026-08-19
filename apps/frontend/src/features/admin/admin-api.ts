@@ -8,7 +8,24 @@ export interface AdminUser {
   isActive: boolean
   joinedDate: string
   plan: string
+  planSlug?: string
+  isPaid?: boolean
   status: 'Active' | 'Suspended'
+}
+
+export interface StaffOverview {
+  totalAdmins: number
+  totalStaff: number
+  activeUsers: number
+  disabledAccounts: number
+  recentLogins: {
+    id: string
+    name: string
+    role: string
+    device: string
+    time: string
+    status: string
+  }[]
 }
 
 export interface AdminBillingStats {
@@ -38,7 +55,16 @@ export interface AdminPayment {
 }
 
 export async function getAdminUsers(): Promise<AdminUser[]> {
-  const response = await api.get<AdminUser[]>('/admin/users')
+  const response = await api.get<AdminUser[]>('/admin/users', {
+    headers: { 'Cache-Control': 'no-cache' },
+  })
+  return response.data
+}
+
+export async function getStaffOverview(): Promise<StaffOverview> {
+  const response = await api.get<StaffOverview>('/admin/staff/overview', {
+    headers: { 'Cache-Control': 'no-cache' },
+  })
   return response.data
 }
 

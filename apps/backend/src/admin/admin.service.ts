@@ -1,11 +1,11 @@
 import { Inject, Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
-import { eq, sum, count, and } from 'drizzle-orm';
+import { eq, sum, count, and, desc, inArray } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { seedPlans as runPlansSeeding } from '../database/seeding';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
-import { UserRole } from '../common/enums/roles.enum';
+import { UserRole, ALL_ADMIN_ROLES } from '../common/enums/roles.enum';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import * as bcrypt from 'bcrypt';
 
@@ -23,11 +23,16 @@ export class AdminService {
     const usersWithPlan = [];
     for (const u of allUsers) {
       const activeSub = await this.db.query.subscriptions.findFirst({
-        where: eq(schema.subscriptions.userId, u.id),
+        where: and(
+          eq(schema.subscriptions.userId, u.id),
+          eq(schema.subscriptions.status, 'active'),
+        ),
         with: {
           plan: true,
         },
       });
+      const planSlug = activeSub?.plan?.slug || 'free';
+      const isPaid = Boolean(planSlug) && planSlug !== 'free';
       usersWithPlan.push({
         id: u.id,
         name: u.fullName,
@@ -36,6 +41,8 @@ export class AdminService {
         isActive: u.isActive,
         joinedDate: u.createdAt,
         plan: activeSub?.plan?.name || 'Free',
+        planSlug,
+        isPaid,
         status: u.isActive ? 'Active' : 'Suspended',
       });
     }
@@ -51,7 +58,10 @@ export class AdminService {
     }
 
     const activeSub = await this.db.query.subscriptions.findFirst({
-      where: eq(schema.subscriptions.userId, userId),
+      where: and(
+        eq(schema.subscriptions.userId, userId),
+        eq(schema.subscriptions.status, 'active'),
+      ),
       with: {
         plan: true,
       },
@@ -78,6 +88,8 @@ export class AdminService {
       businessName: user.businessName,
       status: user.isActive ? 'Active' : 'Suspended',
       plan: activeSub?.plan?.name || 'Free',
+      planSlug: activeSub?.plan?.slug || 'free',
+      isPaid: (activeSub?.plan?.slug ?? 'free') !== 'free',
       subscription: activeSub
         ? {
             id: activeSub.id,
@@ -299,6 +311,54 @@ export class AdminService {
         fullName: user.fullName,
         role: user.role,
       },
+    };
+  }
+
+  async getStaffOverview() {
+    const staff = await this.db
+      .select({
+        id: schema.users.id,
+        fullName: schema.users.fullName,
+        email: schema.users.email,
+        role: schema.users.role,
+        isActive: schema.users.isActive,
+      })
+      .from(schema.users)
+      .where(inArray(schema.users.role, ALL_ADMIN_ROLES));
+
+    const recentLogins = await this.db
+      .select({
+        id: schema.loginHistory.id,
+        email: schema.loginHistory.email,
+        status: schema.loginHistory.status,
+        isSuspicious: schema.loginHistory.isSuspicious,
+        ipAddress: schema.loginHistory.ipAddress,
+        browser: schema.loginHistory.browser,
+        os: schema.loginHistory.os,
+        device: schema.loginHistory.device,
+        createdAt: schema.loginHistory.createdAt,
+        userName: schema.users.fullName,
+        userRole: schema.users.role,
+      })
+      .from(schema.loginHistory)
+      .innerJoin(schema.users, eq(schema.loginHistory.userId, schema.users.id))
+      .where(inArray(schema.users.role, ALL_ADMIN_ROLES))
+      .orderBy(desc(schema.loginHistory.createdAt))
+      .limit(20);
+
+    return {
+      totalAdmins: staff.filter((s) => s.role === UserRole.SUPER_ADMIN).length,
+      totalStaff: staff.filter((s) => s.role !== UserRole.SUPER_ADMIN).length,
+      activeUsers: staff.filter((s) => s.isActive).length,
+      disabledAccounts: staff.filter((s) => !s.isActive).length,
+      recentLogins: recentLogins.map((row) => ({
+        id: row.id,
+        name: row.userName || row.email,
+        role: row.userRole || '—',
+        device: [row.browser, row.os, row.ipAddress].filter(Boolean).join(' · ') || 'Unknown device',
+        time: row.createdAt,
+        status: row.isSuspicious ? 'Suspicious' : row.status === 'success' ? 'Successful' : 'Failed',
+      })),
     };
   }
 
