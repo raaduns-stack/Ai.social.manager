@@ -95,5 +95,21 @@ export class AdminController {
   createStaff(@Body() dto: CreateStaffDto) {
     return this.adminService.createStaff(dto);
   }
+
+  @Get('plans')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all subscription plans' })
+  getPlans() {
+    return this.adminService.getPlans();
+  }
+
+  @Patch('plans/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update a subscription plan' })
+  updatePlan(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updatePlan(id, dto);
+  }
 }
 

@@ -78,7 +78,7 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
               {plan.name === 'Brand Domination' ? 'Brand Domination' : plan.name}
             </h3>
             <p className="text-xs text-[#666666] leading-relaxed mb-4">
-              {PLAN_DETAILS[plan.slug]?.description || ''}
+              {plan.description || PLAN_DETAILS[plan.slug]?.description || ''}
             </p>
             <PriceDisplay value={price} isAnnual={isAnnual} />
           </div>

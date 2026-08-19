@@ -93,3 +93,13 @@ export async function createStaff(payload: any): Promise<any> {
   const response = await api.post<any>('/admin/users/staff', payload)
   return response.data
 }
+
+export async function getAdminPlans(): Promise<any[]> {
+  const response = await api.get<any[]>('/admin/plans')
+  return response.data
+}
+
+export async function updateAdminPlan(id: string, payload: any): Promise<any> {
+  const response = await api.patch<any>(`/admin/plans/${id}`, payload)
+  return response.data
+}

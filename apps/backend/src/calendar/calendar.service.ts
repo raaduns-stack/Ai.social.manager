@@ -136,34 +136,25 @@ export class CalendarService {
    * Helper function to check whether a customer has reached their monthly calendar post limit.
    */
   async checkPostLimit(userId: string, targetDate: Date, postId?: string) {
+    let limit = 8;
+    let planName = 'Free';
     let subscription;
     try {
       subscription = await this.subscriptionsService.findByUserId(userId);
     } catch (err) {
-      // Fallback to Free tier if no active subscription found
-      subscription = { plan: { slug: 'free', features: [] } };
+      subscription = null;
     }
 
-    const plan = subscription?.plan as any;
-    const slug = plan?.slug || 'free';
-
-    // Determine the monthly limit
-    let limit = 8; // Default for Free plan (approx. 8 posts per month)
-    if (slug !== 'free') {
-      const features = plan?.features || [];
-      let found = false;
-      for (const feature of features) {
-        const match = feature.match(/(\d+)\s+AI-generated\s+posts/i);
-        if (match) {
-          limit = parseInt(match[1], 10);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        if (slug === 'starter') limit = 30;
-        else if (slug === 'growth') limit = 150;
-        else if (slug === 'enterprise') limit = 300;
+    if (subscription?.plan) {
+      limit = subscription.plan.monthlyPostLimit;
+      planName = subscription.plan.name;
+    } else {
+      const freePlan = await this.db.query.plans.findFirst({
+        where: eq(schema.plans.slug, 'free'),
+      });
+      if (freePlan) {
+        limit = freePlan.monthlyPostLimit;
+        planName = freePlan.name;
       }
     }
 
@@ -182,7 +173,7 @@ export class CalendarService {
 
     if (posts.length >= limit) {
       throw new BadRequestException(
-        `Monthly post limit reached. Your plan (${plan?.name || 'Free'}) allows a maximum of ${limit} posts per month. You currently have ${posts.length} scheduled/published in this month.`
+        `Monthly post limit reached. Your plan (${planName}) allows a maximum of ${limit} posts per month. You currently have ${posts.length} scheduled/published in this month.`
       );
     }
   }
@@ -854,32 +845,22 @@ export class CalendarService {
   }
 
   async getMonthlyLimitAndUsage(userId: string, targetDate: Date) {
+    let limit = 8;
     let subscription;
     try {
       subscription = await this.subscriptionsService.findByUserId(userId);
     } catch (err) {
-      subscription = { plan: { slug: 'free', features: [] } };
+      subscription = null;
     }
 
-    const plan = subscription?.plan as any;
-    const slug = plan?.slug || 'free';
-
-    let limit = 8;
-    if (slug !== 'free') {
-      const features = plan?.features || [];
-      let found = false;
-      for (const feature of features) {
-        const match = feature.match(/(\d+)\s+AI-generated\s+posts/i);
-        if (match) {
-          limit = parseInt(match[1], 10);
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        if (slug === 'starter') limit = 30;
-        else if (slug === 'growth') limit = 150;
-        else if (slug === 'enterprise') limit = 300;
+    if (subscription?.plan) {
+      limit = subscription.plan.monthlyPostLimit;
+    } else {
+      const freePlan = await this.db.query.plans.findFirst({
+        where: eq(schema.plans.slug, 'free'),
+      });
+      if (freePlan) {
+        limit = freePlan.monthlyPostLimit;
       }
     }
 

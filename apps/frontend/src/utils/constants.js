@@ -5,7 +5,7 @@ export const PLAN_DETAILS = {
     description: 'Best for testing features and starting out.',
     features: [
       'Connect 1 social media account',
-      'Generate 5 AI posts per month',
+      'Generate 8 AI posts per month',
       'AI-generated caption + hashtags',
       'Basic AI image generation',
       'Content preview',

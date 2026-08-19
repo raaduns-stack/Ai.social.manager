@@ -301,4 +301,33 @@ export class AdminService {
       },
     };
   }
+
+  async getPlans() {
+    return this.db.query.plans.findMany();
+  }
+
+  async updatePlan(id: string, dto: any) {
+    const existing = await this.db.query.plans.findFirst({
+      where: eq(schema.plans.id, id),
+    });
+    if (!existing) {
+      throw new NotFoundException('Plan not found');
+    }
+
+    const updateData: any = { updatedAt: new Date() };
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.price !== undefined) updateData.price = dto.price;
+    if (dto.description !== undefined) updateData.description = dto.description;
+    if (dto.features !== undefined) updateData.features = dto.features;
+    if (dto.monthlyPostLimit !== undefined) updateData.monthlyPostLimit = dto.monthlyPostLimit;
+    if (dto.maxSocialAccounts !== undefined) updateData.maxSocialAccounts = dto.maxSocialAccounts;
+    if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
+
+    await this.db
+      .update(schema.plans)
+      .set(updateData)
+      .where(eq(schema.plans.id, id));
+
+    return { success: true };
+  }
 }

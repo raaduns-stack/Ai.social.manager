@@ -14,9 +14,11 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 1,
+      description: 'Best for testing features and starting out.',
+      monthlyPostLimit: 8,
       features: [
         'Connect 1 social media account',
-        'Generate 5 AI posts per month',
+        'Generate 8 AI posts per month',
         'AI-generated caption + hashtags',
         'Basic AI image generation',
         'Content preview',
@@ -31,6 +33,8 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 3,
+      description: 'Great for solo professionals.',
+      monthlyPostLimit: 30,
       features: [
         'Everything in Free, plus:',
         'Connect 3 social media accounts',
@@ -52,6 +56,8 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 7,
+      description: 'Perfect for growing businesses.',
+      monthlyPostLimit: 150,
       features: [
         'Everything in Starter, plus:',
         'Connect 7 social media accounts',
@@ -77,6 +83,8 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 15,
+      description: 'Full power for larger brands.',
+      monthlyPostLimit: 300,
       features: [
         'Everything in Growth, plus:',
         'Connect 15 social media accounts',
@@ -111,6 +119,8 @@ export async function seedPlans(db: Database) {
           isActive: p.isActive,
           features: p.features,
           maxSocialAccounts: p.maxSocialAccounts,
+          description: p.description,
+          monthlyPostLimit: p.monthlyPostLimit,
           updatedAt: new Date(),
         })
         .where(eq(schema.plans.id, existing.id));
@@ -123,6 +133,8 @@ export async function seedPlans(db: Database) {
         isActive: p.isActive,
         features: p.features,
         maxSocialAccounts: p.maxSocialAccounts,
+        description: p.description,
+        monthlyPostLimit: p.monthlyPostLimit,
       });
     }
   }
