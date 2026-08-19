@@ -7,6 +7,7 @@ import KleosWorkflow from '../components/marketing/KleosWorkflow'
 import ProductValue from '../components/marketing/ProductValue'
 import SocialProof from '../components/marketing/SocialProof'
 import FinalCTA from '../components/marketing/FinalCTA'
+import BrandSlider from '../components/marketing/BrandSlider'
 
 export default function Landing() {
   return (
@@ -43,8 +44,8 @@ export default function Landing() {
         </div>
       </header>
 
-      {/* Social Media Integration Scroller (Marquee) */}
-      <PlatformMarquee />
+      {/* Brand Logos Vertical Showcase */}
+      <BrandSlider />
 
       {/* Value Proposition Section (Problems) */}
       <ProblemSection />
@@ -54,6 +55,9 @@ export default function Landing() {
 
       {/* Product Value Section (Benefits) */}
       <ProductValue />
+
+      {/* Social Media Integration Scroller (Marquee) */}
+      <PlatformMarquee />
 
       {/* Trust / Social Proof Section */}
       <SocialProof />
