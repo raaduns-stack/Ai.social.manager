@@ -129,3 +129,13 @@ export async function updateAdminPlan(id: string, payload: any): Promise<any> {
   const response = await api.patch<any>(`/admin/plans/${id}`, payload)
   return response.data
 }
+
+export async function getAdminSocialAccounts(): Promise<any[]> {
+  const response = await api.get<any[]>('/admin/social-accounts')
+  return response.data
+}
+
+export async function disconnectAdminSocialAccount(id: string): Promise<any> {
+  const response = await api.post<any>(`/admin/social-accounts/${id}/disconnect`)
+  return response.data
+}

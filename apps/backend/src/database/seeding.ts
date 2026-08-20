@@ -307,3 +307,54 @@ export async function seedRolePermissions(db: Database) {
   }
 }
 
+export async function seedPromptTemplates(db: Database) {
+  const templates = [
+    {
+      name: 'LinkedIn Default Prompt',
+      category: 'linkedin',
+      prompt: `Generate professional LinkedIn content.
+Always use a business tone.
+Maximum 250 words.
+Include CTA.`,
+      isActive: true,
+    },
+    {
+      name: 'Twitter/X Default Prompt',
+      category: 'twitter',
+      prompt: `Generate engaging tweets/X posts.
+Keep it concise and punchy.
+Maximum 280 characters.
+Use 1-2 relevant hashtags.`,
+      isActive: true,
+    },
+    {
+      name: 'Facebook Default Prompt',
+      category: 'facebook',
+      prompt: `Generate friendly and social Facebook posts.
+Encourage user engagement or comments.
+Keep tone conversational.
+Include a link description.`,
+      isActive: true,
+    },
+    {
+      name: 'Instagram Default Prompt',
+      category: 'instagram',
+      prompt: `Generate catchy captions for Instagram posts.
+Start with a strong hook line.
+Maximum 150 words.
+Include a clean list of hashtags at the end.`,
+      isActive: true,
+    },
+  ];
+
+  for (const t of templates) {
+    const existing = await db.query.aiPromptTemplates.findFirst({
+      where: eq(schema.aiPromptTemplates.category, t.category),
+    });
+
+    if (!existing) {
+      await db.insert(schema.aiPromptTemplates).values(t);
+    }
+  }
+}
+

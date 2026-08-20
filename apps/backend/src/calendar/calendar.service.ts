@@ -1047,6 +1047,7 @@ export class CalendarService {
 
   async getMonthlyLimitAndUsage(userId: string, targetDate: Date) {
     let limit = 8;
+    let slug = 'free';
     let subscription;
     try {
       subscription = await this.subscriptionsService.findByUserId(userId);
@@ -1056,12 +1057,14 @@ export class CalendarService {
 
     if (subscription?.plan) {
       limit = subscription.plan.monthlyPostLimit;
+      slug = subscription.plan.slug;
     } else {
       const freePlan = await this.db.query.plans.findFirst({
         where: eq(schema.plans.slug, 'free'),
       });
       if (freePlan) {
         limit = freePlan.monthlyPostLimit;
+        slug = freePlan.slug;
       }
     }
 

@@ -118,5 +118,19 @@ export class AdminController {
   updatePlan(@Param('id') id: string, @Body() dto: any) {
     return this.adminService.updatePlan(id, dto);
   }
+
+  @Get('social-accounts')
+  @RequirePermission('social_accounts', 'view')
+  @ApiOperation({ summary: 'Get all user social accounts' })
+  getSocialAccounts() {
+    return this.adminService.getSocialAccounts();
+  }
+
+  @Post('social-accounts/:id/disconnect')
+  @RequirePermission('social_accounts', 'edit')
+  @ApiOperation({ summary: 'Disconnect a user social account' })
+  disconnectSocialAccount(@Param('id') id: string) {
+    return this.adminService.disconnectSocialAccount(id);
+  }
 }
 

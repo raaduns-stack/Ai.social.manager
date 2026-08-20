@@ -5,10 +5,9 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { desc, eq, and, ne } from 'drizzle-orm';
 import { ConfigService } from '@nestjs/config';
-import { desc, eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { ConfigService } from '@nestjs/config';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -493,9 +492,9 @@ export class ContentSuggestionsService {
     const toInsert = dto.variations.map((v) => ({
       userId: dto.userId,
       postId: dto.postId,
-      type: v.type,
+      type: 'caption' as const,
       title: v.title,
-      content: v.content,
+      content: v.caption,
       hashtags: v.hashtags || [],
       approvalStatus: 'PENDING_APPROVAL' as const,
     }));

@@ -78,6 +78,16 @@ export class AdminService {
       where: eq(schema.invoices.userId, userId),
     });
 
+    const userSocialAccounts = await this.db.query.social_accounts.findMany({
+      where: eq(schema.social_accounts.userId, userId),
+    });
+
+    const userActivityLogs = await this.db.query.activityLogs.findMany({
+      where: eq(schema.activityLogs.userId, userId),
+      orderBy: desc(schema.activityLogs.createdAt),
+      limit: 20,
+    });
+
     return {
       id: user.id,
       name: user.fullName,
@@ -117,6 +127,19 @@ export class AdminService {
         status: inv.status,
         issuedAt: inv.issuedAt,
         pdfUrl: inv.pdfUrl,
+      })),
+      socialAccounts: userSocialAccounts.map((sa) => ({
+        id: sa.id,
+        platform: sa.platform,
+        accountHandle: sa.accountHandle,
+        status: sa.status === 'connected' ? 'Connected' : 'Disconnected',
+        connectedAt: sa.connectedAt,
+      })),
+      activities: userActivityLogs.map((al) => ({
+        id: al.id,
+        title: al.action,
+        description: al.description,
+        time: al.createdAt,
       })),
     };
   }
@@ -387,6 +410,54 @@ export class AdminService {
       .update(schema.plans)
       .set(updateData)
       .where(eq(schema.plans.id, id));
+
+    return { success: true };
+  }
+
+  async getSocialAccounts() {
+    const accounts = await this.db
+      .select({
+        id: schema.social_accounts.id,
+        customerName: schema.users.fullName,
+        email: schema.users.email,
+        platform: schema.social_accounts.platform,
+        accountHandle: schema.social_accounts.accountHandle,
+        status: schema.social_accounts.status,
+        connectedAt: schema.social_accounts.connectedAt,
+        tokenExpiresAt: schema.social_accounts.tokenExpiresAt,
+      })
+      .from(schema.social_accounts)
+      .innerJoin(schema.users, eq(schema.social_accounts.userId, schema.users.id))
+      .orderBy(desc(schema.social_accounts.createdAt));
+    return accounts;
+  }
+
+  async disconnectSocialAccount(id: string) {
+    const existing = await this.db.query.social_accounts.findFirst({
+      where: eq(schema.social_accounts.id, id),
+    });
+    if (!existing) {
+      throw new NotFoundException('Social account not found');
+    }
+    await this.db
+      .update(schema.social_accounts)
+      .set({
+        status: 'disconnected',
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.social_accounts.id, id));
+
+    // Record activity log
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, existing.userId),
+    });
+    await this.activityLogsService.record({
+      userId: existing.userId,
+      userName: user?.fullName || 'System',
+      action: 'SOCIAL_ACCOUNT_DISCONNECTED',
+      module: 'SocialAccounts',
+      description: `Admin disconnected ${existing.platform} account (${existing.accountHandle}) for user ${user?.email}`,
+    });
 
     return { success: true };
   }
