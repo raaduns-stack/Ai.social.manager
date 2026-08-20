@@ -17,8 +17,10 @@ export const plans = pgTable('plans', {
   slug: varchar('slug', { length: 100 }).notNull().unique(),
   price: integer('price').notNull().default(0), // in cents
   interval: planIntervalEnum('interval').notNull().default('monthly'),
-  features: json('features').$type<string[]>().default([]),
+  features: json('features').$type<any>().default([]),
   maxSocialAccounts: integer('max_social_accounts').notNull().default(0),
+  description: varchar('description', { length: 500 }),
+  monthlyPostLimit: integer('monthly_post_limit').notNull().default(0),
   isActive: boolean('is_active').notNull().default(true),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

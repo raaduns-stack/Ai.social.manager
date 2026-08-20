@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -16,6 +16,7 @@ import ErrorBanner from '../../components/error-banner'
 import { cn } from '../../utils/cn'
 
 export default function Users() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [users, setUsers] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -23,6 +24,10 @@ export default function Users() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [planFilter, setPlanFilter] = useState('')
+  const [groupFilter, setGroupFilter] = useState(() => {
+    const group = searchParams.get('group')
+    return group === 'free' || group === 'paid' ? group : 'all'
+  })
   const [activeActionsId, setActiveActionsId] = useState(null)
 
   // Modal states
@@ -53,6 +58,13 @@ export default function Users() {
     loadUsers()
   }, [])
 
+  const customers = useMemo(
+    () => users.filter((user) => user.role === 'user'),
+    [users],
+  )
+  const freeCount = customers.filter((user) => !user.isPaid).length
+  const paidCount = customers.filter((user) => user.isPaid).length
+
   // Filter user base
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
@@ -61,9 +73,23 @@ export default function Users() {
         (user.email || '').toLowerCase().includes(searchTerm.toLowerCase())
       const matchesStatus = statusFilter === '' || (user.status || '').toLowerCase() === statusFilter.toLowerCase()
       const matchesPlan = planFilter === '' || (user.plan || '').toLowerCase() === planFilter.toLowerCase()
-      return matchesSearch && matchesStatus && matchesPlan
+      const isCustomer = user.role === 'user'
+      const matchesGroup =
+        groupFilter === 'all' ||
+        (isCustomer && (groupFilter === 'paid' ? user.isPaid : !user.isPaid))
+      return matchesSearch && matchesStatus && matchesPlan && matchesGroup
     })
-  }, [users, searchTerm, statusFilter, planFilter])
+  }, [users, searchTerm, statusFilter, planFilter, groupFilter])
+
+  const setGroup = (group) => {
+    setGroupFilter(group)
+    if (group === 'all') {
+      searchParams.delete('group')
+    } else {
+      searchParams.set('group', group)
+    }
+    setSearchParams(searchParams, { replace: true })
+  }
 
   // Manage dropdown actions toggle
   const toggleActions = (id) => {
@@ -205,6 +231,11 @@ export default function Users() {
         <div>
           <h2 className="font-headline-lg text-headline-lg text-on-surface font-bold tracking-tight">User Management</h2>
           <p className="text-sm text-on-surface-variant">Monitor system registration and update user account statuses.</p>
+          <p className="text-sm text-on-surface mt-2 font-medium">
+            Free Users: {loading ? '—' : freeCount}
+            <span className="mx-2 text-on-surface-variant">·</span>
+            Paid Users: {loading ? '—' : paidCount}
+          </p>
         </div>
         
         <div className="flex flex-wrap items-center gap-3">
@@ -219,6 +250,28 @@ export default function Users() {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-9 pr-4 py-1.5 rounded-lg border border-surface-variant bg-surface text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-on-surface"
             />
+          </div>
+
+          <div className="flex gap-1 border border-surface-variant bg-surface rounded-lg p-1">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'free', label: 'Free Users' },
+              { value: 'paid', label: 'Paid Users' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setGroup(item.value)}
+                className={cn(
+                  "px-3 py-1 text-xs rounded transition-all font-ui-mono",
+                  groupFilter === item.value
+                    ? 'bg-primary text-on-primary font-bold'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
           </div>
 
           <select
@@ -271,7 +324,13 @@ export default function Users() {
           columns={columns}
           data={filteredUsers}
           searchKeys={[]}
-          emptyMessage="No users found matching your filters."
+          emptyMessage={
+            groupFilter === 'free'
+              ? 'No users yet'
+              : groupFilter === 'paid'
+                ? 'No paid users yet'
+                : 'No users found matching your filters.'
+          }
         />
       )}
 

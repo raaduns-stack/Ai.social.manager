@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Instagram,
@@ -20,83 +20,11 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import EmptyState from '../../components/ui/EmptyState'
 import { cn } from '../../utils/cn'
+import { getAdminSocialAccounts, disconnectAdminSocialAccount } from '../../features/admin/admin-api'
+import { getActivityLogs } from '../../features/admin/activity-logs-api'
+import ErrorBanner from '../../components/error-banner'
 
-// ---------------------------------------------------------------------------
-// Initial Mock Data
-// ---------------------------------------------------------------------------
-const INITIAL_ACCOUNTS = [
-  {
-    id: 'acc_1',
-    customerName: 'Oluwaseun Adeyemi',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC8F3iHu2WuS_YlMzr6lYAmHs2eecWjFvni6fExHnOIkdjl-svwtdttaiApjmblDijHzbcNutUclJySt8neIl6O-cV6cfrZXZqBli4xdjyCGVUh8eoRlk_09XJgTHrdzp5f--RL8Lm8-7NlqoUAfwReK-Tuv6y8bRbbafb79hCbyBRa7mEN-iQnHWyNkP5152Vrp3F8svSP_BV6VDaIuo2GxNagi1WFzgusJIzChwzi_GJMBAlsv4xKM4Xt29cBCnJoc3v2L_25JdVz',
-    platform: 'Instagram',
-    status: 'Connected',
-    oauthStatus: 'Valid',
-    billingStatus: 'active',
-  },
-  {
-    id: 'acc_2',
-    customerName: 'Chidinma Okafor',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD8xo3q9jtVG2TVcHe29eoSd87AsavYuAvrMjs3tC5KoWXv7cOqg55x4JtQzozhuyPdaA6trlNhhNhBIw-qsj39Jrhr9Do4AEoxpmn5JPhfFm4DIzZ-ZIIyI1g7dTbgC6Gk3hi9MWQ_jM7qFPJktGnjTqdv629Ku2e5NKpEn5T_Vz6dSfDDHHok9istSQ-l88KpZE1Gb7cgrmhqNL0vDgN3lDfi9FcHu1EoJBr7YLRht-NBVcvfJUOcgagPLezowr4B3elec65APXQe',
-    platform: 'Facebook',
-    status: 'Disconnected',
-    oauthStatus: 'Expired',
-    billingStatus: 'expired',
-  },
-  {
-    id: 'acc_3',
-    customerName: 'Tunde Bakare',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDmj7-7D8LR7nWGhrNGFi5a9gxefshX_tYfCcPx4CkiFpjY5hF3Zo1EKS3ubC1fY7Qx7ELgFXu4Q2gUjuiJmzw9WUEmad60Y1uEkL8ZH6ksTdJH4KHmGVFai0vYjOOC3U9FQcdl0tWp0QTTZntA1Kt4WaUUY2naEMzd3vmRGo5Z4RbWOXHC4I9nYnyfRF1lBVcTge-g0qGtoUtrdTUNzjKxQ2mcPJe7RChsxfUcSWbrY_9Dq5dj0_BpISiT6PYZMRiyqF5rY4j0v-L2',
-    platform: 'TikTok',
-    status: 'Connected',
-    oauthStatus: 'Valid',
-    billingStatus: 'active',
-  },
-  {
-    id: 'acc_4',
-    customerName: 'Amaka Obi',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC9F82pmpav0m_f8T_JoCWlyQU30Ucx-jUElLEYXNHbrcVIGHVfaiOZIbxq51dmAnq8d7G4KY_sHxnzO0ihKb-OiC9GyfcRovYROqHzEeSEIzm_3aM_M4k0BkwjumY6qD7yk6R89A0N6Rtr_PRRIXbo86AdHr8HITviNV2leSphvda1iCbNCLhK4fDuKPe3ByoiGydT93mLZxHjK6ItxyXvtkIK4bk-b7RyD5R94CzckbGlEdXcnQZayM-hBfm-ab07S_GdA1FOZgwb',
-    platform: 'Instagram',
-    status: 'Connected',
-    oauthStatus: 'Valid',
-    billingStatus: 'active',
-  },
-  {
-    id: 'acc_5',
-    customerName: 'Emeka Nwosu',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB1EHZVYIthwPNNVo3j4TTcVFuZUUBWuIvRQOP4k4MxIGmEmIio2W7sGx4U2Aae80CwMciWphXciHiA99032qj3WPEPpOU84EK92rvKDZJGNZaRrwv8ZNd8O0xOVtZjPmkb57AikBnZ83JH5Pc3kLw23CvKOnC9VmFPrRzNtkq5Krb6y5lM1H7qi-MBTKTBS8EILyhdu6_DiK0EiAnFutYS8xamDN2cQkAohxZ6dAiIng-zscTWp6Ttgnu7m0GgoJ6pyf2rvriUjE4A',
-    platform: 'Facebook',
-    status: 'Connected',
-    oauthStatus: 'Valid',
-    billingStatus: 'cancelled',
-  },
-  {
-    id: 'acc_6',
-    customerName: 'Ngozi Eze',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC8F3iHu2WuS_YlMzr6lYAmHs2eecWjFvni6fExHnOIkdjl-svwtdttaiApjmblDijHzbcNutUclJySt8neIl6O-cV6cfrZXZqBli4xdjyCGVUh8eoRlk_09XJgTHrdzp5f--RL8Lm8-7NlqoUAfwReK-Tuv6y8bRbbafb79hCbyBRa7mEN-iQnHWyNkP5152Vrp3F8svSP_BV6VDaIuo2GxNagi1WFzgusJIzChwzi_GJMBAlsv4xKM4Xt29cBCnJoc3v2L_25JdVz',
-    platform: 'LinkedIn',
-    status: 'Disconnected',
-    oauthStatus: 'Expired',
-    billingStatus: 'active',
-  },
-  {
-    id: 'acc_7',
-    customerName: 'Biodun Femi',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD8xo3q9jtVG2TVcHe29eoSd87AsavYuAvrMjs3tC5KoWXv7cOqg55x4JtQzozhuyPdaA6trlNhhNhBIw-qsj39Jrhr9Do4AEoxpmn5JPhfFm4DIzZ-ZIIyI1g7dTbgC6Gk3hi9MWQ_jM7qFPJktGnjTqdv629Ku2e5NKpEn5T_Vz6dSfDDHHok9istSQ-l88KpZE1Gb7cgrmhqNL0vDgN3lDfi9FcHu1EoJBr7YLRht-NBVcvfJUOcgagPLezowr4B3elec65APXQe',
-    platform: 'X (Twitter)',
-    status: 'Connected',
-    oauthStatus: 'Valid',
-    billingStatus: 'active',
-  },
-]
 
-const INITIAL_LOGS = [
-  { id: 'log_1', message: 'TikTok token expired for Tunde Bakare', time: 'Today at 10:45 AM', detail: 'Token Refresh Failed', type: 'error' },
-  { id: 'log_2', message: 'Instagram reconnected for Amaka Obi', time: 'Today at 09:12 AM', detail: 'Authorization Successful', type: 'success' },
-  { id: 'log_3', message: 'Facebook connection established for Emeka Nwosu', time: 'Yesterday at 04:30 PM', detail: 'New Account Linked', type: 'success' },
-  { id: 'log_4', message: 'API Authentication Error: TikTok for Ifeanyi Obi', time: 'Yesterday at 11:20 AM', detail: 'Error Code 403: Invalid Secret', type: 'error' },
-  { id: 'log_5', message: 'LinkedIn connected for Ngozi Eze', time: '2 days ago at 08:00 AM', detail: 'New Account Linked', type: 'success' },
-]
 
 // ---------------------------------------------------------------------------
 // Platform icon config — returns icon component + colour + bg
@@ -158,7 +86,6 @@ function BillingBadge({ status }) {
 // ---------------------------------------------------------------------------
 const PAGE_SIZES = [10, 30, 60]
 const PLATFORMS = ['All Platforms', 'Instagram', 'Facebook', 'TikTok', 'LinkedIn', 'X (Twitter)']
-
 export default function SocialAccounts() {
   const navigate = useNavigate()
 
@@ -169,65 +96,72 @@ export default function SocialAccounts() {
   const [page, setPage] = useState(1)
 
   // Data
-  const [accounts, setAccounts] = useState(INITIAL_ACCOUNTS)
-  const [logs, setLogs] = useState(INITIAL_LOGS)
+  const [accounts, setAccounts] = useState([])
+  const [logs, setLogs] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [activeActionsRowId, setActiveActionsRowId] = useState(null)
 
-  // ---------------------------------------------------------------------------
-  // Timestamp helper
-  // ---------------------------------------------------------------------------
-  const nowStr = () => {
-    const d = new Date()
-    const h = d.getHours() % 12 || 12
-    const m = d.getMinutes().toString().padStart(2, '0')
-    const ampm = d.getHours() >= 12 ? 'PM' : 'AM'
-    return `Today at ${h}:${m} ${ampm}`
+  const loadData = async () => {
+    setIsLoading(true)
+    setError(null)
+    try {
+      const [accsRes, logsRes] = await Promise.all([
+        getAdminSocialAccounts(),
+        getActivityLogs({ module: 'SocialAccounts', limit: 10 }),
+      ])
+      setAccounts(accsRes)
+      setLogs(logsRes.data || [])
+    } catch (err) {
+      console.error('Failed to load social accounts data:', err)
+      setError('Failed to load social accounts database.')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  // ---------------------------------------------------------------------------
-  // Handlers
-  // ---------------------------------------------------------------------------
-  const handleDisconnect = (accountId) => {
-    const target = accounts.find(a => a.id === accountId)
-    if (!target) return
-    setAccounts(prev =>
-      prev.map(a => a.id === accountId ? { ...a, status: 'Disconnected', oauthStatus: 'Expired' } : a)
-    )
-    setLogs(prev => [{
-      id: `log_${Date.now()}`,
-      message: `${target.platform} disconnected for ${target.customerName}`,
-      time: nowStr(),
-      detail: 'Manual Disconnection',
-      type: 'error',
-    }, ...prev])
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const handleDisconnect = async (accountId) => {
+    if (!window.confirm('Are you sure you want to disconnect this social account?')) return
+    try {
+      await disconnectAdminSocialAccount(accountId)
+      alert('Social account disconnected successfully.')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      alert(err.message || 'Failed to disconnect account.')
+    }
     setActiveActionsRowId(null)
   }
 
-  const handleReconnect = (accountId) => {
-    const target = accounts.find(a => a.id === accountId)
-    if (!target) return
-    setAccounts(prev =>
-      prev.map(a => a.id === accountId ? { ...a, status: 'Connected', oauthStatus: 'Valid' } : a)
-    )
-    setLogs(prev => [{
-      id: `log_${Date.now()}`,
-      message: `${target.platform} reconnected for ${target.customerName}`,
-      time: nowStr(),
-      detail: 'Authorization Successful',
-      type: 'success',
-    }, ...prev])
-    setActiveActionsRowId(null)
+  const getPlatformLabel = (platform) => {
+    const mapping = {
+      instagram: 'Instagram',
+      facebook: 'Facebook',
+      tiktok: 'TikTok',
+      linkedin: 'LinkedIn',
+      x: 'X (Twitter)',
+      youtube: 'YouTube',
+    }
+    return mapping[platform.toLowerCase()] || platform
   }
-
-  const handleConnect = (accountId) => handleReconnect(accountId)
 
   // ---------------------------------------------------------------------------
   // Filtered + paginated data
   // ---------------------------------------------------------------------------
   const filtered = accounts.filter(acc => {
-    const matchesPlatform = platformFilter === 'All Platforms' || acc.platform === platformFilter
+    const matchesPlatform = platformFilter === 'All Platforms' ||
+      acc.platform.toLowerCase() === platformFilter.toLowerCase() ||
+      (platformFilter === 'X (Twitter)' && acc.platform.toLowerCase() === 'x')
+
     const matchesSearch = customerSearch === '' ||
-      acc.customerName.toLowerCase().includes(customerSearch.toLowerCase())
+      (acc.customerName || '').toLowerCase().includes(customerSearch.toLowerCase()) ||
+      (acc.email || '').toLowerCase().includes(customerSearch.toLowerCase()) ||
+      (acc.accountHandle || '').toLowerCase().includes(customerSearch.toLowerCase())
+
     return matchesPlatform && matchesSearch
   })
 
@@ -235,17 +169,20 @@ export default function SocialAccounts() {
   const safePage = Math.min(page, totalPages)
   const paginated = filtered.slice((safePage - 1) * pageSize, safePage * pageSize)
 
-  const healthyCount = 16 + accounts.filter(a => a.status === 'Connected').length
-  const totalConnections = 22
+  const healthyCount = accounts.filter(a => a.status === 'connected').length
+  const totalConnections = accounts.length
 
   return (
     <div className="space-y-6">
       {/* Page Header */}
       <PageHeader
-        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
         title="Connected Accounts"
         description="Manage third-party platform authorizations and status."
       />
+
+      {error && (
+        <ErrorBanner error={error} onDismiss={() => setError(null)} />
+      )}
 
       {/* Filters bar */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
@@ -254,7 +191,7 @@ export default function SocialAccounts() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" />
           <input
             type="text"
-            placeholder="Search by customer name…"
+            placeholder="Search by customer name, email or handle…"
             value={customerSearch}
             onChange={e => { setCustomerSearch(e.target.value); setPage(1) }}
             className="h-10 w-full rounded-control border border-border bg-surface pl-9 pr-4 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
@@ -288,7 +225,9 @@ export default function SocialAccounts() {
 
       {/* Connected Accounts Table */}
       <Card className="overflow-hidden p-0 border-border">
-        {paginated.length === 0 ? (
+        {isLoading ? (
+          <div className="px-6 py-20 text-center text-sm text-ink-muted">Loading social accounts database...</div>
+        ) : paginated.length === 0 ? (
           <EmptyState
             icon={<Share2 size={32} />}
             title="No connected accounts"
@@ -303,111 +242,83 @@ export default function SocialAccounts() {
                   <th className="px-6 py-4 text-xs font-semibold text-ink-muted uppercase tracking-wider">Platform</th>
                   <th className="px-6 py-4 text-xs font-semibold text-ink-muted uppercase tracking-wider">Connection Status</th>
                   <th className="px-6 py-4 text-xs font-semibold text-ink-muted uppercase tracking-wider">OAuth Status</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-ink-muted uppercase tracking-wider">Billing Status</th>
                   <th className="px-6 py-4 text-xs font-semibold text-ink-muted uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {paginated.map(acc => (
-                  <tr
-                    key={acc.id}
-                    className={cn(
-                      'transition-colors duration-150',
-                      acc.status === 'Disconnected'
-                        ? 'bg-primary-50/20 hover:bg-primary-50/30'
-                        : 'hover:bg-canvas'
-                    )}
-                  >
-                    {/* Customer */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <img
-                          className="w-10 h-10 rounded-full border border-border object-cover"
-                          src={acc.avatar}
-                          alt={acc.customerName}
-                        />
-                        <span className="font-semibold text-ink text-sm">{acc.customerName}</span>
-                      </div>
-                    </td>
+                {paginated.map(acc => {
+                  const isConnected = acc.status === 'connected'
+                  const statusLabel = isConnected ? 'Connected' : acc.status === 'disconnected' ? 'Disconnected' : 'Action Required'
+                  const oauthStatus = acc.tokenExpiresAt && new Date(acc.tokenExpiresAt) < new Date() ? 'Expired' : 'Valid'
+                  const platformLabel = getPlatformLabel(acc.platform)
 
-                    {/* Platform — icon with status dot */}
-                    <td className="px-6 py-4">
-                      <PlatformCell platform={acc.platform} status={acc.status} />
-                    </td>
+                  return (
+                    <tr
+                      key={acc.id}
+                      className={cn(
+                        'transition-colors duration-150',
+                        !isConnected ? 'bg-primary-50/20 hover:bg-primary-50/30' : 'hover:bg-canvas'
+                      )}
+                    >
+                      {/* Customer */}
+                      <td className="px-6 py-4">
+                        <div>
+                          <span className="font-semibold text-ink text-sm block">{acc.customerName || '—'}</span>
+                          <span className="text-xs text-ink-muted block">{acc.email || '—'}</span>
+                        </div>
+                      </td>
 
-                    {/* Connection Status */}
-                    <td className="px-6 py-4">
-                      <Badge
-                        tone={acc.status === 'Connected' ? 'success' : 'neutral'}
-                        className="gap-1 flex items-center w-fit"
-                      >
-                        <span
-                          className={cn(
-                            'w-1.5 h-1.5 rounded-full',
-                            acc.status === 'Connected' ? 'bg-accent-500' : 'bg-ink-muted'
+                      {/* Platform — icon with status dot */}
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <PlatformCell platform={platformLabel} status={isConnected ? 'Connected' : 'Disconnected'} />
+                          <span className="text-xs text-ink-muted">({acc.accountHandle || '—'})</span>
+                        </div>
+                      </td>
+
+                      {/* Connection Status */}
+                      <td className="px-6 py-4">
+                        <Badge
+                          tone={isConnected ? 'success' : 'neutral'}
+                          className="gap-1 flex items-center w-fit"
+                        >
+                          <span
+                            className={cn(
+                              'w-1.5 h-1.5 rounded-full',
+                              isConnected ? 'bg-accent-500' : 'bg-ink-muted'
+                            )}
+                          />
+                          {statusLabel}
+                        </Badge>
+                      </td>
+
+                      {/* OAuth Status */}
+                      <td className="px-6 py-4">
+                        <Badge tone={oauthStatus === 'Valid' ? 'success' : 'danger'} className="w-fit">
+                          {oauthStatus}
+                        </Badge>
+                      </td>
+
+                      {/* Actions */}
+                      <td className="px-6 py-4 text-right relative">
+                        <div className="flex items-center justify-end gap-2">
+                          {/* Disconnect button for Connected accounts */}
+                          {isConnected && (
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="h-7 px-2 text-xs gap-1"
+                              onClick={() => handleDisconnect(acc.id)}
+                            >
+                              <Link2Off size={12} />
+                              Disconnect
+                            </Button>
                           )}
-                        />
-                        {acc.status}
-                      </Badge>
-                    </td>
-
-                    {/* OAuth Status */}
-                    <td className="px-6 py-4">
-                      <Badge tone={acc.oauthStatus === 'Valid' ? 'success' : 'danger'} className="w-fit">
-                        {acc.oauthStatus}
-                      </Badge>
-                    </td>
-
-                    {/* Billing Status */}
-                    <td className="px-6 py-4">
-                      <BillingBadge status={acc.billingStatus} />
-                    </td>
-
-                    {/* Actions */}
-                    <td className="px-6 py-4 text-right relative">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Connect button for fully unconnected accounts */}
-                        {acc.status === 'Disconnected' && acc.oauthStatus !== 'Expired' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 px-2 text-xs gap-1"
-                            onClick={() => handleConnect(acc.id)}
-                          >
-                            <Link2 size={12} />
-                            Connect
-                          </Button>
-                        )}
-
-                        {/* Reconnect button for Expired OAuth */}
-                        {acc.status === 'Disconnected' && acc.oauthStatus === 'Expired' && (
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            className="h-7 px-2 text-xs gap-1"
-                            onClick={() => handleReconnect(acc.id)}
-                          >
-                            <RefreshCw size={12} />
-                            Reconnect
-                          </Button>
-                        )}
-
-                        {/* Disconnect button for Connected accounts */}
-                        {acc.status === 'Connected' && (
-                          <Button
-                            variant="destructive"
-                            size="sm"
-                            className="h-7 px-2 text-xs gap-1"
-                            onClick={() => handleDisconnect(acc.id)}
-                          >
-                            <Link2Off size={12} />
-                            Disconnect
-                          </Button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -458,25 +369,31 @@ export default function SocialAccounts() {
                 <ExternalLink size={14} />
               </Button>
             </div>
-            <div className="relative space-y-6">
-              {/* Vertical timeline line */}
-              <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-border" />
+            {logs.length === 0 ? (
+              <div className="text-sm text-ink-muted py-10 text-center">No connection logs available</div>
+            ) : (
+              <div className="relative space-y-6">
+                {/* Vertical timeline line */}
+                <div className="absolute left-4 top-2 bottom-2 w-0.5 bg-border" />
 
-              {logs.slice(0, 5).map(log => (
-                <div key={log.id} className="relative flex gap-4 pl-10">
-                  <div
-                    className={cn(
-                      'absolute left-[13px] top-2 w-[10px] h-[10px] rounded-full border-2 border-white',
-                      log.type === 'error' ? 'bg-danger' : 'bg-accent'
-                    )}
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-ink">{log.message}</p>
-                    <p className="text-xs text-ink-muted mt-0.5">{log.time} • {log.detail}</p>
+                {logs.slice(0, 5).map(log => (
+                  <div key={log.id} className="relative flex gap-4 pl-10">
+                    <div
+                      className={cn(
+                        'absolute left-[13px] top-2 w-[10px] h-[10px] rounded-full border-2 border-white',
+                        log.action === 'SOCIAL_ACCOUNT_DISCONNECTED' ? 'bg-danger' : 'bg-accent'
+                      )}
+                    />
+                    <div>
+                      <p className="text-sm font-medium text-ink">{log.description}</p>
+                      <p className="text-xs text-ink-muted mt-0.5">
+                        {new Date(log.createdAt).toLocaleString()} • {log.userName || 'System'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
@@ -496,7 +413,7 @@ export default function SocialAccounts() {
               <div className="w-full bg-white/20 h-2 rounded-full overflow-hidden">
                 <div
                   className="bg-white h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${(healthyCount / totalConnections) * 100}%` }}
+                  style={{ width: `${totalConnections > 0 ? (healthyCount / totalConnections) * 100 : 0}%` }}
                 />
               </div>
             </div>
