@@ -15,6 +15,7 @@ import { GenerateCaptionDto } from './dto/generate-caption.dto';
 import { GenerateIdeaDto } from './dto/generate-idea.dto';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
 import { N8nResponseDto } from './dto/n8n-response.dto';
+import { ApproveVariationDto } from './dto/approve-variation.dto';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { N8nInternalAuthGuard } from '../auth/guards/n8n-internal-auth.guard';
@@ -137,5 +138,20 @@ export class ContentSuggestionsController {
   @ApiOperation({ summary: '[Internal n8n] Receive generated suggestions from n8n workflow' })
   saveN8nSuggestions(@Body() dto: N8nResponseDto) {
     return this.contentSuggestionsService.saveN8nSuggestions(dto);
+  }
+
+  /**
+   * Approves an AI-generated suggestion variation, resolving scheduling times and social accounts
+   * to register a new scheduled post row.
+   */
+  @Post(':variationId/approve')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Approve a content variation and schedule it' })
+  approve(
+    @Param('variationId', ParseUUIDPipe) variationId: string,
+    @Body() dto: ApproveVariationDto,
+  ) {
+    return this.contentSuggestionsService.approveVariation(variationId, dto);
   }
 }
