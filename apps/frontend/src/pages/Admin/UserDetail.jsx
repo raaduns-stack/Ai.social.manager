@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -27,85 +27,8 @@ import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Modal from '../../components/ui/Modal'
 import AISettingsModal from '../../components/ai/AISettingsModal'
-
-const MOCK_USER_PROFILES = {
-  '1': {
-    id: 1,
-    name: 'Amaka Obi',
-    email: 'amaka.obi@example.com',
-    phone: '+234 801 234 5678',
-    status: 'Active',
-    plan: 'Brand Domination',
-    manager: 'Sarah Connor',
-    managerInitials: 'SC',
-    joinedDate: 'Oct 12, 2023',
-    lastActive: '2 hours ago',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBuDL7e89oUmiEFSMqsKBTSYuI621AZ6UKGFyhVQIANQIKnwOTdzYYeZiFtPg-XP8NOyDR7psAKfR4F-aZc1ef0h5NNmHFlU3Uf-bfZ8iyBZc766d9Jk_n7uVj6TKJmStLugxsO2Sa5clU8BgYxA5O7medcAKDF9XWc_WG7AmMplMvAYAnPPurp6oByzDUS1h-j1NxLiSRGRyFOpAtURZ5oueztclADS0-CrdG42tdLcqoX43VxpklccKDCpj7fjzr-0xLqsXRGKhki',
-    activities: [
-      {
-        id: 1,
-        title: 'Subscribed to Brand Domination Monthly',
-        description: 'Billing cycle successfully updated to premium tier.',
-        time: 'Just now',
-        icon: CreditCard,
-        color: 'bg-primary-50 text-primary',
-      },
-      {
-        id: 2,
-        title: 'Connected Facebook Page',
-        description: "Linked 'Obi Creative Studio' official page.",
-        time: '2 hours ago',
-        icon: Share2,
-        color: 'bg-accent-50 text-accent',
-      },
-      {
-        id: 3,
-        title: 'Created new campaign',
-        description: 'Holiday Blitz 2024 - Active for 15 nodes.',
-        time: 'Yesterday, 4:22 PM',
-        icon: Megaphone,
-        color: 'bg-primary-50 text-primary-700',
-      },
-      {
-        id: 4,
-        title: 'Support ticket resolved',
-        description: 'Ticket #8841: API Authentication Issue settled.',
-        time: 'Dec 12, 2023',
-        icon: Ticket,
-        color: 'bg-accent-50 text-accent-600',
-      },
-      {
-        id: 5,
-        title: 'Updated profile photo',
-        description: 'System synchronization completed successfully.',
-        time: 'Nov 30, 2023',
-        icon: User,
-        color: 'bg-canvas text-ink-muted',
-      },
-    ],
-    subscription: {
-      billingCycle: 'Monthly',
-      price: '₦150,000/month',
-      nextRenewal: 'Nov 12, 2026',
-      paymentMethod: 'Visa ending in 4242',
-      invoices: [
-        { id: 'INV-2026-004', date: 'Oct 12, 2026', amount: '₦150,000', status: 'Paid' },
-        { id: 'INV-2026-003', date: 'Sep 12, 2026', amount: '₦150,000', status: 'Paid' },
-        { id: 'INV-2026-002', date: 'Aug 12, 2026', amount: '₦150,000', status: 'Paid' },
-      ],
-    },
-    accounts: [
-      { id: 'fb', platform: 'Facebook', page: 'Obi Creative Studio', status: 'Connected', icon: Share2 },
-      { id: 'tw', platform: 'Twitter/X', page: '@amaka_obi', status: 'Connected', icon: Share2 },
-      { id: 'li', platform: 'LinkedIn', page: 'Amaka Obi Professional', status: 'Connected', icon: Share2 },
-      { id: 'ig', platform: 'Instagram', page: '@obi.creatives', status: 'Disconnected', icon: Share2 },
-    ],
-    tickets: [
-      { id: '8841', subject: 'API Authentication Issue', status: 'Resolved', date: 'Dec 12, 2023' },
-      { id: '8210', subject: 'Custom Template Request', status: 'Closed', date: 'Nov 15, 2023' },
-    ],
-  },
-}
+import { getAdminUserDetail, suspendUser, deleteUser } from '../../features/admin/admin-api'
+import ErrorBanner from '../../components/error-banner'
 
 const PLAN_PRICES = {
   'Free': '₦0/month',
@@ -119,11 +42,9 @@ export default function UserDetail() {
   const id = userId
   const navigate = useNavigate()
   
-  // Lookup user by ID, fallback to Amaka Obi (id = 1)
-  const [user, setUser] = useState(() => {
-    const profile = MOCK_USER_PROFILES[id] || MOCK_USER_PROFILES['1']
-    return { ...profile }
-  })
+  const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   const [activeTab, setActiveTab] = useState('overview')
   
@@ -132,6 +53,31 @@ export default function UserDetail() {
   const [isSuspendModalOpen, setIsSuspendModalOpen] = useState(false)
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false)
   const [isAISettingsOpen, setIsAISettingsOpen] = useState(false)
+
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getAdminUserDetail(userId)
+      setUser(data)
+      setEditForm({
+        name: data.name || '',
+        email: data.email || '',
+        phone: data.phone || '',
+        plan: data.plan || 'Free',
+        manager: data.manager || '',
+      })
+    } catch (err) {
+      console.error(err)
+      setError('Failed to fetch user details.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [userId])
 
   const [userPlatforms, setUserPlatforms] = useState([
     {
@@ -178,11 +124,11 @@ Include a clean list of hashtags at the end.`,
   }
 
   const [editForm, setEditForm] = useState({
-    name: user.name,
-    email: user.email,
-    phone: user.phone,
-    plan: user.plan,
-    manager: user.manager,
+    name: '',
+    email: '',
+    phone: '',
+    plan: 'Free',
+    manager: '',
   })
 
   const handleEditSubmit = (e) => {
@@ -208,18 +154,29 @@ Include a clean list of hashtags at the end.`,
     setIsEditModalOpen(false)
   }
 
-  const handleSuspendConfirm = () => {
-    setUser((prev) => ({
-      ...prev,
-      status: prev.status === 'Suspended' ? 'Active' : 'Suspended',
-    }))
+  const handleSuspendConfirm = async () => {
+    try {
+      const isCurrentlySuspended = user.status === 'Suspended'
+      await suspendUser(userId, !isCurrentlySuspended)
+      alert(isCurrentlySuspended ? 'User has been unsuspended.' : 'User has been suspended.')
+      loadData()
+    } catch (err) {
+      console.error(err)
+      alert('Failed to update suspension status.')
+    }
     setIsSuspendModalOpen(false)
   }
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
+    try {
+      await deleteUser(userId)
+      alert(`User ${user.name} has been deleted.`)
+      navigate('/admin/users')
+    } catch (err) {
+      console.error(err)
+      alert('Failed to delete user.')
+    }
     setIsDeleteModalOpen(false)
-    alert(`User ${user.name} has been deleted.`)
-    navigate('/admin/users')
   }
 
   const tabs = [
@@ -229,6 +186,25 @@ Include a clean list of hashtags at the end.`,
     { id: 'accounts', label: 'Connected Accounts' },
     { id: 'tickets', label: 'Tickets' },
   ]
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <p className="text-sm text-ink-muted">Loading user profile database...</p>
+      </div>
+    )
+  }
+
+  if (error || !user) {
+    return (
+      <div className="space-y-6">
+        {error && <ErrorBanner error={error} />}
+        <Link to="/admin/users" className="text-sm font-semibold text-primary hover:underline">
+          &larr; Back to Users List
+        </Link>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -359,28 +335,24 @@ Include a clean list of hashtags at the end.`,
             <Card className="p-5 flex flex-col gap-2">
               <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Account Manager</span>
               <div className="flex items-center gap-3">
-                {user.manager ? (
-                  <>
-                    <div className="w-8 h-8 rounded-full bg-primary-50 text-primary font-bold flex items-center justify-center text-xs shrink-0">
-                      {user.managerInitials}
-                    </div>
-                    <p className="text-sm font-bold text-ink">{user.manager}</p>
-                  </>
-                ) : (
-                  <p className="text-sm font-bold text-ink-muted">—</p>
-                )}
+                <div className="w-8 h-8 rounded-full bg-primary-50 text-primary font-bold flex items-center justify-center text-xs shrink-0">
+                   —
+                </div>
+                <p className="text-sm font-bold text-ink-muted">—</p>
               </div>
             </Card>
 
             <Card className="p-5 flex flex-col gap-2">
               <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Member Since</span>
-              <p className="text-xl font-bold text-ink">{user.joinedDate}</p>
+              <p className="text-xl font-bold text-ink">
+                {user.joinedDate ? new Date(user.joinedDate).toLocaleDateString() : '—'}
+              </p>
             </Card>
 
             <Card className="p-5 flex flex-col gap-2">
-              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">Last Active</span>
+              <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">User Status</span>
               <div className="flex items-center gap-1.5 text-accent">
-                <p className="text-xl font-bold">{user.lastActive}</p>
+                <p className="text-xl font-bold">{user.status}</p>
                 <Zap size={16} className="fill-current" />
               </div>
             </Card>
@@ -397,26 +369,29 @@ Include a clean list of hashtags at the end.`,
                 </button>
               </div>
               <div className="divide-y divide-border/50">
-                {user.activities.slice(0, 5).map((act) => {
-                  const Icon = act.icon
-                  return (
+                {!user.activities || user.activities.length === 0 ? (
+                  <div className="px-6 py-10 text-center text-ink-muted text-xs font-medium">
+                    No recent activity recorded.
+                  </div>
+                ) : (
+                  user.activities.slice(0, 5).map((act) => (
                     <div
                       key={act.id}
                       className="px-6 py-4 flex items-center gap-4 hover:bg-canvas/30 transition-colors group cursor-default"
                     >
-                      <div className={`w-10 h-10 rounded-control flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${act.color}`}>
-                        <Icon size={20} />
+                      <div className="w-10 h-10 rounded-control flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform bg-primary-50 text-primary">
+                        <Clock size={20} />
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-semibold text-ink">{act.title}</p>
                         <p className="text-xs text-ink-muted mt-0.5">{act.description}</p>
                       </div>
                       <span className="text-xs text-ink-muted font-medium ml-4 shrink-0 whitespace-nowrap">
-                        {act.time}
+                        {new Date(act.time).toLocaleDateString()}
                       </span>
                     </div>
-                  )
-                })}
+                  ))
+                )}
               </div>
             </Card>
           </div>
@@ -439,19 +414,17 @@ Include a clean list of hashtags at the end.`,
                 </div>
                 <div className="flex justify-between border-b border-border/55 pb-3">
                   <span className="text-sm text-ink-muted">Billing Cycle</span>
-                  <span className="text-sm font-medium text-ink">{user.subscription.billingCycle}</span>
-                </div>
-                <div className="flex justify-between border-b border-border/55 pb-3">
-                  <span className="text-sm text-ink-muted">Amount</span>
-                  <span className="text-sm font-semibold text-ink">{user.subscription.price}</span>
+                  <span className="text-sm font-medium text-ink">
+                    {user.subscription ? 'Monthly/Annual' : '—'}
+                  </span>
                 </div>
                 <div className="flex justify-between border-b border-border/55 pb-3">
                   <span className="text-sm text-ink-muted">Renewal Date</span>
-                  <span className="text-sm font-medium text-ink">{user.subscription.nextRenewal}</span>
-                </div>
-                <div className="flex justify-between pb-1">
-                  <span className="text-sm text-ink-muted">Method</span>
-                  <span className="text-sm font-medium text-ink">{user.subscription.paymentMethod}</span>
+                  <span className="text-sm font-medium text-ink">
+                    {user.subscription?.currentPeriodEnd
+                      ? new Date(user.subscription.currentPeriodEnd).toLocaleDateString()
+                      : '—'}
+                  </span>
                 </div>
               </div>
             </Card>
@@ -461,30 +434,40 @@ Include a clean list of hashtags at the end.`,
                 <h3 className="text-base font-semibold text-ink">Invoice History</h3>
               </div>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead>
-                    <tr className="border-b border-border text-ink-muted">
-                      <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Invoice ID</th>
-                      <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Date</th>
-                      <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Amount</th>
-                      <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {user.subscription.invoices.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-canvas/20">
-                        <td className="px-6 py-3 font-medium text-ink">{inv.id}</td>
-                        <td className="px-6 py-3 text-ink-muted">{inv.date}</td>
-                        <td className="px-6 py-3 font-semibold text-ink">{inv.amount}</td>
-                        <td className="px-6 py-3">
-                          <Badge tone="success" className="font-semibold text-[10px]">
-                            {inv.status}
-                          </Badge>
-                        </td>
+                {!user.invoices || user.invoices.length === 0 ? (
+                  <div className="px-6 py-10 text-center text-ink-muted text-xs font-medium">
+                    No invoice records found.
+                  </div>
+                ) : (
+                  <table className="w-full text-sm text-left">
+                    <thead>
+                      <tr className="border-b border-border text-ink-muted">
+                        <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Invoice ID</th>
+                        <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Date</th>
+                        <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Amount</th>
+                        <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-border/50">
+                      {user.invoices.map((inv) => (
+                        <tr key={inv.id} className="hover:bg-canvas/20">
+                          <td className="px-6 py-3 font-medium text-ink">{inv.invoiceNumber}</td>
+                          <td className="px-6 py-3 text-ink-muted">
+                            {inv.issuedAt ? new Date(inv.issuedAt).toLocaleDateString() : '—'}
+                          </td>
+                          <td className="px-6 py-3 font-semibold text-ink">
+                            {inv.currency} {inv.amount?.toLocaleString()}
+                          </td>
+                          <td className="px-6 py-3">
+                            <Badge tone={inv.status === 'paid' ? 'success' : 'warning'} className="font-semibold text-[10px]">
+                              {inv.status}
+                            </Badge>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
             </Card>
           </div>
@@ -496,45 +479,47 @@ Include a clean list of hashtags at the end.`,
               <h3 className="text-base font-semibold text-ink">Comprehensive Activity Timeline</h3>
             </div>
             <div className="divide-y divide-border/50">
-              {user.activities.map((act) => {
-                const Icon = act.icon
-                return (
+              {!user.activities || user.activities.length === 0 ? (
+                <div className="px-6 py-10 text-center text-ink-muted text-xs font-medium">
+                  No activity log database recorded.
+                </div>
+              ) : (
+                user.activities.map((act) => (
                   <div
                     key={act.id}
                     className="px-6 py-4 flex items-center gap-4 hover:bg-canvas/30 transition-colors group cursor-default"
                   >
-                    <div className={`w-10 h-10 rounded-control flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform ${act.color}`}>
-                      <Icon size={20} />
+                    <div className="w-10 h-10 rounded-control flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform bg-canvas text-ink-muted">
+                      <Clock size={20} />
                     </div>
                     <div className="flex-1">
                       <p className="text-sm font-semibold text-ink">{act.title}</p>
                       <p className="text-xs text-ink-muted mt-0.5">{act.description}</p>
                     </div>
                     <span className="text-xs text-ink-muted font-medium ml-4 shrink-0 whitespace-nowrap">
-                      {act.time}
+                      {new Date(act.time).toLocaleString()}
                     </span>
                   </div>
-                )
-              })}
+                ))
+              )}
             </div>
           </Card>
         )}
 
         {activeTab === 'accounts' && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {user.accounts.map((acct) => {
-              const Icon = acct.icon
-              return (
+            {!user.socialAccounts || user.socialAccounts.length === 0 ? (
+              <div className="md:col-span-2 text-center text-sm text-ink-muted py-10">No connected social accounts found.</div>
+            ) : (
+              user.socialAccounts.map((acct) => (
                 <Card key={acct.id} className="p-6 flex items-start justify-between">
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-control flex items-center justify-center shrink-0 ${
-                      acct.status === 'Connected' ? 'bg-primary-50 text-primary' : 'bg-canvas text-ink-muted'
-                    }`}>
-                      <Icon size={24} />
+                    <div className="w-12 h-12 rounded-control flex items-center justify-center shrink-0 bg-primary-50 text-primary">
+                      <Share2 size={24} />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-ink">{acct.platform}</h4>
-                      <p className="text-xs text-ink-muted mt-0.5">{acct.status === 'Connected' ? acct.page : 'Not connected'}</p>
+                      <h4 className="font-semibold text-ink capitalize">{acct.platform}</h4>
+                      <p className="text-xs text-ink-muted mt-0.5">{acct.accountHandle}</p>
                     </div>
                   </div>
 
@@ -542,13 +527,10 @@ Include a clean list of hashtags at the end.`,
                     <Badge tone={acct.status === 'Connected' ? 'success' : 'neutral'} className="font-semibold text-[10px]">
                       {acct.status}
                     </Badge>
-                    <Button variant="ghost" size="sm" className="text-primary font-semibold text-xs h-7 hover:underline hover:bg-transparent">
-                      {acct.status === 'Connected' ? 'Manage' : 'Connect'}
-                    </Button>
                   </div>
                 </Card>
-              )
-            })}
+              ))
+            )}
           </div>
         )}
 
@@ -556,36 +538,8 @@ Include a clean list of hashtags at the end.`,
           <Card className="overflow-hidden p-0">
             <div className="px-6 py-4 border-b border-border flex justify-between items-center">
               <h3 className="text-base font-semibold text-ink">Support Tickets</h3>
-              <Button variant="outline" size="sm" className="text-xs h-8">
-                Create Ticket
-              </Button>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm text-left">
-                <thead>
-                  <tr className="border-b border-border text-ink-muted bg-canvas/30">
-                    <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Ticket ID</th>
-                    <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Subject</th>
-                    <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 font-semibold text-xs uppercase tracking-wider">Date Created</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {user.tickets.map((t) => (
-                    <tr key={t.id} className="hover:bg-canvas/20">
-                      <td className="px-6 py-3 font-bold text-ink">#{t.id}</td>
-                      <td className="px-6 py-3 font-medium text-ink">{t.subject}</td>
-                      <td className="px-6 py-3">
-                        <Badge tone={t.status === 'Resolved' ? 'success' : 'neutral'} className="font-bold text-[10px]">
-                          {t.status}
-                        </Badge>
-                      </td>
-                      <td className="px-6 py-3 text-ink-muted">{t.date}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <div className="p-6 text-center text-sm text-ink-muted">No support tickets found for this user.</div>
           </Card>
         )}
       </div>

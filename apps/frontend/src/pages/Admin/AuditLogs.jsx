@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Calendar,
   Filter,
@@ -15,65 +15,50 @@ import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
-
-const INITIAL_LOGS = [
-  {
-    id: 1,
-    type: 'Login',
-    detail: 'Admin login successful from IP 192.168.1.1',
-    actor: 'Admin: Sarah Connor',
-    time: '10 mins ago',
-    ip: '192.168.1.1',
-    status: 'success',
-  },
-  {
-    id: 2,
-    type: 'Payment',
-    detail: "Subscription plan 'Enterprise' successfully renewed for customer: Acme Corp",
-    actor: 'System',
-    time: '2 hours ago',
-    status: 'success',
-  },
-  {
-    id: 3,
-    type: 'Publishing',
-    detail: 'Failed to publish scheduled post to Instagram: API Authentication Error',
-    actor: 'System',
-    time: '5 hours ago',
-    status: 'failed',
-  },
-  {
-    id: 4,
-    type: 'System',
-    detail: "Prompt template 'Professional LinkedIn' updated by orchestrator",
-    actor: 'Admin: Alex Rivera',
-    time: 'Yesterday',
-    status: 'success',
-  },
-  {
-    id: 5,
-    type: 'Login',
-    detail: 'Multiple failed login attempts detected for account: admin@raasocial.io',
-    actor: 'System',
-    time: 'Oct 24, 2023',
-    status: 'failed',
-  },
-  {
-    id: 6,
-    type: 'Publishing',
-    detail: "Successfully published 15 posts across all channels for 'Holiday Blitz' campaign",
-    actor: 'Admin: Amaka Obi',
-    time: 'Oct 23, 2023',
-    status: 'success',
-  },
-]
+import { getActivityLogs } from '../../features/admin/activity-logs-api'
+import ErrorBanner from '../../components/error-banner'
 
 export default function AuditLogs() {
-  const [logs] = useState(INITIAL_LOGS)
+  const [logs, setLogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalLogs, setTotalLogs] = useState(0)
+  const LIMIT = 20
+
   const [selectedType, setSelectedType] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedLog, setSelectedLog] = useState(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const loadLogs = async (currentPage = 1) => {
+    setLoading(true)
+    setError(null)
+    try {
+      const queryParams = {
+        page: currentPage,
+        limit: LIMIT,
+      }
+      if (selectedType !== 'All') {
+        queryParams.module = selectedType
+      }
+      const res = await getActivityLogs(queryParams)
+      setLogs(res.data || [])
+      setPage(res.meta?.page || 1)
+      setTotalPages(res.meta?.totalPages || 1)
+      setTotalLogs(res.meta?.total || 0)
+    } catch (err) {
+      console.error('Failed to load audit logs:', err)
+      setError('Failed to retrieve system audit trail logs.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadLogs(page)
+  }, [selectedType, page])
 
   // Dynamic filter for log records
   const filteredLogs = useMemo(() => {
@@ -152,88 +137,84 @@ export default function AuditLogs() {
 
       {/* LOG VIEWER CARD */}
       <Card className="p-0 overflow-hidden shadow-soft">
-        <div className="overflow-x-auto">
-          <div className="min-w-[800px]">
-            {/* Table Header */}
-            <div className="grid grid-cols-[120px_1fr_220px] gap-4 px-6 py-3 bg-canvas/60 border-b border-border text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              <span>Type</span>
-              <span>Detail</span>
-              <span>Metadata</span>
-            </div>
+        {loading ? (
+          <div className="px-6 py-20 text-center text-sm text-ink-muted">Loading audit trail...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <div className="min-w-[800px]">
+              {/* Table Header */}
+              <div className="grid grid-cols-[140px_1fr_220px] gap-4 px-6 py-3 bg-canvas/60 border-b border-border text-xs font-semibold text-ink-muted uppercase tracking-wider">
+                <span>Module</span>
+                <span>Description</span>
+                <span>Metadata</span>
+              </div>
 
-            {/* Log Rows */}
-            <div className="divide-y divide-border bg-surface">
-              {filteredLogs.length === 0 ? (
-                <div className="px-6 py-10 text-center text-ink-muted text-xs font-medium">
-                  No audit trail records match the selected filters.
-                </div>
-              ) : (
-                filteredLogs.map((log) => {
-                  let toneVal = 'neutral'
-                  if (log.type === 'Login') toneVal = 'primary'
-                  if (log.type === 'Payment') toneVal = 'success'
-                  if (log.type === 'Publishing') {
-                    toneVal = log.status === 'failed' ? 'danger' : 'success'
-                  }
+              {/* Log Rows */}
+              <div className="divide-y divide-border bg-surface">
+                {filteredLogs.length === 0 ? (
+                  <div className="px-6 py-10 text-center text-ink-muted text-xs font-medium">
+                    No audit trail records match the selected filters.
+                  </div>
+                ) : (
+                  filteredLogs.map((log) => {
+                    let toneVal = 'neutral'
+                    const modLower = (log.module || '').toLowerCase()
+                    if (modLower.includes('login') || modLower.includes('auth')) toneVal = 'primary'
+                    if (modLower.includes('billing') || modLower.includes('plan')) toneVal = 'success'
+                    if (modLower.includes('calendar') || modLower.includes('post')) toneVal = 'accent'
 
-                  return (
-                    <div
-                      key={log.id}
-                      onClick={() => handleOpenDetailModal(log)}
-                      className="grid grid-cols-[120px_1fr_220px] gap-4 px-6 py-4 hover:bg-canvas/40 transition-colors cursor-pointer group items-center"
-                    >
-                      <div>
-                        <Badge tone={toneVal}>{log.type}</Badge>
+                    return (
+                      <div
+                        key={log.id}
+                        onClick={() => handleOpenDetailModal(log)}
+                        className="grid grid-cols-[140px_1fr_220px] gap-4 px-6 py-4 hover:bg-canvas/40 transition-colors cursor-pointer group items-center"
+                      >
+                        <div>
+                          <Badge tone={toneVal}>{log.module}</Badge>
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold truncate text-ink">
+                            {log.description}
+                          </p>
+                        </div>
+                        <div className="flex flex-col text-xs text-ink-muted">
+                          <span className="font-semibold text-ink">{log.userName || 'System'}</span>
+                          <span>{new Date(log.createdAt).toLocaleString()}</span>
+                        </div>
                       </div>
-                      <div>
-                        <p
-                          className={`text-sm font-semibold truncate ${
-                            log.status === 'failed' ? 'text-danger' : 'text-ink'
-                          }`}
-                        >
-                          {log.detail}
-                        </p>
-                      </div>
-                      <div className="flex flex-col text-xs text-ink-muted">
-                        <span className="font-semibold text-ink">{log.actor}</span>
-                        <span>{log.time}</span>
-                      </div>
-                    </div>
-                  )
-                })
-              )}
+                    )
+                  })
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* PAGINATION */}
-        <div className="px-6 py-3 bg-surface border-t border-border flex items-center justify-between text-xs text-ink-muted">
-          <span>Showing {filteredLogs.length} of 1,248 entries</span>
-          <div className="flex items-center gap-1">
-            <button
-              disabled
-              className="p-1 hover:bg-canvas rounded-control transition-colors disabled:opacity-30 border border-border"
-            >
-              <ChevronLeft size={16} />
-            </button>
-            <button className="w-7 h-7 flex items-center justify-center rounded bg-primary text-white font-semibold">
-              1
-            </button>
-            <button className="w-7 h-7 flex items-center justify-center rounded hover:bg-canvas border border-transparent hover:border-border font-semibold transition-colors">
-              2
-            </button>
-            <button className="w-7 h-7 flex items-center justify-center rounded hover:bg-canvas border border-transparent hover:border-border font-semibold transition-colors">
-              3
-            </button>
-            <span className="mx-1">...</span>
-            <button className="w-7 h-7 flex items-center justify-center rounded hover:bg-canvas border border-transparent hover:border-border font-semibold transition-colors">
-              42
-            </button>
-            <button className="p-1 hover:bg-canvas rounded-control transition-colors border border-border">
-              <ChevronRight size={16} />
-            </button>
+        {totalLogs > 0 && (
+          <div className="px-6 py-3 bg-surface border-t border-border flex items-center justify-between text-xs text-ink-muted">
+            <span>Showing {Math.min((page - 1) * LIMIT + 1, totalLogs)}–{Math.min(page * LIMIT, totalLogs)} of {totalLogs} entries</span>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page <= 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Previous
+              </Button>
+              <span className="mx-2 font-semibold">Page {page} of {totalPages}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
       </Card>
 
       {/* QUICK STATS BENTO */}
@@ -241,40 +222,40 @@ export default function AuditLogs() {
         <Card className="p-5 shadow-soft flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Total Actions (24h)
+              Total Audit Logs (All-Time)
             </span>
             <Activity size={16} className="text-primary" />
           </div>
-          <h3 className="text-2xl font-bold text-ink">3,204</h3>
+          <h3 className="text-2xl font-bold text-ink">{loading ? '—' : totalLogs.toLocaleString()}</h3>
           <div className="flex items-center gap-1 text-accent text-xs font-semibold">
-            <span>+12.5% from yesterday</span>
+            <span>Live audit database synchronization</span>
           </div>
         </Card>
 
         <Card className="p-5 shadow-soft flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Failed Events
+              Filter Module
             </span>
-            <AlertTriangle size={16} className="text-danger" />
+            <AlertTriangle size={16} className="text-warning" />
           </div>
-          <h3 className="text-2xl font-bold text-ink">18</h3>
-          <div className="flex items-center gap-1 text-danger text-xs font-semibold">
-            <span>+2 since last hour</span>
+          <h3 className="text-2xl font-bold text-ink capitalize">{selectedType}</h3>
+          <div className="flex items-center gap-1 text-ink-muted text-xs font-semibold">
+            <span>Filtered subset display</span>
           </div>
         </Card>
 
         <Card className="p-5 shadow-soft flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-              Active Admins
+              System Audit scope
             </span>
             <UserCheck size={16} className="text-primary" />
           </div>
-          <h3 className="text-2xl font-bold text-ink">12</h3>
+          <h3 className="text-2xl font-bold text-ink">Production</h3>
           <div className="flex items-center gap-1 text-ink-muted text-xs font-semibold">
             <Eye size={12} />
-            <span>Real-time monitoring active</span>
+            <span>Real-time tracking active</span>
           </div>
         </Card>
       </div>
@@ -289,42 +270,30 @@ export default function AuditLogs() {
           <div className="space-y-4 text-sm text-ink">
             <div className="flex items-center justify-between border-b border-border pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-ink-muted uppercase">Type:</span>
-                <Badge
-                  tone={
-                    selectedLog.type === 'Login'
-                      ? 'primary'
-                      : selectedLog.type === 'Payment'
-                      ? 'success'
-                      : selectedLog.status === 'failed'
-                      ? 'danger'
-                      : 'neutral'
-                  }
-                >
-                  {selectedLog.type}
+                <span className="text-xs font-semibold text-ink-muted uppercase">Module:</span>
+                <Badge tone="primary">
+                  {selectedLog.module}
                 </Badge>
               </div>
-              <span className="text-xs text-ink-muted">{selectedLog.time}</span>
+              <span className="text-xs text-ink-muted">{new Date(selectedLog.createdAt).toLocaleString()}</span>
             </div>
 
             <div>
               <p className="text-xs font-semibold text-ink-muted uppercase mb-1">Event Detail</p>
-              <p className={`font-semibold ${selectedLog.status === 'failed' ? 'text-danger' : 'text-ink'}`}>
-                {selectedLog.detail}
+              <p className="font-semibold text-ink">
+                {selectedLog.description}
               </p>
             </div>
 
             <div className="grid grid-cols-2 gap-4 border-t border-border pt-3">
               <div>
                 <p className="text-xs font-semibold text-ink-muted uppercase mb-1">Actor</p>
-                <p className="font-semibold text-ink">{selectedLog.actor}</p>
+                <p className="font-semibold text-ink">{selectedLog.userName || 'System'}</p>
               </div>
-              {selectedLog.ip && (
-                <div>
-                  <p className="text-xs font-semibold text-ink-muted uppercase mb-1">IP Address</p>
-                  <p className="font-semibold text-ink">{selectedLog.ip}</p>
-                </div>
-              )}
+              <div>
+                <p className="text-xs font-semibold text-ink-muted uppercase mb-1">Action Code</p>
+                <p className="font-semibold text-ink font-mono text-xs">{selectedLog.action || '—'}</p>
+              </div>
             </div>
 
             <div className="border-t border-border pt-3">
@@ -333,10 +302,10 @@ export default function AuditLogs() {
                 {JSON.stringify(
                   {
                     logId: selectedLog.id,
-                    timestamp: new Date().toISOString(),
-                    status: selectedLog.status,
+                    timestamp: selectedLog.createdAt,
+                    userId: selectedLog.userId || null,
+                    userRole: selectedLog.userRole || null,
                     systemScope: 'Production Console',
-                    node: 'ai-orchestrator-instance-09',
                   },
                   null,
                   2

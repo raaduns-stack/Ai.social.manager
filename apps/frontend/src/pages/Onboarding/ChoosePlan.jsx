@@ -118,7 +118,7 @@ export default function ChoosePlan() {
                         {plan.name === 'Brand Domination' ? 'Enterprise' : plan.name}
                       </h3>
                       <p className="text-sm text-[#666666] leading-relaxed mb-4">
-                        {PLAN_DETAILS[plan.slug]?.description || ''}
+                        {plan.description || PLAN_DETAILS[plan.slug]?.description || ''}
                       </p>
                       <div className="flex items-baseline gap-1 mt-2">
                         <span className="text-4xl font-extrabold text-[#111111] font-['Plus_Jakarta_Sans'] tracking-tight">
