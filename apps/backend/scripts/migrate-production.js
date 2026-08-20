@@ -14,7 +14,7 @@ if (!process.env.DATABASE_URL) {
   }
 
   console.log('Connecting to database...');
-  const sql = postgres(dbUrl, { ssl: 'require' });
+  const sql = postgres(dbUrl);
 
   try {
     console.log('1. Checking & creating custom enum types...');
