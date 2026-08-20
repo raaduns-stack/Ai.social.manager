@@ -50,6 +50,7 @@ import {
   updateCalendarPost,
   generateAICalendar,
   getGenerationJobStatus,
+  getCalendarUsage,
 } from '../../features/calendar/calendar-api'
 import {
   getPostSuggestions,
@@ -595,23 +596,6 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
     e.preventDefault()
     setIsSaving(true)
     try {
-      if (post?.scheduledAt && editDate) {
-        const getWeekStart = (d) => {
-          const temp = new Date(d);
-          const day = temp.getDay();
-          temp.setDate(temp.getDate() - day);
-          temp.setHours(0, 0, 0, 0);
-          return temp.getTime();
-        };
-        const origWeek = getWeekStart(new Date(post.scheduledAt));
-        const newWeek = getWeekStart(new Date(editDate + 'T00:00:00'));
-        if (origWeek !== newWeek) {
-          alert('You can only reschedule a post within the same week.');
-          setIsSaving(false);
-          return;
-        }
-      }
-
       let scheduledAt = null
       if (editDate) {
         scheduledAt = editTime ? `${editDate}T${editTime}:00` : `${editDate}T12:00:00`
@@ -620,12 +604,14 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
         title: editTitle,
         caption: editCaption,
         platform: editPlatform,
+        scheduledDate: editDate || null,
+        scheduledTime: editTime || null,
         scheduledAt,
       })
       onUpdated(updated)
       setIsEditing(false)
     } catch (err) {
-      alert(err.message || 'Failed to save edits.')
+      alert(err.response?.data?.message || err.message || 'Failed to save edits.')
     } finally {
       setIsSaving(false)
     }
@@ -932,6 +918,7 @@ export default function ContentCalendar() {
   const [upcomingPosts, setUpcomingPosts] = useState([])
   const [publishedPosts, setPublishedPosts] = useState([])
 
+  const [usageInfo, setUsageInfo] = useState(null)
   const [loading, setLoading] = useState(false)
   const [kycLoading, setKycLoading] = useState(true)
   const [kycRecord, setKycRecord] = useState(null)
@@ -950,7 +937,7 @@ export default function ContentCalendar() {
   // ── Fetch logic ────────────────────────────────────────────────────────────
 
   /**
-   * Fetch all three post lists in parallel on mount.
+   * Fetch all three post lists and usage limits in parallel on mount.
    * Re-fetches if the authenticated user changes.
    */
   const fetchAll = useCallback(async () => {
@@ -958,17 +945,20 @@ export default function ContentCalendar() {
     setLoading(true)
     setError(null)
     try {
-      const [all, upcoming, published, kyc, socialAccountsRes] = await Promise.all([
+      const targetMonth = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`
+      const [all, upcoming, published, kyc, socialAccountsRes, usage] = await Promise.all([
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
         getMyKyc(),
-        apiClient.get('/social-accounts')
+        apiClient.get('/social-accounts'),
+        getCalendarUsage(userId, targetMonth),
       ])
       setAllPosts(all)
       setUpcomingPosts(upcoming)
       setPublishedPosts(published)
       setKycRecord(kyc)
+      setUsageInfo(usage)
 
       if (Array.isArray(socialAccountsRes.data)) {
         const platformMap = {
@@ -1190,7 +1180,15 @@ export default function ContentCalendar() {
             {tab.label}
           </button>
         ))}
-        <div className="ml-auto flex items-center gap-2 pb-2">
+        <div className="ml-auto flex items-center gap-3 pb-2">
+          {usageInfo && (
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-medium text-ink">
+              <span className="text-ink-muted capitalize">{usageInfo.plan} Plan:</span>
+              <Badge tone={usageInfo.monthlyRemaining === 0 ? 'danger' : 'primary'} className="text-[10px] py-0 px-1.5">
+                {usageInfo.monthlyUsed} / {usageInfo.monthlyLimit} posts
+              </Badge>
+            </div>
+          )}
           {/* Generate AI Calendar button */}
           <button
             id="generate-ai-calendar-btn"

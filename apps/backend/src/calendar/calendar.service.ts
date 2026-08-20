@@ -33,6 +33,8 @@ export interface UpdateCalendarPostDto {
   caption?: string;
   platform?: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
   scheduledAt?: string | null;
+  scheduledDate?: string | null;
+  scheduledTime?: string | null;
   mediaUrl?: string | null;
   hashtags?: string[];
   aiGenerated?: boolean;
@@ -286,6 +288,25 @@ export class CalendarService {
   }
 
   /**
+   * Return a single post by id — for internal service calls (e.g. n8n workflow).
+   */
+  async findOneById(id: string): Promise<ContentCalendarPost> {
+    const post = await this.db.query.contentCalendar.findFirst({
+      where: eq(schema.contentCalendar.id, id),
+      with: {
+        suggestions: {
+          with: {
+            feedback: true,
+          },
+        },
+        selectedSuggestion: true,
+      },
+    });
+    if (!post) throw new NotFoundException(`Post ${id} not found`);
+    return post;
+  }
+
+  /**
    * Create a new calendar post for the authenticated customer.
    */
   async createForUser(
@@ -339,10 +360,30 @@ export class CalendarService {
       }
     }
 
-    // Enforce monthly post limits if date is updated
-    if (dto.scheduledAt) {
-      await this.checkPostLimit(userId, new Date(dto.scheduledAt), id);
-      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt), id);
+    // Determine target scheduledAt timestamp if date/time are updated
+    let targetScheduledAt: string | null | undefined = dto.scheduledAt;
+    if (targetScheduledAt === undefined && (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined)) {
+      const datePart = dto.scheduledDate !== undefined
+        ? dto.scheduledDate
+        : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[0] : null);
+      if (datePart) {
+        const timePart = dto.scheduledTime !== undefined && dto.scheduledTime
+          ? dto.scheduledTime
+          : (post.scheduledAt ? new Date(post.scheduledAt).toTimeString().substring(0, 5) : '12:00');
+        targetScheduledAt = `${datePart}T${timePart}:00`;
+      } else {
+        targetScheduledAt = null;
+      }
+    }
+
+    // Enforce monthly and weekly post limits if date is updated
+    if (targetScheduledAt) {
+      const dateObj = new Date(targetScheduledAt);
+      if (isNaN(dateObj.getTime())) {
+        throw new BadRequestException(`Invalid scheduled date/time format.`);
+      }
+      await this.checkPostLimit(userId, dateObj, id);
+      await this.checkWeeklyPostLimit(userId, dateObj, id);
     }
 
     // Validate eligibility if selecting a suggestion
@@ -377,18 +418,22 @@ export class CalendarService {
         .where(eq(schema.contentSuggestions.postId, id));
     }
 
+    const newScheduledAt = targetScheduledAt !== undefined
+      ? (targetScheduledAt ? new Date(targetScheduledAt) : null)
+      : post.scheduledAt;
+
+    const newStatus = targetScheduledAt !== undefined
+      ? (targetScheduledAt ? 'SCHEDULED' : 'DRAFT')
+      : post.status;
+
     const [updated] = await this.db
       .update(schema.contentCalendar)
       .set({
         title: dto.title !== undefined ? dto.title : post.title,
         caption: dto.caption !== undefined ? dto.caption : post.caption,
         platform: dto.platform !== undefined ? dto.platform : post.platform,
-        scheduledAt: dto.scheduledAt !== undefined
-          ? (dto.scheduledAt ? new Date(dto.scheduledAt) : null)
-          : post.scheduledAt,
-        status: dto.scheduledAt !== undefined
-          ? (dto.scheduledAt ? 'SCHEDULED' : 'DRAFT')
-          : post.status,
+        scheduledAt: newScheduledAt,
+        status: newStatus,
         mediaUrl: dto.mediaUrl !== undefined ? dto.mediaUrl : post.mediaUrl,
         hashtags: dto.hashtags !== undefined ? dto.hashtags : post.hashtags,
         selectedSuggestionId: dto.selectedSuggestionId !== undefined
@@ -761,12 +806,190 @@ export class CalendarService {
     }
     const slug = subscription?.plan?.slug || 'free';
 
-    const weeklyCounts = new Map<string, number>();
+    // Parse the requested month
+    const [yearStr, monthStr] = job.month.split('-');
+    const year = parseInt(yearStr, 10);
+    const monthIndex = parseInt(monthStr, 10) - 1;
+
+    const firstDay = new Date(year, monthIndex, 1);
+    const lastDay = new Date(year, monthIndex + 1, 0); // last day of month
+
+    const firstWeekStart = this.getWeekRange(firstDay).start;
+    const lastWeekEnd = this.getWeekRange(lastDay).end;
+
+    // Get the weekly limit based on the plan
+    const isFree = slug === 'free';
+    const weeklyLimit = isFree ? 2 : Infinity;
 
     return await this.db.transaction(async (tx) => {
+      // Fetch all existing scheduled posts for this user in overlapping weeks, inside the transaction
+      const existingPostsInOverlap = await tx.query.contentCalendar.findMany({
+        where: (fields, { and, eq, gte, lte }) =>
+          and(
+            eq(fields.userId, job.userId),
+            gte(fields.scheduledAt, firstWeekStart),
+            lte(fields.scheduledAt, lastWeekEnd),
+          ),
+      });
+
+      // Group existing posts by week key (week start timestamp)
+      const existingCountsByWeek = new Map<number, number>();
+      const existingPostsByDay = new Map<number, number>(); // day timestamp -> count of posts
+
+      for (const post of existingPostsInOverlap) {
+        if (post.scheduledAt) {
+          const weekStart = this.getWeekRange(post.scheduledAt).start.getTime();
+          existingCountsByWeek.set(weekStart, (existingCountsByWeek.get(weekStart) || 0) + 1);
+
+          const dayStart = new Date(post.scheduledAt);
+          dayStart.setHours(0, 0, 0, 0);
+          existingPostsByDay.set(dayStart.getTime(), (existingPostsByDay.get(dayStart.getTime()) || 0) + 1);
+        }
+      }
+
+      // Build the list of weeks overlapping the month
+      interface WeekData {
+        start: Date;
+        end: Date;
+        daysInMonth: Date[];
+        existingCount: number;
+        assigned: any[];
+        capacity: number;
+      }
+
+      const weeks: WeekData[] = [];
+      let currentWeekStart = new Date(firstWeekStart);
+
+      while (currentWeekStart <= lastDay) {
+        const start = new Date(currentWeekStart);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        end.setHours(23, 59, 59, 999);
+
+        const daysInMonth: Date[] = [];
+        for (let i = 0; i < 7; i++) {
+          const day = new Date(start);
+          day.setDate(start.getDate() + i);
+          if (day.getMonth() === monthIndex && day.getFullYear() === year) {
+            daysInMonth.push(day);
+          }
+        }
+
+        const existingCount = existingCountsByWeek.get(start.getTime()) || 0;
+        const capacity = weeklyLimit - existingCount;
+
+        weeks.push({
+          start,
+          end,
+          daysInMonth,
+          existingCount,
+          assigned: [],
+          capacity,
+        });
+
+        currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+      }
+
+      // Check if requested posts exceed what can fit under the weekly limit
+      let totalCapacity = 0;
+      for (const w of weeks) {
+        if (w.daysInMonth.length > 0 && w.capacity > 0) {
+          totalCapacity += w.capacity;
+        }
+      }
+
+      if (isFree && dto.posts.length > totalCapacity) {
+        throw new BadRequestException(
+          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${dto.posts.length}.`
+        );
+      }
+
+      // For each new post, find the best week to assign it
+      for (const post of dto.posts) {
+        let bestWeek: WeekData | null = null;
+        let minTotalPosts = Infinity;
+
+        for (const w of weeks) {
+          if (w.daysInMonth.length === 0) continue;
+          if (w.assigned.length >= w.capacity) continue;
+
+          const totalPosts = w.existingCount + w.assigned.length;
+          if (totalPosts < minTotalPosts) {
+            minTotalPosts = totalPosts;
+            bestWeek = w;
+          }
+        }
+
+        if (!bestWeek) {
+          throw new BadRequestException(
+            'Could not find a valid week to schedule all generated posts under the weekly limit constraint.'
+          );
+        }
+
+        bestWeek.assigned.push(post);
+      }
+
+      // Distribute assigned posts to specific days in each week
+      const dayCounts = new Map<number, number>();
+      for (const [dayTime, count] of existingPostsByDay.entries()) {
+        dayCounts.set(dayTime, count);
+      }
+
+      const scheduledPosts: any[] = [];
+
+      for (const w of weeks) {
+        const k = w.assigned.length;
+        if (k === 0) continue;
+
+        const Dw = w.daysInMonth.length;
+
+        for (let i = 0; i < k; i++) {
+          const post = w.assigned[i];
+          const prefIndex = Math.floor((i + 0.5) * Dw / k);
+
+          let bestDay: Date | null = null;
+          let minDayCount = Infinity;
+          let minDistance = Infinity;
+
+          for (let j = 0; j < Dw; j++) {
+            const day = w.daysInMonth[j];
+            const dayTime = day.getTime();
+            const dayCount = dayCounts.get(dayTime) || 0;
+
+            if (dayCount < minDayCount) {
+              minDayCount = dayCount;
+              bestDay = day;
+              minDistance = Math.abs(j - prefIndex);
+            } else if (dayCount === minDayCount) {
+              const distance = Math.abs(j - prefIndex);
+              if (distance < minDistance) {
+                minDistance = distance;
+                bestDay = day;
+              }
+            }
+          }
+
+          if (!bestDay) {
+            bestDay = w.daysInMonth[0];
+          }
+
+          const bestDayTime = bestDay.getTime();
+          dayCounts.set(bestDayTime, (dayCounts.get(bestDayTime) || 0) + 1);
+
+          const yearVal = bestDay.getFullYear();
+          const monthVal = String(bestDay.getMonth() + 1).padStart(2, '0');
+          const dateVal = String(bestDay.getDate()).padStart(2, '0');
+
+          scheduledPosts.push({
+            ...post,
+            scheduledDate: `${yearVal}-${monthVal}-${dateVal}`,
+          });
+        }
+      }
+
       const savedPostIds: string[] = [];
 
-      for (const post of dto.posts) {
+      for (const post of scheduledPosts) {
         const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
         if (!validPlatforms.includes(post.platform)) {
           throw new BadRequestException(`Invalid platform: ${post.platform}`);
@@ -785,28 +1008,6 @@ export class CalendarService {
         const scheduledAt = new Date(`${post.scheduledDate}T${post.scheduledTime}:00`);
         if (isNaN(scheduledAt.getTime())) {
           throw new BadRequestException(`Invalid scheduled date/time: ${post.scheduledDate} ${post.scheduledTime}`);
-        }
-
-        if (slug === 'free') {
-          const { start, end } = this.getWeekRange(scheduledAt);
-          const weekKey = start.toISOString();
-
-          const existingWeekPosts = await tx.query.contentCalendar.findMany({
-            where: (fields, { and, eq, gte, lte }) =>
-              and(
-                eq(fields.userId, job.userId),
-                gte(fields.scheduledAt, start),
-                lte(fields.scheduledAt, end),
-              ),
-          });
-
-          const localCount = weeklyCounts.get(weekKey) || 0;
-          if (existingWeekPosts.length + localCount >= 2) {
-            throw new BadRequestException(
-              `Saving these generated posts would exceed the weekly limit of 2 posts for the week starting ${start.toLocaleDateString()}.`
-            );
-          }
-          weeklyCounts.set(weekKey, localCount + 1);
         }
 
         const [inserted] = await tx
@@ -877,8 +1078,30 @@ export class CalendarService {
     });
 
     return {
+      slug,
       limit,
       currentCount: posts.length,
+    };
+  }
+
+  async getUsageForUser(userId: string, monthStr?: string) {
+    let targetDate = new Date();
+    if (monthStr && /^\d{4}-\d{2}$/.test(monthStr)) {
+      const [year, month] = monthStr.split('-').map(v => parseInt(v, 10));
+      targetDate = new Date(year, month - 1, 1);
+    }
+
+    const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(userId, targetDate);
+
+    const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      month: monthKey,
+      plan: slug,
+      monthlyLimit: limit,
+      monthlyUsed: currentCount,
+      monthlyRemaining: Math.max(0, limit - currentCount),
+      weeklyLimit: slug === 'free' ? 2 : Infinity,
     };
   }
 }

@@ -20,6 +20,8 @@ export default () => ({
     geminiApiKey: process.env.GEMINI_API_KEY,
     openclawApiKey: process.env.OPENCLAW_API_KEY,
     openclawGatewayUrl: process.env.OPENCLAW_GATEWAY_URL,
+    n8nGenerationWebhookUrl: process.env.AI_SUGGESTIONS_N8N_GENERATION_WEBHOOK_URL,
+    n8nRevisionWebhookUrl: process.env.AI_SUGGESTIONS_N8N_REVISION_WEBHOOK_URL,
   },
 
   payments: {
@@ -51,6 +53,7 @@ export default () => ({
 
   n8n: {
     webhookUrl: process.env.N8N_CALENDAR_GENERATION_WEBHOOK_URL,
+    suggestionsWebhookUrl: process.env.N8N_CONTENT_SUGGESTIONS_WEBHOOK_URL ?? 'https://n8n.raasocial.io/webhook/content-suggestions/generate',
     internalApiKey: process.env.N8N_INTERNAL_API_KEY,
   },
 });

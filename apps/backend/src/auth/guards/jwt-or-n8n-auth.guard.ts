@@ -1,15 +1,17 @@
 import {
-  CanActivate,
   ExecutionContext,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'crypto';
 
 @Injectable()
-export class N8nInternalAuthGuard implements CanActivate {
-  constructor(private readonly configService: ConfigService) {}
+export class JwtOrN8nAuthGuard extends AuthGuard('jwt') {
+  constructor(private readonly configService: ConfigService) {
+    super();
+  }
 
   private safeCompare(a: string, b: string): boolean {
     if (typeof a !== 'string' || typeof b !== 'string') return false;
@@ -19,23 +21,28 @@ export class N8nInternalAuthGuard implements CanActivate {
     return timingSafeEqual(bufA, bufB);
   }
 
-  canActivate(context: ExecutionContext): boolean {
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    // Headers are case-insensitive in Express/NestJS, but usually lowercased.
     const apiKey = request.headers['x-n8n-api-key'];
     const expectedKey =
       this.configService.get<string>('n8n.internalApiKey') ||
       this.configService.get<string>('N8N_INTERNAL_API_KEY') ||
       process.env.N8N_INTERNAL_API_KEY;
 
-    if (!expectedKey) {
-      throw new UnauthorizedException('n8n internal API key is not configured.');
+    // Check if valid n8n internal API key header is supplied
+    if (apiKey && expectedKey && this.safeCompare(apiKey as string, expectedKey)) {
+      request.isN8n = true;
+      return true;
     }
 
-    if (!apiKey || !this.safeCompare(apiKey as string, expectedKey)) {
-      throw new UnauthorizedException('Unauthorized access: Invalid n8n API Key.');
+    // Fall back to JWT validation for user session requests
+    try {
+      const can = await super.canActivate(context);
+      return Boolean(can);
+    } catch (err) {
+      throw new UnauthorizedException(
+        'Unauthorized access: Valid user JWT or n8n API Key required.',
+      );
     }
-
-    return true;
   }
 }

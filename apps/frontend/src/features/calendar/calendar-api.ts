@@ -96,7 +96,26 @@ export interface GenerationJob {
   updatedAt: string
 }
 
+export interface CalendarUsage {
+  month: string
+  plan: string
+  monthlyLimit: number
+  monthlyUsed: number
+  monthlyRemaining: number
+  weeklyLimit: number
+}
+
 // ─── Customer API ──────────────────────────────────────────────────────────────
+
+/**
+ * Fetch monthly calendar usage and plan limits for the authenticated user.
+ */
+export async function getCalendarUsage(userId: string, month?: string): Promise<CalendarUsage> {
+  const params: Record<string, string> = { userId }
+  if (month) params.month = month
+  const res = await api.get<CalendarUsage>('/calendar/usage', { params })
+  return res.data
+}
 
 /**
  * Fetch all calendar posts for the authenticated user.
