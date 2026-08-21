@@ -6,9 +6,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { desc, eq, and } from 'drizzle-orm';
+import { desc, eq, and, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
-import { ConfigService } from '@nestjs/config';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -490,12 +489,12 @@ export class ContentSuggestionsService {
       return { success: true, count: 0 };
     }
 
-    const toInsert = dto.variations.map((v) => ({
+    const toInsert = dto.variations.map((v: any) => ({
       userId: dto.userId,
       postId: dto.postId,
-      type: v.type,
-      title: v.title,
-      content: v.content,
+      type: v.type || 'VARIATION',
+      title: v.title || 'Suggested Post',
+      content: v.caption || v.content || '',
       hashtags: v.hashtags || [],
       approvalStatus: 'PENDING_APPROVAL' as const,
     }));

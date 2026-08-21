@@ -6,7 +6,7 @@
  * ---------------------------------------------------------------------------
  */
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
+import { IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export enum KycReviewAction {
   PENDING = 'pending',
@@ -25,9 +25,9 @@ export class ReviewKycDto {
 
   @ApiPropertyOptional({
     example: 'The certificate of registration document appears to be unreadable. Please resubmit a clearer image.',
-    description: 'Required when status is "rejected" or "resubmission_required". Explains to the user what needs to be corrected.',
+    description: 'Optional reason when status is "rejected" or "resubmission_required".',
   })
-  @ValidateIf((o) => o.status === KycReviewAction.REJECT || o.status === KycReviewAction.RESUBMISSION_REQUIRED)
+  @IsOptional()
   @IsString()
   @MaxLength(1000)
   rejectionReason?: string;

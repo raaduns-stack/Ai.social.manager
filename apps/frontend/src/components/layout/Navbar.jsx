@@ -72,15 +72,21 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
             onClick={() => setProfileOpen((o) => !o)}
             className="flex items-center gap-2 rounded-full px-2 py-1.5 hover:bg-gray-50 transition-colors"
           >
-            {currentUser?.avatarUrl ? (
+            {currentUser?.profileImage ? (
+              <img 
+                src={currentUser.profileImage.startsWith('http') ? currentUser.profileImage : `${(import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/api$/, '')}/uploads/${currentUser.profileImage}`} 
+                alt={displayName} 
+                className="w-8 h-8 rounded-full object-cover shrink-0"
+              />
+            ) : currentUser?.avatarUrl ? (
               <img 
                 src={currentUser.avatarUrl} 
                 alt={displayName} 
                 className="w-8 h-8 rounded-full object-cover shrink-0"
               />
             ) : (
-              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 shrink-0">
-                <User size={16} />
+              <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-bold text-xs shrink-0">
+                {(displayName || 'U').slice(0, 2).toUpperCase()}
               </div>
             )}
             <span className="hidden sm:block text-sm text-[#111111] font-semibold">
