@@ -86,8 +86,8 @@ async function bootstrap() {
   );
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('SocialPilot AI API')
-    .setDescription('Backend API for the SocialPilot AI platform')
+    .setTitle('Raasocial API')
+    .setDescription('Backend API for the Raasocial AI platform')
     .setVersion('0.1')
     .addBearerAuth()
     .build();
@@ -109,7 +109,7 @@ async function bootstrap() {
 
   // eslint-disable-next-line no-console
   console.log(
-    `SocialPilot AI backend running on http://localhost:${port}/${apiPrefix}`,
+    `RaaSocial backend running on http://localhost:${port}/${apiPrefix}`,
   );
 
   // eslint-disable-next-line no-console

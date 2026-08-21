@@ -4,7 +4,7 @@ import { Injectable } from '@nestjs/common';
 export class AppService {
   getInfo() {
     return {
-      name: 'SocialPilot AI API',
+      name: 'RaaSocial API',
       status: 'running',
     };
   }

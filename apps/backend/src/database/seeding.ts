@@ -145,7 +145,7 @@ export async function seedSingletons(db: Database, configService: any) {
   const profile = await db.query.companyProfile.findFirst();
   if (!profile) {
     await db.insert(schema.companyProfile).values({
-      companyName: 'SocialPilot AI',
+      companyName: 'Raasocial',
       contactEmail: configService.get('mail.senderEmail') || configService.get('mail.mailFrom') || 'info@raasocial.io',
       website: 'raasocial.io',
     });
@@ -172,7 +172,7 @@ export async function seedSingletons(db: Database, configService: any) {
     const smtpUsername = configService.get('mail.smtpUsername') || '';
     const smtpPassword = configService.get('mail.smtpPassword') || '';
     const smtpPasswordEncrypted = smtpPassword ? encryptSecret(smtpPassword) : '';
-    const senderName = configService.get('mail.senderName') || 'SocialPilot AI';
+    const senderName = configService.get('mail.senderName') || 'RaaSocial';
     const senderEmail = configService.get('mail.senderEmail') || configService.get('mail.mailFrom') || 'noreply@raasocial.io';
 
     await db.insert(schema.emailConfig).values({

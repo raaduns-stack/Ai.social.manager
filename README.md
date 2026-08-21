@@ -1,4 +1,4 @@
-# SocialPilot AI — Full-Stack Social Media Management Platform
+# RaaSocial — Full-Stack Social Media Management Platform
 
 An AI-driven social media management platform built for business clients, featuring automated content calendar generation, multi-tier subscription billing via Flutterwave, administrative oversight, and social channel management.
 
