@@ -159,11 +159,11 @@ export class EmailConfigService {
 
     try {
       await transporter.sendMail({
-        from: `"${config.senderName || 'SocialPilot AI'}" <${config.senderEmail}>`,
+        from: `"${config.senderName || 'RaaSocial'}" <${config.senderEmail}>`,
         replyTo: config.replyToEmail || undefined, // omit header if no reply-to configured
         to: dto.testRecipientEmail,
         subject: 'Test Email',
-        text: 'This is a test email from SocialPilot AI settings',
+        text: 'This is a test email from RaaSocial settings',
       });
       return { success: true, message: 'Test email sent' };
     } catch (error) {
