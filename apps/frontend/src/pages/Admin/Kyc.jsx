@@ -177,8 +177,7 @@ export default function AdminKyc() {
     if (!selectedKyc) return
 
     if ((reviewAction === 'rejected' || reviewAction === 'resubmission_required') && !rejectionReason.trim()) {
-      setReviewError(new Error('Please provide a reason explaining the issue.'))
-      return
+      // rejection reason is optional — remove forced validation
     }
 
     setSubmittingReview(true)
@@ -880,9 +879,9 @@ export default function AdminKyc() {
               <div className="flex flex-col gap-1.5">
                 <label className="text-xs font-semibold text-ink uppercase">
                   {reviewAction === 'rejected' ? 'Rejection Reason' : 'Resubmission Feedback'}
+                  <span className="normal-case font-normal text-ink-muted ml-1">(optional)</span>
                 </label>
                 <textarea
-                  required
                   rows={4}
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}

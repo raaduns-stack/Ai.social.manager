@@ -1056,15 +1056,27 @@ export class CalendarService {
     }
 
     if (subscription?.plan) {
-      limit = subscription.plan.monthlyPostLimit;
-      slug = subscription.plan.slug;
+      const slugMap: Record<string, number> = {
+        free: 8,
+        starter: 30,
+        growth: 150,
+        'brand-domination': 300,
+      };
+      limit = typeof subscription.plan.monthlyPostLimit === 'number' 
+        ? subscription.plan.monthlyPostLimit 
+        : (slugMap[subscription.plan.slug || 'free'] || 8);
+      slug = subscription.plan.slug || 'free';
     } else {
-      const freePlan = await this.db.query.plans.findFirst({
-        where: eq(schema.plans.slug, 'free'),
-      });
-      if (freePlan) {
-        limit = freePlan.monthlyPostLimit;
-        slug = freePlan.slug;
+      limit = 8;
+      slug = 'free';
+      if (this.db.query.plans) {
+        const freePlan = await this.db.query.plans.findFirst({
+          where: eq(schema.plans.slug, 'free'),
+        });
+        if (freePlan && typeof freePlan.monthlyPostLimit === 'number') {
+          limit = freePlan.monthlyPostLimit;
+          slug = freePlan.slug;
+        }
       }
     }
 

@@ -1,10 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import Input from '../../components/ui/Input'
 import Badge from '../../components/ui/Badge'
-import { Info, ShieldCheck, Shield } from 'lucide-react'
+import { Info, ShieldCheck, Shield, Camera } from 'lucide-react'
 import BrandVoiceForm from '../../components/BrandVoiceForm'
 import {
   getCompanyInfo,
@@ -15,11 +15,14 @@ import {
 import { changePassword } from '../../features/auth/auth-api'
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
+import { uploadMyProfileImage } from '../../features/admin/admin-api'
+import { useAuth } from '../../context/useAuth'
 
 // ---------------------------------------------------------------------------
 // Data
 // ---------------------------------------------------------------------------
 const TABS = [
+  { id: 'profile', label: 'Profile' },
   { id: 'company-info', label: 'Company Info' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'security', label: 'Security' },
@@ -195,6 +198,149 @@ const textareaStyle = { borderRadius: '8px', border: '1px solid var(--color-bord
 // ---------------------------------------------------------------------------
 // Tab panels
 // ---------------------------------------------------------------------------
+
+function ProfileTab() {
+  const { user, setUser } = useAuth()
+  const fileInputRef = useRef(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState('')
+  const [uploadSuccess, setUploadSuccess] = useState(false)
+
+  const apiBase = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/api$/, '')
+  const avatarUrl = user?.profileImage
+    ? (user.profileImage.startsWith('http') ? user.profileImage : `${apiBase}/uploads/${user.profileImage}`)
+    : null
+  const initials = (user?.fullName || 'U').split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setUploadError('')
+    setUploadSuccess(false)
+    setUploading(true)
+    try {
+      const result = await uploadMyProfileImage(file)
+      // Immediately update global auth state so Navbar reflects the new image
+      if (result?.profileImage && setUser) {
+        setUser({ ...user, profileImage: result.profileImage })
+      }
+      setUploadSuccess(true)
+      setTimeout(() => setUploadSuccess(false), 3000)
+    } catch (err) {
+      setUploadError(err?.response?.data?.message || err?.message || 'Upload failed. Please try again.')
+    } finally {
+      setUploading(false)
+      // Reset file input so the same file can be re-selected
+      e.target.value = ''
+    }
+  }
+
+  return (
+    <div className="space-y-8">
+      <SettingsSection
+        label="Profile Photo"
+        description="Upload a photo to personalise your account. Your photo will appear in the navbar and across the platform."
+      >
+        <Card className="p-6">
+          <div className="flex items-center gap-6">
+            {/* Avatar with camera-hover overlay */}
+            <div
+              className="relative w-24 h-24 rounded-full cursor-pointer group shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              role="button"
+              aria-label="Change profile picture"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}
+            >
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt={user?.fullName || 'Profile'}
+                  className="w-24 h-24 rounded-full object-cover border-2 border-border"
+                />
+              ) : (
+                <div className="w-24 h-24 rounded-full bg-primary/10 border-2 border-border flex items-center justify-center text-primary font-bold text-2xl">
+                  {initials}
+                </div>
+              )}
+              {/* Camera overlay — only appears on hover, does not permanently obscure avatar */}
+              <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <Camera size={22} className="text-white" />
+              </div>
+              {uploading && (
+                <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center">
+                  <span className="text-white text-xs font-semibold">Uploading…</span>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? 'Uploading…' : 'Upload Photo'}
+              </Button>
+              <p className="text-xs text-ink-muted leading-relaxed">
+                JPG, PNG, or WebP · Max 5 MB<br />
+                Your image appears in the top-right navigation bar.
+              </p>
+              {uploadSuccess && (
+                <p className="text-xs text-success font-semibold">✓ Profile photo updated successfully!</p>
+              )}
+              {uploadError && (
+                <p className="text-xs text-danger font-semibold">{uploadError}</p>
+              )}
+            </div>
+          </div>
+
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+        </Card>
+      </SettingsSection>
+
+      <SettingsSection
+        label="Account Details"
+        description="Your personal account information. These details identify you on the platform."
+      >
+        <Card className="p-6 space-y-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-ink">Full Name</label>
+            <input
+              type="text"
+              readOnly
+              value={user?.fullName || '—'}
+              className={`${fieldCls} bg-canvas border-none cursor-default font-semibold shadow-none`}
+              style={fieldStyle}
+            />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-medium text-ink">Email Address</label>
+            <input
+              type="email"
+              readOnly
+              value={user?.email || '—'}
+              className={`${fieldCls} bg-canvas border-none cursor-default font-semibold shadow-none`}
+              style={fieldStyle}
+            />
+          </div>
+          <p className="text-xs text-ink-muted flex items-center gap-1 pt-1">
+            <Info size={13} /> To change your name or email, contact support.
+          </p>
+        </Card>
+      </SettingsSection>
+    </div>
+  )
+}
+
 function CompanyInfoTab() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -943,7 +1089,7 @@ function SecurityTab() {
  * Settings — Stitch-generated Settings page converted to React.
  */
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('company-info')
+  const [activeTab, setActiveTab] = useState('profile')
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -976,6 +1122,7 @@ export default function Settings() {
 
       {/* Tab Panels */}
       <div>
+        {activeTab === 'profile' && <ProfileTab />}
         {activeTab === 'company-info' && <CompanyInfoTab />}
         {activeTab === 'notifications' && <NotificationsTab />}
         {activeTab === 'security' && <SecurityTab />}

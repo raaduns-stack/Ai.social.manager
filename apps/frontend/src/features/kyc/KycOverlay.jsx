@@ -49,14 +49,18 @@ const DOC_LABELS = {
   ownerId: 'Government-issued ID of Owner / Representative',
 }
 
-/** Accepted MIME types for KYC documents */
-const ACCEPTED_TYPES = '.pdf,.jpg,.jpeg,.png'
+/** Accepted MIME types for the Certificate of Registration — PDF ONLY */
+const CERT_ACCEPTED_TYPES = '.pdf'
+
+/** Accepted MIME types for Identity and Address documents — PDF or image */
+const DOC_ACCEPTED_TYPES = '.pdf,.jpg,.jpeg,.png,.webp'
 
 // ---------------------------------------------------------------------------
 // FileInput — a styled file picker with name preview
 // ---------------------------------------------------------------------------
-function FileInput({ label, name, onChange, required, file, rejectionReason }) {
+function FileInput({ label, name, onChange, required, file, rejectionReason, acceptTypes }) {
   const inputRef = useRef(null)
+  const isPdfOnly = acceptTypes === CERT_ACCEPTED_TYPES
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-sm font-medium text-ink">
@@ -68,14 +72,19 @@ function FileInput({ label, name, onChange, required, file, rejectionReason }) {
       >
         <Upload size={16} className="text-ink-muted shrink-0" />
         <span className="text-sm truncate text-ink-muted">
-          {file ? file.name : 'Click to select file (PDF, JPG, PNG)'}
+          {file ? file.name : isPdfOnly ? 'Click to select file (PDF only)' : 'Click to select file (PDF, JPG, PNG, WebP)'}
         </span>
       </div>
+      {isPdfOnly && (
+        <p className="text-[11px] text-amber-600 font-medium flex items-center gap-1">
+          ⚠ PDF files only — image formats (JPG, PNG, etc.) are not accepted for this document
+        </p>
+      )}
       <input
         ref={inputRef}
         type="file"
         name={name}
-        accept={ACCEPTED_TYPES}
+        accept={acceptTypes}
         className="hidden"
         onChange={(e) => onChange(e.target.files?.[0] ?? null)}
       />
@@ -330,7 +339,7 @@ function KycForm({ existingData, onSubmitted }) {
           </h3>
         </div>
         <p className="text-xs text-ink-muted mb-4 ml-6">
-          Accepted formats: PDF, JPG, JPEG, PNG · Max 10 MB each
+          Certificate of Registration: <strong>PDF only</strong> · Other documents: PDF, JPG, JPEG, PNG · Max 10 MB each
           {existingData && ' · You only need to re-upload documents that have changed.'}
         </p>
 
@@ -341,6 +350,7 @@ function KycForm({ existingData, onSubmitted }) {
             onChange={setCertFile}
             required={!existingData}
             file={certFile}
+            acceptTypes={CERT_ACCEPTED_TYPES}
             rejectionReason={existingData?.certOfRegistrationStatus === 'rejected' ? existingData.certOfRegistrationRejectionReason : null}
           />
           <FileInput
@@ -349,6 +359,7 @@ function KycForm({ existingData, onSubmitted }) {
             onChange={setUtilityFile}
             required={!existingData}
             file={utilityFile}
+            acceptTypes={DOC_ACCEPTED_TYPES}
             rejectionReason={existingData?.utilityBillStatus === 'rejected' ? existingData.utilityBillRejectionReason : null}
           />
           <FileInput
@@ -357,6 +368,7 @@ function KycForm({ existingData, onSubmitted }) {
             onChange={setOwnerIdFile}
             required={!existingData}
             file={ownerIdFile}
+            acceptTypes={DOC_ACCEPTED_TYPES}
             rejectionReason={existingData?.ownerIdStatus === 'rejected' ? existingData.ownerIdRejectionReason : null}
           />
         </div>

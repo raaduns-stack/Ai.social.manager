@@ -105,9 +105,17 @@ export default function AdminNavbar({ onMenuClick }) {
             onClick={() => setProfileOpen((o) => !o)}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-container-high transition-colors"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-[9999px] bg-primary text-xs font-bold text-on-primary border border-surface-variant">
-              {initials}
-            </span>
+            {admin?.profileImage ? (
+              <img
+                src={admin.profileImage.startsWith('http') ? admin.profileImage : `${(import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/api$/, '')}/uploads/${admin.profileImage}`}
+                alt={admin.name || 'Admin'}
+                className="w-8 h-8 rounded-full object-cover shrink-0 border border-surface-variant"
+              />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-[9999px] bg-primary text-xs font-bold text-on-primary border border-surface-variant">
+                {initials}
+              </span>
+            )}
             <span className="hidden sm:block text-sm font-semibold text-on-surface">
               {admin?.name ?? "Admin"}
             </span>
