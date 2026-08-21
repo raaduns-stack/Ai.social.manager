@@ -163,7 +163,7 @@ export class MailerService {
         throw error;
       }
     } else {
-      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Welcome to SocialPilot AI`);
+      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Welcome to RaaSocial`);
     }
   }
 

@@ -2,7 +2,7 @@
  * CompanyProfileModule
  * --------------------
  * NestJS feature module that encapsulates everything related to the
- * platform owner's company profile (i.e. the SocialPilot AI agency's
+ * platform owner's company profile (i.e. the RaaSocial agency's
  * own branding/contact information that appears across the admin panel).
  *
  * Responsibilities:

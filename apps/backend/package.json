@@ -1,7 +1,7 @@
 {
   "name": "@socialpilot/backend",
   "version": "0.1.0",
-  "description": "SocialPilot AI - NestJS API",
+  "description": "RaaSocial - NestJS API",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
