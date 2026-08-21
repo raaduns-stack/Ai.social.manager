@@ -138,11 +138,21 @@ export default {
       },
       animation: {
         'marquee': 'marquee 40s linear infinite',
+        'marquee-vertical': 'marquee-vertical 20s linear infinite',
+        'marquee-vertical-reverse': 'marquee-vertical-reverse 20s linear infinite',
       },
       keyframes: {
         marquee: {
           '0%': { transform: 'translateX(0%)' },
           '100%': { transform: 'translateX(-50%)' },
+        },
+        'marquee-vertical': {
+          '0%': { transform: 'translateY(0%)' },
+          '100%': { transform: 'translateY(-50%)' },
+        },
+        'marquee-vertical-reverse': {
+          '0%': { transform: 'translateY(-50%)' },
+          '100%': { transform: 'translateY(0%)' },
         }
       }
     },

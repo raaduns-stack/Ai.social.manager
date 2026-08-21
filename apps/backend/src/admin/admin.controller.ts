@@ -21,6 +21,10 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { AdminService } from './admin.service';
+import { UpdateRolePermissionsDto } from './dto/update-role-permissions.dto';
+import { CreateStaffDto } from './dto/create-staff.dto';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { UserRole } from '../common/enums/roles.enum';
 
 @ApiTags('admin')
@@ -192,5 +196,65 @@ export class AdminController {
   @ApiOperation({ summary: 'Seed canonical plans' })
   seedPlans() {
     return this.adminService.seedPlans();
+  }
+
+  @Get('role-permissions')
+  @RequirePermission('staff_management', 'view')
+  @ApiOperation({ summary: 'Get all role permissions' })
+  getRolePermissions() {
+    return this.adminService.getRolePermissions();
+  }
+
+  @Patch('role-permissions')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update permissions for a specific role' })
+  updateRolePermissions(@Body() dto: UpdateRolePermissionsDto) {
+    return this.adminService.updateRolePermissions(dto);
+  }
+
+  @Post('users/staff')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Create a new staff/admin account' })
+  createStaff(@Body() dto: CreateStaffDto) {
+    return this.adminService.createStaff(dto);
+  }
+
+  @Get('staff/overview')
+  @RequirePermission('staff_management', 'view')
+  @ApiOperation({ summary: 'Staff dashboard counts and recent staff logins' })
+  getStaffOverview() {
+    return this.adminService.getStaffOverview();
+  }
+
+  @Get('plans')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get all subscription plans' })
+  getPlans() {
+    return this.adminService.getPlans();
+  }
+
+  @Patch('plans/:id')
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update a subscription plan' })
+  updatePlan(@Param('id') id: string, @Body() dto: any) {
+    return this.adminService.updatePlan(id, dto);
+  }
+
+  @Get('social-accounts')
+  @RequirePermission('social_accounts', 'view')
+  @ApiOperation({ summary: 'Get all user social accounts' })
+  getSocialAccounts() {
+    return this.adminService.getSocialAccounts();
+  }
+
+  @Post('social-accounts/:id/disconnect')
+  @RequirePermission('social_accounts', 'edit')
+  @ApiOperation({ summary: 'Disconnect a user social account' })
+  disconnectSocialAccount(@Param('id') id: string) {
+    return this.adminService.disconnectSocialAccount(id);
   }
 }

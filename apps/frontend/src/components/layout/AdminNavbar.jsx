@@ -7,7 +7,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut, Menu, HelpCircle, Settings2 } from "lucide-react";
 import { useAdminAuth } from "../../context/useAdminAuth";
-import { notifications } from "../../data/mockData";
 
 export default function AdminNavbar({ onMenuClick }) {
   const { admin, logout } = useAdminAuth();
@@ -15,7 +14,7 @@ export default function AdminNavbar({ onMenuClick }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const unreadCount = notifications.length;
+  const unreadCount = 0;
 
   const handleLogout = () => {
     logout();
@@ -74,12 +73,9 @@ export default function AdminNavbar({ onMenuClick }) {
                 Notifications
               </div>
               <div className="max-h-64 overflow-y-auto">
-                {notifications.map((n) => (
-                  <div key={n.id} className="px-4 py-3 text-sm border-b border-surface-variant last:border-0 hover:bg-surface-container-low transition-colors">
-                    <p className="text-on-surface font-medium">{n.message}</p>
-                    <p className="mt-0.5 text-xs text-on-surface-variant/70">{n.sentAt}</p>
-                  </div>
-                ))}
+                <div className="px-4 py-6 text-sm text-on-surface-variant text-center">
+                  No recent activity
+                </div>
               </div>
             </div>
           )}

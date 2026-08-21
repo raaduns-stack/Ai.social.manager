@@ -14,9 +14,11 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 1,
+      description: 'Best for testing features and starting out.',
+      monthlyPostLimit: 8,
       features: [
         'Connect 1 social media account',
-        'Generate 5 AI posts per month',
+        'Generate 8 AI posts per month',
         'AI-generated caption + hashtags',
         'Basic AI image generation',
         'Content preview',
@@ -31,6 +33,8 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 3,
+      description: 'Great for solo professionals.',
+      monthlyPostLimit: 30,
       features: [
         'Everything in Free, plus:',
         'Connect 3 social media accounts',
@@ -52,6 +56,8 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 7,
+      description: 'Perfect for growing businesses.',
+      monthlyPostLimit: 150,
       features: [
         'Everything in Starter, plus:',
         'Connect 7 social media accounts',
@@ -77,6 +83,8 @@ export async function seedPlans(db: Database) {
       interval: 'monthly' as const,
       isActive: true,
       maxSocialAccounts: 15,
+      description: 'Full power for larger brands.',
+      monthlyPostLimit: 300,
       features: [
         'Everything in Growth, plus:',
         'Connect 15 social media accounts',
@@ -111,6 +119,8 @@ export async function seedPlans(db: Database) {
           isActive: p.isActive,
           features: p.features,
           maxSocialAccounts: p.maxSocialAccounts,
+          description: p.description,
+          monthlyPostLimit: p.monthlyPostLimit,
           updatedAt: new Date(),
         })
         .where(eq(schema.plans.id, existing.id));
@@ -123,6 +133,8 @@ export async function seedPlans(db: Database) {
         isActive: p.isActive,
         features: p.features,
         maxSocialAccounts: p.maxSocialAccounts,
+        description: p.description,
+        monthlyPostLimit: p.monthlyPostLimit,
       });
     }
   }
@@ -133,7 +145,7 @@ export async function seedSingletons(db: Database, configService: any) {
   const profile = await db.query.companyProfile.findFirst();
   if (!profile) {
     await db.insert(schema.companyProfile).values({
-      companyName: 'SocialPilot AI',
+      companyName: 'Raasocial',
       contactEmail: configService.get('mail.senderEmail') || configService.get('mail.mailFrom') || 'info@raasocial.io',
       website: 'raasocial.io',
     });
@@ -160,7 +172,7 @@ export async function seedSingletons(db: Database, configService: any) {
     const smtpUsername = configService.get('mail.smtpUsername') || '';
     const smtpPassword = configService.get('mail.smtpPassword') || '';
     const smtpPasswordEncrypted = smtpPassword ? encryptSecret(smtpPassword) : '';
-    const senderName = configService.get('mail.senderName') || 'SocialPilot AI';
+    const senderName = configService.get('mail.senderName') || 'RaaSocial';
     const senderEmail = configService.get('mail.senderEmail') || configService.get('mail.mailFrom') || 'noreply@raasocial.io';
 
     await db.insert(schema.emailConfig).values({
@@ -284,18 +296,64 @@ export async function seedRolePermissions(db: Database) {
         ),
       });
 
-      if (existing) {
-        await db
-          .update(schema.rolePermissions)
-          .set({ accessLevel: accessLevel as any } as any)
-          .where(eq(schema.rolePermissions.id, existing.id));
-      } else {
+      if (!existing) {
         await db.insert(schema.rolePermissions).values({
           role: role as any,
           module: moduleName,
           accessLevel: accessLevel as any,
         });
       }
+    }
+  }
+}
+
+export async function seedPromptTemplates(db: Database) {
+  const templates = [
+    {
+      name: 'LinkedIn Default Prompt',
+      category: 'linkedin',
+      prompt: `Generate professional LinkedIn content.
+Always use a business tone.
+Maximum 250 words.
+Include CTA.`,
+      isActive: true,
+    },
+    {
+      name: 'Twitter/X Default Prompt',
+      category: 'twitter',
+      prompt: `Generate engaging tweets/X posts.
+Keep it concise and punchy.
+Maximum 280 characters.
+Use 1-2 relevant hashtags.`,
+      isActive: true,
+    },
+    {
+      name: 'Facebook Default Prompt',
+      category: 'facebook',
+      prompt: `Generate friendly and social Facebook posts.
+Encourage user engagement or comments.
+Keep tone conversational.
+Include a link description.`,
+      isActive: true,
+    },
+    {
+      name: 'Instagram Default Prompt',
+      category: 'instagram',
+      prompt: `Generate catchy captions for Instagram posts.
+Start with a strong hook line.
+Maximum 150 words.
+Include a clean list of hashtags at the end.`,
+      isActive: true,
+    },
+  ];
+
+  for (const t of templates) {
+    const existing = await db.query.aiPromptTemplates.findFirst({
+      where: eq(schema.aiPromptTemplates.category, t.category),
+    });
+
+    if (!existing) {
+      await db.insert(schema.aiPromptTemplates).values(t);
     }
   }
 }

@@ -15,7 +15,19 @@ const ROLE_MAP = {
     tone: 'danger',
     Icon: Shield,
   },
+  'super_admin': {
+    tone: 'danger',
+    Icon: Shield,
+  },
   'Admin': {
+    tone: 'primary',
+    Icon: ShieldCheck,
+  },
+  'Account Manager': {
+    tone: 'primary',
+    Icon: ShieldCheck,
+  },
+  'account_manager': {
     tone: 'primary',
     Icon: ShieldCheck,
   },
@@ -23,11 +35,35 @@ const ROLE_MAP = {
     tone: 'success',
     Icon: PenTool,
   },
+  'Reviewer': {
+    tone: 'success',
+    Icon: PenTool,
+  },
+  'reviewer': {
+    tone: 'success',
+    Icon: PenTool,
+  },
   'Customer Support': {
     tone: 'warning',
     Icon: Headphones,
   },
+  'Support Staff': {
+    tone: 'warning',
+    Icon: Headphones,
+  },
+  'support_staff': {
+    tone: 'warning',
+    Icon: Headphones,
+  },
   'Finance': {
+    tone: 'neutral',
+    Icon: DollarSign,
+  },
+  'Designer': {
+    tone: 'neutral',
+    Icon: DollarSign,
+  },
+  'designer': {
     tone: 'neutral',
     Icon: DollarSign,
   },

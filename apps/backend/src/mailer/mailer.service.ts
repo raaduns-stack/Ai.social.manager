@@ -21,7 +21,7 @@ export class MailerService {
     try {
       const config = await this.db.query.emailConfig.findFirst();
       const defaultSenderName = this.configService.get<string>('mail.senderName') || 'RaaSocial';
-      const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'no-reply@raasocial.io';
+      const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'noreply@raasocial.io';
       let from = `"${defaultSenderName}" <${defaultSenderEmail}>`;
       
       if (config && config.smtpHost && config.smtpUsername && config.smtpPasswordEncrypted) {
@@ -54,7 +54,7 @@ export class MailerService {
     // Fallback to .env config
     const apiKey = this.configService.get<string>('mail.resendApiKey');
     const defaultSenderName = this.configService.get<string>('mail.senderName') || 'RaaSocial';
-    const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'no-reply@raasocial.io';
+    const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'noreply@raasocial.io';
     const from = `"${defaultSenderName}" <${defaultSenderEmail}>`;
     
     if (apiKey) {
@@ -65,6 +65,29 @@ export class MailerService {
         auth: {
           user: 'resend',
           pass: apiKey,
+        },
+      });
+      return { transporter, from };
+    }
+
+    // Try fallback SMTP configuration from .env
+    const smtpHost = this.configService.get<string>('mail.smtpHost');
+    const smtpUsername = this.configService.get<string>('mail.smtpUsername');
+    const smtpPassword = this.configService.get<string>('mail.smtpPassword');
+
+    if (smtpHost && smtpUsername && smtpPassword) {
+      const smtpPort = this.configService.get<number>('mail.smtpPort') || 587;
+      const smtpSecure = this.configService.get<boolean>('mail.smtpSecure') ?? false;
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
+        auth: {
+          user: smtpUsername,
+          pass: smtpPassword,
+        },
+        tls: {
+          rejectUnauthorized: false,
         },
       });
       return { transporter, from };
@@ -140,7 +163,44 @@ export class MailerService {
         throw error;
       }
     } else {
-      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Welcome to SocialPilot AI`);
+      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Welcome to RaaSocial`);
+    }
+  }
+
+  async sendContactFormEmail(name: string, email: string, company: string, message: string): Promise<void> {
+    const { transporter, from } = await this.getTransporterAndFrom();
+    const subject = `New Contact Form Submission from ${name}`;
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #FF6600; margin-bottom: 20px; border-bottom: 2px solid #FFEBE0; padding-bottom: 10px;">New Contact Message</h2>
+        <p><strong>Name:</strong> ${name}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Company:</strong> ${company || 'N/A'}</p>
+        <p><strong>Message:</strong></p>
+        <div style="background-color: #f8fafc; padding: 15px; border-radius: 6px; border: 1px solid #e2e8f0; white-space: pre-wrap; color: #334155;">
+          ${message}
+        </div>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+        <p style="font-size: 11px; color: #94a3b8; text-align: center;">This message was submitted via the RaaSocial Contact Form.</p>
+      </div>
+    `;
+
+    if (transporter) {
+      try {
+        await transporter.sendMail({
+          from,
+          to: 'support@raaduns.com',
+          subject,
+          html,
+          replyTo: email,
+        });
+        this.logger.log(`Contact form message from ${email} sent to support@raaduns.com`);
+      } catch (error) {
+        this.logger.error(`Failed to send contact form message from ${email} to support@raaduns.com`, error);
+        throw error;
+      }
+    } else {
+      this.logger.log(`[MOCK EMAIL] To: support@raaduns.com | Reply-To: ${email} | Subject: ${subject} | Message: ${message}`);
     }
   }
 }

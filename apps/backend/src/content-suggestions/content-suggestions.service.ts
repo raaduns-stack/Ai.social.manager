@@ -5,13 +5,14 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
 import { desc, eq, and, ne } from 'drizzle-orm';
+import { ConfigService } from '@nestjs/config';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { N8nResponseDto } from './dto/n8n-response.dto';
+import { ApproveVariationDto } from './dto/approve-variation.dto';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -492,7 +493,7 @@ export class ContentSuggestionsService {
     const toInsert = dto.variations.map((v: any) => ({
       userId: dto.userId,
       postId: dto.postId,
-      type: v.type || 'VARIATION',
+      type: 'caption' as const,
       title: v.title || 'Suggested Post',
       content: v.caption || v.content || '',
       hashtags: v.hashtags || [],
@@ -507,5 +508,101 @@ export class ContentSuggestionsService {
     await this.db.insert(schema.contentSuggestions).values(toInsert);
 
     return { success: true };
+  }
+
+  /**
+   * Approve a specific variation, resolve parent post metadata, check social connection,
+   * and schedule the post.
+   */
+  async approveVariation(variationId: string, dto: ApproveVariationDto) {
+    // 1. Look up the variation
+    const variation = await this.db.query.contentSuggestions.findFirst({
+      where: eq(schema.contentSuggestions.id, variationId),
+    });
+    if (!variation) {
+      throw new NotFoundException(`Variation ${variationId} not found.`);
+    }
+
+    // Idempotent re-approve check
+    if (variation.approvalStatus === 'APPROVED') {
+      const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+        where: eq(schema.scheduledPosts.variationId, variationId),
+      });
+      if (existingScheduled) {
+        return existingScheduled;
+      }
+    }
+
+    // 2. Fetch the parent calendar post
+    if (!variation.postId) {
+      throw new BadRequestException('Variation does not belong to a calendar post.');
+    }
+    const post = await this.db.query.contentCalendar.findFirst({
+      where: eq(schema.contentCalendar.id, variation.postId),
+    });
+    if (!post) {
+      throw new NotFoundException(`Parent calendar post ${variation.postId} not found.`);
+    }
+
+    // 3. Resolve scheduled date/time
+    const scheduledForStr = dto.scheduledFor || post.scheduledAt?.toISOString();
+    if (!scheduledForStr) {
+      throw new BadRequestException('No scheduled date/time available for this post.');
+    }
+    const scheduledFor = new Date(scheduledForStr);
+
+    // 4. Resolve socialAccountId
+    const normalizedPlatform = post.platform.toLowerCase();
+    const socialAccount = await this.db.query.social_accounts.findFirst({
+      where: and(
+        eq(schema.social_accounts.userId, post.userId),
+        eq(schema.social_accounts.platform, normalizedPlatform as any),
+      ),
+    });
+    if (!socialAccount) {
+      throw new BadRequestException(
+        `No connected social account found for customer ID ${post.userId} on platform "${post.platform}".`
+      );
+    }
+
+    // 5. Insert new scheduled_posts row
+    let scheduledPost;
+    try {
+      const [inserted] = await this.db
+        .insert(schema.scheduledPosts)
+        .values({
+          variationId: variation.id,
+          calendarPostId: variation.postId,
+          platform: normalizedPlatform,
+          content: variation.content,
+          socialAccountId: socialAccount.id,
+          scheduledAt: scheduledFor,
+          status: 'SCHEDULED',
+        })
+        .returning();
+      scheduledPost = inserted;
+    } catch (err) {
+      // Check for unique key constraint conflict (Postgres code 23505)
+      if (err.code === '23505') {
+        const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+          where: eq(schema.scheduledPosts.variationId, variation.id),
+        });
+        if (existingScheduled) {
+          scheduledPost = existingScheduled;
+        } else {
+          throw err;
+        }
+      } else {
+        throw err;
+      }
+    }
+
+    // 6. Update the content_suggestions status to APPROVED
+    await this.db
+      .update(schema.contentSuggestions)
+      .set({ approvalStatus: 'APPROVED' })
+      .where(eq(schema.contentSuggestions.id, variation.id));
+
+    return scheduledPost;
   }
 }

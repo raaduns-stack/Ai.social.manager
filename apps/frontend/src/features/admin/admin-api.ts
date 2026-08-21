@@ -20,6 +20,7 @@ export interface AdminUser {
   lastLoginAt?: string | null
   suspendedAt?: string | null
   plan: string
+  planSlug?: string
   isPaid: boolean
   kycStatus: string
   kycRecordId?: string | null
@@ -49,6 +50,21 @@ export interface StaffManager {
   role: string
 }
 
+export interface StaffOverview {
+  totalAdmins: number
+  totalStaff: number
+  activeUsers: number
+  disabledAccounts: number
+  recentLogins: {
+    id: string
+    name: string
+    role: string
+    device: string
+    time: string
+    status: string
+  }[]
+}
+
 export interface AdminBillingStats {
   totalRevenue: number
   activeSubscriptions: number
@@ -75,6 +91,7 @@ export interface AdminPayment {
   status: string
 }
 
+<<<<<<< HEAD
 export async function getAdminUsers(params?: {
   search?: string
   tab?: string
@@ -83,7 +100,10 @@ export async function getAdminUsers(params?: {
   country?: string
   kycStatus?: string
 }): Promise<AdminUser[]> {
-  const response = await api.get<AdminUser[]>('/admin/users', { params })
+  const response = await api.get<AdminUser[]>('/admin/users', { 
+    params,
+    headers: { 'Cache-Control': 'no-cache' },
+  })
   return response.data
 }
 
@@ -94,6 +114,13 @@ export async function getAdminUserStats(): Promise<UserManagementStats> {
 
 export async function getStaffManagers(): Promise<StaffManager[]> {
   const response = await api.get<StaffManager[]>('/admin/users/staff-managers')
+  return response.data
+}
+
+export async function getStaffOverview(): Promise<StaffOverview> {
+  const response = await api.get<StaffOverview>('/admin/staff/overview', {
+    headers: { 'Cache-Control': 'no-cache' },
+  })
   return response.data
 }
 
@@ -174,5 +201,47 @@ export async function getAdminSubscriptions(): Promise<AdminSubscription[]> {
 
 export async function getAdminPayments(): Promise<AdminPayment[]> {
   const response = await api.get<AdminPayment[]>('/admin/billing/payments')
+  return response.data
+}
+
+export interface BackendRolePermission {
+  id: string;
+  role: string;
+  module: string;
+  accessLevel: string;
+}
+
+export async function getRolePermissions(): Promise<BackendRolePermission[]> {
+  const response = await api.get<BackendRolePermission[]>('/admin/role-permissions')
+  return response.data
+}
+
+export async function updateRolePermissions(payload: { role: string; permissions: { module: string; accessLevel: string }[] }): Promise<any> {
+  const response = await api.patch<any>('/admin/role-permissions', payload)
+  return response.data
+}
+
+export async function createStaff(payload: any): Promise<any> {
+  const response = await api.post<any>('/admin/users/staff', payload)
+  return response.data
+}
+
+export async function getAdminPlans(): Promise<any[]> {
+  const response = await api.get<any[]>('/admin/plans')
+  return response.data
+}
+
+export async function updateAdminPlan(id: string, payload: any): Promise<any> {
+  const response = await api.patch<any>(`/admin/plans/${id}`, payload)
+  return response.data
+}
+
+export async function getAdminSocialAccounts(): Promise<any[]> {
+  const response = await api.get<any[]>('/admin/social-accounts')
+  return response.data
+}
+
+export async function disconnectAdminSocialAccount(id: string): Promise<any> {
+  const response = await api.post<any>(`/admin/social-accounts/${id}/disconnect`)
   return response.data
 }

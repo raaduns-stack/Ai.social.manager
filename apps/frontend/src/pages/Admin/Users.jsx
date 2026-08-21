@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import {
   Plus,
   Search,
@@ -35,6 +35,7 @@ import {
 import { cn } from '../../utils/cn'
 
 export default function Users() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [users, setUsers] = useState([])
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -55,6 +56,10 @@ export default function Users() {
   const [statusFilter, setStatusFilter] = useState('')
   const [planFilter, setPlanFilter] = useState('')
   const [countryFilter, setCountryFilter] = useState('')
+  const [groupFilter, setGroupFilter] = useState(() => {
+    const group = searchParams.get('group')
+    return group === 'free' || group === 'paid' ? group : 'all'
+  })
   const [activeActionsId, setActiveActionsId] = useState(null)
 
   // Modals state
@@ -111,6 +116,14 @@ export default function Users() {
   }, [activeTab])
 
   // Client-side quick filter refiner
+  const customers = useMemo(
+    () => users.filter((user) => user.role === 'user'),
+    [users],
+  )
+  const freeCount = customers.filter((user) => !user.isPaid).length
+  const paidCount = customers.filter((user) => user.isPaid).length
+
+  // Filter user base
   const filteredUsers = useMemo(() => {
     return users.filter((user) => {
       const matchesSearch =
@@ -122,10 +135,24 @@ export default function Users() {
       const matchesStatus = statusFilter === '' || (user.status || '').toLowerCase() === statusFilter.toLowerCase()
       const matchesPlan = planFilter === '' || (user.plan || '').toLowerCase() === planFilter.toLowerCase()
       const matchesCountry = countryFilter === '' || (user.country || '').toLowerCase() === countryFilter.toLowerCase()
+      const isCustomer = user.role === 'user'
+      const matchesGroup =
+        groupFilter === 'all' ||
+        (isCustomer && (groupFilter === 'paid' ? user.isPaid : !user.isPaid))
 
-      return matchesSearch && matchesStatus && matchesPlan && matchesCountry
+      return matchesSearch && matchesStatus && matchesPlan && matchesCountry && matchesGroup
     })
-  }, [users, searchTerm, statusFilter, planFilter, countryFilter])
+  }, [users, searchTerm, statusFilter, planFilter, countryFilter, groupFilter])
+
+  const setGroup = (group) => {
+    setGroupFilter(group)
+    if (group === 'all') {
+      searchParams.delete('group')
+    } else {
+      searchParams.set('group', group)
+    }
+    setSearchParams(searchParams, { replace: true })
+  }
 
   const toggleActions = (id) => {
     setActiveActionsId((prev) => (prev === id ? null : id))
@@ -450,6 +477,11 @@ export default function Users() {
           <p className="text-sm text-on-surface-variant">
             Full view and management of system users, registration flows, KYC, and accounts.
           </p>
+          <p className="text-sm text-on-surface mt-2 font-medium">
+            Free Users: {loading ? '—' : freeCount}
+            <span className="mx-2 text-on-surface-variant">·</span>
+            Paid Users: {loading ? '—' : paidCount}
+          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
@@ -512,6 +544,27 @@ export default function Users() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-1 border border-surface-variant bg-surface rounded-lg p-1">
+            {[
+              { value: 'all', label: 'All' },
+              { value: 'free', label: 'Free Users' },
+              { value: 'paid', label: 'Paid Users' },
+            ].map((item) => (
+              <button
+                key={item.value}
+                type="button"
+                onClick={() => setGroup(item.value)}
+                className={cn(
+                  "px-3 py-1 text-xs rounded transition-all font-ui-mono",
+                  groupFilter === item.value
+                    ? 'bg-primary text-on-primary font-bold'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-variant'
+                )}
+              >
+                {item.label}
+              </button>
+            ))}
+          </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
@@ -558,7 +611,13 @@ export default function Users() {
           columns={columns}
           data={filteredUsers}
           searchKeys={[]}
-          emptyMessage="No users found matching your tab filter and search queries."
+          emptyMessage={
+            groupFilter === 'free'
+              ? 'No users yet'
+              : groupFilter === 'paid'
+                ? 'No paid users yet'
+                : 'No users found matching your tab filter and search queries.'
+          }
         />
       )}
 

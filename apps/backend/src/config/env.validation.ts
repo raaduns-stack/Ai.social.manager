@@ -95,6 +95,10 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   AI_SUGGESTIONS_N8N_REVISION_WEBHOOK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  N8N_PUBLISHING_WEBHOOK_URL?: string;
 }
 
 /**

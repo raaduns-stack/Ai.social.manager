@@ -23,6 +23,7 @@ import {
   Loader2,
   UserCheck,
   Upload,
+  Sparkles,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -47,10 +48,62 @@ import {
   adminDownloadKycDocument,
   adminRejectKycDocument,
 } from '../../features/kyc/kyc-api'
+import AISettingsModal from '../../components/ai/AISettingsModal'
+
+const PLAN_PRICES = {
+  'Free': '₦0/month',
+  'Starter': '₦30,000/month',
+  'Growth': '₦100,000/month',
+  'Brand Domination': '₦150,000/month'
+}
 
 export default function UserDetail() {
   const { userId } = useParams()
   const navigate = useNavigate()
+  const [isAISettingsOpen, setIsAISettingsOpen] = useState(false)
+  const [userPlatforms, setUserPlatforms] = useState([
+    {
+      key: 'linkedin',
+      label: 'LinkedIn',
+      globalPrompt: `Generate professional LinkedIn content.
+Always use a business tone.
+Maximum 250 words.
+Include CTA.`,
+      customerPrompt: 'Always mention our premium products. Use British English.',
+    },
+    {
+      key: 'twitter',
+      label: 'X/Twitter',
+      globalPrompt: `Generate engaging tweets/X posts.
+Keep it concise and punchy.
+Maximum 280 characters.
+Use 1-2 relevant hashtags.`,
+      customerPrompt: 'Focus on technology innovation. Use a bold, active voice.',
+    },
+    {
+      key: 'facebook',
+      label: 'Facebook',
+      globalPrompt: `Generate friendly and social Facebook posts.
+Encourage user engagement or comments.
+Keep tone conversational.
+Include a link description.`,
+      customerPrompt: 'Promote local community involvement and family values.',
+    },
+    {
+      key: 'instagram',
+      label: 'Instagram',
+      globalPrompt: `Generate catchy captions for Instagram posts.
+Start with a strong hook line.
+Maximum 150 words.
+Include a clean list of hashtags at the end.`,
+      customerPrompt: 'Highlight aesthetic values, use friendly emojis, write in lower case.',
+    },
+  ])
+
+  const handleSaveAISettings = (updatedPlatforms) => {
+    setUserPlatforms(updatedPlatforms)
+    console.log('Saved AI settings for user:', updatedPlatforms)
+  }
 
   const [data, setData] = useState(null)
   const [staffManagers, setStaffManagers] = useState([])
@@ -259,9 +312,11 @@ export default function UserDetail() {
     { id: 'profile', label: 'Account Profile' },
     { id: 'business', label: 'Business Information' },
     { id: 'kyc', label: 'KYC Verification' },
+    { id: 'accounts', label: 'Social Accounts' },
     { id: 'subscription', label: 'Subscription & Billing' },
     { id: 'manager', label: 'Account Manager' },
     { id: 'activity', label: 'Activity Logs' },
+    { id: 'tickets', label: 'Support Tickets' },
   ]
 
   return (
@@ -336,6 +391,24 @@ export default function UserDetail() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <Button
+            as={Link}
+            to={`/admin/users/${userId}/calendar`}
+            variant="outline"
+            className="text-xs h-9 px-4 font-semibold text-primary border-primary/20 hover:bg-primary-50 gap-1.5 flex items-center"
+          >
+            <Calendar size={14} />
+            <span>Content Calendar</span>
+          </Button>
+          <Button
+            variant="outline"
+            className="text-xs h-9 px-4 font-semibold text-primary border-primary/20 hover:bg-primary-50 gap-1.5 flex items-center"
+            onClick={() => setIsAISettingsOpen(true)}
+          >
+            <Sparkles size={14} />
+            <span>AI Content Settings</span>
+          </Button>
+
           <Button
             variant="outline"
             className="text-xs h-9 px-4 font-semibold"
@@ -709,42 +782,103 @@ export default function UserDetail() {
                     {subscription.status}
                   </Badge>
                 </div>
+                <div className="flex justify-between border-b border-border/55 pb-3">
+                  <span className="text-sm text-ink-muted">Tier</span>
+                  <span className="text-sm font-semibold text-primary">{subscription.planName}</span>
+                </div>
+                <div className="flex justify-between border-b border-border/55 pb-3">
+                  <span className="text-sm text-ink-muted">Billing Cycle</span>
+                  <span className="text-sm font-medium text-ink">
+                    {subscription.plan?.interval || 'Monthly'}
+                  </span>
+                </div>
+                <div className="flex justify-between border-b border-border/55 pb-3">
+                  <span className="text-sm text-ink-muted">Renewal Date</span>
+                  <span className="text-sm font-medium text-ink">
+                    {subscription.currentPeriodEnd
+                      ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                      : '—'}
+                  </span>
+                </div>
               </div>
             </Card>
 
             <Card className="lg:col-span-2 p-6 space-y-4">
               <h3 className="text-base font-bold text-ink border-b border-border pb-2">Payment & Invoice History</h3>
               <div className="overflow-x-auto">
-                <table className="w-full text-sm text-left">
-                  <thead>
-                    <tr className="border-b border-border text-ink-muted">
-                      <th className="py-2 font-semibold text-xs">Date</th>
-                      <th className="py-2 font-semibold text-xs">Amount</th>
-                      <th className="py-2 font-semibold text-xs">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/50">
-                    {subscription.payments.length > 0 ? (
-                      subscription.payments.map((p) => (
-                        <tr key={p.id}>
-                          <td className="py-2.5 text-xs text-ink-muted">{new Date(p.createdAt).toLocaleDateString()}</td>
-                          <td className="py-2.5 text-xs font-bold text-ink">₦{p.amount}</td>
-                          <td className="py-2.5">
-                            <Badge tone={p.status === 'successful' ? 'success' : 'neutral'} className="text-[10px]">
-                              {p.status}
-                            </Badge>
-                          </td>
+                <div className="space-y-6">
+                  <div>
+                    <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-2">Payments</h4>
+                    <table className="w-full text-sm text-left">
+                      <thead>
+                        <tr className="border-b border-border text-ink-muted">
+                          <th className="py-2 font-semibold text-xs">Date</th>
+                          <th className="py-2 font-semibold text-xs">Amount</th>
+                          <th className="py-2 font-semibold text-xs">Status</th>
                         </tr>
-                      ))
+                      </thead>
+                      <tbody className="divide-y divide-border/50">
+                        {subscription.payments && subscription.payments.length > 0 ? (
+                          subscription.payments.map((p) => (
+                            <tr key={p.id}>
+                              <td className="py-2.5 text-xs text-ink-muted">{new Date(p.createdAt).toLocaleDateString()}</td>
+                              <td className="py-2.5 text-xs font-bold text-ink">₦{p.amount?.toLocaleString()}</td>
+                              <td className="py-2.5">
+                                <Badge tone={p.status === 'successful' ? 'success' : 'neutral'} className="text-[10px]">
+                                  {p.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={3} className="py-6 text-center text-xs text-ink-muted">
+                              No payment records found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-ink-muted uppercase tracking-wider mb-2">Invoices</h4>
+                    {!subscription.invoices || subscription.invoices.length === 0 ? (
+                      <div className="py-6 text-center text-ink-muted text-xs font-medium">
+                        No invoice records found.
+                      </div>
                     ) : (
-                      <tr>
-                        <td colSpan={3} className="py-6 text-center text-xs text-ink-muted">
-                          No payment records found.
-                        </td>
-                      </tr>
+                      <table className="w-full text-sm text-left">
+                        <thead>
+                          <tr className="border-b border-border text-ink-muted">
+                            <th className="py-2 font-semibold text-xs">Invoice ID</th>
+                            <th className="py-2 font-semibold text-xs">Date</th>
+                            <th className="py-2 font-semibold text-xs">Amount</th>
+                            <th className="py-2 font-semibold text-xs">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                          {subscription.invoices.map((inv) => (
+                            <tr key={inv.id}>
+                              <td className="py-2.5 text-xs font-medium text-ink">{inv.invoiceNumber}</td>
+                              <td className="py-2.5 text-xs text-ink-muted">
+                                {inv.issuedAt ? new Date(inv.issuedAt).toLocaleDateString() : '—'}
+                              </td>
+                              <td className="py-2.5 text-xs font-semibold text-ink">
+                                {inv.currency} {inv.amount?.toLocaleString()}
+                              </td>
+                              <td className="py-2.5">
+                                <Badge tone={inv.status === 'paid' ? 'success' : 'warning'} className="font-semibold text-[10px]">
+                                  {inv.status}
+                                </Badge>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     )}
-                  </tbody>
-                </table>
+                  </div>
+                </div>
               </div>
             </Card>
           </div>
@@ -771,12 +905,12 @@ export default function UserDetail() {
 
         {/* ACTIVITY LOGS TAB */}
         {activeTab === 'activity' && (
-          <Card className="p-0 overflow-hidden">
+          <Card className="overflow-hidden p-0">
             <div className="px-6 py-4 border-b border-border">
               <h3 className="text-base font-bold text-ink">User Activity Logs</h3>
             </div>
             <div className="divide-y divide-border/50">
-              {activities.length > 0 ? (
+              {activities && activities.length > 0 ? (
                 activities.map((act) => (
                   <div key={act.id} className="p-4 flex items-center justify-between text-sm">
                     <div>
@@ -794,6 +928,45 @@ export default function UserDetail() {
                 </div>
               )}
             </div>
+          </Card>
+        )}
+
+        {/* SOCIAL ACCOUNTS TAB */}
+        {activeTab === 'accounts' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {!data.socialAccounts || data.socialAccounts.length === 0 ? (
+              <div className="md:col-span-2 text-center text-sm text-ink-muted py-10">No connected social accounts found.</div>
+            ) : (
+              data.socialAccounts.map((acct) => (
+                <Card key={acct.id} className="p-6 flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-control flex items-center justify-center shrink-0 bg-primary-50 text-primary">
+                      <Share2 size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-ink capitalize">{acct.platform}</h4>
+                      <p className="text-xs text-ink-muted mt-0.5">{acct.accountHandle}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-2">
+                    <Badge tone={acct.status === 'Connected' ? 'success' : 'neutral'} className="font-semibold text-[10px]">
+                      {acct.status}
+                    </Badge>
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        )}
+
+        {/* TICKETS TAB */}
+        {activeTab === 'tickets' && (
+          <Card className="overflow-hidden p-0">
+            <div className="px-6 py-4 border-b border-border flex justify-between items-center">
+              <h3 className="text-base font-semibold text-ink">Support Tickets</h3>
+            </div>
+            <div className="p-6 text-center text-sm text-ink-muted">No support tickets found for this user.</div>
           </Card>
         )}
       </div>
@@ -937,6 +1110,14 @@ export default function UserDetail() {
           </div>
         </form>
       </Modal>
+
+      <AISettingsModal
+        isOpen={isAISettingsOpen}
+        onClose={() => setIsAISettingsOpen(false)}
+        customerName={accountInfo.fullName}
+        platforms={userPlatforms}
+        onSave={handleSaveAISettings}
+      />
     </div>
   )
 }
