@@ -91,7 +91,6 @@ export interface AdminPayment {
   status: string
 }
 
-<<<<<<< HEAD
 export async function getAdminUsers(params?: {
   search?: string
   tab?: string
@@ -100,7 +99,7 @@ export async function getAdminUsers(params?: {
   country?: string
   kycStatus?: string
 }): Promise<AdminUser[]> {
-  const response = await api.get<AdminUser[]>('/admin/users', { 
+  const response = await api.get<AdminUser[]>('/admin/users', {
     params,
     headers: { 'Cache-Control': 'no-cache' },
   })

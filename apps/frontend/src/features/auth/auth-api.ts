@@ -14,3 +14,4 @@ export async function changePassword(
   })
   return response.data
 }
+
