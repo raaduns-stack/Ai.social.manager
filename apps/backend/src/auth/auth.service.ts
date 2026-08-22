@@ -78,9 +78,14 @@ export class AuthService {
         passwordHash,
         fullName: dto.fullName,
         businessName: dto.businessName,
+        phoneNumber: dto.phoneNumber,
+        country: dto.country,
+        accountStatus: 'EMAIL_VERIFICATION_PENDING',
+        isActive: true,
         isEmailVerified: false,
         emailVerificationCode: code,
         emailVerificationExpiresAt: expiresAt,
+        registeredAt: new Date(),
       })
       .returning();
 
@@ -176,8 +181,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (!user.isActive) {
-      console.log('[DEBUG Auth] User is inactive:', dto.email);
+    if (user.accountStatus === 'SUSPENDED' || !user.isActive) {
+      console.log('[DEBUG Auth] User is inactive or suspended:', dto.email);
       await this.loginHistoryService.record({
         ...baseAudit,
         userId: user.id,
@@ -187,7 +192,7 @@ export class AuthService {
       throw new UnauthorizedException('This account has been suspended');
     }
 
-    if (!user.isEmailVerified) {
+    if (!user.isEmailVerified || user.accountStatus === 'EMAIL_VERIFICATION_PENDING') {
       console.log('[DEBUG Auth] User email not verified:', dto.email);
       await this.loginHistoryService.record({
         ...baseAudit,
@@ -202,7 +207,24 @@ export class AuthService {
       });
     }
 
-    // All checks passed — record a successful login
+    // All checks passed — update login timestamps and set status to ACTIVE if needed
+    const now = new Date();
+    const updatePayload: any = {
+      lastLoginAt: now,
+      accountStatus: 'ACTIVE',
+      isActive: true,
+      updatedAt: now,
+    };
+    if (!user.firstLoginAt) {
+      updatePayload.firstLoginAt = now;
+    }
+
+    const [updatedUser] = await this.db
+      .update(schema.users)
+      .set(updatePayload)
+      .where(eq(schema.users.id, user.id))
+      .returning();
+
     await this.loginHistoryService.record({
       ...baseAudit,
       userId: user.id,
@@ -219,7 +241,7 @@ export class AuthService {
     });
 
     console.log('[DEBUG Auth] Login successful, issuing tokens for:', dto.email);
-    return this.issueTokens(user);
+    return this.issueTokens(updatedUser);
   }
 
   async verifyEmail(dto: VerifyEmailDto) {
@@ -242,13 +264,17 @@ export class AuthService {
       throw new BadRequestException('Verification code has expired');
     }
 
+    const now = new Date();
     const [updatedUser] = await this.db
       .update(schema.users)
       .set({
         isEmailVerified: true,
+        emailVerifiedAt: now,
+        accountStatus: 'ACTIVE',
+        isActive: true,
         emailVerificationCode: null,
         emailVerificationExpiresAt: null,
-        updatedAt: new Date(),
+        updatedAt: now,
       })
       .where(eq(schema.users.id, user.id))
       .returning();
@@ -363,6 +389,60 @@ export class AuthService {
    * @param user The user entity from the database
    * @returns An object containing the user data and the newly generated tokens
    */
+  async updateProfileImage(userId: string, filename: string) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const [updated] = await this.db
+      .update(schema.users)
+      .set({
+        profileImage: filename,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return {
+      success: true,
+      profileImage: updated.profileImage,
+    };
+  }
+
+  async getCurrentUser(userId: string) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+    if (!user) throw new NotFoundException('User not found');
+
+    const activeSub = await this.db.query.subscriptions.findFirst({
+      where: and(
+        eq(schema.subscriptions.userId, user.id),
+        eq(schema.subscriptions.status, 'active'),
+      ),
+      with: { plan: true },
+      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+    });
+
+    const perms = await this.getPermissions(user.id, user.role);
+
+    return {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      businessName: user.businessName,
+      phoneNumber: user.phoneNumber,
+      country: user.country,
+      profileImage: user.profileImage,
+      role: user.role,
+      accountStatus: user.accountStatus,
+      isEmailVerified: user.isEmailVerified,
+      plan: activeSub?.plan || null,
+      permissions: perms.permissions,
+    };
+  }
+
   async getPermissions(userId: string, role: string) {
     const perms = await this.db.query.rolePermissions.findMany({
       where: eq(schema.rolePermissions.role, role as any),
@@ -412,7 +492,12 @@ export class AuthService {
         email: user.email,
         fullName: user.fullName,
         businessName: user.businessName,
+        phoneNumber: user.phoneNumber,
+        country: user.country,
+        profileImage: user.profileImage,
         role: user.role,
+        accountStatus: user.accountStatus,
+        isEmailVerified: user.isEmailVerified,
         plan: activeSub?.plan || null,
         permissions: perms.permissions,
       },

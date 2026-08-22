@@ -1,6 +1,10 @@
-import { Body, Controller, Get, Post, Patch, UseGuards, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, UseGuards, Req, Res, UnauthorizedException, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { extname, join } from 'path';
+import { existsSync, mkdirSync } from 'fs';
 import { Request, Response } from 'express';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
@@ -44,6 +48,54 @@ export class AuthController {
       });
     }
     return data;
+  }
+
+  @Get('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current authenticated user profile' })
+  getMe(@CurrentUser() user: { userId: string }) {
+    return this.authService.getCurrentUser(user.userId);
+  }
+
+  @Post('profile-image')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload profile image for authenticated user' })
+  @ApiConsumes('multipart/form-data')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: diskStorage({
+        destination: (_req, _file, callback) => {
+          const uploadPath = join(process.cwd(), 'uploads');
+          if (!existsSync(uploadPath)) {
+            mkdirSync(uploadPath, { recursive: true });
+          }
+          callback(null, uploadPath);
+        },
+        filename: (_req, file, callback) => {
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const ext = extname(file.originalname);
+          callback(null, `profile-${uniqueSuffix}${ext}`);
+        },
+      }),
+      fileFilter: (_req, file, callback) => {
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+        if (allowedTypes.includes(file.mimetype)) {
+          callback(null, true);
+        } else {
+          callback(new BadRequestException('Only JPG, JPEG, PNG, and WebP images are allowed'), false);
+        }
+      },
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  uploadProfileImage(
+    @CurrentUser() user: { userId: string },
+    @UploadedFile() file: any,
+  ) {
+    if (!file) throw new BadRequestException('No image file uploaded');
+    return this.authService.updateProfileImage(user.userId, file.filename);
   }
 
   @Post('verify-email')
@@ -99,3 +151,4 @@ export class AuthController {
     return this.authService.getPermissions(user.userId, user.role);
   }
 }
+

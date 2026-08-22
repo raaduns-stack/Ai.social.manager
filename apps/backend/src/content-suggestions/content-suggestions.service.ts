@@ -490,12 +490,12 @@ export class ContentSuggestionsService {
       return { success: true, count: 0 };
     }
 
-    const toInsert = dto.variations.map((v) => ({
+    const toInsert = dto.variations.map((v: any) => ({
       userId: dto.userId,
       postId: dto.postId,
       type: 'caption' as const,
-      title: v.title,
-      content: v.caption,
+      title: v.title || 'Suggested Post',
+      content: v.caption || v.content || '',
       hashtags: v.hashtags || [],
       approvalStatus: 'PENDING_APPROVAL' as const,
     }));
