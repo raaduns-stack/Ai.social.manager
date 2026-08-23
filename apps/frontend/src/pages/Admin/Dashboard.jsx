@@ -174,7 +174,7 @@ export default function Dashboard() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
         <div>
-          <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Good morning, Admin.</h2>
+          <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Welcome back, Admin.</h2>
           <p className="text-sm text-on-surface-variant">Here is what is happening across Raasocial.</p>
         </div>
 
