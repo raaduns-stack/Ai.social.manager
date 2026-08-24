@@ -241,13 +241,13 @@ export default function SignUp() {
             />
             <label htmlFor="terms" className="text-xs text-[#666666] leading-tight select-none">
               By creating an account, I agree to the{' '}
-              <a href="#" className="text-[#111111] font-semibold hover:text-[#FF6600] transition-colors">
+              <Link to="/terms-of-service" className="text-[#111111] font-semibold hover:text-[#FF6600] transition-colors">
                 Terms of Service
-              </a>{' '}
+              </Link>{' '}
               and{' '}
-              <a href="#" className="text-[#111111] font-semibold hover:text-[#FF6600] transition-colors">
+              <Link to="/privacy-policy" className="text-[#111111] font-semibold hover:text-[#FF6600] transition-colors">
                 Privacy Policy
-              </a>
+              </Link>
               .
             </label>
           </div>

@@ -7,6 +7,8 @@ function getTitleFromPath(pathname: string): string {
     '/features': 'Features',
     '/pricing': 'Pricing',
     '/contact': 'Contact Us',
+    '/privacy-policy': 'Privacy Policy',
+    '/terms-of-service': 'Terms of Service',
     '/login': 'Login',
     '/signup': 'Sign Up',
     '/forgot-password': 'Forgot Password',
