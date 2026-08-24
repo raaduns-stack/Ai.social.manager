@@ -1,17 +1,11 @@
 // subscription-revenue.ts
 
-/**
- * Types of subscription movement events
- */
 export type SubscriptionEventType =
   | 'new_subscription'
   | 'renewal'
   | 'upgrade'
   | 'downgrade';
 
-/**
- * Filter parameters for querying subscription revenue
- */
 export interface SubscriptionRevenueQuery {
   startDate?: Date;
   endDate?: Date;
@@ -19,28 +13,19 @@ export interface SubscriptionRevenueQuery {
   billingCycle?: 'monthly' | 'annual';
 }
 
-/**
- * Monetary breakdown by subscription event type
- */
 export interface EventRevenueMetric {
   eventType: SubscriptionEventType;
   count: number;
   totalRevenue: number;
 }
 
-/**
- * Core recurring revenue metrics (MRR/ARR)
- */
 export interface RecurringRevenueMetrics {
-  monthlyRecurringRevenue: number; // MRR
-  annualRecurringRevenue: number;  // ARR
-  netNewMrr: number;               // (New MRR + Expansion MRR) - (Contraction MRR + Churned MRR)
-  averageRevenuePerUser: number;  // ARPU
+  monthlyRecurringRevenue: number;
+  annualRecurringRevenue: number;
+  netNewMrr: number;
+  averageRevenuePerUser: number;
 }
 
-/**
- * Main API response structure for Subscription Revenue
- */
 export interface SubscriptionRevenueResponse {
   recurringMetrics: RecurringRevenueMetrics;
   revenueByEventType: Record<SubscriptionEventType, EventRevenueMetric>;
@@ -49,69 +34,88 @@ export interface SubscriptionRevenueResponse {
   lastUpdated: Date;
 }
 
-/**
- * Service managing subscription trends and recurring revenue calculations
- */
 export class SubscriptionRevenueService {
-  /**
-   * Fetches subscription revenue trends and recurring financial metrics
-   */
-  async getSubscriptionRevenue(
-    query: SubscriptionRevenueQuery
-  ): Promise<SubscriptionRevenueResponse> {
-    const currency = 'USD';
+  constructor(
+    private readonly subscriptionLogModel: any,
+    private readonly activeSubscriptionsModel: any
+  ) {}
 
-    const revenueByEventType = await this.aggregateSubscriptionEvents(query);
-    const recurringMetrics = await this.calculateRecurringMetrics(query);
-    const activeSubscriptionsCount = await this.getActiveSubscriptionsCount(query);
+  async getSubscriptionRevenue(query: SubscriptionRevenueQuery): Promise<SubscriptionRevenueResponse> {
+    const currency = 'USD';
+    const matchFilter: Record<string, any> = {};
+
+    if (query.planId) matchFilter.planId = query.planId;
+    if (query.billingCycle) matchFilter.billingCycle = query.billingCycle;
+    if (query.startDate || query.endDate) {
+      matchFilter.createdAt = {};
+      if (query.startDate) matchFilter.createdAt.$gte = query.startDate;
+      if (query.endDate) matchFilter.createdAt.$lte = query.endDate;
+    }
+
+    // Live Aggregation across Event Types
+    const eventPipeline = [
+      { $match: matchFilter },
+      {
+        $group: {
+          _id: '$eventType',
+          count: { $sum: 1 },
+          totalRevenue: { $sum: '$amount' },
+        },
+      },
+    ];
+
+    // Live Active Subscriptions Count & MRR Computation
+    const activePipeline = [
+      { $match: { status: 'active' } },
+      {
+        $group: {
+          _id: null,
+          activeCount: { $sum: 1 },
+          totalMrr: { $sum: '$monthlyPrice' },
+        },
+      },
+    ];
+
+    const [eventResults, activeResults] = await Promise.all([
+      this.subscriptionLogModel.aggregate(eventPipeline),
+      this.activeSubscriptionsModel.aggregate(activePipeline),
+    ]);
+
+    const revenueByEventType: Record<SubscriptionEventType, EventRevenueMetric> = {
+      new_subscription: { eventType: 'new_subscription', count: 0, totalRevenue: 0 },
+      renewal: { eventType: 'renewal', count: 0, totalRevenue: 0 },
+      upgrade: { eventType: 'upgrade', count: 0, totalRevenue: 0 },
+      downgrade: { eventType: 'downgrade', count: 0, totalRevenue: 0 },
+    };
+
+    eventResults.forEach((res: any) => {
+      const type = res._id as SubscriptionEventType;
+      if (revenueByEventType[type]) {
+        revenueByEventType[type].count = res.count;
+        revenueByEventType[type].totalRevenue = res.totalRevenue;
+      }
+    });
+
+    const activeStats = activeResults[0] || { activeCount: 0, totalMrr: 0 };
+    const mrr = activeStats.totalMrr;
+    const arr = mrr * 12;
+    const activeCount = activeStats.activeCount;
+
+    const newMrr = revenueByEventType.new_subscription.totalRevenue + revenueByEventType.upgrade.totalRevenue;
+    const contractionMrr = Math.abs(revenueByEventType.downgrade.totalRevenue);
+    const netNewMrr = newMrr - contractionMrr;
 
     return {
-      recurringMetrics,
+      recurringMetrics: {
+        monthlyRecurringRevenue: mrr,
+        annualRecurringRevenue: arr,
+        netNewMrr,
+        averageRevenuePerUser: activeCount > 0 ? Number((mrr / activeCount).toFixed(2)) : 0,
+      },
       revenueByEventType,
-      activeSubscriptionsCount,
+      activeSubscriptionsCount: activeCount,
       currency,
       lastUpdated: new Date(),
     };
-  }
-
-  /**
-   * Aggregates subscription revenue across movement types
-   */
-  private async aggregateSubscriptionEvents(
-    _query: SubscriptionRevenueQuery
-  ): Promise<Record<SubscriptionEventType, EventRevenueMetric>> {
-    // TODO: Replace with database query aggregating subscription logs
-    return {
-      new_subscription: { eventType: 'new_subscription', count: 40, totalRevenue: 4000 },
-      renewal: { eventType: 'renewal', count: 120, totalRevenue: 12000 },
-      upgrade: { eventType: 'upgrade', count: 15, totalRevenue: 1500 },
-      downgrade: { eventType: 'downgrade', count: 5, totalRevenue: -250 },
-    };
-  }
-
-  /**
-   * Computes MRR, ARR, Net New MRR, and ARPU
-   */
-  private async calculateRecurringMetrics(
-    _query: SubscriptionRevenueQuery
-  ): Promise<RecurringRevenueMetrics> {
-    // Placeholder numbers - replace with actual DB aggregation
-    const mrr = 16450;
-    const arr = mrr * 12;
-    const activeUsers = 160;
-
-    return {
-      monthlyRecurringRevenue: mrr,
-      annualRecurringRevenue: arr,
-      netNewMrr: 4450,
-      averageRevenuePerUser: activeUsers > 0 ? Number((mrr / activeUsers).toFixed(2)) : 0,
-    };
-  }
-
-  /**
-   * Fetches total active subscription count
-   */
-  private async getActiveSubscriptionsCount(_query: SubscriptionRevenueQuery): Promise<number> {
-    return 160;
   }
 }

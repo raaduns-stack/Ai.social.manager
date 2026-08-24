@@ -1,93 +1,128 @@
 // revenue-overview.ts
 
-/**
- * Supported timeframes for revenue analytics
- */
 export type Timeframe = 'daily' | 'weekly' | 'monthly' | 'annual';
 
-/**
- * Request filters for querying revenue overview
- */
 export interface RevenueOverviewQuery {
-    timeframe: Timeframe;
-    startDate?: Date;
-    endDate?: Date;
-    currency?: string;
+  timeframe: Timeframe;
+  startDate?: Date;
+  endDate?: Date;
+  currency?: string;
 }
 
-/**
- * Individual data point for charts/breakdowns
- */
 export interface RevenueDataPoint {
-    timestamp: Date | string;
-    amount: number;
-    label: string; // e.g., "Mon", "Jan", "2026"
+  timestamp: Date | string;
+  amount: number;
+  label: string;
 }
 
-/**
- * Summary metrics response for the Admin Dashboard
- */
 export interface RevenueOverviewResponse {
-    totalRevenue: number;
-    timeframe: Timeframe;
-    currency: string;
-    dataPoints: RevenueDataPoint[];
-    growthPercentage: number; // Growth compared to previous period
-    previousPeriodTotal: number;
-    lastUpdated: Date;
+  totalRevenue: number;
+  timeframe: Timeframe;
+  currency: string;
+  dataPoints: RevenueDataPoint[];
+  growthPercentage: number;
+  previousPeriodTotal: number;
+  lastUpdated: Date;
 }
 
-/**
- * Service handling Revenue Overview business logic
- */
 export class RevenueOverviewService {
-    /**
-     * Fetches the total revenue overview based on specified timeframe filters
-     */
-    async getRevenueOverview(query: RevenueOverviewQuery): Promise<RevenueOverviewResponse> {
-        const currency = query.currency || 'USD';
+  constructor(private readonly dbContext: any) {}
 
-        // TODO: Replace with database aggregation query (e.g., MongoDB, PostgreSQL, ORM)
-        const dataPoints = await this.fetchRevenueDataFromDatabase(query);
-        const totalRevenue = this.calculateTotalRevenue(dataPoints);
+  async getRevenueOverview(query: RevenueOverviewQuery): Promise<RevenueOverviewResponse> {
+    const currency = query.currency || 'USD';
+    const { startDate, endDate } = this.resolveDateRange(query);
+    const previousRange = this.getPreviousDateRange(startDate, endDate);
 
-        // Example growth calculation (Placeholder values)
-        const previousPeriodTotal = 0;
-        const growthPercentage = this.calculateGrowth(totalRevenue, previousPeriodTotal);
+    // Aggregation for Current Period
+    const currentResults = await this.aggregateRevenue(startDate, endDate, query.timeframe, currency);
+    const totalRevenue = currentResults.reduce((acc, point) => acc + point.amount, 0);
 
-        return {
-            totalRevenue,
-            timeframe: query.timeframe,
-            currency,
-            dataPoints,
-            growthPercentage,
-            previousPeriodTotal,
-            lastUpdated: new Date(),
-        };
+    // Aggregation for Previous Period (for Growth Metric)
+    const previousResults = await this.aggregateRevenue(previousRange.start, previousRange.end, query.timeframe, currency);
+    const previousPeriodTotal = previousResults.reduce((acc, point) => acc + point.amount, 0);
+
+    const growthPercentage = this.calculateGrowth(totalRevenue, previousPeriodTotal);
+
+    return {
+      totalRevenue,
+      timeframe: query.timeframe,
+      currency,
+      dataPoints: currentResults,
+      growthPercentage,
+      previousPeriodTotal,
+      lastUpdated: new Date(),
+    };
+  }
+
+  private async aggregateRevenue(
+    startDate: Date,
+    endDate: Date,
+    timeframe: Timeframe,
+    currency: string
+  ): Promise<RevenueDataPoint[]> {
+    const groupFormat = this.getDateFormatByTimeframe(timeframe);
+
+    const pipeline = [
+      {
+        $match: {
+          status: 'successful',
+          currency,
+          createdAt: { $gte: startDate, $lte: endDate },
+        },
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: groupFormat, date: '$createdAt' } },
+          amount: { $sum: '$amount' },
+          timestamp: { $min: '$createdAt' },
+        },
+      },
+      { $sort: { timestamp: 1 } },
+    ];
+
+    const results = await this.dbContext.aggregate(pipeline);
+
+    return results.map((item: any) => ({
+      timestamp: item.timestamp,
+      amount: item.amount,
+      label: item._id,
+    }));
+  }
+
+  private calculateGrowth(current: number, previous: number): number {
+    if (previous === 0) return current > 0 ? 100 : 0;
+    return Number((((current - previous) / previous) * 100).toFixed(2));
+  }
+
+  private resolveDateRange(query: RevenueOverviewQuery): { startDate: Date; endDate: Date } {
+    const endDate = query.endDate || new Date();
+    let startDate = query.startDate;
+
+    if (!startDate) {
+      startDate = new Date(endDate);
+      if (query.timeframe === 'daily') startDate.setDate(endDate.getDate() - 1);
+      if (query.timeframe === 'weekly') startDate.setDate(endDate.getDate() - 7);
+      if (query.timeframe === 'monthly') startDate.setMonth(endDate.getMonth() - 1);
+      if (query.timeframe === 'annual') startDate.setFullYear(endDate.getFullYear() - 1);
     }
 
-    /**
-     * Helper method to sum up revenue data points
-     */
-    private calculateTotalRevenue(dataPoints: RevenueDataPoint[]): number {
-        return dataPoints.reduce((acc, point) => acc + point.amount, 0);
-    }
+    return { startDate, endDate };
+  }
 
-    /**
-     * Helper method to calculate percentage growth rate
-     */
-    private calculateGrowth(current: number, previous: number): number {
-        if (previous === 0) return current > 0 ? 100 : 0;
-        return Number((((current - previous) / previous) * 100).toFixed(2));
-    }
+  private getPreviousDateRange(start: Date, end: Date): { start: Date; end: Date } {
+    const duration = end.getTime() - start.getTime();
+    return {
+      start: new Date(start.getTime() - duration),
+      end: new Date(start.getTime()),
+    };
+  }
 
-    /**
-     * Database mock layer (Replace with your actual DB queries)
-     */
-    private async fetchRevenueDataFromDatabase(query: RevenueOverviewQuery): Promise<RevenueDataPoint[]> {
-        // Example structure of returned aggregated data
-        return [
-            { timestamp: new Date(), amount: 1500, label: 'Current Period' }
-        ];
+  private getDateFormatByTimeframe(timeframe: Timeframe): string {
+    switch (timeframe) {
+      case 'daily': return '%Y-%m-%d %H:00';
+      case 'weekly': return '%Y-%m-%d';
+      case 'monthly': return '%Y-%m';
+      case 'annual': return '%Y';
     }
+  }
 }
