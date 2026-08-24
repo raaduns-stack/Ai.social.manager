@@ -1,5 +1,11 @@
 // revenue-overview.ts
 
+import { Pool } from '@neondatabase/serverless';
+
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
+
 export type Timeframe = 'daily' | 'weekly' | 'monthly' | 'annual';
 
 export interface RevenueOverviewQuery {
