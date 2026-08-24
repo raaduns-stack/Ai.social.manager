@@ -14,7 +14,7 @@ export default function AuthLayout() {
         <div>
           <img
             alt="RaaSocial Logo"
-            className="h-36 object-contain w-auto max-w-[180px] brightness-0 invert"
+            className="h-48 object-contain w-auto max-w-[180px] brightness-0 invert"
             src={LogoImage}
           />
         </div>
