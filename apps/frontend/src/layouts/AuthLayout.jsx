@@ -14,7 +14,7 @@ export default function AuthLayout() {
         <div>
           <img
             alt="RaaSocial Logo"
-            className="h-20 object-contain w-auto max-w-[180px] brightness-0 invert"
+            className="h-36 object-contain w-auto max-w-[180px] brightness-0 invert"
             src={LogoImage}
           />
         </div>
@@ -38,7 +38,7 @@ export default function AuthLayout() {
           <div className="md:hidden mb-2 flex justify-center">
             <img
               alt="RaaSocial Logo"
-              className="h-28 object-contain w-auto max-w-[180px]"
+              className="h-40 object-contain w-auto max-w-[180px]"
               src={LogoImage}
             />
           </div>
