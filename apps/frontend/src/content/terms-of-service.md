@@ -1,6 +1,6 @@
 RaaSocial Terms of Use
-Effective Date: [Insert Date]
-Last Updated: [Insert Date]
+Effective Date: [ 25/08/2026 ]
+Last Updated: [ 25/08/2026 ]
 These Terms of Use ("Terms") govern your access to and use of RaaSocial ("RaaSocial," "we," "us," or "our"), including our website, customer portal, applications, APIs, AI-powered social media management tools, and related services (collectively, the "Services").
 By creating an account, accessing, or using the Services, you agree to these Terms. If you do not agree, do not use the Services.
 

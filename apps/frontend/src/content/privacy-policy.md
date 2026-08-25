@@ -1,8 +1,8 @@
 RaaSocial Privacy Policy
 
 
-Effective Date:  [    ]
-Last Updated: [Insert Date]
+Effective Date:  [ 25/08/2026 ]
+Last Updated: [ 25/08/2026 ]
 RaaSocial ("RaaSocial," "we," "us," or "our") provides an AI-powered social media management platform that helps businesses plan, create, review, schedule, publish, and analyze social media content.
 This Privacy Policy explains how we collect, use, disclose, retain, and protect information when you use the RaaSocial website, customer portal, applications, APIs, and related services (collectively, the "Services").
 By using the Services, you acknowledge the practices described in this Privacy Policy.
