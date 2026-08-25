@@ -174,7 +174,7 @@ export default function Dashboard() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center justify-between">
         <div>
-          <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Good morning, Admin.</h2>
+          <h2 className="font-headline-xl text-headline-xl text-on-surface font-bold tracking-tight">Welcome back, Admin.</h2>
           <p className="text-sm text-on-surface-variant">Here is what is happening across Raasocial.</p>
         </div>
 
@@ -215,7 +215,7 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
-            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Total Customers</span>
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Registered Users</span>
             <Users className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
@@ -241,7 +241,7 @@ export default function Dashboard() {
 
         <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
-            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Paid Users</span>
+            <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Subscribed Users</span>
             <CreditCard className="text-tertiary-container w-5 h-5 shrink-0" />
           </div>
           <div className="flex items-end gap-2 mt-2">
