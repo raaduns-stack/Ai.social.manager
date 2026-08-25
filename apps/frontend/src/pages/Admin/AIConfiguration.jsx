@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   Linkedin,
   Instagram,
@@ -14,6 +14,8 @@ import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { cn } from '../../utils/cn'
+import { getPrompts, updatePrompt, createPrompt } from '../../features/admin/prompt-api'
+import ErrorBanner from '../../components/error-banner'
 
 const PLATFORMS = [
   {
@@ -60,26 +62,67 @@ Include a clean list of hashtags at the end.`,
 
 export default function AIConfiguration() {
   const [activeTab, setActiveTab] = useState('linkedin')
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
   const [toastMessage, setToastMessage] = useState(null)
+  const [templates, setTemplates] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false)
 
-  // Initialize editable prompts state from default templates
-  const [prompts, setPrompts] = useState(() => {
-    const initial = {}
-    PLATFORMS.forEach((p) => {
-      initial[p.id] = p.defaultPrompt
-    })
-    return initial
-  })
+  // Current prompt being edited
+  const [editingPrompt, setEditingPrompt] = useState('')
+
+  const loadPrompts = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const data = await getPrompts()
+      setTemplates(data)
+    } catch (err) {
+      console.error(err)
+      setError('Failed to fetch global prompt templates.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadPrompts()
+  }, [])
 
   const activePlatform = useMemo(() => PLATFORMS.find((p) => p.id === activeTab), [activeTab])
 
-  const handleSave = (platformId) => {
+  // Sync editingPrompt state when active tab or templates load
+  useEffect(() => {
+    if (activePlatform) {
+      const match = templates.find((t) => t.category.toLowerCase() === activePlatform.id.toLowerCase())
+      setEditingPrompt(match ? match.prompt : activePlatform.defaultPrompt)
+    }
+  }, [activeTab, templates])
+
+  const handleSave = async (platformId) => {
+    setError(null)
     const label = PLATFORMS.find((p) => p.id === platformId)?.label
-    setToastMessage(`${label} prompt updated successfully!`)
-    setTimeout(() => {
-      setToastMessage(null)
-    }, 3000)
+    try {
+      const match = templates.find((t) => t.category.toLowerCase() === platformId.toLowerCase())
+      if (match) {
+        await updatePrompt(match.id, { prompt: editingPrompt })
+      } else {
+        await createPrompt({
+          name: `${label} Baseline Template`,
+          category: platformId,
+          prompt: editingPrompt,
+          isActive: true,
+        })
+      }
+      setToastMessage(`${label} prompt updated successfully!`)
+      loadPrompts()
+      setTimeout(() => {
+        setToastMessage(null)
+      }, 3000)
+    } catch (err) {
+      console.error(err)
+      setError(`Failed to update ${label} baseline prompt template.`)
+    }
   }
 
   return (
@@ -92,7 +135,6 @@ export default function AIConfiguration() {
           <span className="text-primary font-semibold">AI Settings</span>
         </div>
         <PageHeader
-        action={<Badge tone="warning" className="font-bold uppercase tracking-wider text-xs px-3 py-1.5 border border-warning/30 bg-warning/5 text-warning shrink-0">DEV MODE: MOCK DATA (Backend Pending)</Badge>}
           title="Global AI Content Settings"
           description="Configure the default baseline prompt templates used for content generation across all customers."
         />
@@ -184,8 +226,8 @@ export default function AIConfiguration() {
             <div className="flex flex-col gap-2">
               <label className="text-sm font-semibold text-ink">System Prompt Rules</label>
               <textarea
-                value={prompts[activeTab]}
-                onChange={(e) => setPrompts({ ...prompts, [activeTab]: e.target.value })}
+                value={editingPrompt}
+                onChange={(e) => setEditingPrompt(e.target.value)}
                 rows={6}
                 className="w-full p-3.5 text-sm text-ink bg-surface border border-border rounded-control focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-mono leading-relaxed"
                 placeholder={`Enter baseline rules for ${activePlatform.label}...`}
@@ -215,7 +257,7 @@ export default function AIConfiguration() {
                       [Global Prompt]
                     </span>
                     <pre className="whitespace-pre-wrap font-mono p-2.5 bg-canvas border border-border rounded-control text-ink text-[11px] leading-relaxed">
-                      {prompts[activeTab]}
+                      {editingPrompt}
                     </pre>
                   </div>
                   <div>
@@ -231,7 +273,7 @@ export default function AIConfiguration() {
                       [Final Merged Prompt]
                     </span>
                     <pre className="whitespace-pre-wrap font-mono p-2.5 bg-primary/5 border border-primary/20 rounded-control text-ink text-[11px] leading-relaxed">
-                      {`${prompts[activeTab]}\n\n${activePlatform.sampleCustomerPrompt}`}
+                      {`${editingPrompt}\n\n${activePlatform.sampleCustomerPrompt}`}
                     </pre>
                   </div>
                 </div>

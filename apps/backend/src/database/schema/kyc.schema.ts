@@ -20,6 +20,7 @@ import {
   timestamp,
   pgEnum,
   boolean,
+  integer,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
@@ -58,13 +59,24 @@ export const kyc = pgTable('kyc', {
   businessPhone: varchar('business_phone', { length: 50 }).notNull(),
   businessDescription: text('business_description').notNull(),
 
-  // ---- Section 2 — Verification Documents ----
-  // Each field stores the server-relative file path (storedName from the
-  // uploads table) so admins can download via GET /kyc/:id/document/:doc.
-  // We store ONLY the filename (not the full URL) so path changes don't break records.
+  // ---- Section 2 — Verification Documents & Metadata ----
   certOfRegistrationPath: varchar('cert_of_registration_path', { length: 500 }),
+  certOfRegistrationOriginalName: varchar('cert_of_registration_original_name', { length: 255 }),
+  certOfRegistrationMimeType: varchar('cert_of_registration_mime_type', { length: 100 }),
+  certOfRegistrationFileSize: integer('cert_of_registration_file_size'),
+  certOfRegistrationUploadedAt: timestamp('cert_of_registration_uploaded_at'),
+
   utilityBillPath: varchar('utility_bill_path', { length: 500 }),
+  utilityBillOriginalName: varchar('utility_bill_original_name', { length: 255 }),
+  utilityBillMimeType: varchar('utility_bill_mime_type', { length: 100 }),
+  utilityBillFileSize: integer('utility_bill_file_size'),
+  utilityBillUploadedAt: timestamp('utility_bill_uploaded_at'),
+
   ownerIdPath: varchar('owner_id_path', { length: 500 }),
+  ownerIdOriginalName: varchar('owner_id_original_name', { length: 255 }),
+  ownerIdMimeType: varchar('owner_id_mime_type', { length: 100 }),
+  ownerIdFileSize: integer('owner_id_file_size'),
+  ownerIdUploadedAt: timestamp('owner_id_uploaded_at'),
 
   // ---- Review tracking ----
   status: kycStatusEnum('status').notNull().default('pending'),

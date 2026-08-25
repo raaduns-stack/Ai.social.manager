@@ -20,6 +20,11 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   contentCalendarPosts: many(contentCalendar),
   notificationPreferences: many(notificationPreferences),
   customerCompanyProfile: one(customerCompanyProfile),
+  accountManager: one(users, {
+    fields: [users.accountManagerId],
+    references: [users.id],
+    relationName: 'assignedAccountManager',
+  }),
   // KYC — one business verification record per user
   kyc: one(kyc),
   calendarGenerationJobs: many(calendarGenerationJobs),

@@ -7,7 +7,6 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Search, ChevronDown, LogOut, Menu, HelpCircle, Settings2 } from "lucide-react";
 import { useAdminAuth } from "../../context/useAdminAuth";
-import { notifications } from "../../data/mockData";
 
 export default function AdminNavbar({ onMenuClick }) {
   const { admin, logout } = useAdminAuth();
@@ -15,7 +14,7 @@ export default function AdminNavbar({ onMenuClick }) {
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
 
-  const unreadCount = notifications.length;
+  const unreadCount = 0;
 
   const handleLogout = () => {
     logout();
@@ -74,12 +73,9 @@ export default function AdminNavbar({ onMenuClick }) {
                 Notifications
               </div>
               <div className="max-h-64 overflow-y-auto">
-                {notifications.map((n) => (
-                  <div key={n.id} className="px-4 py-3 text-sm border-b border-surface-variant last:border-0 hover:bg-surface-container-low transition-colors">
-                    <p className="text-on-surface font-medium">{n.message}</p>
-                    <p className="mt-0.5 text-xs text-on-surface-variant/70">{n.sentAt}</p>
-                  </div>
-                ))}
+                <div className="px-4 py-6 text-sm text-on-surface-variant text-center">
+                  No recent activity
+                </div>
               </div>
             </div>
           )}
@@ -109,9 +105,17 @@ export default function AdminNavbar({ onMenuClick }) {
             onClick={() => setProfileOpen((o) => !o)}
             className="flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-container-high transition-colors"
           >
-            <span className="flex h-8 w-8 items-center justify-center rounded-[9999px] bg-primary text-xs font-bold text-on-primary border border-surface-variant">
-              {initials}
-            </span>
+            {admin?.profileImage ? (
+              <img
+                src={admin.profileImage.startsWith('http') ? admin.profileImage : `${(import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/api$/, '')}/uploads/${admin.profileImage}`}
+                alt={admin.name || 'Admin'}
+                className="w-8 h-8 rounded-full object-cover shrink-0 border border-surface-variant"
+              />
+            ) : (
+              <span className="flex h-8 w-8 items-center justify-center rounded-[9999px] bg-primary text-xs font-bold text-on-primary border border-surface-variant">
+                {initials}
+              </span>
+            )}
             <span className="hidden sm:block text-sm font-semibold text-on-surface">
               {admin?.name ?? "Admin"}
             </span>

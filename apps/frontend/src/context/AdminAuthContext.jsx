@@ -95,9 +95,28 @@ export function AdminAuthProvider({ children }) {
     setPermissions(null);
   };
 
+  const refreshPermissions = async () => {
+    try {
+      const response = await apiClient.get("/auth/me/permissions");
+      const freshPerms = response.data.permissions;
+      setPermissions(freshPerms);
+
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const session = JSON.parse(saved);
+        session.permissions = freshPerms;
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+        // Also update local state for admin to match localStorage
+        setAdmin(session);
+      }
+    } catch (err) {
+      console.error("Failed to refresh admin permissions:", err);
+    }
+  };
+
   return (
     <AdminAuthContext.Provider
-      value={{ admin, isAuthenticated: !!admin, loading, permissions, login, logout }}
+      value={{ admin, isAuthenticated: !!admin, loading, permissions, login, logout, refreshPermissions }}
     >
       {children}
     </AdminAuthContext.Provider>

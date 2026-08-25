@@ -107,6 +107,9 @@ export class CustomerProfileService {
   async updateCompanyProfile(userId: string, dto: UpdateCustomerCompanyProfileDto) {
     await this.enforceKycApproved(userId);
 
+    // Destructure to sanitize and ignore role property
+    const { role, ...sanitizedDto } = dto as any;
+
     // Check whether a profile row already exists for this customer
     const existing = await this.db.query.customerCompanyProfile.findFirst({
       where: eq(schema.customerCompanyProfile.userId, userId),
@@ -124,7 +127,7 @@ export class CustomerProfileService {
       ];
       
       const changedLinkedFields = kycLinkedFields.filter(
-        (field) => dto[field] !== undefined && dto[field] !== existing[field],
+        (field) => sanitizedDto[field] !== undefined && sanitizedDto[field] !== existing[field],
       );
 
       if (changedLinkedFields.length > 0) {
@@ -137,7 +140,7 @@ export class CustomerProfileService {
       const [updated] = await this.db
         .update(schema.customerCompanyProfile)
         .set({
-          ...dto,
+          ...sanitizedDto,
           updatedAt: new Date(), // stamp update time manually
         })
         .where(eq(schema.customerCompanyProfile.id, existing.id))
@@ -148,7 +151,7 @@ export class CustomerProfileService {
       const [inserted] = await this.db
         .insert(schema.customerCompanyProfile)
         .values({
-          ...dto,
+          ...sanitizedDto,
           userId, // associate the row with the customer (taken from JWT)
         })
         .returning();

@@ -20,9 +20,19 @@ export class AdminDashboardController {
     return this.dashboardService.getSummary(period);
   }
 
+  @Get('dashboard-users')
+  @RequirePermission('dashboard', 'view')
+  @ApiOperation({
+    summary: 'List customers currently on the Free plan or any paid Plan',
+  })
+  @ApiQuery({ name: 'group', required: true, enum: ['free', 'paid'] })
+  getDashboardUsers(@Query('group') group?: string) {
+    const safeGroup = group === 'paid' ? 'paid' : 'free';
+    return this.dashboardService.getUsersByGroup(safeGroup);
+  }
+
   @Get('analytics-summary')
   @RequirePermission('dashboard', 'view')
-
   @ApiOperation({ summary: 'Get real-data analytics summary for the admin analytics page' })
   @ApiQuery({ name: 'period', required: false, enum: ['daily', 'weekly', 'monthly'] })
   getAnalyticsSummary(@Query('period') period?: string) {

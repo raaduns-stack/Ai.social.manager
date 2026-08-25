@@ -61,9 +61,20 @@ export class KycService {
       ownerId?: Express.Multer.File[];
     },
   ) {
-    const certPath = files.certOfRegistration?.[0]?.filename ?? undefined;
-    const utilityPath = files.utilityBill?.[0]?.filename ?? undefined;
-    const ownerIdPath = files.ownerId?.[0]?.filename ?? undefined;
+    const certFile = files.certOfRegistration?.[0];
+    const utilityFile = files.utilityBill?.[0];
+    const ownerIdFile = files.ownerId?.[0];
+
+    // Document 1 (certOfRegistration) MUST be a PDF — images are not accepted
+    if (certFile && certFile.mimetype !== 'application/pdf') {
+      throw new BadRequestException(
+        'Certificate of Registration / Incorporation must be a PDF file. JPG, JPEG, PNG and other image formats are not accepted for this document.',
+      );
+    }
+
+    const certPath = certFile?.filename ?? undefined;
+    const utilityPath = utilityFile?.filename ?? undefined;
+    const ownerIdPath = ownerIdFile?.filename ?? undefined;
 
     // Check if there is an in-progress review
     const pending = await this.db.query.kyc.findFirst({
@@ -96,6 +107,7 @@ export class KycService {
     const ownerId = ownerIdPath || latest?.ownerIdPath || null;
 
     const isUpdate = !!previouslyApproved;
+    const now = new Date();
 
     const [created] = await this.db
       .insert(schema.kyc)
@@ -109,14 +121,42 @@ export class KycService {
         businessEmail: dto.businessEmail,
         businessPhone: dto.businessPhone,
         businessDescription: dto.businessDescription,
+        
         certOfRegistrationPath: cert,
+        certOfRegistrationOriginalName: certFile?.originalname || latest?.certOfRegistrationOriginalName || null,
+        certOfRegistrationMimeType: certFile?.mimetype || latest?.certOfRegistrationMimeType || null,
+        certOfRegistrationFileSize: certFile?.size || latest?.certOfRegistrationFileSize || null,
+        certOfRegistrationUploadedAt: certFile ? now : (latest?.certOfRegistrationUploadedAt || null),
+
         utilityBillPath: utility,
+        utilityBillOriginalName: utilityFile?.originalname || latest?.utilityBillOriginalName || null,
+        utilityBillMimeType: utilityFile?.mimetype || latest?.utilityBillMimeType || null,
+        utilityBillFileSize: utilityFile?.size || latest?.utilityBillFileSize || null,
+        utilityBillUploadedAt: utilityFile ? now : (latest?.utilityBillUploadedAt || null),
+
         ownerIdPath: ownerId,
+        ownerIdOriginalName: ownerIdFile?.originalname || latest?.ownerIdOriginalName || null,
+        ownerIdMimeType: ownerIdFile?.mimetype || latest?.ownerIdMimeType || null,
+        ownerIdFileSize: ownerIdFile?.size || latest?.ownerIdFileSize || null,
+        ownerIdUploadedAt: ownerIdFile ? now : (latest?.ownerIdUploadedAt || null),
+
         status: 'pending',
         isUpdateRequest: isUpdate,
         parentId: previouslyApproved?.id ?? null,
+        submittedAt: now,
       })
       .returning();
+
+    // Update businessName, country, phoneNumber in users table
+    await this.db
+      .update(schema.users)
+      .set({
+        businessName: dto.businessName,
+        country: dto.country,
+        phoneNumber: dto.businessPhone,
+        updatedAt: now,
+      })
+      .where(eq(schema.users.id, userId));
 
     // Log submission to activity audit logs
     await this.activityLogsService.record({

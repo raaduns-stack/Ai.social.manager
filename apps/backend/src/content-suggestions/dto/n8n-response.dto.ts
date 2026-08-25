@@ -1,47 +1,65 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsArray, IsEnum, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  IsUUID,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 
-export class N8nVariationItemDto {
-  @ApiProperty()
+export class SuggestionVariationDto {
+  @ApiProperty({ example: '5 Steps to Automate Your Workflow', required: false })
   @IsString()
-  @IsNotEmpty()
-  title!: string;
+  @IsOptional()
+  title?: string;
 
-  @ApiProperty()
+  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...', required: false })
   @IsString()
-  @IsNotEmpty()
-  content!: string;
+  @IsOptional()
+  caption?: string;
 
-  @ApiProperty({ type: [String] })
+  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...', required: false })
+  @IsString()
+  @IsOptional()
+  content?: string;
+
+  @ApiProperty({ example: ['#automation', '#tech'], type: [String], required: false })
   @IsArray()
   @IsString({ each: true })
-  hashtags!: string[];
+  @IsOptional()
+  hashtags?: string[];
 
-  @ApiProperty()
+  @ApiProperty({ enum: ['caption', 'idea'], required: false })
   @IsEnum(['caption', 'idea'])
-  type!: 'caption' | 'idea';
+  @IsOptional()
+  type?: 'caption' | 'idea';
 }
 
+export type N8nVariationItemDto = SuggestionVariationDto;
+export const N8nVariationItemDto = SuggestionVariationDto;
+
 export class N8nResponseDto {
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ example: '123e4567-e89b-12d3-a456-426614174000' })
+  @IsUUID()
   @IsNotEmpty()
   postId!: string;
 
-  @ApiProperty()
-  @IsString()
+  @ApiProperty({ example: '987f6543-e21b-34c5-d678-987654321000' })
+  @IsUUID()
   @IsNotEmpty()
   userId!: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
   @IsString()
   @IsOptional()
   parentVariationId?: string;
 
-  @ApiProperty({ type: [N8nVariationItemDto] })
+  @ApiProperty({ type: [SuggestionVariationDto] })
   @IsArray()
   @ValidateNested({ each: true })
-  @Type(() => N8nVariationItemDto)
-  variations!: N8nVariationItemDto[];
+  @Type(() => SuggestionVariationDto)
+  variations!: SuggestionVariationDto[];
 }

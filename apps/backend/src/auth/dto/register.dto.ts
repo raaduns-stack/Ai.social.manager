@@ -18,4 +18,14 @@ export class RegisterDto {
   @IsOptional()
   @IsString()
   businessName?: string;
+
+  @ApiProperty({ example: '+234 801 234 5678', required: false })
+  @IsOptional()
+  @IsString()
+  phoneNumber?: string;
+
+  @ApiProperty({ example: 'Nigeria', required: false })
+  @IsOptional()
+  @IsString()
+  country?: string;
 }

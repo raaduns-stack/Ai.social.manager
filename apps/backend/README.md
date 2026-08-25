@@ -1,4 +1,4 @@
-# SocialPilot AI — Backend (apps/backend)
+# RaaSocial — Backend (apps/backend)
 
 Foundational NestJS API scaffold. Matches the confirmed stack: NestJS + TypeScript,
 Drizzle ORM, PostgreSQL, JWT auth, Swagger.

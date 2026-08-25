@@ -32,9 +32,12 @@ jobs:
             npm run build --workspace=apps/backend
             npm run build --workspace=apps/frontend
             
-            # 4. Sync compiled static assets to backend
+            # 4. Run database migrations (NEW STEP)
+            npm run db:push --workspace=apps/backend
+            
+            # 5. Sync compiled static assets to backend
             rm -rf apps/backend/public
             cp -r apps/frontend/dist apps/backend/public
             
-            # 5. Restart PM2 backend process
+            # 6. Restart PM2 backend process
             pm2 restart socialpilot-backend --update-env
