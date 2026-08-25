@@ -14,8 +14,9 @@ import { ContentSuggestionsService } from './content-suggestions.service';
 import { GenerateCaptionDto } from './dto/generate-caption.dto';
 import { GenerateIdeaDto } from './dto/generate-idea.dto';
 import { CreateFeedbackDto } from './dto/create-feedback.dto';
-import { N8nResponseDto } from './dto/n8n-response.dto';
+import { RequestRevisionDto } from './dto/request-revision.dto';
 import { ApproveVariationDto } from './dto/approve-variation.dto';
+import { N8nResponseDto } from './dto/n8n-response.dto';
 
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { N8nInternalAuthGuard } from '../auth/guards/n8n-internal-auth.guard';
@@ -23,8 +24,8 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 
 /**
  * Controller handling API routes for AI-driven content suggestions,
- * including post-specific variations, n8n webhook response callbacks,
- * and user feedback submissions.
+ * including captions, content ideas, user feedback submission, variation approvals,
+ * revisions, and n8n webhook response callbacks.
  */
 @ApiTags('content-suggestions')
 @Controller('content-suggestions')
@@ -129,18 +130,6 @@ export class ContentSuggestionsController {
   }
 
   /**
-   * n8n Webhook Response Endpoint: Saves AI-generated suggestions back to SocialPilot.
-   * Authenticated using X-N8N-API-KEY header.
-   */
-  @Post('webhook/n8n-response')
-  @UseGuards(N8nInternalAuthGuard)
-  @ApiHeader({ name: 'X-N8N-API-KEY', description: 'Internal n8n API Key' })
-  @ApiOperation({ summary: '[Internal n8n] Receive generated suggestions from n8n workflow' })
-  saveN8nSuggestions(@Body() dto: N8nResponseDto) {
-    return this.contentSuggestionsService.saveN8nSuggestions(dto);
-  }
-
-  /**
    * Approves an AI-generated suggestion variation, resolving scheduling times and social accounts
    * to register a new scheduled post row.
    */
@@ -153,5 +142,33 @@ export class ContentSuggestionsController {
     @Body() dto: ApproveVariationDto,
   ) {
     return this.contentSuggestionsService.approveVariation(variationId, dto);
+  }
+
+  /**
+   * Requests a revision on a suggestion variation, transitioning its status to REVISION_REQUESTED
+   * and triggering n8n revision webhook.
+   */
+  @Post(':id/revision')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Request a revision for a suggestion variation' })
+  requestRevision(
+    @Param('id') id: string,
+    @CurrentUser() user: { userId: string },
+    @Body() dto: RequestRevisionDto,
+  ) {
+    return this.contentSuggestionsService.requestRevision(id, user.userId, dto.revisionNotes);
+  }
+
+  /**
+   * n8n Webhook Response Endpoint: Saves AI-generated suggestions back to SocialPilot.
+   * Authenticated using X-N8N-API-KEY header.
+   */
+  @Post('webhook/n8n-response')
+  @UseGuards(N8nInternalAuthGuard)
+  @ApiHeader({ name: 'X-N8N-API-KEY', description: 'Internal n8n API Key' })
+  @ApiOperation({ summary: '[Internal n8n] Receive generated suggestions from n8n workflow' })
+  saveN8nSuggestions(@Body() dto: N8nResponseDto) {
+    return this.contentSuggestionsService.saveN8nSuggestions(dto);
   }
 }
