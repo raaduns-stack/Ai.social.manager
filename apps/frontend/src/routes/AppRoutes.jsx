@@ -12,6 +12,8 @@ import Landing from '../pages/Landing'
 import Features from '../pages/Features'
 import Pricing from '../pages/Pricing'
 import Contact from '../pages/Contact'
+import PrivacyPolicy from '../pages/PrivacyPolicy'
+import TermsOfService from '../pages/TermsOfService'
 
 // Auth pages
 import Login from '../pages/Auth/Login'
@@ -60,6 +62,8 @@ export default function AppRoutes() {
         <Route path="/features" element={<Features />} />
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/contact" element={<Contact />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-service" element={<TermsOfService />} />
       </Route>
 
       {/* Auth (split-screen layout) */}

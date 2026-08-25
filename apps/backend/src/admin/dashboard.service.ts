@@ -1,5 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { count, eq, gte, lt, and, sum, sql, desc } from 'drizzle-orm';
+import { count, eq, gte, lt, and, sum, sql, desc, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -40,9 +40,10 @@ export class DashboardService {
     joinedDate: Date | null;
     planName: string | null;
     planSlug: string | null;
+    isPaid?: boolean;
   }): CustomerPlanRow {
     const planSlug = row.planSlug || 'free';
-    const isPaid = this.isPaidPlan(planSlug);
+    const isPaid = row.isPaid !== undefined ? row.isPaid : this.isPaidPlan(planSlug);
     return {
       id: row.id,
       name: row.name,
@@ -83,19 +84,37 @@ export class DashboardService {
       .where(eq(schema.subscriptions.status, 'active'))
       .orderBy(desc(schema.subscriptions.createdAt));
 
+    const successfulPayments = await this.db
+      .select({
+        userId: schema.payments.userId,
+      })
+      .from(schema.payments)
+      .where(eq(schema.payments.status, 'successful'));
+
+    const paidUsersSet = new Set<string>();
+    for (const p of successfulPayments) {
+      paidUsersSet.add(p.userId);
+    }
+
     const planByUser = new Map<string, { planName: string; planSlug: string }>();
     for (const sub of activeSubs) {
       if (!planByUser.has(sub.userId)) {
         planByUser.set(sub.userId, { planName: sub.planName, planSlug: sub.planSlug });
       }
+      if (sub.planSlug && sub.planSlug !== 'free') {
+        paidUsersSet.add(sub.userId);
+      }
     }
 
     return customers.map((c) => {
       const plan = planByUser.get(c.id);
+      const planSlug = plan?.planSlug ?? null;
+      const isPaid = paidUsersSet.has(c.id);
       return this.mapCustomerRow({
         ...c,
         planName: plan?.planName ?? null,
-        planSlug: plan?.planSlug ?? null,
+        planSlug,
+        isPaid,
       });
     });
   }
@@ -470,11 +489,12 @@ export class DashboardService {
         and(gte(schema.users.createdAt, prevStartDate), lt(schema.users.createdAt, startDate)),
       );
 
-    // Active / expired subscriptions (all-time snapshot)
+    // Active / expired subscriptions (all-time snapshot) - strictly paid subscriptions
     const [activeSubsRes] = await this.db
       .select({ val: count() })
       .from(schema.subscriptions)
-      .where(eq(schema.subscriptions.status, 'active'));
+      .innerJoin(schema.plans, eq(schema.subscriptions.planId, schema.plans.id))
+      .where(and(eq(schema.subscriptions.status, 'active'), ne(schema.plans.slug, 'free')));
 
     const [expiredSubsRes] = await this.db
       .select({ val: count() })

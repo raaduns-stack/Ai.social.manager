@@ -184,6 +184,9 @@ export class AdminService {
     const allSubs = await this.db.query.subscriptions.findMany({
       with: { plan: true },
     });
+    const allSuccessfulPayments = await this.db.query.payments.findMany({
+      where: eq(schema.payments.status, 'successful'),
+    });
 
     let totalUsers = 0;
     let activeUsers = 0;
@@ -209,7 +212,18 @@ export class AdminService {
       }
     }
 
+    const paidUsersSet = new Set<string>();
+    for (const p of allSuccessfulPayments) {
+      paidUsersSet.add(p.userId);
+    }
+    for (const s of allSubs) {
+      if (s.status === 'active' && s.plan && s.plan.slug !== 'free') {
+        paidUsersSet.add(s.userId);
+      }
+    }
+
     for (const u of allUsers) {
+      if (u.role !== UserRole.USER) continue;
       if (u.accountStatus === 'DELETED') continue;
 
       totalUsers++;
@@ -229,11 +243,11 @@ export class AdminService {
         kycUnderReview++;
       }
 
-      const planSlug = userPlanMap.get(u.id) || 'free';
-      if (planSlug === 'free') {
-        freeUsers++;
-      } else {
+      const isPaid = paidUsersSet.has(u.id);
+      if (isPaid) {
         paidUsers++;
+      } else {
+        freeUsers++;
       }
     }
 
@@ -694,7 +708,8 @@ export class AdminService {
     const subResult = await this.db
       .select({ val: count(schema.subscriptions.id) })
       .from(schema.subscriptions)
-      .where(eq(schema.subscriptions.status, 'active'));
+      .innerJoin(schema.plans, eq(schema.subscriptions.planId, schema.plans.id))
+      .where(and(eq(schema.subscriptions.status, 'active'), ne(schema.plans.slug, 'free')));
 
     const pendingResult = await this.db
       .select({ val: count(schema.payments.id) })
