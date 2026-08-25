@@ -1,5 +1,9 @@
 // subscription-revenue.ts
+import { Pool } from '@neondatabase/serverless';
 
+export const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+});
 export type SubscriptionEventType =
   | 'new_subscription'
   | 'renewal'
