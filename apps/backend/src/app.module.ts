@@ -35,14 +35,21 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { PublishingModule } from './publishing/publishing.module';
 import { ChannelsModule } from './channels/channels.module';
 
+import * as path from 'path';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
       load: [configuration],
       validate: validateEnv,
-      envFilePath: ['.env'],
-
+      envFilePath: [
+        path.resolve(process.cwd(), '.env'),
+        path.resolve(process.cwd(), 'apps/backend/.env'),
+        path.resolve(__dirname, '../.env'),
+        '.env',
+        'apps/backend/.env',
+      ],
     }),
     ThrottlerModule.forRoot([
       {
