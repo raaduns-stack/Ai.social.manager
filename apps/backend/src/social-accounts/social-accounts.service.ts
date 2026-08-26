@@ -122,4 +122,71 @@ export class SocialAccountsService {
     }
     return deleted;
   }
+
+  /** Upsert a Tumblr social account with OAuth 1.0a credentials. */
+  async upsertTumblr(userId: string, handle: string, token: string, secret: string) {
+    const existing = await this.db.query.social_accounts.findFirst({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.platform, 'tumblr')
+      ),
+    });
+
+    if (existing) {
+      const [updated] = await this.db
+        .update(schema.social_accounts)
+        .set({
+          accountHandle: handle,
+          accessToken: token,
+          tokenSecret: secret,
+          status: 'connected',
+          connectedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.social_accounts.id, existing.id))
+        .returning();
+      return updated;
+    } else {
+      // Limit check
+      const activeSub = await this.db.query.subscriptions.findFirst({
+        where: and(
+          eq(schema.subscriptions.userId, userId),
+          eq(schema.subscriptions.status, 'active')
+        ),
+        with: {
+          plan: true,
+        },
+      });
+
+      if (!activeSub || !activeSub.plan) {
+        throw new BadRequestException('No active subscription plan found.');
+      }
+
+      const maxSocialAccounts = activeSub.plan.maxSocialAccounts;
+
+      const existingAccounts = await this.db.query.social_accounts.findMany({
+        where: eq(schema.social_accounts.userId, userId),
+      });
+
+      if (existingAccounts.length >= maxSocialAccounts) {
+        throw new BadRequestException(
+          `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activeSub.plan.name}).`
+        );
+      }
+
+      const [inserted] = await this.db
+        .insert(schema.social_accounts)
+        .values({
+          userId,
+          platform: 'tumblr',
+          accountHandle: handle,
+          accessToken: token,
+          tokenSecret: secret,
+          status: 'connected',
+          connectedAt: new Date(),
+        })
+        .returning();
+      return inserted;
+    }
+  }
 }
