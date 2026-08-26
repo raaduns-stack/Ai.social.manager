@@ -28,6 +28,7 @@ import {
   HelpCircle,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
 } from 'lucide-react'
 
 export default function Channels() {
@@ -169,6 +170,7 @@ export default function Channels() {
   const [selectedPlatform, setSelectedPlatform] = useState('instagram')
   const [newHandle, setNewHandle] = useState('')
   const [connectError, setConnectError] = useState('')
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   // Dynamically compute stats from state
   // Stats will recompute automatically when channels change
@@ -349,25 +351,59 @@ export default function Channels() {
             title="Social Channels"
             description="Manage your connected social accounts and synchronization status."
             action={
-              <div className="flex gap-3">
-                <Button
-                  variant="outline"
-                  className="flex items-center gap-1.5 font-medium border-primary text-primary hover:bg-primary/5"
-                  onClick={() => {
-                    const token = useAuthStore.getState().accessToken
-                    window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
-                  }}
-                >
-                  Connect Tumblr
-                </Button>
+              <div className="relative w-full md:w-auto flex justify-start md:justify-end">
                 <Button
                   variant="primary"
-                  className="flex items-center gap-1.5 font-medium"
-                  onClick={() => setIsConnectModalOpen(true)}
+                  className="flex items-center gap-1.5 font-medium w-full md:w-auto justify-center"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 >
                   <Plus size={18} />
-                  Connect New Account
+                  Connect Account
+                  <ChevronDown size={16} />
                 </Button>
+                {isDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-56 rounded-control border border-border bg-surface shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="px-3 py-2 text-xs font-semibold text-ink-muted border-b border-border/40 mb-1 uppercase tracking-wider">
+                        Select Platform
+                      </div>
+                      {[
+                        { key: 'instagram', label: 'Instagram Business', icon: <Camera size={14} className="text-pink-500" /> },
+                        { key: 'tiktok', label: 'TikTok Pro', icon: <Music size={14} className="text-ink" /> },
+                        { key: 'linkedin', label: 'LinkedIn Company', icon: <Linkedin size={14} className="text-primary" /> },
+                        { key: 'x', label: 'X / Twitter', icon: <span className="font-bold text-xs leading-none text-ink">X</span> },
+                        { key: 'youtube', label: 'YouTube Studio', icon: <Youtube size={14} className="text-red-500" /> },
+                        { key: 'facebook', label: 'Facebook Page', icon: <Facebook size={14} className="text-blue-600" /> },
+                        { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-serif text-sm font-bold leading-none text-blue-900">t</span> },
+                      ].map((plat) => (
+                        <button
+                          key={plat.key}
+                          type="button"
+                          className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-canvas flex items-center gap-2.5 transition-colors font-medium"
+                          onClick={() => {
+                            setIsDropdownOpen(false)
+                            if (plat.key === 'tumblr') {
+                              const token = useAuthStore.getState().accessToken
+                              window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+                            } else {
+                              setSelectedPlatform(plat.key)
+                              setIsConnectModalOpen(true)
+                            }
+                          }}
+                        >
+                          <span className="w-5 h-5 rounded bg-canvas flex items-center justify-center shrink-0">
+                            {plat.icon}
+                          </span>
+                          {plat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             }
           />

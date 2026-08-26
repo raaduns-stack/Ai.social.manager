@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Patch, UseGuards, Req, Res, UnauthorizedException, UseInterceptors, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Body, Controller, Get, Post, Patch, UseGuards, Req, Res, UnauthorizedException, UseInterceptors, UploadedFile, BadRequestException, Logger } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -10,7 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
-import { TumblrAuthGuard } from './guards/tumblr-auth.guard';
+import { TumblrService } from './tumblr.service';
 import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { VerifyEmailDto } from './dto/verify-email.dto';
@@ -20,7 +20,12 @@ import { ChangePasswordDto } from './dto/change-password.dto';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  private readonly logger = new Logger(AuthController.name);
+
+  constructor(
+    private readonly authService: AuthService,
+    private readonly tumblrService: TumblrService,
+  ) {}
 
   @Post('register')
   @ApiOperation({ summary: 'Create a new client account' })
@@ -154,17 +159,75 @@ export class AuthController {
   }
 
   @Get('tumblr')
-  @UseGuards(JwtAuthGuard, TumblrAuthGuard)
+  @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Initiate Tumblr OAuth flow' })
-  tumblrAuth() {
-    // Initiates the Tumblr OAuth flow
+  async tumblrAuth(
+    @CurrentUser() user: { userId: string },
+    @Res() res: Response,
+  ) {
+    try {
+      const { oauth_token, oauth_token_secret } = await this.tumblrService.getRequestToken();
+
+      // Store credentials and user ID in a signed cookie
+      res.cookie(
+        'tumblr_oauth_cookie',
+        JSON.stringify({
+          oauth_token_secret,
+          userId: user.userId,
+        }),
+        {
+          httpOnly: true,
+          signed: true,
+          maxAge: 10 * 60 * 1000, // 10 minutes
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax',
+          path: '/',
+        },
+      );
+
+      res.redirect(`https://www.tumblr.com/oauth/authorize?oauth_token=${oauth_token}`);
+    } catch (err: any) {
+      this.logger.error(`Tumblr auth initiation failed: ${err.message}`, err.stack);
+      res.redirect('http://localhost:5173/settings/accounts?tumblr=error');
+    }
   }
 
   @Get('tumblr/callback')
-  @UseGuards(TumblrAuthGuard)
   @ApiOperation({ summary: 'Handle Tumblr OAuth callback' })
-  tumblrAuthCallback(@Res() res: Response) {
-    res.redirect('http://localhost:5173/settings/accounts?tumblr=success');
+  async tumblrAuthCallback(
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    try {
+      const oauthToken = req.query.oauth_token as string;
+      const oauthVerifier = req.query.oauth_verifier as string;
+
+      if (!oauthToken || !oauthVerifier) {
+        throw new BadRequestException('Callback query params oauth_token or oauth_verifier are missing.');
+      }
+
+      const cookieDataStr = req.signedCookies?.tumblr_oauth_cookie;
+      if (!cookieDataStr) {
+        throw new BadRequestException('OAuth session cookie expired or missing.');
+      }
+
+      const { oauth_token_secret, userId } = JSON.parse(cookieDataStr);
+
+      const { token, tokenSecret, blogName } = await this.tumblrService.getAccessToken(
+        oauthToken,
+        oauth_token_secret,
+        oauthVerifier,
+      );
+
+      await this.tumblrService.connectAccount(userId, token, tokenSecret, blogName);
+
+      res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
+      res.redirect('http://localhost:5173/settings/accounts?tumblr=success');
+    } catch (err: any) {
+      this.logger.error(`Tumblr callback handshake failed: ${err.message}`, err.stack);
+      res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
+      res.redirect('http://localhost:5173/settings/accounts?tumblr=error');
+    }
   }
 }
 

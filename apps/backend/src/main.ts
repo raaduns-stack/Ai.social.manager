@@ -48,7 +48,8 @@ async function bootstrap() {
     },
   );
 
-  app.use(cookieParser());
+  const jwtAccessSecret = config.get<string>('auth.accessSecret') || 'tumblr_cookie_secret_fallback';
+  app.use(cookieParser(jwtAccessSecret));
 
   app.enableCors({
     origin: ['http://localhost:5173', 'http://localhost:5174'],
