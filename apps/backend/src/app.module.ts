@@ -33,6 +33,9 @@ import { PaymentGatewaySettingsModule } from './settings/payment-gateway-setting
 import { KycModule } from './kyc/kyc.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { PublishingModule } from './publishing/publishing.module';
+import { ChannelsModule } from './channels/channels.module';
+
+import * as path from 'path';
 
 @Module({
   imports: [
@@ -40,8 +43,13 @@ import { PublishingModule } from './publishing/publishing.module';
       isGlobal: true,
       load: [configuration],
       validate: validateEnv,
-      envFilePath: ['.env'],
-
+      envFilePath: [
+        path.resolve(process.cwd(), '.env'),
+        path.resolve(process.cwd(), 'apps/backend/.env'),
+        path.resolve(__dirname, '../.env'),
+        '.env',
+        'apps/backend/.env',
+      ],
     }),
     ThrottlerModule.forRoot([
       {
@@ -76,6 +84,7 @@ import { PublishingModule } from './publishing/publishing.module';
     KycModule,
     SchedulingModule,
     PublishingModule,
+    ChannelsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule

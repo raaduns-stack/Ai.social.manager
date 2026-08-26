@@ -966,7 +966,8 @@ export default function ContentCalendar() {
           linkedin: 'LinkedIn',
           x: 'X / Twitter',
           tiktok: 'TikTok',
-          facebook: 'Facebook'
+          facebook: 'Facebook',
+          discord: 'Discord',
         }
         const connected = socialAccountsRes.data
           .filter(acc => acc.status === 'connected')

@@ -16,6 +16,7 @@ import { trackEvent } from '../../lib/analytics'
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
 import {
+  MessageSquare,
   Camera,
   Music,
   Linkedin,
@@ -120,6 +121,8 @@ export default function Channels() {
         return 'Facebook Page';
       case 'tumblr':
         return 'Tumblr Blog';
+      case 'discord':
+        return 'Discord Channel';
       default:
         return platform;
     }
@@ -157,10 +160,36 @@ export default function Channels() {
       });
   };
 
-  // Fetch channels on component mount
+  // Fetch channels on component mount + check for OAuth callback query parameters
   useEffect(() => {
     fetchChannels();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('discord') === 'connected') {
+      trackEvent('social_account_connected', { platform: 'discord' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      fetchChannels();
+    } else if (params.get('discord') === 'error') {
+      const reason = params.get('reason') || 'authorization_failed';
+      setFetchError(`Discord connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
+
+  /** Helper to trigger Discord OAuth flow */
+  const startDiscordOAuth = () => {
+    apiClient
+      .get('/channels/discord/connect')
+      .then((res) => {
+        if (res.data?.authUrl) {
+          window.location.href = res.data.authUrl;
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to initiate Discord connection:', err);
+        setConnectError('Failed to initiate Discord OAuth flow. Please try again.');
+      });
+  };
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -216,6 +245,11 @@ export default function Channels() {
           icon: <span className="font-serif text-xl font-bold leading-none">t</span>,
           style: { backgroundColor: '#35465d' },
         }
+      case 'discord':
+        return {
+          icon: <MessageSquare size={24} />,
+          style: { backgroundColor: '#5865F2' },
+        }
       default:
         return {
           icon: <Link size={24} />,
@@ -242,6 +276,11 @@ export default function Channels() {
         const token = useAuthStore.getState().accessToken
         window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
       }
+      return;
+    }
+
+    if (channel && channel.platform === 'discord' && currentStatus !== 'Connected') {
+      startDiscordOAuth();
       return;
     }
 
@@ -302,6 +341,12 @@ export default function Channels() {
       setIsConnectModalOpen(false)
       const token = useAuthStore.getState().accessToken
       window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+      return;
+    }
+
+    if (selectedPlatform === 'discord') {
+      startDiscordOAuth();
+      setIsConnectModalOpen(false);
       return;
     }
 
@@ -379,6 +424,7 @@ export default function Channels() {
                         { key: 'youtube', label: 'YouTube Studio', icon: <Youtube size={14} className="text-red-500" /> },
                         { key: 'facebook', label: 'Facebook Page', icon: <Facebook size={14} className="text-blue-600" /> },
                         { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-serif text-sm font-bold leading-none text-blue-900">t</span> },
+                        { key: 'discord', label: 'Discord Channel', icon: <MessageSquare size={14} className="text-indigo-500" /> },
                       ].map((plat) => (
                         <button
                           key={plat.key}
@@ -389,6 +435,8 @@ export default function Channels() {
                             if (plat.key === 'tumblr') {
                               const token = useAuthStore.getState().accessToken
                               window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+                            } else if (plat.key === 'discord') {
+                              startDiscordOAuth()
                             } else {
                               setSelectedPlatform(plat.key)
                               setIsConnectModalOpen(true)
@@ -468,10 +516,10 @@ export default function Channels() {
                 const isConnected = channel.status === 'Connected'
                 return (
                   <Card
-                    key={channel.id}
-                    className={`p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border ${
-                      isConnected ? 'border-primary/20 bg-gradient-to-br from-surface to-primary/5 border-t-4 border-t-primary' : 'border-border'
-                    }`}
+                     key={channel.id}
+                     className={`p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border ${
+                       isConnected ? 'border-primary/20 bg-gradient-to-br from-surface to-primary/5 border-t-4 border-t-primary' : 'border-border'
+                     }`}
                   >
                     <div>
                       <div className="flex justify-between items-start mb-6">
@@ -574,6 +622,7 @@ export default function Channels() {
                   className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="instagram">Instagram Business</option>
+                  <option value="discord">Discord Channel</option>
                   <option value="tiktok">TikTok Pro</option>
                   <option value="linkedin">LinkedIn Company</option>
                   <option value="x">X / Twitter</option>
@@ -583,7 +632,7 @@ export default function Channels() {
                 </select>
               </div>
 
-              {selectedPlatform !== 'tumblr' && (
+              {selectedPlatform !== 'tumblr' && selectedPlatform !== 'discord' && (
                 <Input
                   label="Account Handle or Page Name"
                   required

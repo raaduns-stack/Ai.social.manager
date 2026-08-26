@@ -6,6 +6,7 @@ import {
   Linkedin,
   Youtube,
   Facebook,
+  MessageSquare,
   Link as LinkIcon,
   CheckCircle2,
 } from 'lucide-react'
@@ -14,6 +15,7 @@ import Button from '../../components/ui/Button'
 
 const PLATFORMS = [
   { id: 'instagram', name: 'Instagram Business', type: 'instagram', color: 'bg-pink-600', icon: <Camera size={20} /> },
+  { id: 'discord', name: 'Discord Channel', type: 'discord', color: 'bg-indigo-600', icon: <MessageSquare size={20} /> },
   { id: 'facebook', name: 'Facebook Page', type: 'facebook', color: 'bg-blue-600', icon: <Facebook size={20} /> },
   { id: 'linkedin', name: 'LinkedIn Company', type: 'linkedin', color: 'bg-blue-700', icon: <Linkedin size={20} /> },
   { id: 'tiktok', name: 'TikTok Pro', type: 'tiktok', color: 'bg-black', icon: <Music size={20} /> },
