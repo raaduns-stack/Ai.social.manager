@@ -15,6 +15,7 @@ import { trackEvent } from '../../lib/analytics'
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
 import {
+  MessageSquare,
   Camera,
   Music,
   Linkedin,
@@ -85,6 +86,8 @@ export default function Channels() {
         return 'YouTube Studio';
       case 'facebook':
         return 'Facebook Page';
+      case 'discord':
+        return 'Discord Channel';
       default:
         return platform;
     }
@@ -122,10 +125,36 @@ export default function Channels() {
       });
   };
 
-  // Fetch channels on component mount
+  // Fetch channels on component mount + check for OAuth callback query parameters
   useEffect(() => {
     fetchChannels();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('discord') === 'connected') {
+      trackEvent('social_account_connected', { platform: 'discord' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      fetchChannels();
+    } else if (params.get('discord') === 'error') {
+      const reason = params.get('reason') || 'authorization_failed';
+      setFetchError(`Discord connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
+
+  /** Helper to trigger Discord OAuth flow */
+  const startDiscordOAuth = () => {
+    apiClient
+      .get('/channels/discord/connect')
+      .then((res) => {
+        if (res.data?.authUrl) {
+          window.location.href = res.data.authUrl;
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to initiate Discord connection:', err);
+        setConnectError('Failed to initiate Discord OAuth flow. Please try again.');
+      });
+  };
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -175,6 +204,11 @@ export default function Channels() {
           icon: <Facebook size={24} />,
           style: { backgroundColor: '#1877F2' },
         }
+      case 'discord':
+        return {
+          icon: <MessageSquare size={24} />,
+          style: { backgroundColor: '#5865F2' },
+        }
       default:
         return {
           icon: <Link size={24} />,
@@ -186,6 +220,11 @@ export default function Channels() {
   // Handle individual card connect/disconnect button clicks
   const handleChannelAction = (id, currentStatus) => {
     const channel = channels.find((c) => c.id === id);
+    if (channel && channel.platform === 'discord' && currentStatus !== 'Connected') {
+      startDiscordOAuth();
+      return;
+    }
+
     if (currentStatus === 'Connected') {
       // Disconnect channel via backend DELETE
       apiClient
@@ -239,6 +278,12 @@ export default function Channels() {
   // Handle adding/connecting account via Top Right Modal
   const handleConnectSubmit = (e) => {
     e.preventDefault();
+    if (selectedPlatform === 'discord') {
+      startDiscordOAuth();
+      setIsConnectModalOpen(false);
+      return;
+    }
+
     if (!newHandle.trim()) {
       setConnectError('Please enter an account handle or username.');
       return;
@@ -462,6 +507,7 @@ export default function Channels() {
                   className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="instagram">Instagram Business</option>
+                  <option value="discord">Discord Channel</option>
                   <option value="tiktok">TikTok Pro</option>
                   <option value="linkedin">LinkedIn Company</option>
                   <option value="x">X / Twitter</option>

@@ -33,6 +33,7 @@ import { PaymentGatewaySettingsModule } from './settings/payment-gateway-setting
 import { KycModule } from './kyc/kyc.module';
 import { SchedulingModule } from './scheduling/scheduling.module';
 import { PublishingModule } from './publishing/publishing.module';
+import { ChannelsModule } from './channels/channels.module';
 
 @Module({
   imports: [
@@ -76,6 +77,7 @@ import { PublishingModule } from './publishing/publishing.module';
     KycModule,
     SchedulingModule,
     PublishingModule,
+    ChannelsModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule
