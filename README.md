@@ -1,219 +1,147 @@
-# RaaSocial — Full-Stack Social Media Management Platform
+RaaSocial — AI-Driven Social Media Management Portal
 
-An AI-driven social media management platform built for business clients, featuring automated content calendar generation, multi-tier subscription billing via Flutterwave, administrative oversight, and social channel management.
-
----
-
-## 1. System Architecture & Tech Stack
-
-This project is structured as a **npm workspace monorepo** separating backend APIs, frontend applications, and shared TypeScript type definitions.
-
-| Layer | Technology | Primary Purpose |
-| --- | --- | --- |
-| **Backend API** | NestJS (Node.js / TypeScript) | Modular REST API, JWT authentication, RBAC guard enforcement, and Drizzle SQL aggregations |
-| **Database & ORM** | PostgreSQL (Neon DB) + Drizzle ORM | Relational database, typed schema modeling, automated SQL migrations, and pgvector support |
-| **Frontend App** | React 18 + Vite (SPA) | Single-Page Application for customer dashboard and internal staff administration |
-| **Shared Types** | `@socialpilot/shared-types` | Monorepo workspace package guaranteeing compile-time type safety between frontend and backend |
-| **Styling & UI** | Tailwind CSS + Lucide Icons | Utility-first styling with centralized design tokens and reusable UI primitives |
-| **Payments** | Flutterwave API + Webhooks | Plan checkout, payment verification, subscription activation, and automated invoice records |
+An AI-driven social media management platform designed for business clients. RaaSocial enables automated content calendar generation, social channel scheduling, custom content suggestion generation, compliance Know-Your-Customer (KYC) verification, and billing management using the Flutterwave subscription checkout flow. It is built to facilitate seamless content planning and publishing with custom n8n automations.
 
 ---
 
-## 2. Monorepo File Structure
+## 1. Tech Stack
+
+RaaSocial is constructed as an NPM workspaces monorepo containing the following technical layers:
+
+*   **Backend API:** NestJS (Node.js / TypeScript) utilizing dependency injection, REST controllers, global exception filters, and JWT-based Passport strategies.
+*   **Frontend SPA:** React 18 (Vite / JS / JSX) styled with Vanilla CSS and Tailwind CSS, featuring Zustand hooks for state management and charts powered by Recharts.
+*   **Database & ORM:** PostgreSQL (Neon Serverless) coupled with Drizzle ORM for schema definitions, relational mapping, and automated SQL migrations.
+*   **Automation:** n8n webhooks coordinate long-running asynchronous AI jobs, calendar generation, suggestions creation, and post publication routing.
+
+---
+
+## 2. Monorepo Folder Structure
 
 ```text
 Ai.social.manager/
-├── apps/
+├── .github/                        # CI/CD workflow configuration actions
+├── apps/                           # Application workspaces
 │   ├── backend/                    # NestJS API Server (Port 4000)
-│   │   ├── src/
-│   │   │   ├── admin/              # Admin dashboard metrics & staff endpoints
-│   │   │   ├── auth/               # JWT authentication, RBAC guards, strategies
-│   │   │   ├── common/             # Global HTTP exception filters, logging, UserRole enum
-│   │   │   ├── config/             # Type-safe environment variable validation
-│   │   │   ├── database/           # Drizzle schema (users, plans, subscriptions, payments, social_accounts)
-│   │   │   ├── invoices/           # Invoice billing records CRUD
-│   │   │   ├── payments/           # Flutterwave checkout initialization & webhook verification
-│   │   │   ├── plans/              # Subscription tier pricing & feature definitions
-│   │   │   └── social-accounts/    # Channels Stage 1 CRUD (platform linking)
-│   │   └── package.json
-│   │
 │   └── frontend/                   # React + Vite Client (Port 5173)
-│       ├── src/
-│       │   ├── components/         # Reusable primitives (ui, layout, charts, staff)
-│       │   ├── context/            # AuthContext (customer) & AdminAuthContext (staff)
-│       │   ├── features/           # Modular API client services (auth, dashboard, channels, billing)
-│       │   ├── layouts/            # Page shells (DashboardLayout, AdminLayout, AuthLayout)
-│       │   ├── lib/                # Central Axios API client with token interceptors
-│       │   ├── pages/              # Customer Dashboard & Admin Panel views
-│       │   ├── routes/             # AppRoutes.jsx & AdminRoutes.jsx
-│       │   └── utils/              # Tailwind class merge helper (cn.js) & shared constants
-│       └── package.json
-│
-├── packages/
-│   └── shared-types/               # Shared TypeScript interfaces (User, Plan, Subscription, SocialAccount)
-│       ├── src/
-│       └── package.json
-│
-├── docs/                           # Team workflow, theme specs, and architectural review docs
-├── package.json                    # Root workspace configuration
-└── README.md                       # System documentation
-
+├── docs/                           # Central architectural guides, theme specifications, and team protocols
+├── packages/                       # Shared monorepo libraries
+│   ├── shared-types/               # Central TypeScript type definitions shared between backend and frontend
+│   └── ui/                         # Shareable frontend UI component workspace (currently unpopulated)
+├── scripts/                        # Maintenance and database seeding helpers
+├── package.json                    # Monorepo workspaces definition
+└── README.md                       # Main workspace onboarding documentation
 ```
 
 ---
 
 ## 3. Getting Started & Installation
 
-### Step 1: Clone & Workspace Installation
-
-From the root of the project, run a single `npm install` command. Because this project uses npm workspaces, this automatically installs dependencies for `apps/backend`, `apps/frontend`, and `packages/shared-types` simultaneously:
-
+### Step 1: Clone the Repository & Install Dependencies
+Run a single `npm install` from the root workspace folder. NPM workspaces will automatically link and install dependencies for the backend, frontend, and shared types simultaneously:
 ```bash
 git clone <your-repository-url>
 cd Ai.social.manager
 npm install
-
 ```
 
-### Step 2: Environment Variable Configuration
-
-Each developer must use their own isolated environment variables and Neon PostgreSQL database instance. **Never commit `.env` files to version control.**
-
-1. Copy the backend environment template:
+### Step 2: Environment Variable Setup
+Copy the environment template files in both workspaces:
 ```bash
+# Create Backend .env
 cp apps/backend/.env.example apps/backend/.env
 
-```
-
-
-2. Copy the frontend environment template:
-```bash
+# Create Frontend .env
 cp apps/frontend/.env.example apps/frontend/.env
-
 ```
-
-
-
-#### Required Backend Variables (`apps/backend/.env`)
-
-| Variable | Description | Example Value |
-| --- | --- | --- |
-| `PORT` | Local API server listening port | `4000` |
-| `DATABASE_URL` | Your isolated Neon PostgreSQL connection string | `postgresql://user:password@ep-sample.neon.tech/neondb` |
-| `JWT_SECRET` | Secret key used to sign access tokens | `your_secure_random_hex_string` |
-| `JWT_REFRESH_SECRET` | Secret key used to sign refresh tokens | `another_secure_random_hex_string` |
-| `FLUTTERWAVE_SECRET_KEY` | Flutterwave API key for transaction initialization | `FLWSECK_TEST-xxxxxxxxxxxx` |
-| `FLUTTERWAVE_WEBHOOK_SECRET_HASH` | String matched against incoming webhook `verif-hash` | `your_custom_webhook_secret_hash` |
-
-#### Required Frontend Variables (`apps/frontend/.env`)
-
-| Variable | Description | Example Value |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | Full HTTP base URL pointing to the NestJS server | `http://localhost:4000/api` |
 
 ---
 
-## 4. Database Schema & Migrations
+## 4. Environment Variables Reference
 
-All database modifications are managed through **Drizzle ORM**. Do not manually add columns or modify tables in database GUIs (e.g., pgAdmin or Drizzle Studio).
+### Backend Configuration (`apps/backend/.env`)
 
-Whenever you modify a schema file inside `apps/backend/src/database/schema/`:
+#### Required Variables
+*   `DATABASE_URL`: Connection string for Neon PostgreSQL database instance.
+*   `JWT_ACCESS_SECRET`: Secret key used to sign and verify JWT access tokens.
+*   `JWT_REFRESH_SECRET`: Secret key used to sign and verify JWT refresh session tokens.
+*   `SETTINGS_ENCRYPTION_KEY`: A symmetric key used to encrypt configurations (e.g. SMTP credentials, social tokens) in the database. **Must be exactly 32 characters.**
 
-1. **Generate the SQL migration file:**
-```bash
-npm run db:generate --workspace=apps/backend
+#### Optional Variables
+*   `PORT`: Port for the API server (Defaults to `4000`).
+*   `API_PREFIX`: Global API routing prefix (Defaults to `api`).
+*   `CORS_ORIGIN`: Allowed origin for CORS headers (Defaults to `http://localhost:5173`).
+*   `FRONTEND_URL`: Client-side application callback redirect.
+*   `SUPPORT_WHATSAPP_NUMBER`: Digits-only WhatsApp support hotline (e.g. `2348000000000`).
 
-```
+#### Integration Variables (Required for Specific Features)
+*   **Payments (Flutterwave):**
+    *   `FLUTTERWAVE_SECRET_KEY`: Merchant secret key for Flutterwave checkouts.
+    *   `FLUTTERWAVE_WEBHOOK_SECRET_HASH`: Unique signature hash to verify Flutterwave webhooks.
+*   **Email (SMTP / Resend):**
+    *   `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` / `SMTP_USERNAME` / `SMTP_PASSWORD`: SMTP server connection.
+    *   `SMTP_SENDER_NAME` / `SMTP_SENDER_EMAIL`: Email outgoing signature.
+    *   `RESEND_API_KEY`: API access key for Resend email API integration.
+*   **AI Providers (Gemini / n8n / OpenClaw):**
+    *   `GEMINI_API_KEY`: Key for Gemini LLM.
+    *   `N8N_CALENDAR_GENERATION_WEBHOOK_URL`: n8n calendar generator webhook.
+    *   `N8N_INTERNAL_API_KEY`: Key to authorize incoming callback webhooks.
+    *   `N8N_PUBLISHING_WEBHOOK_URL`: n8n webhook triggered to execute publications.
 
+#### Dead / Stub Environment Variables (Not Currently Wired)
+*   `REDIS_URL`: Present in config, but **not imported or used**. No BullMQ queues or Redis cache providers are connected.
+*   `OPENCLAW_API_KEY` & `OPENCLAW_GATEWAY_URL`: Present in config, but **no active wiring exists**. The `AiModule` is currently a placeholder.
 
-2. **Apply the migration to your Neon PostgreSQL database:**
-```bash
-npm run db:migrate --workspace=apps/backend
+---
 
-```
-
-
-
-> **Note:** Whenever you add a new foreign key reference or table, ensure `apps/backend/src/database/schema/relations.ts` is updated so Drizzle's relational queries (`.findMany({ with: { ... } })`) compile correctly.
+### Frontend Configuration (`apps/frontend/.env`)
+*   `VITE_API_BASE_URL`: Endpoint pointing to the NestJS server API (e.g. `http://localhost:4000/api`).
 
 ---
 
 ## 5. Running the Application Locally
 
-You can run both the frontend and backend servers concurrently during local development.
+You can run the workspaces together or individually.
 
-### Start the NestJS Backend API (Port 4000)
-
+### Running Backend and Frontend Together
 ```bash
-npm run dev --workspace=apps/backend
-
+# Start both apps concurrently from root
+npm run dev
 ```
 
-* **API Base URL:** `http://localhost:4000/api`
-* **Swagger Interactive Documentation:** `http://localhost:4000/api/docs`
-
-### Start the Vite + React Frontend SPA (Port 5173)
-
+### Running Backend Individually
 ```bash
+# Start backend in watch/development mode
+npm run start:dev --workspace=apps/backend
+```
+*   **API URL:** `http://localhost:4000/api`
+*   **Swagger Docs:** `http://localhost:4000/api/docs` (Protected by Basic Auth matching `SWAGGER_USERNAME` / `SWAGGER_PASSWORD` in env)
+
+### Running Frontend Individually
+```bash
+# Start Vite development server
 npm run dev --workspace=apps/frontend
-
 ```
-
-* **Customer & Admin Portal:** Open `http://localhost:5173` in your browser.
-
----
-
-## 6. Authentication & 5-Role RBAC System
-
-Security permissions are governed by a single source of truth defined in `apps/backend/src/common/enums/roles.enum.ts` and mirrored on the frontend.
-
-| Role | Scope | Key Permissions & Restrictions |
-| --- | --- | --- |
-| `user` | Customer Portal | Own dashboard, subscription billing, channels, and content calendar |
-| `super_admin` | Admin Panel | Full access: platform revenue, staff accounts, RBAC changes, system settings |
-| `account_manager` | Admin Panel | Support operations: view customer accounts, subscriptions, troubleshoot channels |
-| `reviewer` | Admin Panel | Quality control: review and approve scheduled AI posts before publishing |
-| `designer` | Admin Panel | Visual media: manage post design templates and platform media libraries |
+*   **App URL:** `http://localhost:5173`
 
 ---
 
-## 7. Current Backend Integration Status
+## 6. Current Feature & Integration Status
 
-| Feature Module | Active Data Source | Status | Notes |
+| Feature Module | Active Data Source | Status | Description / Notes |
 | --- | --- | --- | --- |
-| **Auth & RBAC Guards** | Live Drizzle DB + JWT | **Real** | Single-table RBAC; staff roles promoted via UI |
-| **Plans & Pricing** | `/api/plans` | **Real** | Dynamic pricing cards and features table |
-| **Billing & Subscriptions** | `/api/subscription` | **Real** | Free-tier default; Flutterwave verification |
-| **Invoices** | `/api/invoice` | **Real** | Auto-generated on successful payment verify |
-| **Customer Dashboard Summary** | `/api/dashboard/my-summary` | **Real** | Returns live plan and activation status |
-| **Admin KPIs (Customers, Revenue)** | `/api/admin/dashboard-summary` | **Real** | Role-restricted SQL aggregation (`COUNT`, `SUM`) |
-| **Social Channels (Stage 1)** | `/api/social-accounts` | **Real** | CRUD connection records & admin audit table |
-| **Engagement & Follower Stats** | Static Placeholder | **Mock** | Blocked until Channels Stage 2 (OAuth) is live |
-| **Published Posts & Calendar** | Static Placeholder | **Mock** | Blocked until CTO confirms admin-review gate |
-| **AI Content & Suggestion Stats** | Static Placeholder | **Mock** | Awaiting AI generation engine integration |
+| **Authentication & RBAC** | Live Database + JWT | **Real** | Dynamic registration, email verification flow, session cookies, and 5-role guard authorization. |
+| **KYC Verification** | Live Database | **Real** | Customer document upload pipeline, admin oversight, and moderation. |
+| **Billing & Plans** | Live Database + Flutterwave | **Real** | Subscriptions default to `'free'` tier and are updated via Flutterwave API webhooks. |
+| **Content Calendar** | Live Database + n8n | **Real** | Full CRUD capabilities. Bulk calendar generation relies on `N8N_CALENDAR_GENERATION_WEBHOOK_URL` callbacks. |
+| **AI Suggestions** | Live Database + n8n | **Real** | Post captions generated asynchronously using `N8N_CONTENT_SUGGESTIONS_WEBHOOK_URL` callback. |
+| **Post Scheduling** | In-Memory Cron Job | **Real** | An in-memory cron job poll (`DispatchDuePostsJob`) scans for due posts every 2 minutes. |
+| **Post Publishing** | Mock | **Stubbed** | `PublishingService.dispatchPost()` generates mock post IDs; actual API integrations for Facebook/Instagram/X are stubbed. |
+| **Redis / BullMQ Queues** | None | **Stubbed** | Config is loaded, but NestJS does not import any queue providers. |
+| **MinIO Storage** | Local Disk Storage | **Stubbed** | Files are stored locally inside `apps/backend/uploads/` instead of an S3 object store. |
 
 ---
 
-## 8. Architectural Rigor & Supporting Documentation
+## 7. Contributors
 
-Our engineering decisions, workflow guidelines, and architectural blueprints are documented across the repository:
-
-* **`docs/GIT_WORKFLOW.md`**: Outlines our feature-branching strategy, commit message standards, and merge-conflict resolution protocols for shared foundation files (`app.module.ts`, `relations.ts`, `roles.enum.ts`).
-* **`docs/ADMIN_THEME.md`**: Comprehensive design tokens, visual hierarchy, and UI component standards for the Admin Panel.
-* **`Dashboard-and-Channels-Integration-Guide.md`**: Contains the full architectural specification and schema contracts for the Dashboard summary endpoints and Channels Stage 1 CRUD pipeline prior to implementation.
-* **`Frontend-Architecture-Review.md`**: Reconciles the frontend routing structure (`AppRoutes.jsx`, `AdminRoutes.jsx`) against the backend API coverage, documenting how we resolved free-tier auto-assignment and onboarding sequences.
-
----
-
-## 9. Design System & Frontend Design Tokens
-
-All UI styling must adhere strictly to the design system configured in `apps/frontend/tailwind.config.js`. Avoid hardcoding raw hex values in JSX.
-
-| Token Name | Color Value | Tailwind Utility Class | Usage |
-| --- | --- | --- | --- |
-| **Primary** | `#4F46E5` | `bg-primary`, `text-primary` | Main call-to-action buttons, active navigation states |
-| **Accent / Success** | `#10B981` | `bg-accent`, `text-accent` | Positive status badges, successful payment confirmations |
-| **Warning** | `#F59E0B` | `bg-warning`, `text-warning` | Pending statuses, expiration warnings |
-| **Danger** | `#EF4444` | `bg-danger`, `text-danger` | Destructive actions, payment failures, disconnect alerts |
-| **Card Radius** | `12px` | `rounded-card` | Container cards, modals, tables |
-| **Control Radius** | `8px` | `rounded-control` | Inputs, buttons, form controls |
+*   **Pascal** — User Settings, Admin Panel user oversight, authentication controllers, schema validation, and layouts.
+*   **Treasure** — Billing, Flutterwave payments, company profiles, social API settings, and support services.

@@ -45,7 +45,7 @@ export default function Sidebar({ className, onClose }) {
         <Link to="/dashboard" className="flex items-center">
           <img
             alt="RaaSocial Logo"
-            className="h-20 object-contain w-auto max-w-[180px]"
+            className="h-28 object-contain w-auto max-w-[180px]"
             src={LogoImage}
           />
         </Link>
