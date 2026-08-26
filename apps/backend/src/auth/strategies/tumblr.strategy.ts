@@ -12,10 +12,15 @@ export class TumblrStrategy extends PassportStrategy(Strategy, 'tumblr') {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {
+    const callbackURL = process.env.TUMBLR_CALLBACK_URL;
+    if (!callbackURL) {
+      throw new Error('TUMBLR_CALLBACK_URL environment variable is missing from .env file.');
+    }
+
     super({
       consumerKey: process.env.TUMBLR_CONSUMER_KEY,
       consumerSecret: process.env.TUMBLR_CONSUMER_SECRET,
-      callbackURL: 'http://localhost:3000/auth/tumblr/callback',
+      callbackURL,
       passReqToCallback: true,
     });
   }
@@ -26,18 +31,21 @@ export class TumblrStrategy extends PassportStrategy(Strategy, 'tumblr') {
     tokenSecret: string,
     profile: any,
   ): Promise<any> {
-    const refreshToken = req.cookies?.refreshToken;
-    if (!refreshToken) {
-      throw new UnauthorizedException('No session found. Please log in before connecting Tumblr.');
-    }
+    let userId = req.query?.userId;
 
-    let userId: string;
-    try {
-      const secret = this.configService.get<string>('auth.refreshSecret');
-      const payload = await this.jwtService.verifyAsync(refreshToken, { secret });
-      userId = payload.sub;
-    } catch (err) {
-      throw new UnauthorizedException('Session expired or invalid. Please log in again.');
+    if (!userId) {
+      const refreshToken = req.cookies?.refreshToken;
+      if (!refreshToken) {
+        throw new UnauthorizedException('No session found. Please log in before connecting Tumblr.');
+      }
+
+      try {
+        const secret = this.configService.get<string>('auth.refreshSecret');
+        const payload = await this.jwtService.verifyAsync(refreshToken, { secret });
+        userId = payload.sub;
+      } catch (err) {
+        throw new UnauthorizedException('Session expired or invalid. Please log in again.');
+      }
     }
 
     const blogName =

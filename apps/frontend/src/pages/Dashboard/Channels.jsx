@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuthStore } from '../../store/auth-store'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -50,6 +51,37 @@ export default function Channels() {
     fetchKyc()
   }, [])
 
+  // useEffect to handle Tumblr OAuth callback query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tumblrStatus = params.get('tumblr')
+    if (tumblrStatus) {
+      if (tumblrStatus === 'success') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: 'Tumblr account connected successfully!',
+              type: 'success',
+            },
+          })
+        )
+        fetchChannels()
+      } else if (tumblrStatus === 'error') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: 'Failed to connect Tumblr account.',
+              type: 'error',
+            },
+          })
+        )
+      }
+      // Strip params from URL
+      const cleanUrl = window.location.pathname + window.location.hash
+      window.history.replaceState({}, document.title, cleanUrl)
+    }
+  }, [])
+
   // True when the KYC overlay should be shown (block channel interactions)
   const kycBlocked = kycLoading || kycRecord?.status !== 'approved'
 
@@ -85,6 +117,8 @@ export default function Channels() {
         return 'YouTube Studio';
       case 'facebook':
         return 'Facebook Page';
+      case 'tumblr':
+        return 'Tumblr Blog';
       default:
         return platform;
     }
@@ -175,6 +209,11 @@ export default function Channels() {
           icon: <Facebook size={24} />,
           style: { backgroundColor: '#1877F2' },
         }
+      case 'tumblr':
+        return {
+          icon: <span className="font-serif text-xl font-bold leading-none">t</span>,
+          style: { backgroundColor: '#35465d' },
+        }
       default:
         return {
           icon: <Link size={24} />,
@@ -186,6 +225,24 @@ export default function Channels() {
   // Handle individual card connect/disconnect button clicks
   const handleChannelAction = (id, currentStatus) => {
     const channel = channels.find((c) => c.id === id);
+    if (channel && channel.platform === 'tumblr') {
+      if (currentStatus === 'Connected') {
+        apiClient
+          .delete(`/social-accounts/${id}`)
+          .then(() => {
+            trackEvent('social_account_disconnected', { platform: 'tumblr' })
+            fetchChannels()
+          })
+          .catch((error) => {
+            console.error('Failed to disconnect Tumblr:', error)
+          })
+      } else {
+        const token = useAuthStore.getState().accessToken
+        window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+      }
+      return;
+    }
+
     if (currentStatus === 'Connected') {
       // Disconnect channel via backend DELETE
       apiClient
@@ -239,6 +296,13 @@ export default function Channels() {
   // Handle adding/connecting account via Top Right Modal
   const handleConnectSubmit = (e) => {
     e.preventDefault();
+    if (selectedPlatform === 'tumblr') {
+      setIsConnectModalOpen(false)
+      const token = useAuthStore.getState().accessToken
+      window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+      return;
+    }
+
     if (!newHandle.trim()) {
       setConnectError('Please enter an account handle or username.');
       return;
@@ -285,14 +349,26 @@ export default function Channels() {
             title="Social Channels"
             description="Manage your connected social accounts and synchronization status."
             action={
-              <Button
-                variant="primary"
-                className="flex items-center gap-1.5 font-medium"
-                onClick={() => setIsConnectModalOpen(true)}
-              >
-                <Plus size={18} />
-                Connect New Account
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  className="flex items-center gap-1.5 font-medium border-primary text-primary hover:bg-primary/5"
+                  onClick={() => {
+                    const token = useAuthStore.getState().accessToken
+                    window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+                  }}
+                >
+                  Connect Tumblr
+                </Button>
+                <Button
+                  variant="primary"
+                  className="flex items-center gap-1.5 font-medium"
+                  onClick={() => setIsConnectModalOpen(true)}
+                >
+                  <Plus size={18} />
+                  Connect New Account
+                </Button>
+              </div>
             }
           />
 
@@ -467,16 +543,19 @@ export default function Channels() {
                   <option value="x">X / Twitter</option>
                   <option value="youtube">YouTube Studio</option>
                   <option value="facebook">Facebook Page</option>
+                  <option value="tumblr">Tumblr Blog</option>
                 </select>
               </div>
 
-              <Input
-                label="Account Handle or Page Name"
-                required
-                value={newHandle}
-                onChange={(e) => setNewHandle(e.target.value)}
-                placeholder="e.g. @mybrand_official or Brand Page"
-              />
+              {selectedPlatform !== 'tumblr' && (
+                <Input
+                  label="Account Handle or Page Name"
+                  required
+                  value={newHandle}
+                  onChange={(e) => setNewHandle(e.target.value)}
+                  placeholder="e.g. @mybrand_official or Brand Page"
+                />
+              )}
 
               <p className="text-xs text-ink-muted italic leading-relaxed">
                 * Clicking Connect will redirect you to the platform's official OAuth consent page.
