@@ -20,6 +20,7 @@ import {
   decryptSecret,
 } from '../../common/utils/encryption.util';
 import { KycService } from '../../kyc/kyc.service';
+import { SelectDiscordTargetDto } from './dto/select-discord-target.dto';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -41,7 +42,7 @@ interface DiscordTokenResponse {
   guild?: {
     id: string;
     name: string;
-    icon: string;
+    icon: string | null;
     owner: boolean;
     permissions: string;
   };
@@ -62,6 +63,23 @@ interface DiscordUserResponse {
   locale?: string;
   verified?: boolean;
   email?: string | null;
+}
+
+export interface DiscordGuildInfo {
+  id: string;
+  name: string;
+  icon: string | null;
+  owner?: boolean;
+  permissions?: string;
+  botInstalled?: boolean;
+}
+
+export interface DiscordChannelInfo {
+  id: string;
+  name: string;
+  type: number;
+  position?: number;
+  parent_id?: string | null;
 }
 
 @Injectable()
@@ -125,27 +143,26 @@ export class DiscordService {
   /**
    * Handles the OAuth callback from Discord.
    *
-   * Flow:
-   *  1. Validate state JWT -> extract userId
-   *  2. Check KYC approval gate
-   *  3. Exchange authorization code for access/refresh tokens
-   *  4. Fetch Discord user info (username / global_name / avatar)
-   *  5. Upsert the social_accounts row for this user + discord platform
-   *  6. Redirect browser to frontend success/error URL
-   *
-   * @param code   Discord authorization code.
-   * @param state  Signed JWT containing the authenticated RaaSocial userId.
-   * @param res    Express response — used to perform the browser redirect.
+   * @param code             Discord authorization code.
+   * @param state            Signed JWT containing the authenticated RaaSocial userId.
+   * @param res              Express response — used to perform the browser redirect.
+   * @param callbackGuildId  Optional guild ID passed back by Discord if bot was added.
    */
   async handleCallback(
     code: string,
     state: string,
     res: Response,
+    callbackGuildId?: string,
   ): Promise<void> {
     const frontendUrl =
-      this.configService.get<string>('frontendUrl') || 'http://localhost:5173';
+      this.configService.get<string>('frontendUrl') ||
+      process.env.FRONTEND_URL ||
+      process.env.CORS_ORIGIN ||
+      'https://raasocial.io';
     const successUrl = `${frontendUrl}/dashboard/channels?discord=connected`;
     const errorBase = `${frontendUrl}/dashboard/channels?discord=error`;
+
+    this.logger.log('Processing Discord OAuth callback...');
 
     // 1. Validate state JWT
     let userId: string;
@@ -178,10 +195,9 @@ export class DiscordService {
     try {
       tokenData = await this.exchangeCodeForTokens(code);
     } catch (err) {
-      this.logger.error(
-        `Discord callback: token exchange failed — ${err.message}`,
-      );
-      res.redirect(`${errorBase}&reason=token_exchange_failed`);
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Discord callback: token exchange failed — ${msg}`);
+      res.redirect(`${errorBase}&reason=${encodeURIComponent(msg)}`);
       return;
     }
 
@@ -190,16 +206,18 @@ export class DiscordService {
     try {
       userInfo = await this.fetchDiscordUserProfile(tokenData.access_token);
     } catch (err) {
-      this.logger.error(
-        `Discord callback: user info fetch failed — ${err.message}`,
-      );
-      res.redirect(`${errorBase}&reason=user_info_failed`);
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`Discord callback: user info fetch failed — ${msg}`);
+      res.redirect(`${errorBase}&reason=${encodeURIComponent(msg)}`);
       return;
     }
 
     const handle =
       userInfo.global_name ||
       (userInfo.username ? `@${userInfo.username}` : userInfo.id);
+
+    const guildId = callbackGuildId || tokenData.guild?.id || null;
+    const guildName = tokenData.guild?.name || null;
 
     // 5. Upsert social_accounts row
     try {
@@ -210,18 +228,21 @@ export class DiscordService {
         accessToken: tokenData.access_token,
         refreshToken: tokenData.refresh_token,
         expiresIn: tokenData.expires_in,
+        guildId: guildId ?? undefined,
+        guildName: guildName ?? undefined,
       });
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
       this.logger.error(
-        `Discord callback: DB upsert failed — ${err.message}`,
-        err.stack,
+        `Discord callback: DB upsert failed — ${msg}`,
+        err instanceof Error ? err.stack : undefined,
       );
       res.redirect(`${errorBase}&reason=db_error`);
       return;
     }
 
     this.logger.log(
-      `Discord account connected for user ${userId} (discordUserId=${userInfo.id}, handle=${handle})`,
+      `Discord account connected for user ${userId} (discordUserId=${userInfo.id}, handle=${handle}, guildId=${guildId})`,
     );
     res.redirect(successUrl);
   }
@@ -243,6 +264,8 @@ export class DiscordService {
       return { connected: false, platform: 'discord' };
     }
 
+    const metadata = (account.metadata as Record<string, any>) || {};
+
     return {
       connected: account.status === 'connected',
       id: account.id,
@@ -251,6 +274,10 @@ export class DiscordService {
       status: account.status,
       connectedAt: account.connectedAt,
       tokenExpiresAt: account.tokenExpiresAt,
+      guildId: metadata.guildId || null,
+      guildName: metadata.guildName || null,
+      channelId: metadata.channelId || null,
+      channelName: metadata.channelName || null,
     };
   }
 
@@ -274,21 +301,147 @@ export class DiscordService {
     return { success: true, message: 'Discord connection removed successfully.' };
   }
 
-  /** Posts a message to a Discord channel. */
-  async sendMessage(userId: string, channelId: string, content: string) {
+  /** Gets servers/guilds user has access to, incorporating bot membership if available. */
+  async getUserGuilds(userId: string): Promise<DiscordGuildInfo[]> {
+    const userAccessToken = await this.getDecryptedAccessToken(userId);
+
+    // Fetch guilds from user OAuth token
+    const userGuildsRes = await fetch(
+      'https://discord.com/api/v10/users/@me/guilds',
+      {
+        headers: { Authorization: `Bearer ${userAccessToken}` },
+      },
+    );
+
+    if (!userGuildsRes.ok) {
+      const errJson = await userGuildsRes.json().catch(() => ({}));
+      this.logger.warn(
+        `Failed to fetch user guilds: ${userGuildsRes.status} — ${JSON.stringify(errJson)}`,
+      );
+      throw new BadRequestException(
+        `Discord API error fetching user servers (${userGuildsRes.status})`,
+      );
+    }
+
+    const userGuilds: DiscordGuildInfo[] = await userGuildsRes.json();
+
+    // Filter guilds where user is owner or has MANAGE_GUILD (0x20) / ADMIN (0x8) permission
+    const eligibleGuilds = userGuilds.filter((g) => {
+      if (g.owner) return true;
+      if (!g.permissions) return false;
+      const perms = BigInt(g.permissions);
+      const adminBit = BigInt(0x8);
+      const manageGuildBit = BigInt(0x20);
+      return (perms & adminBit) === adminBit || (perms & manageGuildBit) === manageGuildBit;
+    });
+
+    return eligibleGuilds;
+  }
+
+  /** Gets text channels for a specified guild. */
+  async getGuildChannels(
+    userId: string,
+    guildId: string,
+  ): Promise<DiscordChannelInfo[]> {
     const botToken = this.configService.get<string>('discord.botToken');
     let authorizationHeader = '';
 
     if (botToken) {
       authorizationHeader = `Bot ${botToken}`;
     } else {
-      // Fall back to user access token
+      const userAccessToken = await this.getDecryptedAccessToken(userId);
+      authorizationHeader = `Bearer ${userAccessToken}`;
+    }
+
+    const res = await fetch(
+      `https://discord.com/api/v10/guilds/${guildId}/channels`,
+      {
+        headers: { Authorization: authorizationHeader },
+      },
+    );
+
+    if (!res.ok) {
+      const errJson = await res.json().catch(() => ({}));
+      this.logger.warn(
+        `Failed to fetch channels for guild ${guildId}: ${res.status} — ${JSON.stringify(errJson)}`,
+      );
+      throw new BadRequestException(
+        `Discord API error fetching channels (${res.status}): ${errJson.message || 'Unauthorized or Bot not in server'}`,
+      );
+    }
+
+    const channels: DiscordChannelInfo[] = await res.json();
+    // Return only text channels (type 0) or announcement channels (type 5)
+    return channels.filter((c) => c.type === 0 || c.type === 5);
+  }
+
+  /** Saves selected guild and channel target in account metadata. */
+  async selectTarget(userId: string, dto: SelectDiscordTargetDto) {
+    const account = await this.db.query.social_accounts.findFirst({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.platform, 'discord'),
+      ),
+    });
+
+    if (!account) {
+      throw new NotFoundException('No connected Discord account found for this user.');
+    }
+
+    const existingMetadata = (account.metadata as Record<string, any>) || {};
+    const updatedMetadata = {
+      ...existingMetadata,
+      guildId: dto.guildId,
+      channelId: dto.channelId || existingMetadata.channelId || null,
+      guildName: dto.guildName || existingMetadata.guildName || null,
+      channelName: dto.channelName || existingMetadata.channelName || null,
+    };
+
+    await this.db
+      .update(schema.social_accounts)
+      .set({
+        metadata: updatedMetadata,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.social_accounts.id, account.id));
+
+    return {
+      success: true,
+      message: 'Target Discord server/channel updated successfully.',
+      metadata: updatedMetadata,
+    };
+  }
+
+  /** Posts a message to a Discord channel. */
+  async sendMessage(userId: string, channelId: string, content: string) {
+    let targetChannelId = channelId;
+
+    // Fallback to saved channel ID if not directly provided
+    if (!targetChannelId) {
+      const status = await this.getDiscordStatus(userId);
+      if (status.channelId) {
+        targetChannelId = status.channelId;
+      }
+    }
+
+    if (!targetChannelId) {
+      throw new BadRequestException(
+        'No target Discord channel specified or configured for this user.',
+      );
+    }
+
+    const botToken = this.configService.get<string>('discord.botToken');
+    let authorizationHeader = '';
+
+    if (botToken) {
+      authorizationHeader = `Bot ${botToken}`;
+    } else {
       const userAccessToken = await this.getDecryptedAccessToken(userId);
       authorizationHeader = `Bearer ${userAccessToken}`;
     }
 
     const response = await fetch(
-      `https://discord.com/api/v10/channels/${channelId}/messages`,
+      `https://discord.com/api/v10/channels/${targetChannelId}/messages`,
       {
         method: 'POST',
         headers: {
@@ -324,11 +477,20 @@ export class DiscordService {
   private async exchangeCodeForTokens(
     code: string,
   ): Promise<DiscordTokenResponse> {
-    const clientId = this.configService.get<string>('discord.clientId');
-    const clientSecret = this.configService.get<string>('discord.clientSecret');
-    const redirectUri = this.configService.get<string>('discord.redirectUri');
+    const clientId =
+      this.configService.get<string>('discord.clientId') ||
+      process.env.DISCORD_CLIENT_ID;
+    const clientSecret =
+      this.configService.get<string>('discord.clientSecret') ||
+      process.env.DISCORD_CLIENT_SECRET;
+    const redirectUri =
+      this.configService.get<string>('discord.redirectUri') ||
+      process.env.DISCORD_REDIRECT_URI;
 
     if (!clientId || !clientSecret || !redirectUri) {
+      this.logger.error(
+        `Discord credentials missing check — Client ID present: ${!!clientId}, Secret present: ${!!clientSecret}, Redirect URI: ${redirectUri}`,
+      );
       throw new InternalServerErrorException(
         'Discord OAuth credentials are not configured on this server.',
       );
@@ -351,8 +513,13 @@ export class DiscordService {
     const json: any = await response.json();
 
     if (!response.ok || !json.access_token) {
+      const errorMsg =
+        json.error_description || json.error || json.message || JSON.stringify(json);
+      this.logger.error(
+        `Discord token exchange HTTP ${response.status}: ${errorMsg}`,
+      );
       throw new BadRequestException(
-        `Discord token endpoint error: ${json.error_description || json.message || JSON.stringify(json)}`,
+        `Discord token endpoint error (${response.status}): ${errorMsg}`,
       );
     }
 
@@ -371,7 +538,7 @@ export class DiscordService {
 
     if (!response.ok || !json.id) {
       throw new BadRequestException(
-        `Discord user info error: ${json.message || JSON.stringify(json)}`,
+        `Discord user info error (${response.status}): ${json.message || JSON.stringify(json)}`,
       );
     }
 
@@ -386,6 +553,8 @@ export class DiscordService {
     accessToken: string;
     refreshToken?: string;
     expiresIn?: number;
+    guildId?: string;
+    guildName?: string;
   }): Promise<void> {
     const encryptedAccess = encryptSecret(params.accessToken);
     const encryptedRefresh = params.refreshToken
@@ -403,6 +572,14 @@ export class DiscordService {
       ),
     });
 
+    const existingMetadata = (existing?.metadata as Record<string, any>) || {};
+    const metadata = {
+      ...existingMetadata,
+      discordUserId: params.discordUserId,
+      guildId: params.guildId || existingMetadata.guildId || null,
+      guildName: params.guildName || existingMetadata.guildName || null,
+    };
+
     if (existing) {
       await this.db
         .update(schema.social_accounts)
@@ -412,6 +589,7 @@ export class DiscordService {
           accessToken: encryptedAccess,
           refreshToken: encryptedRefresh,
           tokenExpiresAt,
+          metadata,
           connectedAt: now,
           updatedAt: now,
         })
@@ -425,6 +603,7 @@ export class DiscordService {
         accessToken: encryptedAccess,
         refreshToken: encryptedRefresh,
         tokenExpiresAt,
+        metadata,
         connectedAt: now,
       });
     }

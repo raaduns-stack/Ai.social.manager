@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, pgEnum, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
 
@@ -34,6 +34,7 @@ export const social_accounts = pgTable('social_accounts', {
   // Nullable so existing rows (non-OAuth connected accounts) are unaffected.
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
+  metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
