@@ -33,6 +33,8 @@ import {
 } from 'lucide-react'
 
 export default function Channels() {
+  const apiBase = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/api$/, '')
+
   // ---- KYC state ----
   // kycRecord: null (loading) | object (loaded). When kycRecord.status === 'approved'
   // the overlay is hidden and the user can interact with channels normally.
@@ -274,7 +276,7 @@ export default function Channels() {
           })
       } else {
         const token = useAuthStore.getState().accessToken
-        window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+        window.location.href = `${apiBase}/auth/tumblr?token=${token}`
       }
       return;
     }
@@ -340,7 +342,7 @@ export default function Channels() {
     if (selectedPlatform === 'tumblr') {
       setIsConnectModalOpen(false)
       const token = useAuthStore.getState().accessToken
-      window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+      window.location.href = `${apiBase}/auth/tumblr?token=${token}`
       return;
     }
 
@@ -434,7 +436,7 @@ export default function Channels() {
                             setIsDropdownOpen(false)
                             if (plat.key === 'tumblr') {
                               const token = useAuthStore.getState().accessToken
-                              window.location.href = `http://localhost:4000/auth/tumblr?token=${token}`
+                              window.location.href = `${apiBase}/auth/tumblr?token=${token}`
                             } else if (plat.key === 'discord') {
                               startDiscordOAuth()
                             } else {
