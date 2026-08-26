@@ -1,6 +1,6 @@
 {
-  "id": "bfe3b5d9-bee4-4b36-857a-7073190866d2",
-  "prevId": "ee3b4862-b307-4326-a579-b3004d4ea933",
+  "id": "2eb73c07-1d2b-4252-a88e-169a8388b22e",
+  "prevId": "bfe3b5d9-bee4-4b36-857a-7073190866d2",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -39,6 +39,24 @@
           "primaryKey": false,
           "notNull": false
         },
+        "phone_number": {
+          "name": "phone_number",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country": {
+          "name": "country",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "profile_image": {
+          "name": "profile_image",
+          "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "role": {
           "name": "role",
           "type": "role",
@@ -46,6 +64,14 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'user'"
+        },
+        "account_status": {
+          "name": "account_status",
+          "type": "account_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'EMAIL_VERIFICATION_PENDING'"
         },
         "is_active": {
           "name": "is_active",
@@ -69,6 +95,43 @@
         },
         "email_verification_expires_at": {
           "name": "email_verification_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "account_manager_id": {
+          "name": "account_manager_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "registered_at": {
+          "name": "registered_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "email_verified_at": {
+          "name": "email_verified_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "first_login_at": {
+          "name": "first_login_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_login_at": {
+          "name": "last_login_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "suspended_at": {
+          "name": "suspended_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
@@ -630,6 +693,36 @@
           "primaryKey": false,
           "notNull": false
         },
+        "provider_user_id": {
+          "name": "provider_user_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "access_token": {
+          "name": "access_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "refresh_token": {
+          "name": "refresh_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_secret": {
+          "name": "token_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -1163,6 +1256,20 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'[]'::json"
+        },
+        "approval_status": {
+          "name": "approval_status",
+          "type": "variation_approval_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'PENDING_APPROVAL'"
+        },
+        "revision_notes": {
+          "name": "revision_notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2289,15 +2396,87 @@
           "primaryKey": false,
           "notNull": false
         },
+        "cert_of_registration_original_name": {
+          "name": "cert_of_registration_original_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cert_of_registration_mime_type": {
+          "name": "cert_of_registration_mime_type",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cert_of_registration_file_size": {
+          "name": "cert_of_registration_file_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cert_of_registration_uploaded_at": {
+          "name": "cert_of_registration_uploaded_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "utility_bill_path": {
           "name": "utility_bill_path",
           "type": "varchar(500)",
           "primaryKey": false,
           "notNull": false
         },
+        "utility_bill_original_name": {
+          "name": "utility_bill_original_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utility_bill_mime_type": {
+          "name": "utility_bill_mime_type",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utility_bill_file_size": {
+          "name": "utility_bill_file_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "utility_bill_uploaded_at": {
+          "name": "utility_bill_uploaded_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
         "owner_id_path": {
           "name": "owner_id_path",
           "type": "varchar(500)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id_original_name": {
+          "name": "owner_id_original_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id_mime_type": {
+          "name": "owner_id_mime_type",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id_file_size": {
+          "name": "owner_id_file_size",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_id_uploaded_at": {
+          "name": "owner_id_uploaded_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
@@ -2940,6 +3119,17 @@
     }
   },
   "enums": {
+    "public.account_status": {
+      "name": "account_status",
+      "schema": "public",
+      "values": [
+        "REGISTRATION_IN_PROGRESS",
+        "EMAIL_VERIFICATION_PENDING",
+        "ACTIVE",
+        "SUSPENDED",
+        "DELETED"
+      ]
+    },
     "public.role": {
       "name": "role",
       "schema": "public",
@@ -2999,7 +3189,9 @@
         "tiktok",
         "x",
         "youtube",
-        "linkedin"
+        "linkedin",
+        "tumblr",
+        "discord"
       ]
     },
     "public.social_status": {
@@ -3065,6 +3257,17 @@
       "values": [
         "caption",
         "idea"
+      ]
+    },
+    "public.variation_approval_status": {
+      "name": "variation_approval_status",
+      "schema": "public",
+      "values": [
+        "DRAFT",
+        "PENDING_APPROVAL",
+        "APPROVED",
+        "REVISION_REQUESTED",
+        "REJECTED"
       ]
     },
     "public.post_approval_status": {
