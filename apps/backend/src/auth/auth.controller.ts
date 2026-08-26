@@ -188,7 +188,8 @@ export class AuthController {
       res.redirect(`https://www.tumblr.com/oauth/authorize?oauth_token=${oauth_token}`);
     } catch (err: any) {
       this.logger.error(`Tumblr auth initiation failed: ${err.message}`, err.stack);
-      res.redirect('http://localhost:5173/settings/accounts?tumblr=error');
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/settings/accounts?tumblr=error`);
     }
   }
 
@@ -222,11 +223,13 @@ export class AuthController {
       await this.tumblrService.connectAccount(userId, token, tokenSecret, blogName);
 
       res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
-      res.redirect('http://localhost:5173/settings/accounts?tumblr=success');
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/settings/accounts?tumblr=success`);
     } catch (err: any) {
       this.logger.error(`Tumblr callback handshake failed: ${err.message}`, err.stack);
       res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
-      res.redirect('http://localhost:5173/settings/accounts?tumblr=error');
+      const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/settings/accounts?tumblr=error`);
     }
   }
 }
