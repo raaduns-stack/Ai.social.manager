@@ -16,7 +16,9 @@ async function bootstrap() {
   const config = app.get(ConfigService);
 
   const apiPrefix = config.get<string>('API_PREFIX', 'api');
-  app.setGlobalPrefix(apiPrefix);
+  app.setGlobalPrefix(apiPrefix, {
+    exclude: ['auth/tumblr', 'auth/tumblr/callback'],
+  });
 
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
@@ -36,7 +38,8 @@ async function bootstrap() {
 
       if (
         req.path.startsWith(`/${apiPrefix}`) ||
-        req.path.startsWith('/uploads')
+        req.path.startsWith('/uploads') ||
+        req.path.startsWith('/auth/tumblr')
       ) {
         return next();
       }

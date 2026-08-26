@@ -10,6 +10,7 @@ import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
+import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
@@ -149,6 +150,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Get current user role and permissions' })
   getPermissions(@CurrentUser() user: { userId: string; role: string }) {
     return this.authService.getPermissions(user.userId, user.role);
+  }
+
+  @Get('tumblr')
+  @UseGuards(AuthGuard('tumblr'))
+  @ApiOperation({ summary: 'Initiate Tumblr OAuth flow' })
+  tumblrAuth() {
+    // Initiates the Tumblr OAuth flow
+  }
+
+  @Get('tumblr/callback')
+  @UseGuards(AuthGuard('tumblr'))
+  @ApiOperation({ summary: 'Handle Tumblr OAuth callback' })
+  tumblrAuthCallback(@Res() res: Response) {
+    res.redirect('http://localhost:5173/settings/accounts?tumblr=success');
   }
 }
 

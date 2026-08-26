@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, pgEnum, text, jsonb } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
 
@@ -10,6 +10,7 @@ export const socialPlatformEnum = pgEnum('social_platform', [
   'x',
   'youtube',
   'linkedin',
+  'tumblr',
 ]);
 
 // Enum for connection status
@@ -29,6 +30,10 @@ export const social_accounts = pgTable('social_accounts', {
   status: socialStatusEnum('status').notNull(),
   connectedAt: timestamp('connected_at'),
   tokenExpiresAt: timestamp('token_expires_at'),
+  providerUserId: varchar('provider_user_id', { length: 255 }),
+  accessToken: text('access_token'),
+  tokenSecret: text('token_secret'),
+  metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
