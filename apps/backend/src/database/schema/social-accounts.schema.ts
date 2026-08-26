@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
 
@@ -10,6 +10,7 @@ export const socialPlatformEnum = pgEnum('social_platform', [
   'x',
   'youtube',
   'linkedin',
+  'discord',
 ]);
 
 // Enum for connection status
@@ -29,6 +30,10 @@ export const social_accounts = pgTable('social_accounts', {
   status: socialStatusEnum('status').notNull(),
   connectedAt: timestamp('connected_at'),
   tokenExpiresAt: timestamp('token_expires_at'),
+  // OAuth tokens — stored AES-256-GCM encrypted at rest via encryptSecret/decryptSecret util.
+  // Nullable so existing rows (non-OAuth connected accounts) are unaffected.
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

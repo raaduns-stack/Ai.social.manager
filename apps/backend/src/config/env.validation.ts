@@ -99,6 +99,56 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   N8N_PUBLISHING_WEBHOOK_URL?: string;
+
+  // -------------------------------------------------------------------
+  // TikTok Integration
+  // -------------------------------------------------------------------
+
+  /** TikTok app Client Key (also called App ID in the developer portal). */
+  @IsString()
+  @IsOptional()
+  TIKTOK_CLIENT_KEY?: string;
+
+  /** TikTok app Client Secret — never expose to the frontend. */
+  @IsString()
+  @IsOptional()
+  TIKTOK_CLIENT_SECRET?: string;
+
+  /** Full redirect URI registered in TikTok Developer Portal.
+   *  Must equal: https://raasocial.io/api/channels/tiktok/callback */
+  @IsString()
+  @IsOptional()
+  TIKTOK_REDIRECT_URI?: string;
+
+  /** Optional shared verify token for additional webhook validation. */
+  @IsString()
+  @IsOptional()
+  TIKTOK_WEBHOOK_VERIFY_TOKEN?: string;
+
+  // -------------------------------------------------------------------
+  // Discord Integration
+  // -------------------------------------------------------------------
+
+  /** Discord application Client ID. */
+  @IsString()
+  @IsOptional()
+  DISCORD_CLIENT_ID?: string;
+
+  /** Discord application Client Secret — never expose to the frontend. */
+  @IsString()
+  @IsOptional()
+  DISCORD_CLIENT_SECRET?: string;
+
+  /** Full redirect URI registered in Discord Developer Portal.
+   *  Must equal: https://raasocial.io/api/channels/discord/callback */
+  @IsString()
+  @IsOptional()
+  DISCORD_REDIRECT_URI?: string;
+
+  /** Optional Discord Bot Token. */
+  @IsString()
+  @IsOptional()
+  DISCORD_BOT_TOKEN?: string;
 }
 
 /**

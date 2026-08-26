@@ -57,4 +57,21 @@ export default () => ({
     internalApiKey: process.env.N8N_INTERNAL_API_KEY,
     publishingWebhookUrl: process.env.N8N_PUBLISHING_WEBHOOK_URL,
   },
+
+  tiktok: {
+    clientKey: process.env.TIKTOK_CLIENT_KEY,
+    clientSecret: process.env.TIKTOK_CLIENT_SECRET,
+    redirectUri: process.env.TIKTOK_REDIRECT_URI,
+    // webhookVerifyToken is an optional shared secret you can use for an
+    // additional layer of webhook verification if TikTok supports it in future.
+    webhookVerifyToken: process.env.TIKTOK_WEBHOOK_VERIFY_TOKEN,
+  },
+
+  discord: {
+    clientId: process.env.DISCORD_CLIENT_ID,
+    clientSecret: process.env.DISCORD_CLIENT_SECRET,
+    redirectUri: process.env.DISCORD_REDIRECT_URI,
+    botToken: process.env.DISCORD_BOT_TOKEN,
+  },
 });
+
