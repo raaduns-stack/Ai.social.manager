@@ -4,11 +4,13 @@ import {
   Post,
   Delete,
   Query,
+  Param,
   Body,
   Res,
   UseGuards,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   ApiTags,
   ApiOperation,
@@ -19,6 +21,7 @@ import { Response } from 'express';
 import { DiscordService } from './discord.service';
 import { DiscordCallbackQueryDto } from './dto/discord-callback.query.dto';
 import { SendDiscordMessageDto } from './dto/send-discord-message.dto';
+import { SelectDiscordTargetDto } from './dto/select-discord-target.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 
@@ -27,7 +30,10 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 export class DiscordController {
   private readonly logger = new Logger(DiscordController.name);
 
-  constructor(private readonly discordService: DiscordService) {}
+  constructor(
+    private readonly discordService: DiscordService,
+    private readonly configService: ConfigService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // GET /api/channels/discord/connect
@@ -50,12 +56,23 @@ export class DiscordController {
   async connect(@CurrentUser() user: { userId: string }) {
     const stateJwt = await this.discordService.generateStateJwt(user.userId);
 
-    const clientId = process.env.DISCORD_CLIENT_ID ?? '';
-    const redirectUri = process.env.DISCORD_REDIRECT_URI ?? '';
-    // Request identify (user profile) along with bot and applications.commands scopes
-    const scope = 'identify bot applications.commands';
+    const clientId =
+      this.configService.get<string>('discord.clientId') ||
+      process.env.DISCORD_CLIENT_ID ||
+      '';
+    const redirectUri =
+      this.configService.get<string>('discord.redirectUri') ||
+      process.env.DISCORD_REDIRECT_URI ||
+      '';
+
+    // Request identify (user profile), guilds, bot, and applications.commands scopes
+    const scope = 'identify guilds bot applications.commands';
     // Permissions=2048 corresponds to "Send Messages"
     const permissions = '2048';
+
+    this.logger.log(
+      `Discord connect initiated for user ${user.userId}. Client ID configured: ${!!clientId}, Redirect URI: ${redirectUri}`,
+    );
 
     const params = new URLSearchParams({
       client_id: clientId,
@@ -88,6 +105,8 @@ export class DiscordController {
   })
   @ApiQuery({ name: 'code', required: false })
   @ApiQuery({ name: 'state', required: false })
+  @ApiQuery({ name: 'guild_id', required: false })
+  @ApiQuery({ name: 'permissions', required: false })
   @ApiQuery({ name: 'error', required: false })
   @ApiQuery({ name: 'error_description', required: false })
   async callback(
@@ -95,12 +114,15 @@ export class DiscordController {
     @Res() res: Response,
   ): Promise<void> {
     const frontendUrl =
-      process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:5173';
+      this.configService.get<string>('frontendUrl') ||
+      process.env.FRONTEND_URL ||
+      process.env.CORS_ORIGIN ||
+      'https://raasocial.io';
     const errorBase = `${frontendUrl}/dashboard/channels?discord=error`;
 
     if (query.error) {
       this.logger.warn(
-        `Discord callback error: ${query.error} — ${query.error_description}`,
+        `Discord callback received error param: ${query.error} — ${query.error_description}`,
       );
       res.redirect(`${errorBase}&reason=${encodeURIComponent(query.error)}`);
       return;
@@ -112,7 +134,12 @@ export class DiscordController {
       return;
     }
 
-    await this.discordService.handleCallback(query.code, query.state, res);
+    await this.discordService.handleCallback(
+      query.code,
+      query.state,
+      res,
+      query.guild_id,
+    );
   }
 
   // ---------------------------------------------------------------------------
@@ -126,6 +153,54 @@ export class DiscordController {
   })
   async getStatus(@CurrentUser() user: { userId: string }) {
     return this.discordService.getDiscordStatus(user.userId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /api/channels/discord/guilds
+  // Returns servers/guilds accessible to the user/bot
+  // ---------------------------------------------------------------------------
+  @Get('guilds')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get list of Discord servers/guilds available for user',
+  })
+  async getGuilds(@CurrentUser() user: { userId: string }) {
+    return this.discordService.getUserGuilds(user.userId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // GET /api/channels/discord/guilds/:guildId/channels
+  // Returns channels within a specific guild/server
+  // ---------------------------------------------------------------------------
+  @Get('guilds/:guildId/channels')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Get list of text channels for a Discord guild',
+  })
+  async getGuildChannels(
+    @CurrentUser() user: { userId: string },
+    @Param('guildId') guildId: string,
+  ) {
+    return this.discordService.getGuildChannels(user.userId, guildId);
+  }
+
+  // ---------------------------------------------------------------------------
+  // POST /api/channels/discord/select-target
+  // Saves the selected Discord guild and channel for posting
+  // ---------------------------------------------------------------------------
+  @Post('select-target')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Select target Discord guild and channel for posting',
+  })
+  async selectTarget(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: SelectDiscordTargetDto,
+  ) {
+    return this.discordService.selectTarget(user.userId, dto);
   }
 
   // ---------------------------------------------------------------------------
