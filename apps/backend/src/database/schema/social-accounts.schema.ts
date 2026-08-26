@@ -10,6 +10,7 @@ export const socialPlatformEnum = pgEnum('social_platform', [
   'x',
   'youtube',
   'linkedin',
+  'tumblr',
   'discord',
 ]);
 
@@ -30,10 +31,12 @@ export const social_accounts = pgTable('social_accounts', {
   status: socialStatusEnum('status').notNull(),
   connectedAt: timestamp('connected_at'),
   tokenExpiresAt: timestamp('token_expires_at'),
+  providerUserId: varchar('provider_user_id', { length: 255 }),
   // OAuth tokens — stored AES-256-GCM encrypted at rest via encryptSecret/decryptSecret util.
   // Nullable so existing rows (non-OAuth connected accounts) are unaffected.
   accessToken: text('access_token'),
   refreshToken: text('refresh_token'),
+  tokenSecret: text('token_secret'),
   metadata: jsonb('metadata'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
@@ -48,3 +51,4 @@ export const socialAccountsRelations = relations(social_accounts, ({ one }) => (
 
 export type SocialAccount = typeof social_accounts.$inferSelect;
 export type NewSocialAccount = typeof social_accounts.$inferInsert;
+

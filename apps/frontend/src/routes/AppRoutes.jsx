@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { usePageTracking } from '../hooks/useAnalytics'
 
 // Layouts
@@ -98,6 +98,12 @@ export default function AppRoutes() {
         <Route path="notifications" element={<Notifications />} />
         <Route path="settings" element={<Settings />} />
       </Route>
+
+      {/* Redirect for Tumblr OAuth callback URL */}
+      <Route
+        path="/settings/accounts"
+        element={<Navigate to={{ pathname: "/dashboard/channels", search: window.location.search }} replace />}
+      />
 
       {/* Admin Panel */}
       <Route path="/admin/*" element={<AdminRoutes />} />
