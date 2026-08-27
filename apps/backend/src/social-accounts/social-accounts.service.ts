@@ -6,6 +6,7 @@ import * as schema from '../database/schema';
 import { CreateSocialAccountDto } from './dto/create-social-account.dto';
 import { UpdateSocialAccountDto } from './dto/update-social-account.dto';
 import { KycService } from '../kyc/kyc.service';
+import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -15,6 +16,7 @@ export class SocialAccountsService {
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     // KycService is injected to enforce KYC-approval before any channel connection
     private readonly kycService: KycService,
+    private readonly subscriptionsService: SubscriptionsService,
   ) {}
 
   /**
@@ -44,29 +46,33 @@ export class SocialAccountsService {
       });
     }
 
-    const activeSub = await this.db.query.subscriptions.findFirst({
-      where: and(
-        eq(schema.subscriptions.userId, userId),
-        eq(schema.subscriptions.status, 'active')
-      ),
-      with: {
-        plan: true,
-      },
-    });
-
-    if (!activeSub || !activeSub.plan) {
-      throw new BadRequestException('No active subscription plan found.');
+    let activePlan: schema.Plan;
+    try {
+      const sub = await this.subscriptionsService.findByUserId(userId);
+      activePlan = sub.plan;
+    } catch (err) {
+      const freePlan = await this.db.query.plans.findFirst({
+        where: eq(schema.plans.slug, 'free'),
+      });
+      activePlan = freePlan || ({
+        name: 'Free',
+        maxSocialAccounts: 2,
+        monthlyPostLimit: 8,
+      } as any);
     }
 
-    const maxSocialAccounts = activeSub.plan.maxSocialAccounts;
+    const maxSocialAccounts = activePlan.maxSocialAccounts;
 
-    const existingAccounts = await this.db.query.social_accounts.findMany({
-      where: eq(schema.social_accounts.userId, userId),
+    const existingConnectedAccounts = await this.db.query.social_accounts.findMany({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.status, 'connected'),
+      ),
     });
 
-    if (existingAccounts.length >= maxSocialAccounts) {
+    if (existingConnectedAccounts.length >= maxSocialAccounts) {
       throw new BadRequestException(
-        `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activeSub.plan.name}).`
+        `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`
       );
     }
 
@@ -93,6 +99,35 @@ export class SocialAccountsService {
 
   /** Update status and token expiration for a specific social account. */
   async update(userId: string, id: string, dto: UpdateSocialAccountDto) {
+    if (dto.status === 'connected') {
+      const existing = await this.db.query.social_accounts.findFirst({
+        where: and(eq(schema.social_accounts.id, id), eq(schema.social_accounts.userId, userId)),
+      });
+      if (existing && existing.status !== 'connected') {
+        let activePlan: schema.Plan;
+        try {
+          const sub = await this.subscriptionsService.findByUserId(userId);
+          activePlan = sub.plan;
+        } catch (err) {
+          const freePlan = await this.db.query.plans.findFirst({
+            where: eq(schema.plans.slug, 'free'),
+          });
+          activePlan = freePlan || ({ name: 'Free', maxSocialAccounts: 2 } as any);
+        }
+        const connectedAccounts = await this.db.query.social_accounts.findMany({
+          where: and(
+            eq(schema.social_accounts.userId, userId),
+            eq(schema.social_accounts.status, 'connected'),
+          ),
+        });
+        if (connectedAccounts.length >= activePlan.maxSocialAccounts) {
+          throw new BadRequestException(
+            `You have reached the maximum limit of ${activePlan.maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`
+          );
+        }
+      }
+    }
+
     const allowedUpdates: Partial<Record<keyof UpdateSocialAccountDto, any>> = {};
     if (dto.status !== undefined) allowedUpdates.status = dto.status;
     if (dto.tokenExpiresAt !== undefined) allowedUpdates.tokenExpiresAt = dto.tokenExpiresAt;
