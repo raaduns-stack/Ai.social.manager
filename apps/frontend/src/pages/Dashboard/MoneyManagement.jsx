@@ -170,7 +170,7 @@ export default function MoneyManagement() {
       const status = p.status?.toLowerCase()
       return status === 'successful' || status === 'success'
     })
-    
+
     // 1. Daily (last 7 days)
     const dailyPoints = []
     for (let i = 6; i >= 0; i--) {
@@ -183,7 +183,7 @@ export default function MoneyManagement() {
         .reduce((sum, p) => sum + p.amount, 0)
       dailyPoints.push({ label, val: valueCents })
     }
-    
+
     // 2. Weekly (last 4 weeks)
     const weeklyPoints = []
     for (let i = 3; i >= 0; i--) {
@@ -427,7 +427,7 @@ export default function MoneyManagement() {
     return payments.filter((trx) => {
       const matchesStatus =
         statusFilter === 'All' || trx.status?.toLowerCase() === statusFilter.toLowerCase()
-      
+
       const methodLower = trx.method?.toLowerCase() || ''
       const matchesMethod =
         methodFilter === 'All' ||
@@ -564,11 +564,10 @@ export default function MoneyManagement() {
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}
-                  className={`px-3 py-1 rounded-control text-xs font-medium transition-colors ${
-                    timeframe === tf
+                  className={`px-3 py-1 rounded-control text-xs font-medium transition-colors ${timeframe === tf
                       ? 'bg-surface text-ink shadow-soft font-semibold'
                       : 'text-ink-muted hover:text-ink'
-                  }`}
+                    }`}
                 >
                   {tf}
                 </button>
@@ -592,9 +591,8 @@ export default function MoneyManagement() {
                   >
                     <div
                       style={{ height: item.height }}
-                      className={`w-full rounded-t-control transition-all relative ${
-                        item.active ? 'bg-primary shadow-soft' : 'bg-primary-50 hover:bg-primary-100'
-                      }`}
+                      className={`w-full rounded-t-control transition-all relative ${item.active ? 'bg-primary shadow-soft' : 'bg-primary-50 hover:bg-primary-100'
+                        }`}
                     >
                       <div className="absolute bottom-full mb-1 inset-x-0 text-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-primary bg-surface border border-border rounded px-1 py-0.5 shadow-soft z-10 whitespace-nowrap">
                         {item.value}

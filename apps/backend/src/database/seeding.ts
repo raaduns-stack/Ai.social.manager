@@ -196,6 +196,33 @@ export async function seedSingletons(db: Database, configService: any) {
       isEnabled: true,
     });
   }
+
+  // 5. notificationTypeSettings
+  const standardTypes = [
+    { type: 'announcement', email: true, inApp: true, wa: false },
+    { type: 'subscription', email: true, inApp: true, wa: false },
+    { type: 'approval', email: true, inApp: true, wa: false },
+    { type: 'publishing', email: true, inApp: true, wa: false },
+    { type: 'maintenance', email: true, inApp: true, wa: false },
+    { type: 'support_ticket', email: true, inApp: true, wa: false },
+    { type: 'connection_alert', email: true, inApp: true, wa: false },
+    { type: 'calendar_upload', email: true, inApp: true, wa: false },
+  ];
+
+  for (const st of standardTypes) {
+    const existing = await db.query.notificationTypeSettings.findFirst({
+      where: eq(schema.notificationTypeSettings.notificationType, st.type),
+    });
+    if (!existing) {
+      await db.insert(schema.notificationTypeSettings).values({
+        notificationType: st.type,
+        emailAvailable: st.email,
+        inAppAvailable: st.inApp,
+        whatsappAvailable: st.wa,
+        isEnabledGlobally: true,
+      });
+    }
+  }
 }
 
 export async function seedRolePermissions(db: Database) {

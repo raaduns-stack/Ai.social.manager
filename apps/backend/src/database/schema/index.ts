@@ -22,6 +22,7 @@ export * from './activity-logs.schema';
 export * from './role-permissions.schema';
 export * from './scheduled-posts.schema';
 export * from './publishing-logs.schema';
+export * from './notifications.schema';
 export * from './relations';
 
 
