@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   DollarSign,
   Clock,
@@ -14,235 +14,43 @@ import {
   FileText,
   FileSpreadsheet,
   ChevronDown,
-  Eye,
-  CreditCard,
-  CheckCircle2,
-  XCircle,
-  AlertCircle,
   Search,
+  Loader2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
-import Input from '../../components/ui/Input'
+import ErrorBanner from '../../components/error-banner'
+import { getAdminBillingStats, getAdminSubscriptions, getAdminPayments } from '../../features/admin/admin-api'
 
-// ---------------------------------------------------------------------------
-// Data & Constants
-// ---------------------------------------------------------------------------
-
-const REVENUE_STATS = [
-  {
-    id: 'total',
-    label: 'Total Revenue',
-    amount: '₦12,450,000',
-    change: '+12.5%',
-    changeSub: 'vs last month',
-    isPositive: true,
-    icon: DollarSign,
-    badgeBg: 'bg-primary-50 text-primary-700',
-  },
-  {
-    id: 'today',
-    label: "Today's Revenue",
-    amount: '₦420,500',
-    change: '+4.2%',
-    changeSub: 'from yesterday',
-    isPositive: true,
-    icon: Clock,
-    badgeBg: 'bg-accent-50 text-accent-600',
-  },
-  {
-    id: 'monthly',
-    label: 'Monthly Revenue',
-    amount: '₦2,100,000',
-    change: '-2.1%',
-    changeSub: 'from Sept',
-    isPositive: false,
-    icon: Calendar,
-    badgeBg: 'bg-amber-50 text-warning',
-  },
-  {
-    id: 'annual',
-    label: 'Annual Revenue',
-    amount: '₦14,800,000',
-    change: '+28.4%',
-    changeSub: 'vs 2022',
-    isPositive: true,
-    icon: Landmark,
-    badgeBg: 'bg-canvas text-ink-muted',
-  },
-]
-
-const CHART_DATA = {
-  Daily: [
-    { label: 'Mon', value: '₦4.2M', height: '40%' },
-    { label: 'Tue', value: '₦5.8M', height: '55%' },
-    { label: 'Wed', value: '₦4.9M', height: '45%' },
-    { label: 'Thu', value: '₦7.2M', height: '70%' },
-    { label: 'Fri', value: '₦6.1M', height: '60%' },
-    { label: 'Sat', value: '₦9.1M', height: '85%', active: true },
-    { label: 'Sun', value: '₦7.8M', height: '75%' },
-  ],
-  Weekly: [
-    { label: 'W1', value: '₦18.5M', height: '50%' },
-    { label: 'W2', value: '₦22.1M', height: '65%' },
-    { label: 'W3', value: '₦28.4M', height: '80%', active: true },
-    { label: 'W4', value: '₦24.0M', height: '70%' },
-  ],
-  Monthly: [
-    { label: 'Jan', value: '₦4.5M', height: '40%' },
-    { label: 'Feb', value: '₦5.2M', height: '50%' },
-    { label: 'Mar', value: '₦6.8M', height: '65%' },
-    { label: 'Apr', value: '₦6.1M', height: '60%' },
-    { label: 'May', value: '₦7.5M', height: '75%' },
-    { label: 'Jun', value: '₦8.8M', height: '88%', active: true },
-  ],
-  Yearly: [
-    { label: '2021', value: '₦3.2M', height: '45%' },
-    { label: '2022', value: '₦4.8M', height: '65%' },
-    { label: '2023', value: '₦14.8M', height: '90%', active: true },
-  ],
+// Helper function to format cents to NGN currency
+const formatPrice = (cents) => {
+  return new Intl.NumberFormat('en-NG', {
+    style: 'currency',
+    currency: 'NGN',
+    maximumFractionDigits: 0,
+  }).format((cents || 0) / 100)
 }
 
-const PAYMENT_ANALYTICS = [
-  {
-    id: 'successful',
-    label: 'Successful',
-    count: '1,240',
-    amount: '₦8,940,000',
-    change: '8%',
-    isPositive: true,
-    borderClass: 'border-l-accent',
-    tone: 'success',
-  },
-  {
-    id: 'pending',
-    label: 'Pending',
-    count: '84',
-    amount: '₦1,250,000',
-    change: '14%',
-    isPositive: true,
-    borderClass: 'border-l-warning',
-    tone: 'warning',
-  },
-  {
-    id: 'failed',
-    label: 'Failed',
-    count: '12',
-    amount: '₦120,500',
-    change: '2%',
-    isPositive: false,
-    borderClass: 'border-l-danger',
-    tone: 'danger',
-  },
-  {
-    id: 'refunded',
-    label: 'Refunded',
-    count: '4',
-    amount: '₦45,000',
-    change: '0%',
-    isPositive: null,
-    borderClass: 'border-l-primary',
-    tone: 'neutral',
-  },
-]
+// Helper to format date strings
+const formatDate = (dateStr) => {
+  if (!dateStr) return '—'
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  })
+}
 
-const SUBSCRIPTION_BREAKDOWN = [
-  { label: 'New Subs', amount: '₦4.2M', share: '32% Share', color: 'bg-primary' },
-  { label: 'Renewals', amount: '₦6.8M', share: '55% Share', color: 'bg-accent' },
-  { label: 'Upgrades', amount: '₦1.2M', share: '10% Share', color: 'bg-warning' },
-]
-
-const INITIAL_TRANSACTIONS = [
-  {
-    id: 'TRX-829104',
-    customer: 'Adeola Oluchi',
-    initials: 'AO',
-    plan: 'Enterprise',
-    amount: '₦250,000',
-    method: 'Paystack',
-    status: 'SUCCESS',
-    date: 'Oct 24, 2023',
-    email: 'adeola@company.com',
-  },
-  {
-    id: 'TRX-829105',
-    customer: 'Kelechi Musa',
-    initials: 'KM',
-    plan: 'Pro Plan',
-    amount: '₦45,000',
-    method: 'Flutterwave',
-    status: 'PENDING',
-    date: 'Oct 24, 2023',
-    email: 'kelechi@musa.io',
-  },
-  {
-    id: 'TRX-829106',
-    customer: 'Tunde Ajayi',
-    initials: 'TA',
-    plan: 'Basic',
-    amount: '₦12,500',
-    method: 'Card',
-    status: 'FAILED',
-    date: 'Oct 23, 2023',
-    email: 'tunde@ajayi.co',
-  },
-  {
-    id: 'TRX-829107',
-    customer: 'Chioma Nnamdi',
-    initials: 'CN',
-    plan: 'Pro Plan',
-    amount: '₦45,000',
-    method: 'Paystack',
-    status: 'SUCCESS',
-    date: 'Oct 22, 2023',
-    email: 'chioma@tech.ng',
-  },
-  {
-    id: 'TRX-829108',
-    customer: 'Emeka Okafor',
-    initials: 'EO',
-    plan: 'Enterprise',
-    amount: '₦250,000',
-    method: 'Bank Transfer',
-    status: 'SUCCESS',
-    date: 'Oct 21, 2023',
-    email: 'emeka@corp.com',
-  },
-]
-
-const FINANCIAL_REPORTS = [
-  {
-    id: 'report-1',
-    name: 'Q3 Revenue Statement.pdf',
-    meta: 'Generated Oct 12, 2023 • 2.4 MB',
-    type: 'pdf',
-    icon: FileText,
-    iconColor: 'text-primary bg-primary-50',
-  },
-  {
-    id: 'report-2',
-    name: 'Annual Tax Summary.xlsx',
-    meta: 'Generated Jan 05, 2023 • 1.1 MB',
-    type: 'excel',
-    icon: FileSpreadsheet,
-    iconColor: 'text-accent-600 bg-accent-50',
-  },
-  {
-    id: 'report-3',
-    name: 'Subscription Audit.pdf',
-    meta: 'Generated Sept 30, 2023 • 4.8 MB',
-    type: 'doc',
-    icon: FileText,
-    iconColor: 'text-warning bg-amber-50',
-  },
-]
-
-// ---------------------------------------------------------------------------
-// Component
-// ---------------------------------------------------------------------------
+// Helper to get initials of user
+const getInitials = (name) => {
+  if (!name) return '—'
+  const parts = name.trim().split(/\s+/)
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+}
 
 export default function MoneyManagement() {
   const [timeframe, setTimeframe] = useState('Daily')
@@ -253,38 +61,436 @@ export default function MoneyManagement() {
   const [reportType, setReportType] = useState('Quarterly Report')
   const [isGenerating, setIsGenerating] = useState(false)
 
-  // Filter transactions
-  const filteredTransactions = INITIAL_TRANSACTIONS.filter((trx) => {
-    const matchesStatus =
-      statusFilter === 'All' || trx.status.toLowerCase() === statusFilter.toLowerCase()
-    const matchesMethod =
-      methodFilter === 'All' || trx.method.toLowerCase() === methodFilter.toLowerCase()
-    const matchesSearch =
-      searchQuery === '' ||
-      trx.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      trx.customer.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      trx.plan.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesStatus && matchesMethod && matchesSearch
-  })
+  // API Data States
+  const [stats, setStats] = useState({ totalRevenue: 0, activeSubscriptions: 0, pendingPayments: 0 })
+  const [subscriptions, setSubscriptions] = useState([])
+  const [payments, setPayments] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
+  const loadData = async () => {
+    setLoading(true)
+    setError(null)
+    try {
+      const [fetchedStats, fetchedSubs, fetchedPays] = await Promise.all([
+        getAdminBillingStats(),
+        getAdminSubscriptions(),
+        getAdminPayments(),
+      ])
+      setStats(fetchedStats)
+      setSubscriptions(fetchedSubs)
+      setPayments(fetchedPays)
+    } catch (err) {
+      console.error('Failed to load money management data:', err)
+      setError(err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  // Calculate dynamic revenue statistics based on payments list
+  const computedRevenueStats = useMemo(() => {
+    const now = new Date()
+    const todayStr = now.toDateString()
+    const thisMonth = now.getMonth()
+    const thisYear = now.getFullYear()
+
+    let todayCents = 0
+    let monthCents = 0
+    let yearCents = 0
+    const totalCents = stats.totalRevenue || 0
+
+    payments.forEach(p => {
+      const status = p.status?.toLowerCase()
+      if (status === 'successful' || status === 'success') {
+        const pDate = new Date(p.date)
+        if (pDate.toDateString() === todayStr) {
+          todayCents += p.amount
+        }
+        if (pDate.getMonth() === thisMonth && pDate.getFullYear() === thisYear) {
+          monthCents += p.amount
+        }
+        if (pDate.getFullYear() === thisYear) {
+          yearCents += p.amount
+        }
+      }
+    })
+
+    return [
+      {
+        id: 'total',
+        label: 'Total Revenue',
+        amount: formatPrice(totalCents),
+        change: '—',
+        changeSub: 'Overall successful platform revenue',
+        isPositive: true,
+        icon: DollarSign,
+        badgeBg: 'bg-primary-50 text-primary-700',
+      },
+      {
+        id: 'today',
+        label: "Today's Revenue",
+        amount: formatPrice(todayCents),
+        change: '—',
+        changeSub: "Today's successful collections",
+        isPositive: true,
+        icon: Clock,
+        badgeBg: 'bg-accent-50 text-accent-600',
+      },
+      {
+        id: 'monthly',
+        label: 'Monthly Revenue',
+        amount: formatPrice(monthCents),
+        change: '—',
+        changeSub: 'Current calendar month',
+        isPositive: true,
+        icon: Calendar,
+        badgeBg: 'bg-amber-50 text-warning',
+      },
+      {
+        id: 'annual',
+        label: 'Annual Revenue',
+        amount: formatPrice(yearCents),
+        change: '—',
+        changeSub: 'Current calendar year',
+        isPositive: true,
+        icon: Landmark,
+        badgeBg: 'bg-canvas text-ink-muted',
+      },
+    ]
+  }, [stats.totalRevenue, payments])
+
+  // Calculate dynamic chart points based on timeframe selection
+  const chartData = useMemo(() => {
+    const successfulPayments = payments.filter(p => {
+      const status = p.status?.toLowerCase()
+      return status === 'successful' || status === 'success'
+    })
+    
+    // 1. Daily (last 7 days)
+    const dailyPoints = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date()
+      d.setDate(d.getDate() - i)
+      const label = d.toLocaleDateString('en-US', { weekday: 'short' })
+      const dateStr = d.toDateString()
+      const valueCents = successfulPayments
+        .filter(p => new Date(p.date).toDateString() === dateStr)
+        .reduce((sum, p) => sum + p.amount, 0)
+      dailyPoints.push({ label, val: valueCents })
+    }
+    
+    // 2. Weekly (last 4 weeks)
+    const weeklyPoints = []
+    for (let i = 3; i >= 0; i--) {
+      const label = `W-${i}`
+      const dStart = new Date()
+      dStart.setDate(dStart.getDate() - (i + 1) * 7)
+      const dEnd = new Date()
+      dEnd.setDate(dEnd.getDate() - i * 7)
+      const valueCents = successfulPayments
+        .filter(p => {
+          const pDate = new Date(p.date)
+          return pDate >= dStart && pDate < dEnd
+        })
+        .reduce((sum, p) => sum + p.amount, 0)
+      weeklyPoints.push({ label, val: valueCents })
+    }
+
+    // 3. Monthly (last 6 months)
+    const monthlyPoints = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date()
+      d.setMonth(d.getMonth() - i)
+      const label = d.toLocaleDateString('en-US', { month: 'short' })
+      const month = d.getMonth()
+      const year = d.getFullYear()
+      const valueCents = successfulPayments
+        .filter(p => {
+          const pDate = new Date(p.date)
+          return pDate.getMonth() === month && pDate.getFullYear() === year
+        })
+        .reduce((sum, p) => sum + p.amount, 0)
+      monthlyPoints.push({ label, val: valueCents })
+    }
+
+    // 4. Yearly (last 4 years)
+    const yearlyPoints = []
+    const thisYear = new Date().getFullYear()
+    for (let i = 3; i >= 0; i--) {
+      const year = thisYear - i
+      const label = String(year)
+      const valueCents = successfulPayments
+        .filter(p => new Date(p.date).getFullYear() === year)
+        .reduce((sum, p) => sum + p.amount, 0)
+      yearlyPoints.push({ label, val: valueCents })
+    }
+
+    const mapToHeight = (points) => {
+      const maxVal = Math.max(...points.map(p => p.val), 0)
+      return points.map(p => {
+        const heightPercent = maxVal > 0 ? (p.val / maxVal) * 80 + 10 : 0
+        return {
+          label: p.label,
+          value: formatChartVal(p.val),
+          height: maxVal > 0 ? `${heightPercent}%` : '5%',
+          active: p.val > 0 && p.val === maxVal,
+        }
+      })
+    }
+
+    const formatChartVal = (val) => formatPrice(val)
+
+    return {
+      Daily: mapToHeight(dailyPoints),
+      Weekly: mapToHeight(weeklyPoints),
+      Monthly: mapToHeight(monthlyPoints),
+      Yearly: mapToHeight(yearlyPoints),
+    }
+  }, [payments])
+
+  // Calculate dynamic Payment Analytics
+  const paymentAnalytics = useMemo(() => {
+    let successfulCount = 0
+    let successfulAmount = 0
+    let pendingCount = 0
+    let pendingAmount = 0
+    let failedCount = 0
+    let failedAmount = 0
+    let refundedCount = 0
+    let refundedAmount = 0
+
+    payments.forEach(p => {
+      const status = p.status?.toLowerCase()
+      if (status === 'successful' || status === 'success') {
+        successfulCount++
+        successfulAmount += p.amount
+      } else if (status === 'pending') {
+        pendingCount++
+        pendingAmount += p.amount
+      } else if (status === 'failed') {
+        failedCount++
+        failedAmount += p.amount
+      } else if (status === 'refunded') {
+        refundedCount++
+        refundedAmount += p.amount
+      }
+    })
+
+    const totalCount = payments.length
+
+    return [
+      {
+        id: 'successful',
+        label: 'Successful',
+        count: successfulCount.toLocaleString(),
+        amount: formatPrice(successfulAmount),
+        change: totalCount > 0 ? `${Math.round((successfulCount / totalCount) * 100)}%` : '0%',
+        isPositive: true,
+        borderClass: 'border-l-accent',
+        tone: 'success',
+      },
+      {
+        id: 'pending',
+        label: 'Pending',
+        count: pendingCount.toLocaleString(),
+        amount: formatPrice(pendingAmount),
+        change: totalCount > 0 ? `${Math.round((pendingCount / totalCount) * 100)}%` : '0%',
+        isPositive: true,
+        borderClass: 'border-l-warning',
+        tone: 'warning',
+      },
+      {
+        id: 'failed',
+        label: 'Failed',
+        count: failedCount.toLocaleString(),
+        amount: formatPrice(failedAmount),
+        change: totalCount > 0 ? `${Math.round((failedCount / totalCount) * 100)}%` : '0%',
+        isPositive: false,
+        borderClass: 'border-l-danger',
+        tone: 'danger',
+      },
+      {
+        id: 'refunded',
+        label: 'Refunded',
+        count: refundedCount.toLocaleString(),
+        amount: formatPrice(refundedAmount),
+        change: totalCount > 0 ? `${Math.round((refundedCount / totalCount) * 100)}%` : '0%',
+        isPositive: null,
+        borderClass: 'border-l-primary',
+        tone: 'neutral',
+      },
+    ]
+  }, [payments])
+
+  // Calculate Subscription tier breakdown
+  const subscriptionBreakdown = useMemo(() => {
+    let freeCount = 0
+    let starterCount = 0
+    let growthCount = 0
+    let enterpriseCount = 0
+
+    subscriptions.forEach(sub => {
+      const p = sub.plan?.toLowerCase() || ''
+      if (p.includes('free')) {
+        freeCount++
+      } else if (p.includes('starter')) {
+        starterCount++
+      } else if (p.includes('growth')) {
+        growthCount++
+      } else {
+        enterpriseCount++
+      }
+    })
+
+    const totalCount = subscriptions.length || 1
+
+    return [
+      { label: 'Free Plan', amount: freeCount.toString(), share: `${Math.round((freeCount / totalCount) * 100)}% Share`, color: 'bg-primary-300' },
+      { label: 'Starter Tier', amount: starterCount.toString(), share: `${Math.round((starterCount / totalCount) * 100)}% Share`, color: 'bg-primary' },
+      { label: 'Growth Tier', amount: growthCount.toString(), share: `${Math.round((growthCount / totalCount) * 100)}% Share`, color: 'bg-accent' },
+      { label: 'Enterprise Tier', amount: enterpriseCount.toString(), share: `${Math.round((enterpriseCount / totalCount) * 100)}% Share`, color: 'bg-warning' },
+    ]
+  }, [subscriptions])
+
+  // Dynamic values for donut diagram
+  const subscriptionPercentages = useMemo(() => {
+    const total = subscriptions.length || 1
+    let free = 0
+    let starter = 0
+    let growth = 0
+    let enterprise = 0
+
+    subscriptions.forEach(sub => {
+      const p = sub.plan?.toLowerCase() || ''
+      if (p.includes('free')) free++
+      else if (p.includes('starter')) starter++
+      else if (p.includes('growth')) growth++
+      else enterprise++
+    })
+
+    return {
+      free: Math.round((free / total) * 100),
+      starter: Math.round((starter / total) * 100),
+      growth: Math.round((growth / total) * 100),
+      enterprise: Math.round((enterprise / total) * 100),
+    }
+  }, [subscriptions])
+
+  // Dynamic Payment Methods percentage
+  const paymentMethodsPercentages = useMemo(() => {
+    let flwCount = 0
+    let otherCount = 0
+
+    payments.forEach(p => {
+      const gateway = p.method?.toLowerCase()
+      if (gateway?.includes('flutterwave')) {
+        flwCount++
+      } else {
+        otherCount++
+      }
+    })
+
+    const total = payments.length || 1
+    return {
+      flw: Math.round((flwCount / total) * 100),
+      other: Math.round((otherCount / total) * 100)
+    }
+  }, [payments])
+
+  // Dynamic Billing Period percentage (Monthly vs Annual)
+  const billingPeriodPercentages = useMemo(() => {
+    let monthlyCount = 0
+    let annualCount = 0
+
+    subscriptions.forEach(sub => {
+      if (sub.plan?.toLowerCase().includes('annual') || sub.plan?.toLowerCase().includes('yearly')) {
+        annualCount++
+      } else {
+        monthlyCount++
+      }
+    })
+
+    const total = subscriptions.length || 1
+    return {
+      monthly: Math.round((monthlyCount / total) * 100),
+      annual: Math.round((annualCount / total) * 100)
+    }
+  }, [subscriptions])
+
+  // Filter transactions dynamically
+  const filteredTransactions = useMemo(() => {
+    return payments.filter((trx) => {
+      const matchesStatus =
+        statusFilter === 'All' || trx.status?.toLowerCase() === statusFilter.toLowerCase()
+      
+      const methodLower = trx.method?.toLowerCase() || ''
+      const matchesMethod =
+        methodFilter === 'All' ||
+        (methodFilter === 'Flutterwave' && methodLower.includes('flutterwave')) ||
+        (methodFilter === 'Paystack' && methodLower.includes('paystack')) ||
+        (methodFilter === 'Card' && methodLower.includes('card')) ||
+        (methodFilter === 'Bank Transfer' && methodLower.includes('transfer'))
+
+      const matchesSearch =
+        searchQuery === '' ||
+        (trx.id || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (trx.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (trx.plan || '').toLowerCase().includes(searchQuery.toLowerCase())
+
+      return matchesStatus && matchesMethod && matchesSearch
+    })
+  }, [payments, statusFilter, methodFilter, searchQuery])
+
+  // Client-side report generation helper
   const handleGenerateReport = () => {
     setIsGenerating(true)
     setTimeout(() => {
       setIsGenerating(false)
+      // Display native alert or confirm
+      const totalAmount = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0)
+      alert(`Report generated successfully!\nType: ${reportType}\nTransactions analyzed: ${filteredTransactions.length}\nTotal Volume: ${formatPrice(totalAmount)}`)
     }, 1500)
   }
 
+  // Get color code for status badges
   const getStatusBadgeTone = (status) => {
-    switch (status) {
+    if (!status) return 'neutral'
+    switch (status.toUpperCase()) {
       case 'SUCCESS':
+      case 'SUCCESSFUL':
         return 'success'
       case 'PENDING':
         return 'warning'
       case 'FAILED':
         return 'danger'
+      case 'REFUNDED':
+        return 'neutral'
       default:
         return 'neutral'
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-3">
+        <Loader2 size={36} className="text-primary animate-spin" />
+        <span className="text-sm font-semibold text-ink-muted">Loading Money Management...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6 max-w-7xl mx-auto">
+        <PageHeader title="Money Management" description="Monitor platform revenue and transactions." />
+        <ErrorBanner error={error} />
+      </div>
+    )
   }
 
   return (
@@ -297,15 +503,21 @@ export default function MoneyManagement() {
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2 bg-surface border border-border px-3 py-1.5 rounded-control shadow-soft text-sm text-ink-muted">
               <Calendar size={16} />
-              <span className="font-medium text-ink">Oct 1 - Oct 31, 2023</span>
+              <span className="font-medium text-ink">
+                {payments.length > 0
+                  ? `${formatDate(payments[payments.length - 1].date)} - ${formatDate(payments[0].date)}`
+                  : 'No Records'}
+              </span>
             </div>
-            <Button variant="outline" size="sm" className="gap-1.5" title="Export Report">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5"
+              title="Export Report"
+              onClick={handleGenerateReport}
+            >
               <Upload size={16} />
               <span className="hidden sm:inline">Export Report</span>
-            </Button>
-            <Button variant="outline" size="sm" className="gap-1.5" title="Download CSV">
-              <Download size={16} />
-              <span className="hidden sm:inline">CSV</span>
             </Button>
           </div>
         }
@@ -315,7 +527,7 @@ export default function MoneyManagement() {
       <section className="space-y-6">
         {/* Stat Cards Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {REVENUE_STATS.map((stat) => {
+          {computedRevenueStats.map((stat) => {
             const Icon = stat.icon
             return (
               <Card key={stat.id} hover className="p-6 flex flex-col justify-between">
@@ -323,27 +535,13 @@ export default function MoneyManagement() {
                   <span className="text-xs font-medium text-ink-muted uppercase tracking-wider">
                     {stat.label}
                   </span>
-                  <div
-                    className={`p-2 rounded-control flex items-center justify-center ${stat.badgeBg}`}
-                  >
+                  <div className={`p-2 rounded-control flex items-center justify-center ${stat.badgeBg}`}>
                     <Icon size={20} />
                   </div>
                 </div>
                 <div className="mt-4">
                   <div className="text-2xl font-bold text-ink">{stat.amount}</div>
                   <div className="flex items-center gap-1 mt-1 text-xs">
-                    {stat.isPositive ? (
-                      <TrendingUp size={14} className="text-accent-600" />
-                    ) : (
-                      <TrendingDown size={14} className="text-danger" />
-                    )}
-                    <span
-                      className={`font-semibold ${
-                        stat.isPositive ? 'text-accent-600' : 'text-danger'
-                      }`}
-                    >
-                      {stat.change}
-                    </span>
                     <span className="text-ink-muted">{stat.changeSub}</span>
                   </div>
                 </div>
@@ -355,7 +553,12 @@ export default function MoneyManagement() {
         {/* Main Revenue Performance Chart Area */}
         <Card className="p-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-            <h2 className="text-lg font-semibold text-ink">Revenue Performance</h2>
+            <div>
+              <h2 className="text-lg font-semibold text-ink">Revenue Performance</h2>
+              {payments.length === 0 && (
+                <p className="text-xs text-ink-muted mt-0.5">No revenue records found in database.</p>
+              )}
+            </div>
             <div className="flex bg-canvas p-1 rounded-control border border-border">
               {['Daily', 'Weekly', 'Monthly', 'Yearly'].map((tf) => (
                 <button
@@ -374,37 +577,45 @@ export default function MoneyManagement() {
           </div>
 
           <div className="h-72 w-full relative pt-6">
-            <div className="absolute inset-0 flex items-end justify-between gap-2 sm:gap-4 px-2">
-              {CHART_DATA[timeframe].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
-                >
+            {payments.length === 0 ? (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-canvas/30 rounded-card border border-dashed border-border p-6 text-center">
+                <TrendingUp size={24} className="text-ink-muted mb-2" />
+                <p className="text-xs font-semibold text-ink">No Transaction History</p>
+                <p className="text-[10px] text-ink-muted mt-0.5">Visual charts will populate once successful transactions are logged.</p>
+              </div>
+            ) : (
+              <div className="absolute inset-0 flex items-end justify-between gap-2 sm:gap-4 px-2">
+                {chartData[timeframe].map((item, idx) => (
                   <div
-                    style={{ height: item.height }}
-                    className={`w-full rounded-t-control transition-all relative ${
-                      item.active
-                        ? 'bg-primary shadow-soft'
-                        : 'bg-primary-50 hover:bg-primary-100'
-                    }`}
+                    key={idx}
+                    className="flex-1 flex flex-col items-center h-full justify-end group cursor-pointer"
                   >
-                    <div className="absolute bottom-full mb-1 inset-x-0 text-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-primary bg-surface border border-border rounded px-1 py-0.5 shadow-soft z-10 whitespace-nowrap">
-                      {item.value}
+                    <div
+                      style={{ height: item.height }}
+                      className={`w-full rounded-t-control transition-all relative ${
+                        item.active ? 'bg-primary shadow-soft' : 'bg-primary-50 hover:bg-primary-100'
+                      }`}
+                    >
+                      <div className="absolute bottom-full mb-1 inset-x-0 text-center opacity-0 group-hover:opacity-100 transition-opacity text-xs font-bold text-primary bg-surface border border-border rounded px-1 py-0.5 shadow-soft z-10 whitespace-nowrap">
+                        {item.value}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
             <div className="absolute bottom-0 left-0 w-full h-px bg-border" />
           </div>
 
-          <div className="flex justify-between mt-4 px-2 text-xs font-medium text-ink-muted">
-            {CHART_DATA[timeframe].map((item, idx) => (
-              <span key={idx} className="flex-1 text-center">
-                {item.label}
-              </span>
-            ))}
-          </div>
+          {payments.length > 0 && (
+            <div className="flex justify-between mt-4 px-2 text-xs font-medium text-ink-muted">
+              {chartData[timeframe].map((item, idx) => (
+                <span key={idx} className="flex-1 text-center">
+                  {item.label}
+                </span>
+              ))}
+            </div>
+          )}
         </Card>
       </section>
 
@@ -412,7 +623,7 @@ export default function MoneyManagement() {
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-ink">Payment Analytics</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {PAYMENT_ANALYTICS.map((item) => (
+          {paymentAnalytics.map((item) => (
             <Card key={item.id} className={`p-6 border-l-4 ${item.borderClass}`}>
               <div className="text-xs font-medium text-ink-muted mb-2">{item.label}</div>
               <div className="flex justify-between items-end">
@@ -420,14 +631,9 @@ export default function MoneyManagement() {
                   <div className="text-2xl font-bold text-ink">{item.count}</div>
                   <div className="text-sm text-ink-muted font-medium mt-0.5">{item.amount}</div>
                 </div>
-                {item.isPositive !== null && (
-                  <div
-                    className={`text-xs font-medium flex items-center gap-0.5 ${
-                      item.isPositive ? 'text-accent-600' : 'text-danger'
-                    }`}
-                  >
-                    {item.isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                    {item.change}
+                {payments.length > 0 && item.change !== '0%' && (
+                  <div className="text-xs font-semibold flex items-center gap-0.5 text-accent-600">
+                    {item.change} Share
                   </div>
                 )}
               </div>
@@ -442,9 +648,9 @@ export default function MoneyManagement() {
         <Card className="lg:col-span-2 p-6 flex flex-col md:flex-row gap-6 items-center">
           <div className="w-full md:w-1/2">
             <h2 className="text-lg font-semibold text-ink mb-1">Subscription Revenue</h2>
-            <p className="text-xs text-ink-muted mb-6">Breakdown by status and tier</p>
+            <p className="text-xs text-ink-muted mb-6">Breakdown by active user subscription plans</p>
             <div className="space-y-3">
-              {SUBSCRIPTION_BREAKDOWN.map((item, idx) => (
+              {subscriptionBreakdown.map((item, idx) => (
                 <div
                   key={idx}
                   className="flex items-center justify-between p-2 hover:bg-canvas rounded-control transition-colors"
@@ -454,7 +660,7 @@ export default function MoneyManagement() {
                     <span className="text-sm font-medium text-ink">{item.label}</span>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold text-ink">{item.amount}</div>
+                    <div className="text-sm font-semibold text-ink">{item.amount} Users</div>
                     <div className="text-xs text-ink-muted">{item.share}</div>
                   </div>
                 </div>
@@ -463,48 +669,55 @@ export default function MoneyManagement() {
           </div>
 
           <div className="relative w-48 h-48 flex items-center justify-center shrink-0 my-4 md:my-0">
-            <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-              <circle
-                className="stroke-canvas"
-                cx="18"
-                cy="18"
-                fill="none"
-                r="16"
-                strokeWidth="3.5"
-              />
-              <circle
-                className="stroke-primary"
-                cx="18"
-                cy="18"
-                fill="none"
-                r="16"
-                strokeDasharray="32 100"
-                strokeWidth="3.5"
-              />
-              <circle
-                className="stroke-accent"
-                cx="18"
-                cy="18"
-                fill="none"
-                r="16"
-                strokeDasharray="55 100"
-                strokeDashoffset="-32"
-                strokeWidth="3.5"
-              />
-              <circle
-                className="stroke-warning"
-                cx="18"
-                cy="18"
-                fill="none"
-                r="16"
-                strokeDasharray="10 100"
-                strokeDashoffset="-87"
-                strokeWidth="3.5"
-              />
-            </svg>
+            {subscriptions.length === 0 ? (
+              <div className="absolute inset-0 rounded-full border-4 border-dashed border-border flex items-center justify-center text-center p-4">
+                <span className="text-[10px] text-ink-muted font-medium">No Subscriptions</span>
+              </div>
+            ) : (
+              <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                <circle className="stroke-canvas" cx="18" cy="18" fill="none" r="16" strokeWidth="3.5" />
+                {subscriptionPercentages.starter > 0 && (
+                  <circle
+                    className="stroke-primary"
+                    cx="18"
+                    cy="18"
+                    fill="none"
+                    r="16"
+                    strokeDasharray={`${subscriptionPercentages.starter} 100`}
+                    strokeWidth="3.5"
+                  />
+                )}
+                {subscriptionPercentages.growth > 0 && (
+                  <circle
+                    className="stroke-accent"
+                    cx="18"
+                    cy="18"
+                    fill="none"
+                    r="16"
+                    strokeDasharray={`${subscriptionPercentages.growth} 100`}
+                    strokeDashoffset={`-${subscriptionPercentages.starter}`}
+                    strokeWidth="3.5"
+                  />
+                )}
+                {subscriptionPercentages.enterprise > 0 && (
+                  <circle
+                    className="stroke-warning"
+                    cx="18"
+                    cy="18"
+                    fill="none"
+                    r="16"
+                    strokeDasharray={`${subscriptionPercentages.enterprise} 100`}
+                    strokeDashoffset={`-${subscriptionPercentages.starter + subscriptionPercentages.growth}`}
+                    strokeWidth="3.5"
+                  />
+                )}
+              </svg>
+            )}
             <div className="absolute flex flex-col items-center">
-              <span className="text-2xl font-bold text-ink">87%</span>
-              <span className="text-xs font-medium text-ink-muted">Growth</span>
+              <span className="text-2xl font-bold text-ink">
+                {subscriptions.filter((s) => s.status?.toLowerCase() === 'active').length}
+              </span>
+              <span className="text-xs font-medium text-ink-muted">Active</span>
             </div>
           </div>
         </Card>
@@ -514,43 +727,40 @@ export default function MoneyManagement() {
           <Card className="p-6">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-xs font-semibold text-ink-muted uppercase tracking-wider">
-                Payment Methods
+                Payment Gateways
               </h3>
               <Info size={16} className="text-ink-muted" />
             </div>
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 relative shrink-0">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <circle
-                    className="stroke-canvas"
-                    cx="18"
-                    cy="18"
-                    fill="none"
-                    r="16"
-                    strokeWidth="4"
-                  />
-                  <circle
-                    className="stroke-primary"
-                    cx="18"
-                    cy="18"
-                    fill="none"
-                    r="16"
-                    strokeDasharray="75 100"
-                    strokeWidth="4"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-ink">Card</span>
-                  <span className="text-ink font-semibold">75%</span>
+            {payments.length === 0 ? (
+              <div className="py-2 text-center text-xs text-ink-muted">No gateway data.</div>
+            ) : (
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 relative shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <circle className="stroke-canvas" cx="18" cy="18" fill="none" r="16" strokeWidth="4" />
+                    <circle
+                      className="stroke-primary"
+                      cx="18"
+                      cy="18"
+                      fill="none"
+                      r="16"
+                      strokeDasharray={`${paymentMethodsPercentages.flw} 100`}
+                      strokeWidth="4"
+                    />
+                  </svg>
                 </div>
-                <div className="flex justify-between text-xs text-ink-muted">
-                  <span>Transfer</span>
-                  <span className="font-medium">25%</span>
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-ink">Flutterwave</span>
+                    <span className="text-ink font-semibold">{paymentMethodsPercentages.flw}%</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-ink-muted">
+                    <span>Other Gateways</span>
+                    <span className="font-medium">{paymentMethodsPercentages.other}%</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </Card>
 
           <Card className="p-6">
@@ -560,39 +770,36 @@ export default function MoneyManagement() {
               </h3>
               <Info size={16} className="text-ink-muted" />
             </div>
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 relative shrink-0">
-                <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                  <circle
-                    className="stroke-canvas"
-                    cx="18"
-                    cy="18"
-                    fill="none"
-                    r="16"
-                    strokeWidth="4"
-                  />
-                  <circle
-                    className="stroke-accent"
-                    cx="18"
-                    cy="18"
-                    fill="none"
-                    r="16"
-                    strokeDasharray="40 100"
-                    strokeWidth="4"
-                  />
-                </svg>
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex justify-between text-xs font-medium">
-                  <span className="text-ink">Annual</span>
-                  <span className="text-ink font-semibold">40%</span>
+            {subscriptions.length === 0 ? (
+              <div className="py-2 text-center text-xs text-ink-muted">No billing period data.</div>
+            ) : (
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 relative shrink-0">
+                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                    <circle className="stroke-canvas" cx="18" cy="18" fill="none" r="16" strokeWidth="4" />
+                    <circle
+                      className="stroke-accent"
+                      cx="18"
+                      cy="18"
+                      fill="none"
+                      r="16"
+                      strokeDasharray={`${billingPeriodPercentages.monthly} 100`}
+                      strokeWidth="4"
+                    />
+                  </svg>
                 </div>
-                <div className="flex justify-between text-xs text-ink-muted">
-                  <span>Monthly</span>
-                  <span className="font-medium">60%</span>
+                <div className="flex-1 space-y-2">
+                  <div className="flex justify-between text-xs font-medium">
+                    <span className="text-ink">Monthly Interval</span>
+                    <span className="text-ink font-semibold">{billingPeriodPercentages.monthly}%</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-ink-muted">
+                    <span>Annual Interval</span>
+                    <span className="font-medium">{billingPeriodPercentages.annual}%</span>
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </Card>
         </div>
       </section>
@@ -627,9 +834,10 @@ export default function MoneyManagement() {
                 className="bg-transparent text-ink font-medium focus:outline-none cursor-pointer"
               >
                 <option value="All">Status: All</option>
-                <option value="SUCCESS">Successful</option>
-                <option value="PENDING">Pending</option>
-                <option value="FAILED">Failed</option>
+                <option value="successful">Successful</option>
+                <option value="pending">Pending</option>
+                <option value="failed">Failed</option>
+                <option value="refunded">Refunded</option>
               </select>
             </div>
 
@@ -641,9 +849,9 @@ export default function MoneyManagement() {
                 aria-label="Filter transactions by payment method"
                 className="bg-transparent text-ink font-medium focus:outline-none cursor-pointer"
               >
-                <option value="All">Method: All</option>
-                <option value="Paystack">Paystack</option>
+                <option value="All">Gateway: All</option>
                 <option value="Flutterwave">Flutterwave</option>
+                <option value="Paystack">Paystack</option>
                 <option value="Card">Card</option>
                 <option value="Bank Transfer">Bank Transfer</option>
               </select>
@@ -669,7 +877,7 @@ export default function MoneyManagement() {
                     Amount
                   </th>
                   <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
-                    Method
+                    Gateway
                   </th>
                   <th className="px-6 py-3.5 text-xs font-bold text-ink uppercase tracking-wider">
                     Status
@@ -686,13 +894,15 @@ export default function MoneyManagement() {
                 {filteredTransactions.length > 0 ? (
                   filteredTransactions.map((trx) => (
                     <tr key={trx.id} className="hover:bg-canvas transition-colors">
-                      <td className="px-6 py-4 text-xs font-medium text-ink">{trx.id}</td>
+                      <td className="px-6 py-4 text-xs font-medium text-ink truncate max-w-[120px]" title={trx.id}>
+                        {trx.id}
+                      </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-[9999px] bg-primary/10 text-primary font-bold text-[10px] flex items-center justify-center shrink-0 border border-primary/20">
-                            {trx.initials}
+                            {getInitials(trx.customerName)}
                           </div>
-                          <span className="text-xs font-semibold text-ink">{trx.customer}</span>
+                          <span className="text-xs font-semibold text-ink">{trx.customerName}</span>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -700,14 +910,14 @@ export default function MoneyManagement() {
                           {trx.plan}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-xs font-bold text-ink">{trx.amount}</td>
-                      <td className="px-6 py-4 text-xs text-ink-muted">{trx.method}</td>
+                      <td className="px-6 py-4 text-xs font-bold text-ink">{formatPrice(trx.amount)}</td>
+                      <td className="px-6 py-4 text-xs text-ink-muted capitalize">{trx.method}</td>
                       <td className="px-6 py-4">
-                        <Badge tone={getStatusBadgeTone(trx.status)} className="text-[10px]">
+                        <Badge tone={getStatusBadgeTone(trx.status)} className="text-[10px] capitalize">
                           {trx.status}
                         </Badge>
                       </td>
-                      <td className="px-6 py-4 text-xs text-ink-muted">{trx.date}</td>
+                      <td className="px-6 py-4 text-xs text-ink-muted">{formatDate(trx.date)}</td>
                       <td className="px-6 py-4">
                         <Button
                           variant="ghost"
@@ -733,7 +943,7 @@ export default function MoneyManagement() {
 
           <div className="p-4 flex flex-col sm:flex-row items-center justify-between border-t border-border gap-4 bg-surface">
             <span className="text-xs text-ink-muted">
-              Showing {filteredTransactions.length} of {INITIAL_TRANSACTIONS.length} transactions
+              Showing {filteredTransactions.length} of {payments.length} transactions
             </span>
             <div className="flex gap-2">
               <Button variant="outline" size="sm" disabled>
@@ -758,9 +968,9 @@ export default function MoneyManagement() {
             <div className="flex items-center justify-between p-4 bg-canvas rounded-card border border-border">
               <div>
                 <p className="text-xs text-ink-muted">Amount Paid</p>
-                <p className="text-2xl font-bold text-ink mt-0.5">{selectedTransaction.amount}</p>
+                <p className="text-2xl font-bold text-ink mt-0.5">{formatPrice(selectedTransaction.amount)}</p>
               </div>
-              <Badge tone={getStatusBadgeTone(selectedTransaction.status)} className="text-xs px-3 py-1">
+              <Badge tone={getStatusBadgeTone(selectedTransaction.status)} className="text-xs px-3 py-1 capitalize">
                 {selectedTransaction.status}
               </Badge>
             </div>
@@ -768,23 +978,23 @@ export default function MoneyManagement() {
             <div className="space-y-3 text-xs">
               <div className="flex justify-between py-1 border-b border-border">
                 <span className="text-ink-muted">Customer Name</span>
-                <span className="font-medium text-ink">{selectedTransaction.customer}</span>
+                <span className="font-medium text-ink">{selectedTransaction.customerName}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-border">
                 <span className="text-ink-muted">Email</span>
-                <span className="font-medium text-ink">{selectedTransaction.email}</span>
+                <span className="font-medium text-ink">{selectedTransaction.email || '—'}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-border">
                 <span className="text-ink-muted">Subscription Plan</span>
                 <span className="font-medium text-ink">{selectedTransaction.plan}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-border">
-                <span className="text-ink-muted">Payment Method</span>
-                <span className="font-medium text-ink">{selectedTransaction.method}</span>
+                <span className="text-ink-muted">Payment Gateway</span>
+                <span className="font-medium text-ink capitalize">{selectedTransaction.method}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-border">
                 <span className="text-ink-muted">Transaction Date</span>
-                <span className="font-medium text-ink">{selectedTransaction.date}</span>
+                <span className="font-medium text-ink">{formatDate(selectedTransaction.date)}</span>
               </div>
             </div>
 
@@ -792,7 +1002,9 @@ export default function MoneyManagement() {
               <Button variant="outline" size="sm" onClick={() => setSelectedTransaction(null)}>
                 Close
               </Button>
-              <Button variant="primary" size="sm" className="gap-1.5">
+              <Button variant="primary" size="sm" className="gap-1.5" onClick={() => {
+                alert(`Receipt downloaded for transaction ${selectedTransaction.id}`)
+              }}>
                 <Download size={14} /> Download Receipt
               </Button>
             </div>
@@ -807,8 +1019,7 @@ export default function MoneyManagement() {
             <div className="max-w-md">
               <h2 className="text-lg font-semibold text-ink mb-1">Financial Reports</h2>
               <p className="text-xs text-ink-muted leading-relaxed">
-                Configure and download detailed financial statements for your accounting and audit
-                purposes.
+                Configure and download detailed financial statements for your accounting and audit purposes.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -842,12 +1053,37 @@ export default function MoneyManagement() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FINANCIAL_REPORTS.map((report) => {
+            {[
+              {
+                id: 'report-1',
+                name: 'Q3 Revenue Statement.pdf',
+                meta: 'Generated Oct 12, 2026 • 2.4 MB',
+                icon: FileText,
+                iconColor: 'text-primary bg-primary-50',
+              },
+              {
+                id: 'report-2',
+                name: 'Annual Tax Summary.xlsx',
+                meta: 'Generated Jan 05, 2026 • 1.1 MB',
+                icon: FileSpreadsheet,
+                iconColor: 'text-accent-600 bg-accent-50',
+              },
+              {
+                id: 'report-3',
+                name: 'Subscription Audit.pdf',
+                meta: 'Generated Sept 30, 2026 • 4.8 MB',
+                icon: FileText,
+                iconColor: 'text-warning bg-amber-50',
+              },
+            ].map((report) => {
               const Icon = report.icon
               return (
                 <div
                   key={report.id}
                   className="flex items-center gap-4 p-4 border border-border rounded-card hover:border-primary-200 transition-colors cursor-pointer group bg-surface shadow-soft"
+                  onClick={() => {
+                    alert(`Opening report: ${report.name}`)
+                  }}
                 >
                   <div
                     className={`p-3 rounded-full shrink-0 ${report.iconColor} group-hover:scale-105 transition-transform`}
