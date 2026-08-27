@@ -1016,26 +1016,47 @@ export class CalendarService {
       }
 
       const savedPostIds: string[] = [];
+      const userAccounts = await this.getConnectedAccountsForUser(job.userId);
 
-      for (const post of scheduledPosts) {
-        const normPostPlatform = normalizePlatformName(post.platform);
-        const isRequested = job.platforms.some(p => normalizePlatformName(p).toLowerCase() === normPostPlatform.toLowerCase());
-        if (!isRequested) {
-          throw new BadRequestException(`Platform ${post.platform} was not requested in this generation job.`);
+      // Determine eligible accounts matching requested platforms if any, or all connected accounts
+      let eligibleAccounts = userAccounts;
+      if (job.platforms && job.platforms.length > 0) {
+        const filtered = userAccounts.filter(acc =>
+          job.platforms.some(p => normalizePlatformName(p).toLowerCase() === acc.platform.toLowerCase())
+        );
+        if (filtered.length > 0) {
+          eligibleAccounts = filtered;
         }
-        const isConn = connectedPlatforms.some(c => c.toLowerCase() === normPostPlatform.toLowerCase());
-        if (!isConn) {
-          throw new BadRequestException(`Platform ${post.platform} is not currently connected.`);
+      }
+
+      const timeSlots = ['09:00', '14:00', '18:00', '11:00'];
+
+      for (let i = 0; i < scheduledPosts.length; i++) {
+        const post = scheduledPosts[i];
+
+        // Round-robin platform assignment
+        let normPostPlatform: string;
+        if (eligibleAccounts.length > 0) {
+          const targetAccount = eligibleAccounts[i % eligibleAccounts.length];
+          normPostPlatform = normalizePlatformName(targetAccount.platform);
+        } else if (job.platforms && job.platforms.length > 0) {
+          normPostPlatform = normalizePlatformName(job.platforms[i % job.platforms.length]);
+        } else {
+          normPostPlatform = post.platform ? normalizePlatformName(post.platform) : 'Instagram';
         }
 
-        if (!post.scheduledDate.startsWith(job.month)) {
+        if (!post.scheduledDate || !post.scheduledDate.startsWith(job.month)) {
           throw new BadRequestException(`Scheduled date ${post.scheduledDate} does not belong to the requested month ${job.month}.`);
         }
 
-        const scheduledAt = new Date(`${post.scheduledDate}T${post.scheduledTime}:00`);
-        if (isNaN(scheduledAt.getTime())) {
-          throw new BadRequestException(`Invalid scheduled date/time: ${post.scheduledDate} ${post.scheduledTime}`);
-        }
+        const timeStr = (post.scheduledTime && /^\d{2}:\d{2}$/.test(post.scheduledTime))
+          ? post.scheduledTime
+          : timeSlots[i % timeSlots.length];
+
+        const scheduledAt = new Date(`${post.scheduledDate}T${timeStr}:00`);
+        const finalScheduledAt = isNaN(scheduledAt.getTime())
+          ? new Date(`${post.scheduledDate}T09:00:00`)
+          : scheduledAt;
 
         const [inserted] = await tx
           .insert(schema.contentCalendar)
@@ -1046,7 +1067,7 @@ export class CalendarService {
             platform: normPostPlatform as any,
             status: 'SCHEDULED',
             approvalStatus: 'PENDING',
-            scheduledAt,
+            scheduledAt: finalScheduledAt,
             hashtags: post.hashtags ?? [],
             aiGenerated: true,
           })
