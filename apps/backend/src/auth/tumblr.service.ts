@@ -37,11 +37,12 @@ export class TumblrService {
 
   async getRequestToken(): Promise<{ oauth_token: string; oauth_token_secret: string }> {
     const requestTokenUrl = 'https://www.tumblr.com/oauth/request_token';
-    const callbackUrl = process.env.TUMBLR_CALLBACK_URL;
-
-    if (!callbackUrl) {
-      throw new Error('TUMBLR_CALLBACK_URL environment variable is missing.');
-    }
+    const backendUrl = this.configService.get<string>('backendUrl') || process.env.BACKEND_URL || 'http://localhost:4000';
+    const apiPrefix = this.configService.get<string>('apiPrefix') || process.env.API_PREFIX || 'api';
+    const callbackUrl =
+      this.configService.get<string>('tumblr.callbackUrl') ||
+      process.env.TUMBLR_CALLBACK_URL ||
+      `${backendUrl}/${apiPrefix}/auth/tumblr/callback`;
 
     const requestData = {
       url: requestTokenUrl,
@@ -70,7 +71,7 @@ export class TumblrService {
 
     const responseData = await response.text();
     const params = new URLSearchParams(responseData);
-    
+
     const oauth_token = params.get('oauth_token');
     const oauth_token_secret = params.get('oauth_token_secret');
 

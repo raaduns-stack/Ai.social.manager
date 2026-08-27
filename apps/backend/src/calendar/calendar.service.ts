@@ -20,7 +20,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 export interface CreateCalendarPostDto {
   title: string;
   caption: string;
-  platform: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
+  platform: string;
   scheduledAt?: string;   // ISO 8601 string
   mediaUrl?: string;
   hashtags?: string[];
@@ -31,7 +31,7 @@ export interface CreateCalendarPostDto {
 export interface UpdateCalendarPostDto {
   title?: string;
   caption?: string;
-  platform?: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
+  platform?: string;
   scheduledAt?: string | null;
   scheduledDate?: string | null;
   scheduledTime?: string | null;
@@ -47,21 +47,22 @@ export interface UpdateApprovalDto {
   adminNotes?: string;
 }
 
-const CALENDAR_TO_DB_PLATFORM: Record<string, string> = {
-  'Instagram': 'instagram',
-  'LinkedIn': 'linkedin',
-  'X / Twitter': 'x',
-  'TikTok': 'tiktok',
-  'Facebook': 'facebook',
-};
-
-const DB_TO_CALENDAR_PLATFORM: Record<string, string> = {
-  'instagram': 'Instagram',
-  'linkedin': 'LinkedIn',
-  'x': 'X / Twitter',
-  'tiktok': 'TikTok',
-  'facebook': 'Facebook',
-};
+export function normalizePlatformName(platform: string): string {
+  if (!platform) return platform;
+  const p = platform.trim();
+  const lower = p.toLowerCase();
+  if (lower === 'instagram') return 'Instagram';
+  if (lower === 'linkedin') return 'LinkedIn';
+  if (lower === 'x' || lower === 'twitter' || lower === 'x / twitter') return 'X / Twitter';
+  if (lower === 'tiktok') return 'TikTok';
+  if (lower === 'facebook') return 'Facebook';
+  if (lower === 'discord') return 'Discord';
+  if (lower === 'youtube') return 'YouTube';
+  if (lower === 'pinterest') return 'Pinterest';
+  if (lower === 'tumblr') return 'Tumblr';
+  if (lower === 'snapchat') return 'Snapchat';
+  return p.charAt(0).toUpperCase() + p.slice(1);
+}
 
 @Injectable()
 export class CalendarService {
@@ -76,17 +77,17 @@ export class CalendarService {
   getWeekRange(date: Date) {
     const d = new Date(date);
     const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
+
     // Start of week (Sunday 00:00:00.000)
     const start = new Date(d);
     start.setDate(d.getDate() - day);
     start.setHours(0, 0, 0, 0);
-    
+
     // End of week (Saturday 23:59:59.999)
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);
-    
+
     return { start, end };
   }
 
@@ -98,8 +99,24 @@ export class CalendarService {
       ),
     });
     return accounts
-      .map(acc => DB_TO_CALENDAR_PLATFORM[acc.platform])
+      .map(acc => normalizePlatformName(acc.platform))
       .filter(Boolean);
+  }
+
+  async getConnectedAccountsForUser(userId: string) {
+    const accounts = await this.db.query.social_accounts.findMany({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.status, 'connected'),
+      ),
+    });
+    return accounts.map(acc => ({
+      id: acc.id,
+      platform: normalizePlatformName(acc.platform),
+      accountHandle: acc.accountHandle,
+      status: acc.status,
+      connectedAt: acc.connectedAt,
+    }));
   }
 
   async checkWeeklyPostLimit(userId: string, targetDate: Date, postId?: string) {
@@ -315,14 +332,15 @@ export class CalendarService {
   ): Promise<ContentCalendarPost> {
     // Validate platform is connected
     const connected = await this.getConnectedPlatformsForUser(userId);
-    if (!connected.includes(dto.platform)) {
+    const targetPlatform = normalizePlatformName(dto.platform);
+    const isConnected = connected.some(p => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase());
+    if (!isConnected) {
       throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
     }
 
     // Enforce monthly post limits on creation
     if (dto.scheduledAt) {
       await this.checkPostLimit(userId, new Date(dto.scheduledAt));
-      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt));
     }
 
     const [post] = await this.db
@@ -331,7 +349,7 @@ export class CalendarService {
         userId,
         title: dto.title,
         caption: dto.caption,
-        platform: dto.platform,
+        platform: targetPlatform as any,
         status: dto.scheduledAt ? 'SCHEDULED' : 'DRAFT',
         approvalStatus: 'PENDING',
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
@@ -355,7 +373,9 @@ export class CalendarService {
 
     if (dto.platform) {
       const connected = await this.getConnectedPlatformsForUser(userId);
-      if (!connected.includes(dto.platform)) {
+      const targetPlatform = normalizePlatformName(dto.platform);
+      const isConnected = connected.some(p => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase());
+      if (!isConnected) {
         throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
       }
     }
@@ -376,14 +396,12 @@ export class CalendarService {
       }
     }
 
-    // Enforce monthly and weekly post limits if date is updated
+    // Validate scheduled date/time format if updated (editing existing post does NOT consume post creation limit)
     if (targetScheduledAt) {
       const dateObj = new Date(targetScheduledAt);
       if (isNaN(dateObj.getTime())) {
         throw new BadRequestException(`Invalid scheduled date/time format.`);
       }
-      await this.checkPostLimit(userId, dateObj, id);
-      await this.checkWeeklyPostLimit(userId, dateObj, id);
     }
 
     // Validate eligibility if selecting a suggestion
@@ -431,7 +449,7 @@ export class CalendarService {
       .set({
         title: dto.title !== undefined ? dto.title : post.title,
         caption: dto.caption !== undefined ? dto.caption : post.caption,
-        platform: dto.platform !== undefined ? dto.platform : post.platform,
+        platform: dto.platform !== undefined ? (dto.platform as any) : post.platform,
         scheduledAt: newScheduledAt,
         status: newStatus,
         mediaUrl: dto.mediaUrl !== undefined ? dto.mediaUrl : post.mediaUrl,
@@ -593,16 +611,14 @@ export class CalendarService {
     }
 
     // Validate platforms
-    const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
     if (!dto.platforms || dto.platforms.length === 0) {
       throw new BadRequestException('At least one platform must be requested.');
     }
     const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
-    for (const p of dto.platforms) {
-      if (!validPlatforms.includes(p)) {
-        throw new BadRequestException(`Invalid platform requested: ${p}`);
-      }
-      if (!connectedPlatforms.includes(p)) {
+    const normalizedRequestedPlatforms = dto.platforms.map(p => normalizePlatformName(p));
+    for (const p of normalizedRequestedPlatforms) {
+      const isConn = connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase());
+      if (!isConn) {
         throw new BadRequestException(`Platform ${p} is not currently connected.`);
       }
     }
@@ -634,13 +650,16 @@ export class CalendarService {
       );
     }
 
+    const remainingPosts = Math.max(0, limit - currentCount);
+    const connectedAccounts = await this.getConnectedAccountsForUser(userId);
+
     // Insert generation job
     const [job] = await this.db
       .insert(schema.calendarGenerationJobs)
       .values({
         userId,
         month: dto.month,
-        platforms: dto.platforms,
+        platforms: normalizedRequestedPlatforms,
         status: 'PENDING',
       })
       .returning();
@@ -667,7 +686,10 @@ export class CalendarService {
           jobId: job.id,
           customerId: userId,
           month: dto.month,
-          platforms: dto.platforms,
+          platforms: normalizedRequestedPlatforms,
+          plan: slug,
+          allowedPosts: remainingPosts,
+          connectedAccounts,
         }),
       });
 
@@ -734,11 +756,17 @@ export class CalendarService {
     });
 
     const businessProfile = await this.customerProfileService.getCompanyProfile(customerId);
+    const targetMonth = latestJob?.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(customerId, new Date(`${targetMonth}-01`));
+    const connectedAccounts = await this.getConnectedAccountsForUser(customerId);
 
     return {
       customerId,
       month: latestJob?.month ?? null,
       platforms: latestJob?.platforms ?? [],
+      plan: slug,
+      allowedPosts: Math.max(0, limit - currentCount),
+      connectedAccounts,
       business: {
         name: businessProfile.businessName || '',
         description: businessProfile.businessDescription || null,
@@ -990,14 +1018,13 @@ export class CalendarService {
       const savedPostIds: string[] = [];
 
       for (const post of scheduledPosts) {
-        const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
-        if (!validPlatforms.includes(post.platform)) {
-          throw new BadRequestException(`Invalid platform: ${post.platform}`);
-        }
-        if (!job.platforms.includes(post.platform)) {
+        const normPostPlatform = normalizePlatformName(post.platform);
+        const isRequested = job.platforms.some(p => normalizePlatformName(p).toLowerCase() === normPostPlatform.toLowerCase());
+        if (!isRequested) {
           throw new BadRequestException(`Platform ${post.platform} was not requested in this generation job.`);
         }
-        if (!connectedPlatforms.includes(post.platform)) {
+        const isConn = connectedPlatforms.some(c => c.toLowerCase() === normPostPlatform.toLowerCase());
+        if (!isConn) {
           throw new BadRequestException(`Platform ${post.platform} is not currently connected.`);
         }
 
@@ -1016,7 +1043,7 @@ export class CalendarService {
             userId: job.userId,
             title: post.title,
             caption: post.caption,
-            platform: post.platform as any,
+            platform: normPostPlatform as any,
             status: 'SCHEDULED',
             approvalStatus: 'PENDING',
             scheduledAt,
@@ -1060,10 +1087,12 @@ export class CalendarService {
         free: 8,
         starter: 30,
         growth: 150,
+        brand: 300,
+        enterprise: 300,
         'brand-domination': 300,
       };
-      limit = typeof subscription.plan.monthlyPostLimit === 'number' 
-        ? subscription.plan.monthlyPostLimit 
+      limit = typeof subscription.plan.monthlyPostLimit === 'number'
+        ? subscription.plan.monthlyPostLimit
         : (slugMap[subscription.plan.slug || 'free'] || 8);
       slug = subscription.plan.slug || 'free';
     } else {
@@ -1108,11 +1137,28 @@ export class CalendarService {
 
     const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(userId, targetDate);
 
+    let maxSocialAccounts = 2;
+    let planName = 'Free';
+    try {
+      const subscription = await this.subscriptionsService.findByUserId(userId);
+      if (subscription?.plan) {
+        maxSocialAccounts = subscription.plan.maxSocialAccounts;
+        planName = subscription.plan.name;
+      }
+    } catch (_err) {
+      // fallback
+    }
+
+    const connectedAccounts = await this.getConnectedAccountsForUser(userId);
     const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
     return {
       month: monthKey,
       plan: slug,
+      planName,
+      maxSocialAccounts,
+      connectedAccountCount: connectedAccounts.length,
+      connectedAccounts,
       monthlyLimit: limit,
       monthlyUsed: currentCount,
       monthlyRemaining: Math.max(0, limit - currentCount),

@@ -117,7 +117,7 @@ export class DiscordController {
       this.configService.get<string>('frontendUrl') ||
       process.env.FRONTEND_URL ||
       process.env.CORS_ORIGIN ||
-      'https://raasocial.io';
+      'http://localhost:5173';
     const errorBase = `${frontendUrl}/dashboard/channels?discord=error`;
 
     if (query.error) {

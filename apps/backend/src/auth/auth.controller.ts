@@ -17,6 +17,8 @@ import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 
+import { ConfigService } from '@nestjs/config';
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -25,6 +27,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly tumblrService: TumblrService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Post('register')
@@ -188,7 +191,7 @@ export class AuthController {
       res.redirect(`https://www.tumblr.com/oauth/authorize?oauth_token=${oauth_token}`);
     } catch (err: any) {
       this.logger.error(`Tumblr auth initiation failed: ${err.message}`, err.stack);
-      const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      const frontendUrl = this.configService.get<string>('frontendUrl') || process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
       res.redirect(`${frontendUrl}/settings/accounts?tumblr=error`);
     }
   }
@@ -223,12 +226,12 @@ export class AuthController {
       await this.tumblrService.connectAccount(userId, token, tokenSecret, blogName);
 
       res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
-      const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      const frontendUrl = this.configService.get<string>('frontendUrl') || process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
       res.redirect(`${frontendUrl}/settings/accounts?tumblr=success`);
     } catch (err: any) {
       this.logger.error(`Tumblr callback handshake failed: ${err.message}`, err.stack);
       res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
-      const frontendUrl = process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      const frontendUrl = this.configService.get<string>('frontendUrl') || process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
       res.redirect(`${frontendUrl}/settings/accounts?tumblr=error`);
     }
   }
