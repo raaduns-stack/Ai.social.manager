@@ -402,6 +402,18 @@ export class CalendarService {
       if (isNaN(dateObj.getTime())) {
         throw new BadRequestException(`Invalid scheduled date/time format.`);
       }
+
+      // Enforce that moving a scheduled post must remain within the same week
+      if (post.scheduledAt) {
+        const originalWeek = this.getWeekRange(new Date(post.scheduledAt));
+        if (dateObj < originalWeek.start || dateObj > originalWeek.end) {
+          const startStr = originalWeek.start.toISOString().split('T')[0];
+          const endStr = originalWeek.end.toISOString().split('T')[0];
+          throw new BadRequestException(
+            `You can only reschedule this post to another date within the same week (${startStr} to ${endStr}).`
+          );
+        }
+      }
     }
 
     // Validate eligibility if selecting a suggestion
