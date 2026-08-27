@@ -1,9 +1,14 @@
+const defaultPort = parseInt(process.env.PORT ?? '4000', 10);
+const defaultApiPrefix = process.env.API_PREFIX ?? 'api';
+const defaultBackendUrl = process.env.BACKEND_URL ?? `http://localhost:${defaultPort}`;
+
 export default () => ({
   env: process.env.NODE_ENV ?? 'development',
-  port: parseInt(process.env.PORT ?? '4000', 10),
-  apiPrefix: process.env.API_PREFIX ?? 'api',
+  port: defaultPort,
+  apiPrefix: defaultApiPrefix,
   corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   frontendUrl: process.env.FRONTEND_URL ?? process.env.CORS_ORIGIN ?? 'http://localhost:5173',
+  backendUrl: defaultBackendUrl,
 
   database: {
     url: process.env.DATABASE_URL,
@@ -61,7 +66,7 @@ export default () => ({
   tiktok: {
     clientKey: process.env.TIKTOK_CLIENT_KEY,
     clientSecret: process.env.TIKTOK_CLIENT_SECRET,
-    redirectUri: process.env.TIKTOK_REDIRECT_URI,
+    redirectUri: process.env.TIKTOK_REDIRECT_URI ?? `${defaultBackendUrl}/${defaultApiPrefix}/channels/tiktok/callback`,
     // webhookVerifyToken is an optional shared secret you can use for an
     // additional layer of webhook verification if TikTok supports it in future.
     webhookVerifyToken: process.env.TIKTOK_WEBHOOK_VERIFY_TOKEN,
@@ -70,8 +75,14 @@ export default () => ({
   discord: {
     clientId: process.env.DISCORD_CLIENT_ID,
     clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    redirectUri: process.env.DISCORD_REDIRECT_URI,
+    redirectUri: process.env.DISCORD_REDIRECT_URI ?? `${defaultBackendUrl}/${defaultApiPrefix}/channels/discord/callback`,
     botToken: process.env.DISCORD_BOT_TOKEN,
+  },
+
+  tumblr: {
+    consumerKey: process.env.TUMBLR_CONSUMER_KEY,
+    consumerSecret: process.env.TUMBLR_CONSUMER_SECRET,
+    callbackUrl: process.env.TUMBLR_CALLBACK_URL ?? `${defaultBackendUrl}/${defaultApiPrefix}/auth/tumblr/callback`,
   },
 });
 

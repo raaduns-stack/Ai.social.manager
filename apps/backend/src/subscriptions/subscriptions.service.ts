@@ -31,10 +31,38 @@ export class SubscriptionsService {
       orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
     });
 
-    if (!fallback) {
-      throw new NotFoundException('No subscription found for this user');
-    }
-    return fallback;
+    if (fallback) return fallback;
+
+    // Fallback to Free plan if user has no subscription record at all
+    const freePlan = await this.db.query.plans.findFirst({
+      where: eq(schema.plans.slug, 'free'),
+    });
+
+    return {
+      id: 'free-virtual-id',
+      userId,
+      planId: freePlan?.id || 'free-plan-id',
+      status: 'active' as const,
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: null,
+      cancelledAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      plan: freePlan || {
+        id: 'free',
+        name: 'Free',
+        slug: 'free',
+        price: 0,
+        interval: 'monthly',
+        features: [],
+        maxSocialAccounts: 2,
+        description: 'Best for testing features and starting out.',
+        monthlyPostLimit: 8,
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    };
   }
 
   /** Create a new "pending" subscription (activated later by Payments module). */

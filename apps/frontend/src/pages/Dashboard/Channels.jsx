@@ -315,6 +315,7 @@ export default function Channels() {
             })
             .catch((error) => {
               console.error('Failed to reconnect channel:', error);
+              setFetchError(error?.response?.data?.message || 'Failed to reconnect channel.');
             });
         } else {
           // New connection
@@ -330,6 +331,7 @@ export default function Channels() {
             })
             .catch((error) => {
               console.error('Failed to connect new channel:', error);
+              setFetchError(error?.response?.data?.message || 'Failed to connect new channel.');
             });
         }
       }
@@ -370,15 +372,14 @@ export default function Channels() {
       .then(() => {
         trackEvent('social_account_connected', { platform: selectedPlatform })
         fetchChannels();
-      })
-      .catch((error) => {
-        console.error('Failed to connect account:', error);
-        setConnectError('Failed to connect account.');
-      })
-      .finally(() => {
         setNewHandle('');
         setConnectError('');
         setIsConnectModalOpen(false);
+      })
+      .catch((error) => {
+        console.error('Failed to connect account:', error);
+        const errMsg = error?.response?.data?.message || 'Failed to connect account.';
+        setConnectError(errMsg);
       });
   };
 

@@ -62,9 +62,26 @@ import { getMyKyc } from '../../features/kyc/kyc-api'
 import { trackEvent } from '../../lib/analytics'
 import apiClient from '../../lib/api-client'
 
+function formatPlatformName(platform) {
+  if (!platform) return platform
+  const lower = platform.toLowerCase()
+  if (lower === 'instagram') return 'Instagram'
+  if (lower === 'linkedin') return 'LinkedIn'
+  if (lower === 'x' || lower === 'twitter' || lower === 'x / twitter') return 'X / Twitter'
+  if (lower === 'tiktok') return 'TikTok'
+  if (lower === 'facebook') return 'Facebook'
+  if (lower === 'discord') return 'Discord'
+  if (lower === 'youtube') return 'YouTube'
+  if (lower === 'pinterest') return 'Pinterest'
+  if (lower === 'tumblr') return 'Tumblr'
+  if (lower === 'snapchat') return 'Snapchat'
+  return platform.charAt(0).toUpperCase() + platform.slice(1)
+}
+
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
-  switch (platform) {
+  const norm = formatPlatformName(platform)
+  switch (norm) {
     case 'Instagram': return { icon: <Camera size={12} />, colour: 'danger' }
     case 'LinkedIn':  return { icon: <Linkedin size={12} />, colour: 'primary' }
     case 'X / Twitter': return { icon: <Twitter size={12} />, colour: 'neutral' }
@@ -505,32 +522,6 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
     }
   }, [connectedPlatforms, editPlatform])
 
-  // Compute week range for scheduling input
-  const weekLimits = useMemo(() => {
-    if (!post || !post.scheduledAt) return { min: '', max: '' }
-    const date = new Date(post.scheduledAt)
-    const day = date.getDay() // 0 = Sunday, 1 = Monday, etc.
-    
-    // Start of week is Sunday
-    const startOfWeek = new Date(date)
-    startOfWeek.setDate(date.getDate() - day)
-    
-    // End of week is Saturday
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6)
-    
-    const formatDateStr = (d) => {
-      const yyyy = d.getFullYear()
-      const mm = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd}`
-    }
-    
-    return {
-      min: formatDateStr(startOfWeek),
-      max: formatDateStr(endOfWeek),
-    }
-  }, [post])
 
   useEffect(() => {
     if (post) {
@@ -771,8 +762,6 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
               <input
                 type="date"
                 value={editDate}
-                min={weekLimits.min}
-                max={weekLimits.max}
                 onChange={(e) => setEditDate(e.target.value)}
                 className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
               />
@@ -961,17 +950,9 @@ export default function ContentCalendar() {
       setUsageInfo(usage)
 
       if (Array.isArray(socialAccountsRes.data)) {
-        const platformMap = {
-          instagram: 'Instagram',
-          linkedin: 'LinkedIn',
-          x: 'X / Twitter',
-          tiktok: 'TikTok',
-          facebook: 'Facebook',
-          discord: 'Discord',
-        }
         const connected = socialAccountsRes.data
           .filter(acc => acc.status === 'connected')
-          .map(acc => platformMap[acc.platform])
+          .map(acc => formatPlatformName(acc.platform))
           .filter(Boolean)
         setConnectedPlatforms(connected)
         setGenPlatforms(connected)

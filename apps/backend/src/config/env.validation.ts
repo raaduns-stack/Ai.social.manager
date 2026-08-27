@@ -149,6 +149,23 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   DISCORD_BOT_TOKEN?: string;
+
+  /** Base backend public URL (e.g. http://localhost:4000 or https://api.raasocial.io) */
+  @IsString()
+  @IsOptional()
+  BACKEND_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  TUMBLR_CONSUMER_KEY?: string;
+
+  @IsString()
+  @IsOptional()
+  TUMBLR_CONSUMER_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  TUMBLR_CALLBACK_URL?: string;
 }
 
 /**
