@@ -82,7 +82,7 @@ export class AdminController {
       phoneNumber?: string;
       country?: string;
       role?: UserRole;
-      accountStatus?: 'ACTIVE' | 'EMAIL_VERIFICATION_PENDING';
+      accountStatus?: 'ACTIVE' | 'REGISTRATION_IN_PROGRESS' | 'EMAIL_VERIFICATION_PENDING';
       accountManagerId?: string;
     },
   ) {

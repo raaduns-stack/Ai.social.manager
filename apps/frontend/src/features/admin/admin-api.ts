@@ -136,7 +136,7 @@ export async function createAdminUser(data: {
   phoneNumber?: string
   country?: string
   role?: string
-  accountStatus?: 'ACTIVE' | 'EMAIL_VERIFICATION_PENDING'
+  accountStatus?: 'ACTIVE' | 'REGISTRATION_IN_PROGRESS' | 'EMAIL_VERIFICATION_PENDING'
   accountManagerId?: string
 }): Promise<AdminUser> {
   const response = await api.post<AdminUser>('/admin/users', data)

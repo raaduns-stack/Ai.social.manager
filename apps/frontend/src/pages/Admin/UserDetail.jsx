@@ -363,10 +363,22 @@ Include a clean list of hashtags at the end.`,
             <div className="flex flex-col md:flex-row items-center gap-3">
               <h2 className="text-2xl font-bold text-ink">{accountInfo.fullName}</h2>
               <Badge
-                tone={accountInfo.accountStatus === 'ACTIVE' ? 'success' : accountInfo.accountStatus === 'SUSPENDED' ? 'danger' : 'warning'}
+                tone={
+                  accountInfo.accountStatus === 'ACTIVE'
+                    ? 'success'
+                    : accountInfo.accountStatus === 'REGISTRATION_IN_PROGRESS'
+                    ? 'primary'
+                    : accountInfo.accountStatus === 'SUSPENDED'
+                    ? 'danger'
+                    : 'warning'
+                }
                 className="gap-1 font-semibold uppercase tracking-wider text-[10px]"
               >
-                {accountInfo.accountStatus}
+                {accountInfo.accountStatus === 'EMAIL_VERIFICATION_PENDING'
+                  ? 'EMAIL VERIFICATION'
+                  : accountInfo.accountStatus === 'REGISTRATION_IN_PROGRESS'
+                  ? 'REGISTRATION IN PROGRESS'
+                  : accountInfo.accountStatus}
               </Badge>
             </div>
 
@@ -475,7 +487,19 @@ Include a clean list of hashtags at the end.`,
               <dl className="space-y-3 text-sm">
                 <div>
                   <dt className="text-xs font-medium text-ink-muted">Account Status</dt>
-                  <dd className="font-bold text-ink">{accountInfo.accountStatus}</dd>
+                  <dd className="font-bold text-ink">
+                    {accountInfo.accountStatus === 'EMAIL_VERIFICATION_PENDING'
+                      ? 'Email Verification'
+                      : accountInfo.accountStatus === 'REGISTRATION_IN_PROGRESS'
+                      ? 'Registration in Progress'
+                      : accountInfo.accountStatus === 'ACTIVE'
+                      ? 'Active'
+                      : accountInfo.accountStatus === 'SUSPENDED'
+                      ? 'Suspended'
+                      : accountInfo.accountStatus === 'DELETED'
+                      ? 'Deleted'
+                      : accountInfo.accountStatus}
+                  </dd>
                 </div>
                 <div>
                   <dt className="text-xs font-medium text-ink-muted">Email Verification</dt>

@@ -382,18 +382,20 @@ export class CalendarService {
 
     // Determine target scheduledAt timestamp if date/time are updated
     let targetScheduledAt: string | null | undefined = dto.scheduledAt;
-    if (targetScheduledAt === undefined && (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined)) {
+    if (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined) {
       const datePart = dto.scheduledDate !== undefined
         ? dto.scheduledDate
         : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[0] : null);
       if (datePart) {
         const timePart = dto.scheduledTime !== undefined && dto.scheduledTime
           ? dto.scheduledTime
-          : (post.scheduledAt ? new Date(post.scheduledAt).toTimeString().substring(0, 5) : '12:00');
-        targetScheduledAt = `${datePart}T${timePart}:00`;
+          : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[1]?.substring(0, 5) : '12:00');
+        targetScheduledAt = `${datePart}T${timePart}:00.000Z`;
       } else {
         targetScheduledAt = null;
       }
+    } else if (targetScheduledAt) {
+      targetScheduledAt = targetScheduledAt.includes('Z') ? targetScheduledAt : `${targetScheduledAt}.000Z`;
     }
 
     // Validate scheduled date/time format if updated (editing existing post does NOT consume post creation limit)
