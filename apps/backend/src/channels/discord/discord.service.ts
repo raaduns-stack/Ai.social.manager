@@ -477,15 +477,36 @@ export class DiscordService {
   private async exchangeCodeForTokens(
     code: string,
   ): Promise<DiscordTokenResponse> {
-    const clientId =
+    const rawClientId =
       this.configService.get<string>('discord.clientId') ||
-      process.env.DISCORD_CLIENT_ID;
-    const clientSecret =
+      process.env.DISCORD_CLIENT_ID ||
+      '';
+    const rawClientSecret =
       this.configService.get<string>('discord.clientSecret') ||
-      process.env.DISCORD_CLIENT_SECRET;
-    const redirectUri =
+      process.env.DISCORD_CLIENT_SECRET ||
+      '';
+    const rawRedirectUri =
       this.configService.get<string>('discord.redirectUri') ||
-      process.env.DISCORD_REDIRECT_URI;
+      process.env.DISCORD_REDIRECT_URI ||
+      '';
+
+    // Sanitize credentials — strip surrounding quotes, carriage returns, or whitespace
+    const clientId = rawClientId.trim().replace(/^["']|["']$/g, '');
+    const clientSecret = rawClientSecret.trim().replace(/^["']|["']$/g, '').replace(/\r|\n/g, '');
+    const redirectUri = rawRedirectUri.trim().replace(/^["']|["']$/g, '');
+
+    const tokenEndpoint = 'https://discord.com/api/v10/oauth2/token';
+
+    // Safe diagnostic logging (NEVER exposing secrets or codes)
+    this.logger.log(
+      `Discord token config: clientId=${clientId}, secretConfigured=${!!clientSecret}, secretLength=${clientSecret.length}, redirectUri=${redirectUri}, codeProvided=${!!code}, endpoint=${tokenEndpoint}`,
+    );
+
+    if (clientSecret.length !== 32) {
+      this.logger.warn(
+        `Discord client secret length warning: DISCORD_CLIENT_SECRET is ${clientSecret.length} characters long. Standard Discord OAuth2 Client Secrets are 32 characters long. If a Bot Token (~72 chars) was configured instead of the Client Secret, Discord will reject the token exchange with 401 invalid_client.`,
+      );
+    }
 
     if (!clientId || !clientSecret || !redirectUri) {
       this.logger.error(
@@ -504,9 +525,14 @@ export class DiscordService {
       redirect_uri: redirectUri,
     });
 
-    const response = await fetch('https://discord.com/api/v10/oauth2/token', {
+    const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
+
+    const response = await fetch(tokenEndpoint, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${basicAuth}`,
+      },
       body: params.toString(),
     });
 

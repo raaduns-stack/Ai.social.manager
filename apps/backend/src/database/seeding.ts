@@ -13,11 +13,11 @@ export async function seedPlans(db: Database) {
       price: 0,
       interval: 'monthly' as const,
       isActive: true,
-      maxSocialAccounts: 1,
+      maxSocialAccounts: 2,
       description: 'Best for testing features and starting out.',
       monthlyPostLimit: 8,
       features: [
-        'Connect 1 social media account',
+        'Connect 2 social media accounts',
         'Generate 8 AI posts per month',
         'AI-generated caption + hashtags',
         'Basic AI image generation',

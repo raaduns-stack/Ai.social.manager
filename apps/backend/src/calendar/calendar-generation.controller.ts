@@ -57,22 +57,20 @@ export class GeneratedPostDto {
   @IsNotEmpty()
   caption!: string;
 
-  @ApiProperty({ example: 'Facebook' })
+  @ApiProperty({ example: 'Facebook', required: false })
   @IsString()
-  @IsNotEmpty()
-  platform!: string;
+  @IsOptional()
+  platform?: string;
 
-  @ApiProperty({ example: '2026-09-01' })
+  @ApiProperty({ example: '2026-09-01', required: false })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'scheduledDate must be in YYYY-MM-DD format' })
-  scheduledDate!: string;
+  @IsOptional()
+  scheduledDate?: string;
 
-  @ApiProperty({ example: '09:00' })
+  @ApiProperty({ example: '09:00', required: false })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{2}:\d{2}$/, { message: 'scheduledTime must be in HH:mm format' })
-  scheduledTime!: string;
+  @IsOptional()
+  scheduledTime?: string;
 
   @ApiProperty({ example: ['#marketing', '#socialmedia'], type: [String], required: false })
   @IsArray()

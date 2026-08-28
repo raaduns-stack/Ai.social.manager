@@ -337,17 +337,21 @@ export default function Users() {
       label: 'Account Status',
       render: (row) => {
         const isAct = row.status === 'Active'
+        const isReg = row.status === 'Registration in Progress'
         const isSusp = row.status === 'Suspended'
+        const isDel = row.status === 'Deleted'
         return (
           <span className={cn(
             "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold",
             isAct ? "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20" :
-              isSusp ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
-                "bg-amber-500/10 text-amber-600 border border-amber-500/20"
+              isReg ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
+                isSusp ? "bg-rose-500/10 text-rose-600 border border-rose-500/20" :
+                  isDel ? "bg-gray-500/10 text-gray-600 border border-gray-500/20" :
+                    "bg-amber-500/10 text-amber-600 border border-amber-500/20"
           )}>
             <span className={cn(
               "w-1.5 h-1.5 rounded-full",
-              isAct ? "bg-emerald-500" : isSusp ? "bg-rose-500" : "bg-amber-500"
+              isAct ? "bg-emerald-500" : isReg ? "bg-blue-500" : isSusp ? "bg-rose-500" : isDel ? "bg-gray-500" : "bg-amber-500"
             )}></span>
             {row.status}
           </span>
@@ -674,8 +678,9 @@ export default function Users() {
               onChange={(e) => setNewUser((p) => ({ ...p, accountStatus: e.target.value }))}
               className="h-10 rounded-control border border-surface-variant bg-surface px-3 text-sm text-on-surface focus:outline-none"
             >
-              <option value="ACTIVE">ACTIVE (Fully Verified & Active)</option>
-              <option value="EMAIL_VERIFICATION_PENDING">EMAIL_VERIFICATION_PENDING</option>
+              <option value="ACTIVE">ACTIVE (Fully Verified & Logged In)</option>
+              <option value="REGISTRATION_IN_PROGRESS">REGISTRATION_IN_PROGRESS (Email Verified, Pending First Login)</option>
+              <option value="EMAIL_VERIFICATION_PENDING">EMAIL_VERIFICATION_PENDING (Pending Verification Code)</option>
             </select>
           </div>
 
