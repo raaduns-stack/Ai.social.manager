@@ -116,8 +116,12 @@ export class AdminService {
           : null,
         status: u.accountStatus === 'SUSPENDED' || !u.isActive
           ? 'Suspended'
+          : u.accountStatus === 'DELETED'
+          ? 'Deleted'
           : u.accountStatus === 'EMAIL_VERIFICATION_PENDING' || !u.isEmailVerified
-          ? 'Email Pending'
+          ? 'Email Verification'
+          : u.accountStatus === 'REGISTRATION_IN_PROGRESS'
+          ? 'Registration in Progress'
           : 'Active',
       };
 
@@ -135,10 +139,16 @@ export class AdminService {
       // Apply Tab / Status Filters
       if (query?.tab) {
         const t = query.tab.toLowerCase();
-        if (t === 'verified' && (userObj.accountStatus !== 'ACTIVE' || !userObj.isEmailVerified)) {
+        if (t === 'verified' && !userObj.isEmailVerified) {
           continue;
         }
-        if (t === 'email_pending' && (userObj.isEmailVerified && userObj.accountStatus !== 'EMAIL_VERIFICATION_PENDING')) {
+        if (t === 'email_pending' && (userObj.isEmailVerified || userObj.accountStatus !== 'EMAIL_VERIFICATION_PENDING')) {
+          continue;
+        }
+        if (t === 'registration_in_progress' && userObj.accountStatus !== 'REGISTRATION_IN_PROGRESS') {
+          continue;
+        }
+        if (t === 'active' && userObj.accountStatus !== 'ACTIVE') {
           continue;
         }
         if (t === 'kyc_pending' && (userObj.kycStatus === 'APPROVED')) {
@@ -158,7 +168,8 @@ export class AdminService {
       if (query?.status && query.status !== 'all') {
         if (query.status.toLowerCase() === 'active' && userObj.status !== 'Active') continue;
         if (query.status.toLowerCase() === 'suspended' && userObj.status !== 'Suspended') continue;
-        if (query.status.toLowerCase() === 'email pending' && userObj.status !== 'Email Pending') continue;
+        if ((query.status.toLowerCase() === 'email pending' || query.status.toLowerCase() === 'email verification') && userObj.status !== 'Email Verification') continue;
+        if (query.status.toLowerCase() === 'registration in progress' && userObj.status !== 'Registration in Progress') continue;
       }
 
       if (query?.plan && query.plan !== 'all') {
@@ -190,6 +201,7 @@ export class AdminService {
 
     let totalUsers = 0;
     let activeUsers = 0;
+    let registrationInProgress = 0;
     let pendingVerification = 0;
     let kycPending = 0;
     let kycUnderReview = 0;
@@ -232,6 +244,8 @@ export class AdminService {
         suspendedUsers++;
       } else if (!u.isEmailVerified || u.accountStatus === 'EMAIL_VERIFICATION_PENDING') {
         pendingVerification++;
+      } else if (u.accountStatus === 'REGISTRATION_IN_PROGRESS') {
+        registrationInProgress++;
       } else if (u.accountStatus === 'ACTIVE') {
         activeUsers++;
       }
@@ -254,6 +268,7 @@ export class AdminService {
     return {
       totalUsers,
       activeUsers,
+      registrationInProgress,
       pendingVerification,
       kycPending,
       kycUnderReview,
@@ -472,7 +487,7 @@ export class AdminService {
     phoneNumber?: string;
     country?: string;
     role?: UserRole;
-    accountStatus?: 'ACTIVE' | 'EMAIL_VERIFICATION_PENDING';
+    accountStatus?: 'ACTIVE' | 'REGISTRATION_IN_PROGRESS' | 'EMAIL_VERIFICATION_PENDING';
     accountManagerId?: string;
   }) {
     const existing = await this.db.query.users.findFirst({
@@ -485,7 +500,8 @@ export class AdminService {
     const passwordToHash = dto.password || 'SocialPilot@2026!';
     const passwordHash = await bcrypt.hash(passwordToHash, SALT_ROUNDS);
     const now = new Date();
-    const isVerified = dto.accountStatus === 'ACTIVE';
+    const isEmailVerified = dto.accountStatus === 'ACTIVE' || dto.accountStatus === 'REGISTRATION_IN_PROGRESS';
+    const isFirstLogin = dto.accountStatus === 'ACTIVE';
 
     const [user] = await this.db
       .insert(schema.users)
@@ -499,8 +515,10 @@ export class AdminService {
         role: dto.role || UserRole.USER,
         accountStatus: dto.accountStatus || 'EMAIL_VERIFICATION_PENDING',
         isActive: true,
-        isEmailVerified: isVerified,
-        emailVerifiedAt: isVerified ? now : null,
+        isEmailVerified,
+        emailVerifiedAt: isEmailVerified ? now : null,
+        firstLoginAt: isFirstLogin ? now : null,
+        lastLoginAt: isFirstLogin ? now : null,
         accountManagerId: dto.accountManagerId ?? null,
         registeredAt: now,
       })
@@ -587,7 +605,11 @@ export class AdminService {
     }
 
     const now = new Date();
-    const newStatus = suspend ? 'SUSPENDED' : (user.isEmailVerified ? 'ACTIVE' : 'EMAIL_VERIFICATION_PENDING');
+    const newStatus = suspend
+      ? 'SUSPENDED'
+      : (user.firstLoginAt
+        ? 'ACTIVE'
+        : (user.isEmailVerified ? 'REGISTRATION_IN_PROGRESS' : 'EMAIL_VERIFICATION_PENDING'));
 
     await this.db
       .update(schema.users)

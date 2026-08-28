@@ -115,6 +115,14 @@ function getStatusMeta(status) {
 // ─── Helper: format date for display ─────────────────────────────────────────
 function toDateKey(isoStringOrDate) {
   if (!isoStringOrDate) return ''
+  if (typeof isoStringOrDate === 'string') {
+    if (isoStringOrDate.includes('T')) {
+      return isoStringOrDate.split('T')[0]
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoStringOrDate)) {
+      return isoStringOrDate
+    }
+  }
   const d = new Date(isoStringOrDate)
   if (isNaN(d.getTime())) return ''
   const yyyy = d.getFullYear()
@@ -125,6 +133,17 @@ function toDateKey(isoStringOrDate) {
 
 function formatDate(isoString) {
   if (!isoString) return '—'
+  const str = String(isoString)
+  if (str.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const datePart = str.split('T')[0]
+    const [y, m, d] = datePart.split('-').map(Number)
+    if (y && m && d) {
+      const dateObj = new Date(y, m - 1, d)
+      return dateObj.toLocaleDateString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      })
+    }
+  }
   return new Date(isoString).toLocaleDateString('en-US', {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
   })
@@ -132,6 +151,19 @@ function formatDate(isoString) {
 
 function formatTime(isoString) {
   if (!isoString) return '—'
+  const str = String(isoString)
+  if (str.includes('T')) {
+    const timePart = str.split('T')[1]?.substring(0, 5)
+    if (timePart && timePart.includes(':')) {
+      const [h, m] = timePart.split(':').map(Number)
+      if (!isNaN(h) && !isNaN(m)) {
+        const period = h >= 12 ? 'PM' : 'AM'
+        const displayH = h % 12 === 0 ? 12 : h % 12
+        const displayM = String(m).padStart(2, '0')
+        return `${String(displayH).padStart(2, '0')}:${displayM} ${period}`
+      }
+    }
+  }
   return new Date(isoString).toLocaleTimeString('en-US', {
     hour: '2-digit', minute: '2-digit',
   })
@@ -162,9 +194,9 @@ function PostCard({ post, onClick }) {
   const { icon, colour } = getPlatformMeta(post.platform)
   const approval = getApprovalMeta(post.approvalStatus)
   const dateStr = post.scheduledAt
-    ? new Date(post.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    ? formatTime(post.scheduledAt)
     : post.publishedAt
-      ? new Date(post.publishedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+      ? formatTime(post.publishedAt)
       : null
 
   return (
@@ -535,7 +567,10 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
   // Compute week range for scheduling input (same week as post's current scheduledAt)
   const weekLimits = useMemo(() => {
     if (!post || !post.scheduledAt) return { min: '', max: '' }
-    const date = new Date(post.scheduledAt)
+    const dateKey = toDateKey(post.scheduledAt)
+    if (!dateKey) return { min: '', max: '' }
+    const [y, m, d] = dateKey.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
     const day = date.getDay() // 0 = Sunday, 1 = Monday, etc.
     const start = new Date(date)
     start.setDate(date.getDate() - day)
@@ -553,12 +588,18 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
       setEditCaption(post.caption)
       setEditPlatform(post.platform)
       if (post.scheduledAt) {
-        const d = new Date(post.scheduledAt)
-        setEditDate(toDateKey(d))
+        setEditDate(toDateKey(post.scheduledAt))
 
-        const hh = String(d.getHours()).padStart(2, '0')
-        const min = String(d.getMinutes()).padStart(2, '0')
-        setEditTime(`${hh}:${min}`)
+        const str = String(post.scheduledAt)
+        if (str.includes('T')) {
+          const timePart = str.split('T')[1]?.substring(0, 5)
+          setEditTime(timePart || '12:00')
+        } else {
+          const d = new Date(post.scheduledAt)
+          const hh = String(d.getHours()).padStart(2, '0')
+          const min = String(d.getMinutes()).padStart(2, '0')
+          setEditTime(`${hh}:${min}`)
+        }
       } else {
         setEditDate('')
         setEditTime('')
@@ -616,7 +657,8 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
     try {
       let scheduledAt = null
       if (editDate) {
-        scheduledAt = editTime ? `${editDate}T${editTime}:00` : `${editDate}T12:00:00`
+        const timePart = editTime || '12:00'
+        scheduledAt = `${editDate}T${timePart}:00.000Z`
       }
       const updated = await updateCalendarPost(post.id, {
         title: editTitle,

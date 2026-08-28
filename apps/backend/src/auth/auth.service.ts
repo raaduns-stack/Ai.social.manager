@@ -270,7 +270,7 @@ export class AuthService {
       .set({
         isEmailVerified: true,
         emailVerifiedAt: now,
-        accountStatus: 'ACTIVE',
+        accountStatus: 'REGISTRATION_IN_PROGRESS',
         isActive: true,
         emailVerificationCode: null,
         emailVerificationExpiresAt: null,
