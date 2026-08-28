@@ -14,6 +14,7 @@ import Pricing from '../pages/Pricing'
 import Contact from '../pages/Contact'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import TermsOfService from '../pages/TermsOfService'
+import NotFound from '../pages/NotFound'
 
 // Auth pages
 import Login from '../pages/Auth/Login'
@@ -107,6 +108,9 @@ export default function AppRoutes() {
 
       {/* Admin Panel */}
       <Route path="/admin/*" element={<AdminRoutes />} />
+
+      {/* Catch-all 404 for unmatched customer-facing routes */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

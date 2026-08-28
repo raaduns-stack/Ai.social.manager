@@ -746,21 +746,30 @@ export class AdminService {
   }
 
   async getSubscriptions() {
-    const subs = await this.db.query.subscriptions.findMany({
-      with: {
-        user: true,
-        plan: true,
-      },
-      orderBy: [desc(schema.subscriptions.createdAt)],
-    });
+    const subs = await this.db
+      .select({
+        id: schema.subscriptions.id,
+        status: schema.subscriptions.status,
+        currentPeriodEnd: schema.subscriptions.currentPeriodEnd,
+        userFullName: schema.users.fullName,
+        userEmail: schema.users.email,
+        planName: schema.plans.name,
+        planPrice: schema.plans.price,
+      })
+      .from(schema.subscriptions)
+      .innerJoin(schema.plans, eq(schema.subscriptions.planId, schema.plans.id))
+      .leftJoin(schema.users, eq(schema.subscriptions.userId, schema.users.id))
+      .where(ne(schema.plans.slug, 'free'))
+      .orderBy(desc(schema.subscriptions.createdAt));
+
     return subs.map((s) => ({
       id: s.id,
-      customerName: s.user?.fullName || '—',
-      email: s.user?.email || '—',
-      plan: s.plan?.name || '—',
+      customerName: s.userFullName || '—',
+      email: s.userEmail || '—',
+      plan: s.planName || '—',
       status: s.status,
       renewsOn: s.currentPeriodEnd,
-      amount: s.plan?.price || 0,
+      amount: s.planPrice || 0,
     }));
   }
 
