@@ -261,6 +261,7 @@ apiClient.interceptors.response.use(
       path: errorData?.path || originalRequest?.url || '',
       timestamp: errorData?.timestamp || new Date().toISOString(),
       message,
+      errorCode,
       error: typeof exceptionPayload === 'object' ? exceptionPayload.error : undefined,
       kycStatus: typeof exceptionPayload === 'object' ? exceptionPayload.kycStatus : (errorData?.kycStatus || undefined),
     };

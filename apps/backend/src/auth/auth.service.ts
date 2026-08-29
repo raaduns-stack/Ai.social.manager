@@ -8,6 +8,7 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+import { ErrorCode } from '../common/enums/error-codes.enum';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
@@ -68,7 +69,10 @@ export class AuthService {
         const now = Date.now();
         if (lastSent && now - lastSent < 30000) {
           const secondsLeft = Math.ceil((30000 - (now - lastSent)) / 1000);
-          throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting a new code.`);
+          throw new BadRequestException({
+            message: `Please wait ${secondsLeft} seconds before requesting a new code.`,
+            errorCode: ErrorCode.RATE_LIMITED,
+          });
         }
         this.resendLimits.set(dto.email, now);
 
@@ -194,7 +198,10 @@ export class AuthService {
         status: LoginStatus.FAILURE,
         failureReason: LoginFailureReason.INVALID_CREDENTIALS,
       });
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException({
+        message: 'Invalid email or password',
+        errorCode: ErrorCode.INVALID_CREDENTIALS,
+      });
     }
 
     const passwordMatches = await bcrypt.compare(dto.password, user.passwordHash);
@@ -210,7 +217,10 @@ export class AuthService {
         status: LoginStatus.FAILURE,
         failureReason: LoginFailureReason.INVALID_CREDENTIALS,
       });
-      throw new UnauthorizedException('Invalid email or password');
+      throw new UnauthorizedException({
+        message: 'Invalid email or password',
+        errorCode: ErrorCode.INVALID_CREDENTIALS,
+      });
     }
 
     switch (user.accountStatus) {
@@ -254,7 +264,10 @@ export class AuthService {
         const now = Date.now();
         if (lastSent && now - lastSent < 30000) {
           const secondsLeft = Math.ceil((30000 - (now - lastSent)) / 1000);
-          throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting a new code.`);
+          throw new BadRequestException({
+            message: `Please wait ${secondsLeft} seconds before requesting a new code.`,
+            errorCode: ErrorCode.RATE_LIMITED,
+          });
         }
         this.resendLimits.set(user.email, now);
 
@@ -327,15 +340,24 @@ export class AuthService {
     }
 
     if (user.isEmailVerified) {
-      throw new BadRequestException('Email is already verified');
+      throw new BadRequestException({
+        message: 'Email is already verified',
+        errorCode: ErrorCode.EMAIL_ALREADY_VERIFIED,
+      });
     }
 
     if (user.emailVerificationCode !== dto.code) {
-      throw new BadRequestException('Invalid verification code');
+      throw new BadRequestException({
+        message: 'Invalid verification code',
+        errorCode: ErrorCode.INVALID_VERIFICATION_CODE,
+      });
     }
 
     if (user.emailVerificationExpiresAt && new Date() > user.emailVerificationExpiresAt) {
-      throw new BadRequestException('Verification code has expired');
+      throw new BadRequestException({
+        message: 'Verification code has expired',
+        errorCode: ErrorCode.VERIFICATION_CODE_EXPIRED,
+      });
     }
 
     const updatedUser = await this.db.transaction(async (tx) => {
@@ -370,7 +392,10 @@ export class AuthService {
     }
 
     if (user.isEmailVerified) {
-      throw new BadRequestException('Email is already verified');
+      throw new BadRequestException({
+        message: 'Email is already verified',
+        errorCode: ErrorCode.EMAIL_ALREADY_VERIFIED,
+      });
     }
 
     // Rate limiting: 1 request per 30 seconds per email
@@ -378,7 +403,10 @@ export class AuthService {
     const now = Date.now();
     if (lastSent && now - lastSent < 30000) {
       const secondsLeft = Math.ceil((30000 - (now - lastSent)) / 1000);
-      throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting a new code.`);
+      throw new BadRequestException({
+        message: `Please wait ${secondsLeft} seconds before requesting a new code.`,
+        errorCode: ErrorCode.RATE_LIMITED,
+      });
     }
     this.resendLimits.set(email, now);
 
@@ -410,7 +438,10 @@ export class AuthService {
 
     const passwordMatches = await bcrypt.compare(dto.currentPassword, user.passwordHash);
     if (!passwordMatches) {
-      throw new BadRequestException('Current password is incorrect');
+      throw new BadRequestException({
+        message: 'Current password is incorrect',
+        errorCode: ErrorCode.INCORRECT_PASSWORD,
+      });
     }
 
     const passwordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
@@ -451,7 +482,10 @@ export class AuthService {
         newRefreshToken: newRefreshToken
       };
     } catch (e) {
-      throw new UnauthorizedException('Invalid or expired refresh token');
+      throw new UnauthorizedException({
+        message: 'Invalid or expired refresh token',
+        errorCode: ErrorCode.INVALID_REFRESH_TOKEN,
+      });
     }
   }
 
@@ -654,7 +688,10 @@ export class AuthService {
         break;
 
       default:
-        throw new BadRequestException(`Invalid status transition: ${newStatus}`);
+        throw new BadRequestException({
+          message: `Invalid status transition: ${newStatus}`,
+          errorCode: ErrorCode.INVALID_STATUS_TRANSITION,
+        });
     }
 
     const [updatedUser] = await executor

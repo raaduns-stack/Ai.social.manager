@@ -5,6 +5,7 @@ import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
 import { useAuthStore } from '../../store/auth-store'
 import apiClient from '../../lib/api-client'
+import ErrorBanner from '../../components/error-banner'
 
 export default function VerifyEmail() {
   const navigate = useNavigate()
@@ -15,7 +16,7 @@ export default function VerifyEmail() {
 
   const [code, setCode] = useState(['', '', '', '', '', ''])
   const [resendStatus, setResendStatus] = useState('')
-  const [error, setError] = useState('')
+  const [apiError, setApiError] = useState(null)
   const [loading, setLoading] = useState(false)
   const [countdown, setCountdown] = useState(0)
 
@@ -42,7 +43,7 @@ export default function VerifyEmail() {
     const newCode = [...code]
     newCode[index] = value
     setCode(newCode)
-    setError('')
+    setApiError(null)
 
     // Auto-focus next input
     if (value && index < 5) {
@@ -60,7 +61,7 @@ export default function VerifyEmail() {
     e.preventDefault()
     if (countdown > 0) return
     setResendStatus('sending')
-    setError('')
+    setApiError(null)
     try {
       await apiClient.post('/auth/resend-verification', { email })
       setResendStatus('sent')
@@ -76,8 +77,8 @@ export default function VerifyEmail() {
       setTimeout(() => setResendStatus(''), 3000)
     } catch (err) {
       setResendStatus('')
-      const errMsg = err?.response?.data?.message || err?.message || 'Failed to resend verification code. Please try again.'
-      setError(errMsg)
+      setApiError(err)
+      const errMsg = err?.message || 'Failed to resend verification code. Please try again.'
       window.dispatchEvent(
         new CustomEvent('app-toast', {
           detail: {
@@ -93,12 +94,18 @@ export default function VerifyEmail() {
     e.preventDefault()
     const fullCode = code.join('')
     if (fullCode.length < 6) {
-      setError('Please enter all 6 digits of the verification code.')
+      setApiError({
+        statusCode: 400,
+        message: 'Please enter all 6 digits of the verification code.',
+        errorCode: 'VALIDATION_ERROR',
+        path: '',
+        timestamp: new Date().toISOString()
+      })
       return
     }
 
     setLoading(true)
-    setError('')
+    setApiError(null)
     try {
       await apiClient.post('/auth/verify-email', {
         email,
@@ -114,7 +121,7 @@ export default function VerifyEmail() {
       )
       navigate('/login')
     } catch (err) {
-      setError(err?.message || 'Verification failed. Please check the code and try again.')
+      setApiError(err)
     } finally {
       setLoading(false)
     }
@@ -151,7 +158,7 @@ export default function VerifyEmail() {
             ))}
           </div>
 
-          {error && <p className="text-xs text-danger text-center">{error}</p>}
+          {apiError && <ErrorBanner error={apiError} onDismiss={() => setApiError(null)} />}
 
           <Button
             type="submit"

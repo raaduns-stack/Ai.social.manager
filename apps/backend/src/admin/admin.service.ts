@@ -9,6 +9,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { UserRole, ALL_ADMIN_ROLES } from '../common/enums/roles.enum';
 import { CreateStaffDto } from './dto/create-staff.dto';
 import { AuthService } from '../auth/auth.service';
+import { ErrorCode } from '../common/enums/error-codes.enum';
 
 type Database = PostgresJsDatabase<typeof schema>;
 const SALT_ROUNDS = 10;
@@ -816,7 +817,10 @@ export class AdminService {
     ];
 
     if (!ALLOWED_STAFF_ROLES.includes(dto.role as UserRole)) {
-      throw new BadRequestException('Invalid staff role provided.');
+      throw new BadRequestException({
+        message: 'Invalid staff role provided.',
+        errorCode: ErrorCode.INVALID_STAFF_ROLE,
+      });
     }
 
     const existing = await this.db.query.users.findFirst({
