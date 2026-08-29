@@ -402,19 +402,18 @@ function DayView({ posts, currentDate, onPostClick }) {
   )
 }
 
-// ─── AI Suggestion Card Component (Frees rating and handles selection) ──────────
+// ─── AI Suggestion Card Component (Instant rating & auto-synchronization) ─────
 function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
-  const [rating, setRating] = useState(suggestion.feedback?.rating || 0)
-  const [reaction, setReaction] = useState(suggestion.feedback?.reaction || null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isRated = !!suggestion.feedback
-  const stars = isRated ? suggestion.feedback.rating : rating
-  const finalReaction = isRated ? (suggestion.feedback.reaction === 'up' ? 'like' : 'dislike') : reaction
+  const feedback = suggestion.feedback || null
+  const stars = feedback?.rating || 0
+  const reaction = feedback?.reaction ? (feedback.reaction === 'up' ? 'like' : 'dislike') : null
+  const isRated = !!feedback
   const isEligible = isRated ? stars >= 3 : true
 
-  async function handleRate(selectedStars, selectedReaction) {
-    if (isRated || isSubmitting) return
+  async function handleSaveInstant(selectedStars, selectedReaction) {
+    if (isSubmitting) return
     setIsSubmitting(true)
     try {
       const fb = await saveSuggestionFeedback(
@@ -424,10 +423,20 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
       )
       onFeedbackSaved(suggestion.id, fb)
     } catch (err) {
-      alert(err.message || 'Failed to save feedback.')
+      alert(err?.response?.data?.message || err?.message || 'Failed to save feedback.')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  function handleStarClick(selectedStar) {
+    const reactionVal = selectedStar >= 3 ? 'like' : 'dislike'
+    handleSaveInstant(selectedStar, reactionVal)
+  }
+
+  function handleThumbsClick(reactionType) {
+    const starVal = reactionType === 'like' ? 5 : 2
+    handleSaveInstant(starVal, reactionType)
   }
 
   return (
@@ -453,72 +462,48 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
-        {/* Rating and reaction */}
-        <div className="flex items-center gap-2">
-          {isRated ? (
-            <div className="text-xs font-semibold text-primary-700 flex items-center gap-1.5 bg-primary-50 border border-primary-100 px-2 py-1 rounded">
-              <span>Rating saved:</span>
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <Star
-                    key={s}
-                    size={11}
-                    className={s <= stars ? 'fill-primary-600 text-primary-600' : 'text-gray-300'}
-                  />
-                ))}
-              </div>
-              <span className="uppercase font-bold text-[9px] text-primary-600">
-                ({finalReaction === 'like' ? '👍 Liked' : '👎 Disliked'})
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              {/* Star Picker */}
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setRating(s)}
-                    className="p-0.5 hover:scale-110 transition-transform"
-                  >
-                    <Star
-                      size={13}
-                      className={s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
-                    />
-                  </button>
-                ))}
-              </div>
-              {/* Reaction Buttons */}
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setReaction('like')}
-                  className={`p-1 rounded hover:bg-canvas transition-colors ${reaction === 'like' ? 'text-accent' : 'text-ink-muted'}`}
-                >
-                  <ThumbsUp size={13} className={reaction === 'like' ? 'fill-accent' : ''} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReaction('dislike')}
-                  className={`p-1 rounded hover:bg-canvas transition-colors ${reaction === 'dislike' ? 'text-danger' : 'text-ink-muted'}`}
-                >
-                  <ThumbsDown size={13} className={reaction === 'dislike' ? 'fill-danger' : ''} />
-                </button>
-              </div>
-              {rating > 0 && reaction && (
-                <Button
-                  size="xs"
-                  variant="primary"
-                  onClick={() => handleRate(rating, reaction)}
-                  disabled={isSubmitting}
-                  className="text-[10px] py-0.5 px-2 font-bold"
-                >
-                  Submit
-                </Button>
-              )}
-            </div>
-          )}
+        {/* Instant Rating and reaction (no Submit button) */}
+        <div className="flex items-center gap-3">
+          {/* Star Picker */}
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(s => (
+              <button
+                key={s}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleStarClick(s)}
+                className="p-0.5 hover:scale-110 transition-transform focus:outline-none cursor-pointer"
+                title={`Rate ${s} star${s > 1 ? 's' : ''}`}
+              >
+                <Star
+                  size={15}
+                  className={s <= stars ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                />
+              </button>
+            ))}
+          </div>
+
+          {/* Reaction Buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleThumbsClick('like')}
+              className={`p-1.5 rounded hover:bg-canvas transition-colors cursor-pointer ${reaction === 'like' ? 'text-accent bg-accent/10 font-bold' : 'text-ink-muted'}`}
+              title="Thumbs Up (5 stars)"
+            >
+              <ThumbsUp size={14} className={reaction === 'like' ? 'fill-accent' : ''} />
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleThumbsClick('dislike')}
+              className={`p-1.5 rounded hover:bg-canvas transition-colors cursor-pointer ${reaction === 'dislike' ? 'text-danger bg-danger/10 font-bold' : 'text-ink-muted'}`}
+              title="Thumbs Down (2 stars)"
+            >
+              <ThumbsDown size={14} className={reaction === 'dislike' ? 'fill-danger' : ''} />
+            </button>
+          </div>
         </div>
 
         {/* Action Button */}
@@ -535,6 +520,14 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
       </div>
     </Card>
   )
+}
+
+function isPostLockedForEdit(post) {
+  if (!post || !post.scheduledAt) return false
+  const scheduledTime = new Date(post.scheduledAt).getTime()
+  if (isNaN(scheduledTime)) return false
+  const currentTime = Date.now()
+  return (scheduledTime - currentTime) <= (5 * 60 * 1000)
 }
 
 // ─── Post Details Modal ────────────────────────────────────────────────────────
@@ -647,6 +640,10 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
 
   async function handleSaveEdits(e) {
     e.preventDefault()
+    if (isPostLockedForEdit(post)) {
+      alert('This post can no longer be edited because it is within 5 minutes of its scheduled posting time.')
+      return
+    }
     if (weekLimits.min && weekLimits.max && editDate) {
       if (editDate < weekLimits.min || editDate > weekLimits.max) {
         alert(`You can only reschedule this post to another date within the same week (${weekLimits.min} to ${weekLimits.max}).`)
@@ -728,6 +725,7 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
   const platform = getPlatformMeta(post.platform)
   const approval = getApprovalMeta(post.approvalStatus)
   const status = getStatusMeta(post.status)
+  const isLocked = isPostLockedForEdit(post)
 
   if (showSuggestions) {
     return (
@@ -751,12 +749,21 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
         {loadingSuggestions ? (
           <div className="py-16 text-center text-ink-muted">
             <RefreshCw className="animate-spin mx-auto mb-2 text-primary" size={24} />
-            <p className="text-sm font-medium">Generating 4 tailored suggestions...</p>
+            <p className="text-sm font-medium">Generating tailored suggestions...</p>
           </div>
         ) : errorSuggestions ? (
           <div className="p-4 text-center bg-red-50 text-danger border border-red-200 rounded">
             <p className="text-sm">{errorSuggestions}</p>
             <Button size="xs" onClick={loadSuggestions} className="mt-2 block mx-auto">Retry</Button>
+          </div>
+        ) : suggestions.length === 0 ? (
+          <div className="py-12 text-center text-ink-muted space-y-3">
+            <Sparkles className="mx-auto text-primary opacity-40" size={32} />
+            <p className="text-sm font-semibold text-ink">No suggestions available yet</p>
+            <p className="text-xs max-w-sm mx-auto">Click 'Regenerate Suggestions' to create AI suggestions for this post.</p>
+            <Button size="sm" variant="primary" onClick={handleRegenerate} disabled={regenerating}>
+              Regenerate Suggestions
+            </Button>
           </div>
         ) : (
           <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
@@ -855,7 +862,7 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
             <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isSaving}>
+            <Button type="submit" variant="primary" disabled={isSaving || isLocked}>
               {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
@@ -883,6 +890,11 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
         {post.aiGenerated && (
           <Badge tone="primary" className="flex items-center gap-1">
             <Sparkles size={10} /> AI Generated
+          </Badge>
+        )}
+        {isLocked && (
+          <Badge tone="warning" className="flex items-center gap-1">
+            <Lock size={10} /> Locked (5m limit)
           </Badge>
         )}
       </div>
@@ -941,10 +953,22 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
 
       {/* Actions Footer */}
       <div className="pt-4 border-t border-border flex flex-wrap justify-between items-center gap-3">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="font-semibold text-xs">
-            Edit Post
-          </Button>
+        <div className="flex gap-2 items-center">
+          {isLocked ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="font-semibold text-xs opacity-50 cursor-not-allowed border-amber-300 text-amber-700 bg-amber-50 flex items-center gap-1"
+              title="Editing disabled: Post is within 5 minutes of scheduled time or past"
+            >
+              <Lock size={12} className="text-amber-600" /> Locked (5m limit)
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="font-semibold text-xs">
+              Edit Post
+            </Button>
+          )}
           <Button
             variant="primary"
             size="sm"
@@ -1046,9 +1070,19 @@ export default function ContentCalendar() {
 
   // ── Derive the active post list based on tab ────────────────────────────────
   const activePosts = useMemo(() => {
-    if (activeTab === 'upcoming') return upcomingPosts
-    if (activeTab === 'published') return publishedPosts
-    return allPosts
+    let raw = allPosts
+    if (activeTab === 'upcoming') raw = upcomingPosts
+    else if (activeTab === 'published') raw = publishedPosts
+
+    const seen = new Set()
+    const result = []
+    for (const p of raw) {
+      if (p && p.id && !seen.has(p.id)) {
+        seen.add(p.id)
+        result.push(p)
+      }
+    }
+    return result
   }, [activeTab, allPosts, upcomingPosts, publishedPosts])
 
   // ── Calendar navigation ─────────────────────────────────────────────────────
@@ -1119,8 +1153,8 @@ export default function ContentCalendar() {
         text: 'Calendar generation started. Your AI-generated posts will appear shortly…',
       })
 
-      // Poll the job status every 5 seconds until GENERATED or FAILED
-      const MAX_POLLS = 60          // 5 min max (60 × 5s)
+      // Poll the job status every 5 seconds until GENERATED or FAILED (4 minutes timeout = 48 polls)
+      const MAX_POLLS = 48          // 4 min max (48 × 5s)
       let polls = 0
       const pollInterval = setInterval(async () => {
         polls += 1
@@ -1142,6 +1176,7 @@ export default function ContentCalendar() {
             setGenMessage({
               type: 'error',
               text: 'Calendar generation failed. Please try again or contact support.',
+              canRetry: true,
             })
           } else if (polls >= MAX_POLLS) {
             clearInterval(pollInterval)
@@ -1149,7 +1184,8 @@ export default function ContentCalendar() {
             setGenJobId(null)
             setGenMessage({
               type: 'error',
-              text: 'Generation is taking longer than expected. Refresh the page in a few minutes.',
+              text: 'Content calendar generation is taking longer than expected. Please try regenerating again.',
+              canRetry: true,
             })
           }
         } catch (_pollErr) {
@@ -1159,7 +1195,7 @@ export default function ContentCalendar() {
     } catch (err) {
       setGenLoading(false)
       const msg = err?.response?.data?.message || err?.message || 'Failed to start AI calendar generation.'
-      setGenMessage({ type: 'error', text: msg })
+      setGenMessage({ type: 'error', text: msg, canRetry: true })
     }
   }
 
@@ -1200,22 +1236,37 @@ export default function ContentCalendar() {
         {/* ── AI Generation status banner ── */}
         {genMessage && (
           <div
-            className={`mb-4 flex items-start gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${genMessage.type === 'success'
+            className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${genMessage.type === 'success'
                 ? 'border-green-200 bg-green-50 text-green-800'
                 : 'border-red-200 bg-red-50 text-red-800'
               }`}
           >
-            {genMessage.type === 'success'
-              ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
-              : <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />}
-            <span className="flex-1 leading-relaxed">{genMessage.text}</span>
-            <button
-              onClick={() => setGenMessage(null)}
-              className="ml-2 shrink-0 text-inherit opacity-60 hover:opacity-100 transition-opacity"
-              aria-label="Dismiss"
-            >
-              <XCircle size={14} />
-            </button>
+            <div className="flex items-center gap-3">
+              {genMessage.type === 'success'
+                ? <CheckCircle2 size={16} className="shrink-0 text-green-600" />
+                : <AlertCircle size={16} className="shrink-0 text-red-500" />}
+              <span className="leading-relaxed">{genMessage.text}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {genMessage.canRetry && (
+                <button
+                  onClick={() => {
+                    setGenMessage(null)
+                    setShowGenerateModal(true)
+                  }}
+                  className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition-colors cursor-pointer"
+                >
+                  Regenerate / Try Again
+                </button>
+              )}
+              <button
+                onClick={() => setGenMessage(null)}
+                className="text-inherit opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                aria-label="Dismiss"
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
           </div>
         )}
 
