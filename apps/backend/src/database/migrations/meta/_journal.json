@@ -127,6 +127,13 @@
       "when": 1787785317502,
       "tag": "0017_wide_moonstone",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1788019333091,
+      "tag": "0018_conscious_katie_power",
+      "breakpoints": true
     }
   ]
 }

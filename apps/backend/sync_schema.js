@@ -36,7 +36,8 @@ async function sync() {
         ADD COLUMN IF NOT EXISTS "email_verified_at" timestamp,
         ADD COLUMN IF NOT EXISTS "first_login_at" timestamp,
         ADD COLUMN IF NOT EXISTS "last_login_at" timestamp,
-        ADD COLUMN IF NOT EXISTS "suspended_at" timestamp;
+        ADD COLUMN IF NOT EXISTS "suspended_at" timestamp,
+        ADD COLUMN IF NOT EXISTS "deleted_at" timestamp;
     `);
 
     // 3. Add missing columns to kyc table

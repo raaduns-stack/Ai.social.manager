@@ -34,7 +34,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Create a new client account' })
   async register(@Body() dto: RegisterDto, @Res({ passthrough: true }) res: Response) {
     const data = await this.authService.register(dto);
-    if (data.refreshToken) {
+    if ('refreshToken' in data) {
       res.cookie('refreshToken', data.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -49,7 +49,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Log in with email and password' })
   async login(@Req() req: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
     const data = await this.authService.login(dto, req);
-    if (data.refreshToken) {
+    if ('refreshToken' in data) {
       res.cookie('refreshToken', data.refreshToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',

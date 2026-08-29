@@ -8,6 +8,7 @@ import { seedPlans as runPlansSeeding } from '../database/seeding';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { UserRole, ALL_ADMIN_ROLES } from '../common/enums/roles.enum';
 import { CreateStaffDto } from './dto/create-staff.dto';
+import { AuthService } from '../auth/auth.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 const SALT_ROUNDS = 10;
@@ -17,6 +18,7 @@ export class AdminService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly authService: AuthService,
   ) {}
 
   /**
@@ -500,41 +502,40 @@ export class AdminService {
     const passwordToHash = dto.password || 'SocialPilot@2026!';
     const passwordHash = await bcrypt.hash(passwordToHash, SALT_ROUNDS);
     const now = new Date();
-    const isEmailVerified = dto.accountStatus === 'ACTIVE' || dto.accountStatus === 'REGISTRATION_IN_PROGRESS';
-    const isFirstLogin = dto.accountStatus === 'ACTIVE';
+    const [user] = await this.db.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(schema.users)
+        .values({
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          businessName: dto.businessName ?? null,
+          phoneNumber: dto.phoneNumber ?? null,
+          country: dto.country ?? null,
+          role: dto.role || UserRole.USER,
+          accountManagerId: dto.accountManagerId ?? null,
+          registeredAt: now,
+        })
+        .returning();
 
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email: dto.email,
-        passwordHash,
-        fullName: dto.fullName,
-        businessName: dto.businessName ?? null,
-        phoneNumber: dto.phoneNumber ?? null,
-        country: dto.country ?? null,
-        role: dto.role || UserRole.USER,
-        accountStatus: dto.accountStatus || 'EMAIL_VERIFICATION_PENDING',
-        isActive: true,
-        isEmailVerified,
-        emailVerifiedAt: isEmailVerified ? now : null,
-        firstLoginAt: isFirstLogin ? now : null,
-        lastLoginAt: isFirstLogin ? now : null,
-        accountManagerId: dto.accountManagerId ?? null,
-        registeredAt: now,
-      })
-      .returning();
+      const targetStatus = dto.accountStatus || 'EMAIL_VERIFICATION_PENDING';
+      const isLogin = targetStatus === 'ACTIVE';
+      await this.authService.applyUserStatusTransition(createdUser.id, targetStatus as any, tx, isLogin);
 
-    // Assign default free plan if none exists
-    const freePlan = await this.db.query.plans.findFirst({
-      where: eq(schema.plans.slug, 'free'),
-    });
-    if (freePlan) {
-      await this.db.insert(schema.subscriptions).values({
-        userId: user.id,
-        planId: freePlan.id,
-        status: 'active',
+      // Assign default free plan if none exists
+      const freePlan = await tx.query.plans.findFirst({
+        where: eq(schema.plans.slug, 'free'),
       });
-    }
+      if (freePlan) {
+        await tx.insert(schema.subscriptions).values({
+          userId: createdUser.id,
+          planId: freePlan.id,
+          status: 'active',
+        });
+      }
+
+      return [createdUser];
+    });
 
     await this.activityLogsService.record({
       userId: user.id,
@@ -604,22 +605,8 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    const now = new Date();
-    const newStatus = suspend
-      ? 'SUSPENDED'
-      : (user.firstLoginAt
-        ? 'ACTIVE'
-        : (user.isEmailVerified ? 'EMAIL_VERIFICATION_IN_PROGRESS' : 'EMAIL_VERIFICATION_PENDING'));
-
-    await this.db
-      .update(schema.users)
-      .set({
-        accountStatus: newStatus as any,
-        isActive: !suspend,
-        suspendedAt: suspend ? now : null,
-        updatedAt: now,
-      })
-      .where(eq(schema.users.id, userId));
+    const targetStatus = suspend ? 'SUSPENDED' : 'ACTIVE';
+    const updatedUser = await this.authService.applyUserStatusTransition(userId, targetStatus);
 
     await this.activityLogsService.record({
       userId,
@@ -631,7 +618,7 @@ export class AdminService {
         : `Admin activated user account: ${user.email}`,
     });
 
-    return { success: true, accountStatus: newStatus, isActive: !suspend };
+    return { success: true, accountStatus: updatedUser.accountStatus, isActive: updatedUser.isActive };
   }
 
   /**
@@ -653,14 +640,7 @@ export class AdminService {
       description: `Admin soft-deleted user account: ${user.email}`,
     });
 
-    await this.db
-      .update(schema.users)
-      .set({
-        accountStatus: 'DELETED',
-        isActive: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.users.id, userId));
+    await this.authService.applyUserStatusTransition(userId, 'DELETED');
 
     return { success: true };
   }
@@ -847,17 +827,21 @@ export class AdminService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email: dto.email,
-        passwordHash,
-        fullName: dto.fullName,
-        role: dto.role as any,
-        isEmailVerified: true,
-        isActive: true,
-      })
-      .returning();
+    const [user] = await this.db.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(schema.users)
+        .values({
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          role: dto.role as any,
+        })
+        .returning();
+
+      await this.authService.applyUserStatusTransition(createdUser.id, 'ACTIVE', tx);
+
+      return [createdUser];
+    });
 
     // Record new staff registration
     void this.activityLogsService.record({

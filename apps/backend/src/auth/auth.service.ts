@@ -63,6 +63,32 @@ export class AuthService {
       where: eq(schema.users.email, dto.email),
     });
     if (existing) {
+      if (existing.accountStatus === 'EMAIL_VERIFICATION_PENDING') {
+        const lastSent = this.resendLimits.get(dto.email);
+        const now = Date.now();
+        if (lastSent && now - lastSent < 30000) {
+          const secondsLeft = Math.ceil((30000 - (now - lastSent)) / 1000);
+          throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting a new code.`);
+        }
+        this.resendLimits.set(dto.email, now);
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        const [updatedUser] = await this.db
+          .update(schema.users)
+          .set({
+            emailVerificationCode: code,
+            emailVerificationExpiresAt: expiresAt,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.users.id, existing.id))
+          .returning();
+
+        await this.mailerService.sendVerificationCode(updatedUser, code);
+
+        return { requiresVerification: true, email: existing.email };
+      }
       throw new ConflictException('An account with this email already exists');
     }
 
@@ -71,38 +97,44 @@ export class AuthService {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
 
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email: dto.email,
-        passwordHash,
-        fullName: dto.fullName,
-        businessName: dto.businessName,
-        phoneNumber: dto.phoneNumber,
-        country: dto.country,
-        accountStatus: 'EMAIL_VERIFICATION_PENDING',
-        isActive: true,
-        isEmailVerified: false,
-        emailVerificationCode: code,
-        emailVerificationExpiresAt: expiresAt,
-        registeredAt: new Date(),
-      })
-      .returning();
+    const [user] = await this.db.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(schema.users)
+        .values({
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          businessName: dto.businessName,
+          phoneNumber: dto.phoneNumber,
+          country: dto.country,
+          emailVerificationCode: code,
+          emailVerificationExpiresAt: expiresAt,
+          registeredAt: new Date(),
+        })
+        .returning();
 
-    // Auto-assign the free plan
-    const freePlan = await this.db.query.plans.findFirst({
-      where: eq(schema.plans.slug, 'free'),
+      await this.applyUserStatusTransition(createdUser.id, 'EMAIL_VERIFICATION_PENDING', tx);
+
+      return [createdUser];
     });
-    if (!freePlan) {
-      throw new InternalServerErrorException(
-        'Free plan not found. Please seed a plan with slug "free" before accepting registrations.',
-      );
-    }
 
-    await this.db.insert(schema.subscriptions).values({
-      userId: user.id,
-      planId: freePlan.id,
-      status: 'active',
+    // Auto-assign the free plan (within transaction context)
+    const [userWithPlan] = await this.db.transaction(async (tx) => {
+      const freePlan = await tx.query.plans.findFirst({
+        where: eq(schema.plans.slug, 'free'),
+      });
+      if (!freePlan) {
+        throw new InternalServerErrorException(
+          'Free plan not found. Please seed a plan with slug "free" before accepting registrations.',
+        );
+      }
+
+      await tx.insert(schema.subscriptions).values({
+        userId: user.id,
+        planId: freePlan.id,
+        status: 'active',
+      });
+      return [freePlan];
     });
 
     await this.mailerService.sendVerificationCode(user, code);
@@ -181,49 +213,91 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    if (user.accountStatus === 'SUSPENDED' || !user.isActive) {
-      console.log('[DEBUG Auth] User is inactive or suspended:', dto.email);
-      await this.loginHistoryService.record({
-        ...baseAudit,
-        userId: user.id,
-        status: LoginStatus.FAILURE,
-        failureReason: LoginFailureReason.ACCOUNT_INACTIVE,
-      });
-      throw new UnauthorizedException('This account has been suspended');
-    }
+    switch (user.accountStatus) {
+      case 'SUSPENDED': {
+        await this.loginHistoryService.record({
+          ...baseAudit,
+          userId: user.id,
+          status: LoginStatus.FAILURE,
+          failureReason: LoginFailureReason.ACCOUNT_INACTIVE,
+        });
+        throw new ForbiddenException({
+          statusCode: 403,
+          message: 'This account has been suspended',
+          errorCode: 'ACCOUNT_SUSPENDED',
+        });
+      }
 
-    if (!user.isEmailVerified || user.accountStatus === 'EMAIL_VERIFICATION_PENDING') {
-      console.log('[DEBUG Auth] User email not verified:', dto.email);
-      await this.loginHistoryService.record({
-        ...baseAudit,
-        userId: user.id,
-        status: LoginStatus.FAILURE,
-        failureReason: LoginFailureReason.EMAIL_NOT_VERIFIED,
-      });
-      throw new ForbiddenException({
-        statusCode: 403,
-        message: 'Your email address is not verified. Please verify your email to log in.',
-        errorCode: 'EMAIL_NOT_VERIFIED',
-      });
+      case 'DELETED': {
+        await this.loginHistoryService.record({
+          ...baseAudit,
+          userId: user.id,
+          status: LoginStatus.FAILURE,
+          failureReason: LoginFailureReason.ACCOUNT_INACTIVE,
+        });
+        throw new ForbiddenException({
+          statusCode: 403,
+          message: 'This account has been deleted',
+          errorCode: 'ACCOUNT_DELETED',
+        });
+      }
+
+      case 'EMAIL_VERIFICATION_PENDING': {
+        await this.loginHistoryService.record({
+          ...baseAudit,
+          userId: user.id,
+          status: LoginStatus.FAILURE,
+          failureReason: LoginFailureReason.EMAIL_NOT_VERIFIED,
+        });
+
+        const lastSent = this.resendLimits.get(user.email);
+        const now = Date.now();
+        if (lastSent && now - lastSent < 30000) {
+          const secondsLeft = Math.ceil((30000 - (now - lastSent)) / 1000);
+          throw new BadRequestException(`Please wait ${secondsLeft} seconds before requesting a new code.`);
+        }
+        this.resendLimits.set(user.email, now);
+
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+        const [updatedUser] = await this.db
+          .update(schema.users)
+          .set({
+            emailVerificationCode: code,
+            emailVerificationExpiresAt: expiresAt,
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.users.id, user.id))
+          .returning();
+
+        await this.mailerService.sendVerificationCode(updatedUser, code);
+
+        return { requiresVerification: true, email: user.email };
+      }
+
+      case 'REGISTRATION_IN_PROGRESS':
+      case 'ACTIVE': {
+        break;
+      }
+
+      default: {
+        await this.loginHistoryService.record({
+          ...baseAudit,
+          userId: user.id,
+          status: LoginStatus.FAILURE,
+          failureReason: LoginFailureReason.ACCOUNT_INACTIVE,
+        });
+        throw new ForbiddenException({
+          statusCode: 403,
+          message: 'Invalid account status',
+          errorCode: 'ACCOUNT_STATUS_INVALID',
+        });
+      }
     }
 
     // All checks passed — update login timestamps and set status to ACTIVE if needed
-    const now = new Date();
-    const updatePayload: any = {
-      lastLoginAt: now,
-      accountStatus: 'ACTIVE',
-      isActive: true,
-      updatedAt: now,
-    };
-    if (!user.firstLoginAt) {
-      updatePayload.firstLoginAt = now;
-    }
-
-    const [updatedUser] = await this.db
-      .update(schema.users)
-      .set(updatePayload)
-      .where(eq(schema.users.id, user.id))
-      .returning();
+    const updatedUser = await this.applyUserStatusTransition(user.id, 'ACTIVE', undefined, true);
 
     await this.loginHistoryService.record({
       ...baseAudit,
@@ -264,24 +338,26 @@ export class AuthService {
       throw new BadRequestException('Verification code has expired');
     }
 
-    const now = new Date();
-    const [updatedUser] = await this.db
-      .update(schema.users)
-      .set({
-        isEmailVerified: true,
-        emailVerifiedAt: now,
-        accountStatus: 'REGISTRATION_IN_PROGRESS',
-        isActive: true,
-        emailVerificationCode: null,
-        emailVerificationExpiresAt: null,
-        updatedAt: now,
-      })
-      .where(eq(schema.users.id, user.id))
-      .returning();
+    const updatedUser = await this.db.transaction(async (tx) => {
+      await tx
+        .update(schema.users)
+        .set({
+          emailVerificationCode: null,
+          emailVerificationExpiresAt: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.users.id, user.id));
+
+      return await this.applyUserStatusTransition(user.id, 'REGISTRATION_IN_PROGRESS', tx);
+    });
 
     await this.mailerService.sendWelcomeEmail(updatedUser);
 
-    return this.issueTokens(updatedUser);
+    return {
+      success: true,
+      message: 'Email successfully verified. Please log in to complete your registration.',
+      redirectTo: '/login',
+    };
   }
 
   async resendVerification(dto: ResendVerificationDto) {
@@ -518,6 +594,76 @@ export class AuthService {
     ]);
 
     return { accessToken, refreshToken };
+  }
+
+  async applyUserStatusTransition(
+    userId: string,
+    newStatus: 'EMAIL_VERIFICATION_PENDING' | 'REGISTRATION_IN_PROGRESS' | 'ACTIVE' | 'SUSPENDED' | 'DELETED',
+    tx?: any,
+    isLogin = false,
+  ): Promise<schema.User> {
+    const executor = tx || this.db;
+    const now = new Date();
+    const user = await executor.query.users.findFirst({
+      where: eq(schema.users.id, userId),
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    const updateData: any = {
+      updatedAt: now,
+    };
+
+    switch (newStatus) {
+      case 'EMAIL_VERIFICATION_PENDING':
+        updateData.accountStatus = 'EMAIL_VERIFICATION_PENDING';
+        updateData.isActive = false;
+        updateData.isEmailVerified = false;
+        break;
+
+      case 'REGISTRATION_IN_PROGRESS':
+        updateData.accountStatus = 'REGISTRATION_IN_PROGRESS';
+        updateData.isEmailVerified = true;
+        updateData.emailVerifiedAt = now;
+        updateData.isActive = false;
+        break;
+
+      case 'ACTIVE':
+        updateData.accountStatus = 'ACTIVE';
+        updateData.isActive = true;
+        updateData.suspendedAt = null;
+        if (isLogin) {
+          updateData.lastLoginAt = now;
+          if (!user.firstLoginAt) {
+            updateData.firstLoginAt = now;
+          }
+        }
+        break;
+
+      case 'SUSPENDED':
+        updateData.accountStatus = 'SUSPENDED';
+        updateData.isActive = false;
+        updateData.suspendedAt = now;
+        break;
+
+      case 'DELETED':
+        updateData.accountStatus = 'DELETED';
+        updateData.isActive = false;
+        updateData.deletedAt = now;
+        break;
+
+      default:
+        throw new BadRequestException(`Invalid status transition: ${newStatus}`);
+    }
+
+    const [updatedUser] = await executor
+      .update(schema.users)
+      .set(updateData)
+      .where(eq(schema.users.id, userId))
+      .returning();
+
+    return updatedUser;
   }
 }
 
