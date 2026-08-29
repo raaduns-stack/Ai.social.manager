@@ -77,6 +77,9 @@ export function AuthProvider({ children }) {
    */
   const login = async (email, password) => {
     const response = await apiClient.post('/auth/login', { email, password })
+    if (response.data?.requiresVerification) {
+      return response.data
+    }
     const { user: loggedInUser, accessToken, refreshToken } = response.data
     store.setAuth(loggedInUser, accessToken, refreshToken)
     return loggedInUser
@@ -100,6 +103,9 @@ export function AuthProvider({ children }) {
       fullName,
       businessName,
     })
+    if (response.data?.requiresVerification) {
+      return response.data
+    }
     const { user: registeredUser, accessToken, refreshToken } = response.data
     store.setAuth(registeredUser, accessToken, refreshToken)
     return registeredUser
