@@ -58,10 +58,35 @@ export default function Login() {
     setApiError(null)
 
     try {
-      await login(formData.email, formData.password)
+      const res = await login(formData.email, formData.password)
+      if (res?.requiresVerification) {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: "We've sent a new verification code to your email.",
+              type: 'success',
+            },
+          })
+        )
+        navigate(`/verify-email?email=${encodeURIComponent(res.email)}`)
+        return
+      }
       trackEvent('login', { method: 'email' })
       navigate('/dashboard')
     } catch (err) {
+      const data = err?.response?.data
+      if (data?.requiresVerification) {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: "We've sent a new verification code to your email.",
+              type: 'success',
+            },
+          })
+        )
+        navigate(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        return
+      }
       setApiError(err)
     } finally {
       setLoading(false)
