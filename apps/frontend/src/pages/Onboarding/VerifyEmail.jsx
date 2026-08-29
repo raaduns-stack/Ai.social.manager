@@ -100,13 +100,19 @@ export default function VerifyEmail() {
     setLoading(true)
     setError('')
     try {
-      const response = await apiClient.post('/auth/verify-email', {
+      await apiClient.post('/auth/verify-email', {
         email,
         code: fullCode,
       })
-      const { user: verifiedUser, accessToken, refreshToken } = response.data
-      setAuth(verifiedUser, accessToken, refreshToken)
-      navigate('/choose-plan')
+      window.dispatchEvent(
+        new CustomEvent('app-toast', {
+          detail: {
+            message: 'Email verified successfully! Please log in to complete registration and activate your account.',
+            type: 'success',
+          },
+        })
+      )
+      navigate('/login')
     } catch (err) {
       setError(err?.message || 'Verification failed. Please check the code and try again.')
     } finally {

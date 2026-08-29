@@ -11,8 +11,8 @@ async function sync() {
     await sql.unsafe(`
       DO $$ BEGIN
         CREATE TYPE "account_status" AS ENUM (
-          'REGISTRATION_IN_PROGRESS',
           'EMAIL_VERIFICATION_PENDING',
+          'REGISTRATION_IN_PROGRESS',
           'ACTIVE',
           'SUSPENDED',
           'DELETED'
@@ -20,6 +20,8 @@ async function sync() {
       EXCEPTION
         WHEN duplicate_object THEN null;
       END $$;
+      ALTER TYPE "account_status" ADD VALUE IF NOT EXISTS 'REGISTRATION_IN_PROGRESS';
+      UPDATE users SET account_status = 'REGISTRATION_IN_PROGRESS' WHERE account_status::text = 'EMAIL_VERIFICATION_IN_PROGRESS';
     `);
 
     // 2. Add missing columns to users table

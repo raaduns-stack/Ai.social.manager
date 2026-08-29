@@ -9,5 +9,6 @@ import { ContentSuggestionsService } from './content-suggestions.service';
 @Module({
   controllers: [ContentSuggestionsController],
   providers: [ContentSuggestionsService],
+  exports: [ContentSuggestionsService],
 })
 export class ContentSuggestionsModule {}
