@@ -11,8 +11,8 @@ export const roleEnum = pgEnum('role', [
 ]);
 
 export const accountStatusEnum = pgEnum('account_status', [
-  'REGISTRATION_IN_PROGRESS',
   'EMAIL_VERIFICATION_PENDING',
+  'REGISTRATION_IN_PROGRESS',
   'ACTIVE',
   'SUSPENDED',
   'DELETED',

@@ -609,7 +609,7 @@ export class AdminService {
       ? 'SUSPENDED'
       : (user.firstLoginAt
         ? 'ACTIVE'
-        : (user.isEmailVerified ? 'REGISTRATION_IN_PROGRESS' : 'EMAIL_VERIFICATION_PENDING'));
+        : (user.isEmailVerified ? 'EMAIL_VERIFICATION_IN_PROGRESS' : 'EMAIL_VERIFICATION_PENDING'));
 
     await this.db
       .update(schema.users)

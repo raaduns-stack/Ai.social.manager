@@ -13,6 +13,7 @@ import * as schema from '../database/schema';
 import { ContentCalendarPost } from '../database/schema/content-calendar.schema';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CustomerProfileService } from '../settings/customer-profile/customer-profile.service';
+import { ContentSuggestionsService } from '../content-suggestions/content-suggestions.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -72,6 +73,7 @@ export class CalendarService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly configService: ConfigService,
     private readonly customerProfileService: CustomerProfileService,
+    private readonly contentSuggestionsService: ContentSuggestionsService,
   ) { }
 
   getWeekRange(date: Date) {
@@ -370,6 +372,16 @@ export class CalendarService {
     dto: UpdateCalendarPostDto,
   ): Promise<ContentCalendarPost> {
     const post = await this.findOneForUser(id, userId);
+
+    // Enforce 5-minute lock: posts within 5 minutes of scheduled time or past cannot be edited
+    if (post.scheduledAt) {
+      const timeRemainingMs = new Date(post.scheduledAt).getTime() - Date.now();
+      if (timeRemainingMs <= 5 * 60 * 1000) {
+        throw new BadRequestException(
+          'This post can no longer be edited because it is within 5 minutes of its scheduled posting time.'
+        );
+      }
+    }
 
     if (dto.platform) {
       const connected = await this.getConnectedPlatformsForUser(userId);
@@ -1098,6 +1110,15 @@ export class CalendarService {
           updatedAt: new Date(),
         })
         .where(eq(schema.calendarGenerationJobs.id, job.id));
+
+      // Trigger AI suggestion generation in background for the newly saved calendar posts
+      if (this.contentSuggestionsService && savedPostIds.length > 0) {
+        for (const pId of savedPostIds) {
+          void this.contentSuggestionsService.triggerN8nGeneration(pId, job.userId).catch(err => {
+            console.error('[CalendarService] Background AI suggestion trigger error:', err);
+          });
+        }
+      }
 
       return {
         success: true,
