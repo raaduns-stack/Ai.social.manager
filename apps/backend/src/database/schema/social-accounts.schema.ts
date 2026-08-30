@@ -12,6 +12,8 @@ export const socialPlatformEnum = pgEnum('social_platform', [
   'linkedin',
   'tumblr',
   'discord',
+
+  'snapchat',
 ]);
 
 // Enum for connection status
@@ -29,6 +31,10 @@ export const social_accounts = pgTable('social_accounts', {
   platform: socialPlatformEnum('platform').notNull(),
   accountHandle: varchar('account_handle', { length: 255 }).notNull(),
   status: socialStatusEnum('status').notNull(),
+  externalAccountId: varchar('external_account_id', { length: 255 }),
+  accessTokenEncrypted: varchar('access_token_encrypted', { length: 1024 }),
+  refreshTokenEncrypted: varchar('refresh_token_encrypted', { length: 1024 }),
+  profileImageUrl: varchar('profile_image_url', { length: 1024 }),
   connectedAt: timestamp('connected_at'),
   tokenExpiresAt: timestamp('token_expires_at'),
   providerUserId: varchar('provider_user_id', { length: 255 }),

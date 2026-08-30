@@ -204,6 +204,7 @@ apiClient.interceptors.response.use(
                     headers: {
                       Authorization: `Bearer ${adminRefreshToken}`,
                     },
+                    withCredentials: true,
                   }
                 )
                 .then((response) => {
@@ -265,6 +266,7 @@ apiClient.interceptors.response.use(
                     headers: {
                       Authorization: `Bearer ${refreshToken}`,
                     },
+                    withCredentials: true,
                   }
                 )
                 .then((response) => {

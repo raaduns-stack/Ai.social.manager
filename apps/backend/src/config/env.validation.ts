@@ -165,6 +165,30 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   TUMBLR_CALLBACK_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  SNAPCHAT_CLIENT_ID?: string;
+
+  @IsString()
+  @IsOptional()
+  SNAPCHAT_CLIENT_SECRET?: string;
+
+  @IsString()
+  @IsOptional()
+  SNAPCHAT_REDIRECT_URI?: string;
+
+  @IsString()
+  @IsOptional()
+  SNAPCHAT_AUTH_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  SNAPCHAT_TOKEN_URL?: string;
+
+  @IsString()
+  @IsOptional()
+  SNAPCHAT_SCOPES?: string;
 }
 
 /**
