@@ -21,6 +21,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Request interceptor to attach Bearer token
@@ -120,6 +121,7 @@ apiClient.interceptors.response.use(
                     headers: {
                       Authorization: `Bearer ${adminRefreshToken}`,
                     },
+                    withCredentials: true,
                   }
                 )
                 .then((response) => {
@@ -181,6 +183,7 @@ apiClient.interceptors.response.use(
                     headers: {
                       Authorization: `Bearer ${refreshToken}`,
                     },
+                    withCredentials: true,
                   }
                 )
                 .then((response) => {

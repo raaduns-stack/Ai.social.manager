@@ -84,5 +84,20 @@ export default () => ({
     consumerSecret: process.env.TUMBLR_CONSUMER_SECRET,
     callbackUrl: process.env.TUMBLR_CALLBACK_URL ?? `${defaultBackendUrl}/${defaultApiPrefix}/auth/tumblr/callback`,
   },
+
+  snapchat: {
+    clientId: process.env.SNAPCHAT_CLIENT_ID,
+    clientSecret: process.env.SNAPCHAT_CLIENT_SECRET,
+    redirectUri:
+      process.env.SNAPCHAT_REDIRECT_URI ??
+      'http://localhost:4000/api/social-accounts/snapchat/callback',
+    authUrl:
+      process.env.SNAPCHAT_AUTH_URL ??
+      'https://accounts.snapchat.com/login/oauth2/authorize',
+    tokenUrl:
+      process.env.SNAPCHAT_TOKEN_URL ??
+      'https://accounts.snapchat.com/login/oauth2/access_token',
+    scope: process.env.SNAPCHAT_SCOPES ?? 'snapchat-profile-api',
+  },
 });
 

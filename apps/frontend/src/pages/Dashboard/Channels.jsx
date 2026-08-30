@@ -15,6 +15,7 @@ import { trackEvent } from '../../lib/analytics'
 // KYC overlay — rendered when user's KYC is not yet approved
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
+import { useSearchParams } from 'react-router-dom'
 import {
   MessageSquare,
   Camera,
@@ -22,6 +23,7 @@ import {
   Linkedin,
   Youtube,
   Facebook,
+  Ghost,
   Plus,
   RefreshCw,
   Link,
@@ -125,6 +127,8 @@ export default function Channels() {
         return 'Tumblr Blog';
       case 'discord':
         return 'Discord Channel';
+      case 'snapchat':
+        return 'Snapchat';
       default:
         return platform;
     }
@@ -202,6 +206,23 @@ export default function Channels() {
   const [newHandle, setNewHandle] = useState('')
   const [connectError, setConnectError] = useState('')
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [connectLoading, setConnectLoading] = useState(false)
+
+  // Detect post-OAuth callback query params: ?connected=snapchat or ?snapchat_error=...
+  const [searchParams, setSearchParams] = useSearchParams()
+  useEffect(() => {
+    const connected = searchParams.get('connected')
+    const snapError = searchParams.get('snapchat_error')
+    if (connected === 'snapchat') {
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Snapchat connected successfully!', type: 'success' } }))
+      fetchChannels()
+      setSearchParams({}, { replace: true })
+    } else if (snapError) {
+      window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: `Snapchat connection failed: ${decodeURIComponent(snapError)}`, type: 'error' } }))
+      setSearchParams({}, { replace: true })
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Dynamically compute stats from state
   // Stats will recompute automatically when channels change
@@ -252,11 +273,35 @@ export default function Channels() {
           icon: <MessageSquare size={24} />,
           style: { backgroundColor: '#5865F2' },
         }
+      case 'snapchat':
+        return {
+          icon: <Ghost size={24} />,
+          style: { backgroundColor: '#FFFC00', color: '#000000' },
+        }
       default:
         return {
           icon: <Link size={24} />,
           style: { backgroundColor: '#FF6600' },
         }
+    }
+  }
+
+  /** Initiate Snapchat OAuth: ask backend for the auth URL, then redirect the browser. */
+  const handleSnapchatConnect = async () => {
+    setConnectLoading(true)
+    setConnectError('')
+    try {
+      const res = await apiClient.get('/social-accounts/snapchat/connect?json=true')
+      const { url } = res.data
+      if (!url) throw new Error('No authorization URL returned by the server.')
+      // Close modal before redirecting so it doesn't flash on return
+      setIsConnectModalOpen(false)
+      window.location.href = url
+    } catch (err) {
+      const msg = err?.message || 'Failed to start Snapchat OAuth. Please try again.'
+      setConnectError(msg)
+    } finally {
+      setConnectLoading(false)
     }
   }
 
@@ -300,7 +345,21 @@ export default function Channels() {
           console.error('Failed to disconnect channel:', error);
         });
     } else {
-      // Connect or reconnect channel
+      // For Snapchat reconnect, re-trigger OAuth instead of using a handle prompt
+      if (channel?.platform === 'snapchat') {
+        apiClient.get('/social-accounts/snapchat/connect?json=true')
+          .then((res) => {
+            const { url } = res.data
+            if (url) window.location.href = url
+          })
+          .catch((err) => {
+            console.error('Failed to get Snapchat auth URL:', err)
+            window.dispatchEvent(new CustomEvent('app-toast', { detail: { message: 'Failed to start Snapchat reconnect. Please try again.', type: 'error' } }))
+          })
+        return
+      }
+
+      // Connect or reconnect channel (non-Snapchat)
       const handleInput = prompt('Enter account handle/name to link:', '@');
       if (handleInput && handleInput.trim() !== '' && handleInput !== '@') {
         if (channel && channel.id) {
@@ -352,6 +411,11 @@ export default function Channels() {
       startDiscordOAuth();
       setIsConnectModalOpen(false);
       return;
+
+    // Snapchat uses OAuth redirect — bypass handle form
+    if (selectedPlatform === 'snapchat') {
+      handleSnapchatConnect()
+      return
     }
 
     if (!newHandle.trim()) {
@@ -517,6 +581,7 @@ export default function Channels() {
               {channels.map((channel) => {
                 const details = getPlatformDetails(channel.platform)
                 const isConnected = channel.status === 'Connected'
+                const isSnapchat = channel.platform === 'snapchat'
                 return (
                   <Card
                      key={channel.id}
@@ -527,7 +592,7 @@ export default function Channels() {
                     <div>
                       <div className="flex justify-between items-start mb-6">
                         <div
-                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-soft"
+                          className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-soft ${isSnapchat ? 'text-black' : 'text-white'}`}
                           style={details.style}
                         >
                           {details.icon}
@@ -621,7 +686,7 @@ export default function Channels() {
                 <label className="text-sm font-medium text-ink">Choose Social Platform</label>
                 <select
                   value={selectedPlatform}
-                  onChange={(e) => setSelectedPlatform(e.target.value)}
+                  onChange={(e) => { setSelectedPlatform(e.target.value); setConnectError(''); setNewHandle(''); }}
                   className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="instagram">Instagram Business</option>
@@ -632,10 +697,15 @@ export default function Channels() {
                   <option value="youtube">YouTube Studio</option>
                   <option value="facebook">Facebook Page</option>
                   <option value="tumblr">Tumblr Blog</option>
+                  <option value="snapchat">Snapchat (Public Profile)</option>
                 </select>
               </div>
 
-              {selectedPlatform !== 'tumblr' && selectedPlatform !== 'discord' && (
+              {selectedPlatform === 'snapchat' ? (
+                <div className="rounded-control border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900 leading-relaxed">
+                  <strong>Snapchat uses OAuth.</strong> Clicking Connect will redirect you to Snapchat to authorise access to your Public Profile. No handle entry is required.
+                </div>
+              ) : selectedPlatform !== 'tumblr' && selectedPlatform !== 'discord' && (
                 <Input
                   label="Account Handle or Page Name"
                   required
@@ -654,11 +724,12 @@ export default function Channels() {
                   type="button"
                   variant="outline"
                   onClick={() => setIsConnectModalOpen(false)}
+                  disabled={connectLoading}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" variant="primary">
-                  Connect Account
+                <Button type="submit" variant="primary" disabled={connectLoading}>
+                  {connectLoading ? 'Redirecting...' : selectedPlatform === 'snapchat' ? 'Connect via Snapchat' : 'Connect Account'}
                 </Button>
               </div>
             </form>
@@ -667,4 +738,6 @@ export default function Channels() {
       </div>
     </div>
   )
+}
+
 }
