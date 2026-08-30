@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -13,6 +14,7 @@ import * as schema from '../database/schema';
 import { ContentCalendarPost } from '../database/schema/content-calendar.schema';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CustomerProfileService } from '../settings/customer-profile/customer-profile.service';
+import { ContentSuggestionsService } from '../content-suggestions/content-suggestions.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -20,7 +22,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 export interface CreateCalendarPostDto {
   title: string;
   caption: string;
-  platform: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
+  platform: string;
   scheduledAt?: string;   // ISO 8601 string
   mediaUrl?: string;
   hashtags?: string[];
@@ -31,7 +33,7 @@ export interface CreateCalendarPostDto {
 export interface UpdateCalendarPostDto {
   title?: string;
   caption?: string;
-  platform?: 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook';
+  platform?: string;
   scheduledAt?: string | null;
   scheduledDate?: string | null;
   scheduledTime?: string | null;
@@ -47,46 +49,50 @@ export interface UpdateApprovalDto {
   adminNotes?: string;
 }
 
-const CALENDAR_TO_DB_PLATFORM: Record<string, string> = {
-  'Instagram': 'instagram',
-  'LinkedIn': 'linkedin',
-  'X / Twitter': 'x',
-  'TikTok': 'tiktok',
-  'Facebook': 'facebook',
-};
-
-const DB_TO_CALENDAR_PLATFORM: Record<string, string> = {
-  'instagram': 'Instagram',
-  'linkedin': 'LinkedIn',
-  'x': 'X / Twitter',
-  'tiktok': 'TikTok',
-  'facebook': 'Facebook',
-};
+export function normalizePlatformName(platform: string): string {
+  if (!platform) return platform;
+  const p = platform.trim();
+  const lower = p.toLowerCase();
+  if (lower === 'instagram') return 'Instagram';
+  if (lower === 'linkedin') return 'LinkedIn';
+  if (lower === 'x' || lower === 'twitter' || lower === 'x / twitter') return 'X / Twitter';
+  if (lower === 'tiktok') return 'TikTok';
+  if (lower === 'facebook') return 'Facebook';
+  if (lower === 'discord') return 'Discord';
+  if (lower === 'youtube') return 'YouTube';
+  if (lower === 'pinterest') return 'Pinterest';
+  if (lower === 'tumblr') return 'Tumblr';
+  if (lower === 'snapchat') return 'Snapchat';
+  return p.charAt(0).toUpperCase() + p.slice(1);
+}
 
 @Injectable()
 export class CalendarService {
+  private readonly logger = new Logger(CalendarService.name);
+
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly configService: ConfigService,
     private readonly customerProfileService: CustomerProfileService,
+    private readonly contentSuggestionsService: ContentSuggestionsService,
   ) { }
 
   getWeekRange(date: Date) {
     const d = new Date(date);
     const day = d.getDay(); // 0 = Sunday, 1 = Monday, etc.
-    
+
     // Start of week (Sunday 00:00:00.000)
     const start = new Date(d);
     start.setDate(d.getDate() - day);
     start.setHours(0, 0, 0, 0);
-    
+
     // End of week (Saturday 23:59:59.999)
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);
-    
+
     return { start, end };
   }
 
@@ -98,8 +104,24 @@ export class CalendarService {
       ),
     });
     return accounts
-      .map(acc => DB_TO_CALENDAR_PLATFORM[acc.platform])
+      .map(acc => normalizePlatformName(acc.platform))
       .filter(Boolean);
+  }
+
+  async getConnectedAccountsForUser(userId: string) {
+    const accounts = await this.db.query.social_accounts.findMany({
+      where: and(
+        eq(schema.social_accounts.userId, userId),
+        eq(schema.social_accounts.status, 'connected'),
+      ),
+    });
+    return accounts.map(acc => ({
+      id: acc.id,
+      platform: normalizePlatformName(acc.platform),
+      accountHandle: acc.accountHandle,
+      status: acc.status,
+      connectedAt: acc.connectedAt,
+    }));
   }
 
   async checkWeeklyPostLimit(userId: string, targetDate: Date, postId?: string) {
@@ -315,14 +337,15 @@ export class CalendarService {
   ): Promise<ContentCalendarPost> {
     // Validate platform is connected
     const connected = await this.getConnectedPlatformsForUser(userId);
-    if (!connected.includes(dto.platform)) {
+    const targetPlatform = normalizePlatformName(dto.platform);
+    const isConnected = connected.some(p => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase());
+    if (!isConnected) {
       throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
     }
 
     // Enforce monthly post limits on creation
     if (dto.scheduledAt) {
       await this.checkPostLimit(userId, new Date(dto.scheduledAt));
-      await this.checkWeeklyPostLimit(userId, new Date(dto.scheduledAt));
     }
 
     const [post] = await this.db
@@ -331,7 +354,7 @@ export class CalendarService {
         userId,
         title: dto.title,
         caption: dto.caption,
-        platform: dto.platform,
+        platform: targetPlatform as any,
         status: dto.scheduledAt ? 'SCHEDULED' : 'DRAFT',
         approvalStatus: 'PENDING',
         scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
@@ -353,37 +376,61 @@ export class CalendarService {
   ): Promise<ContentCalendarPost> {
     const post = await this.findOneForUser(id, userId);
 
+    // Enforce 5-minute lock: posts within 5 minutes of scheduled time or past cannot be edited
+    if (post.scheduledAt) {
+      const timeRemainingMs = new Date(post.scheduledAt).getTime() - Date.now();
+      if (timeRemainingMs <= 5 * 60 * 1000) {
+        throw new BadRequestException(
+          'This post can no longer be edited because it is within 5 minutes of its scheduled posting time.'
+        );
+      }
+    }
+
     if (dto.platform) {
       const connected = await this.getConnectedPlatformsForUser(userId);
-      if (!connected.includes(dto.platform)) {
+      const targetPlatform = normalizePlatformName(dto.platform);
+      const isConnected = connected.some(p => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase());
+      if (!isConnected) {
         throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
       }
     }
 
     // Determine target scheduledAt timestamp if date/time are updated
     let targetScheduledAt: string | null | undefined = dto.scheduledAt;
-    if (targetScheduledAt === undefined && (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined)) {
+    if (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined) {
       const datePart = dto.scheduledDate !== undefined
         ? dto.scheduledDate
         : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[0] : null);
       if (datePart) {
         const timePart = dto.scheduledTime !== undefined && dto.scheduledTime
           ? dto.scheduledTime
-          : (post.scheduledAt ? new Date(post.scheduledAt).toTimeString().substring(0, 5) : '12:00');
-        targetScheduledAt = `${datePart}T${timePart}:00`;
+          : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[1]?.substring(0, 5) : '12:00');
+        targetScheduledAt = `${datePart}T${timePart}:00.000Z`;
       } else {
         targetScheduledAt = null;
       }
+    } else if (targetScheduledAt) {
+      targetScheduledAt = targetScheduledAt.includes('Z') ? targetScheduledAt : `${targetScheduledAt}.000Z`;
     }
 
-    // Enforce monthly and weekly post limits if date is updated
+    // Validate scheduled date/time format if updated (editing existing post does NOT consume post creation limit)
     if (targetScheduledAt) {
       const dateObj = new Date(targetScheduledAt);
       if (isNaN(dateObj.getTime())) {
         throw new BadRequestException(`Invalid scheduled date/time format.`);
       }
-      await this.checkPostLimit(userId, dateObj, id);
-      await this.checkWeeklyPostLimit(userId, dateObj, id);
+
+      // Enforce that moving a scheduled post must remain within the same week
+      if (post.scheduledAt) {
+        const originalWeek = this.getWeekRange(new Date(post.scheduledAt));
+        if (dateObj < originalWeek.start || dateObj > originalWeek.end) {
+          const startStr = originalWeek.start.toISOString().split('T')[0];
+          const endStr = originalWeek.end.toISOString().split('T')[0];
+          throw new BadRequestException(
+            `You can only reschedule this post to another date within the same week (${startStr} to ${endStr}).`
+          );
+        }
+      }
     }
 
     // Validate eligibility if selecting a suggestion
@@ -431,7 +478,7 @@ export class CalendarService {
       .set({
         title: dto.title !== undefined ? dto.title : post.title,
         caption: dto.caption !== undefined ? dto.caption : post.caption,
-        platform: dto.platform !== undefined ? dto.platform : post.platform,
+        platform: dto.platform !== undefined ? (dto.platform as any) : post.platform,
         scheduledAt: newScheduledAt,
         status: newStatus,
         mediaUrl: dto.mediaUrl !== undefined ? dto.mediaUrl : post.mediaUrl,
@@ -593,16 +640,14 @@ export class CalendarService {
     }
 
     // Validate platforms
-    const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
     if (!dto.platforms || dto.platforms.length === 0) {
       throw new BadRequestException('At least one platform must be requested.');
     }
     const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
-    for (const p of dto.platforms) {
-      if (!validPlatforms.includes(p)) {
-        throw new BadRequestException(`Invalid platform requested: ${p}`);
-      }
-      if (!connectedPlatforms.includes(p)) {
+    const normalizedRequestedPlatforms = dto.platforms.map(p => normalizePlatformName(p));
+    for (const p of normalizedRequestedPlatforms) {
+      const isConn = connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase());
+      if (!isConn) {
         throw new BadRequestException(`Platform ${p} is not currently connected.`);
       }
     }
@@ -634,13 +679,16 @@ export class CalendarService {
       );
     }
 
+    const remainingPosts = Math.max(0, limit - currentCount);
+    const connectedAccounts = await this.getConnectedAccountsForUser(userId);
+
     // Insert generation job
     const [job] = await this.db
       .insert(schema.calendarGenerationJobs)
       .values({
         userId,
         month: dto.month,
-        platforms: dto.platforms,
+        platforms: normalizedRequestedPlatforms,
         status: 'PENDING',
       })
       .returning();
@@ -667,7 +715,10 @@ export class CalendarService {
           jobId: job.id,
           customerId: userId,
           month: dto.month,
-          platforms: dto.platforms,
+          platforms: normalizedRequestedPlatforms,
+          plan: slug,
+          allowedPosts: remainingPosts,
+          connectedAccounts,
         }),
       });
 
@@ -734,11 +785,17 @@ export class CalendarService {
     });
 
     const businessProfile = await this.customerProfileService.getCompanyProfile(customerId);
+    const targetMonth = latestJob?.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(customerId, new Date(`${targetMonth}-01`));
+    const connectedAccounts = await this.getConnectedAccountsForUser(customerId);
 
     return {
       customerId,
       month: latestJob?.month ?? null,
       platforms: latestJob?.platforms ?? [],
+      plan: slug,
+      allowedPosts: Math.max(0, limit - currentCount),
+      connectedAccounts,
       business: {
         name: businessProfile.businessName || '',
         description: businessProfile.businessDescription || null,
@@ -748,7 +805,7 @@ export class CalendarService {
     };
   }
 
-  async handleN8nResult(jobId: string, dto: { customerId: string; month: string; posts: any[] }) {
+  async handleN8nResult(jobId: string, dto: { customerId: string; month: string; expectedPostCount?: number; posts: any[] }) {
     try {
       return await this.saveGeneratedCalendar(jobId, dto);
     } catch (err: any) {
@@ -766,7 +823,7 @@ export class CalendarService {
     }
   }
 
-  private async saveGeneratedCalendar(jobId: string, dto: { customerId: string; month: string; posts: any[] }) {
+  private async saveGeneratedCalendar(jobId: string, dto: { customerId: string; month: string; expectedPostCount?: number; posts: any[] }) {
     const job = await this.db.query.calendarGenerationJobs.findFirst({
       where: eq(schema.calendarGenerationJobs.id, jobId),
     });
@@ -780,18 +837,143 @@ export class CalendarService {
     }
 
     if (job.status === 'GENERATED') {
-      return { success: true, message: 'Job already processed.' };
+      return { success: true, message: 'Job already processed.', postCount: (job.resultIds || []).length };
     }
 
     if (job.month !== dto.month) {
       throw new BadRequestException(`Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`);
     }
 
-    // Limit checks
+    const rawPosts = dto.posts || [];
+    if (!Array.isArray(rawPosts) || rawPosts.length === 0) {
+      this.logger.error(
+        `[CalendarGeneration] jobId=${jobId} expected=${dto.expectedPostCount || 0} received=0 uniqueLogicalPosts=0 duplicates=0 numberOfInsertedRows=0`
+      );
+      throw new BadRequestException('Generation rejected: no posts provided in payload.');
+    }
+
+    const seenLogicalIds = new Set<string>();
+    const duplicateLogicalIds: string[] = [];
+    const seenPayloads = new Set<string>();
+    const duplicatePayloads: string[] = [];
+
+    for (let index = 0; index < rawPosts.length; index++) {
+      const raw = rawPosts[index];
+      if (!raw) continue;
+
+      const isVariation = Boolean(raw.isVariation || raw.isSuggestion || raw.parentId);
+
+      // Logical ID tracking
+      const logicalId = raw.generationItemId !== undefined && raw.generationItemId !== null
+        ? String(raw.generationItemId)
+        : raw.postIndex !== undefined && raw.postIndex !== null
+          ? String(raw.postIndex)
+          : raw.id !== undefined && raw.id !== null
+            ? String(raw.id)
+            : raw.itemIndex !== undefined && raw.itemIndex !== null
+              ? String(raw.itemIndex)
+              : null;
+
+      if (logicalId !== null) {
+        const fullKey = `${jobId}:${logicalId}`;
+        if (seenLogicalIds.has(fullKey)) {
+          duplicateLogicalIds.push(logicalId);
+        } else {
+          seenLogicalIds.add(fullKey);
+        }
+      }
+
+      // Secondary payload check (only for primary posts)
+      if (!isVariation) {
+        const titleStr = (raw.title || '').trim().toLowerCase();
+        const captionStr = (raw.caption || '').trim().toLowerCase();
+        const platformStr = (raw.platform || '').trim().toLowerCase();
+        const dateStr = (raw.scheduledDate || raw.scheduledAt || '').trim().toLowerCase();
+        const payloadKey = `${titleStr}|${captionStr}|${platformStr}|${dateStr}`;
+
+        if (seenPayloads.has(payloadKey)) {
+          duplicatePayloads.push(titleStr || `Item ${index + 1}`);
+        } else {
+          seenPayloads.add(payloadKey);
+        }
+      }
+    }
+
+    // Validation: Duplicate Logical IDs
+    if (duplicateLogicalIds.length > 0) {
+      this.logger.error(
+        `[CalendarGeneration] jobId=${jobId} expected=${dto.expectedPostCount || rawPosts.length} received=${rawPosts.length} uniqueLogicalPosts=${seenLogicalIds.size} duplicates=${duplicateLogicalIds.length} numberOfInsertedRows=0`
+      );
+      throw new BadRequestException(
+        `Generation rejected: duplicate logical post detected (${duplicateLogicalIds.join(', ')}).`
+      );
+    }
+
+    // Validation: Duplicate Payloads
+    if (duplicatePayloads.length > 0) {
+      this.logger.error(
+        `[CalendarGeneration] jobId=${jobId} expected=${dto.expectedPostCount || rawPosts.length} received=${rawPosts.length} uniqueLogicalPosts=${rawPosts.length} duplicatePayloads=${duplicatePayloads.length} numberOfInsertedRows=0`
+      );
+      throw new BadRequestException(
+        `Generation rejected: duplicate post payload detected (${duplicatePayloads.join(', ')}).`
+      );
+    }
+
+    // Group incoming posts: 1 primary content item per topic/post, extra variations become suggestions
+    const groupedItems: { primary: any; suggestions: any[] }[] = [];
+    const mapByTopic = new Map<string, { primary: any; suggestions: any[] }>();
+
+    for (let index = 0; index < rawPosts.length; index++) {
+      const raw = rawPosts[index];
+      if (!raw) continue;
+
+      const isVariation = Boolean(raw.isVariation || raw.isSuggestion || raw.parentId);
+      const topicKey = (raw.topic || raw.parentTitle || raw.title || '').trim().toLowerCase();
+
+      if (isVariation && topicKey && mapByTopic.has(topicKey)) {
+        mapByTopic.get(topicKey)!.suggestions.push(raw);
+        continue;
+      } else if (topicKey && mapByTopic.has(topicKey) && !raw.isPrimary) {
+        mapByTopic.get(topicKey)!.suggestions.push(raw);
+        continue;
+      }
+
+      const itemSuggestions = Array.isArray(raw.variations)
+        ? [...raw.variations]
+        : Array.isArray(raw.suggestions)
+          ? [...raw.suggestions]
+          : [];
+
+      const group = { primary: raw, suggestions: itemSuggestions };
+      groupedItems.push(group);
+      if (topicKey) {
+        mapByTopic.set(topicKey, group);
+      }
+    }
+
+    const primaryItems = groupedItems.map((g) => g.primary);
+    const primaryCount = primaryItems.length;
+    const expectedCount = dto.expectedPostCount;
+
+    // Validation: Expected vs Received count
+    if (expectedCount !== undefined && expectedCount !== null && primaryCount !== expectedCount) {
+      this.logger.error(
+        `[CalendarGeneration] jobId=${jobId} expected=${expectedCount} received=${primaryCount} uniqueLogicalPosts=${seenLogicalIds.size || primaryCount} duplicates=${duplicateLogicalIds.length} numberOfInsertedRows=0`
+      );
+      throw new BadRequestException(
+        `Generation rejected: expected ${expectedCount} posts but received ${primaryCount}.`
+      );
+    }
+
+    const newPostsCount = primaryCount;
+
+    // Limit checks based on primary posts count
     const { limit, currentCount } = await this.getMonthlyLimitAndUsage(job.userId, new Date(`${job.month}-01`));
-    const newPostsCount = dto.posts.length;
 
     if (currentCount + newPostsCount > limit) {
+      this.logger.error(
+        `[CalendarGeneration] jobId=${jobId} expected=${expectedCount || primaryCount} received=${rawPosts.length} uniqueLogicalPosts=${primaryCount} duplicates=0 numberOfInsertedRows=0 (Limit Exceeded)`
+      );
       throw new BadRequestException(
         `Saving these posts would exceed your monthly limit of ${limit} posts. Current posts: ${currentCount}, attempted to add: ${newPostsCount}.`
       );
@@ -890,7 +1072,7 @@ export class CalendarService {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       }
 
-      // Check if requested posts exceed what can fit under the weekly limit
+      // Check if requested primary posts exceed what can fit under the weekly limit
       let totalCapacity = 0;
       for (const w of weeks) {
         if (w.daysInMonth.length > 0 && w.capacity > 0) {
@@ -898,14 +1080,14 @@ export class CalendarService {
         }
       }
 
-      if (isFree && dto.posts.length > totalCapacity) {
+      if (isFree && primaryItems.length > totalCapacity) {
         throw new BadRequestException(
-          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${dto.posts.length}.`
+          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${primaryItems.length}.`
         );
       }
 
-      // For each new post, find the best week to assign it
-      for (const post of dto.posts) {
+      // For each primary post group, find the best week to assign it
+      for (const group of groupedItems) {
         let bestWeek: WeekData | null = null;
         let minTotalPosts = Infinity;
 
@@ -926,16 +1108,16 @@ export class CalendarService {
           );
         }
 
-        bestWeek.assigned.push(post);
+        bestWeek.assigned.push(group);
       }
 
-      // Distribute assigned posts to specific days in each week
+      // Distribute assigned primary post groups to specific days in each week
       const dayCounts = new Map<number, number>();
       for (const [dayTime, count] of existingPostsByDay.entries()) {
         dayCounts.set(dayTime, count);
       }
 
-      const scheduledPosts: any[] = [];
+      const scheduledGroups: { group: { primary: any; suggestions: any[] }; scheduledDate: string }[] = [];
 
       for (const w of weeks) {
         const k = w.assigned.length;
@@ -944,7 +1126,7 @@ export class CalendarService {
         const Dw = w.daysInMonth.length;
 
         for (let i = 0; i < k; i++) {
-          const post = w.assigned[i];
+          const group = w.assigned[i];
           const prefIndex = Math.floor((i + 0.5) * Dw / k);
 
           let bestDay: Date | null = null;
@@ -980,35 +1162,56 @@ export class CalendarService {
           const monthVal = String(bestDay.getMonth() + 1).padStart(2, '0');
           const dateVal = String(bestDay.getDate()).padStart(2, '0');
 
-          scheduledPosts.push({
-            ...post,
+          scheduledGroups.push({
+            group,
             scheduledDate: `${yearVal}-${monthVal}-${dateVal}`,
           });
         }
       }
 
       const savedPostIds: string[] = [];
+      const userAccounts = await this.getConnectedAccountsForUser(job.userId);
 
-      for (const post of scheduledPosts) {
-        const validPlatforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook'];
-        if (!validPlatforms.includes(post.platform)) {
-          throw new BadRequestException(`Invalid platform: ${post.platform}`);
+      // Determine eligible accounts matching requested platforms if any, or all connected accounts
+      let eligibleAccounts = userAccounts;
+      if (job.platforms && job.platforms.length > 0) {
+        const filtered = userAccounts.filter(acc =>
+          job.platforms.some(p => normalizePlatformName(p).toLowerCase() === acc.platform.toLowerCase())
+        );
+        if (filtered.length > 0) {
+          eligibleAccounts = filtered;
         }
-        if (!job.platforms.includes(post.platform)) {
-          throw new BadRequestException(`Platform ${post.platform} was not requested in this generation job.`);
-        }
-        if (!connectedPlatforms.includes(post.platform)) {
-          throw new BadRequestException(`Platform ${post.platform} is not currently connected.`);
+      }
+
+      const timeSlots = ['09:00', '14:00', '18:00', '11:00'];
+
+      for (let i = 0; i < scheduledGroups.length; i++) {
+        const { group, scheduledDate } = scheduledGroups[i];
+        const post = group.primary;
+
+        // Round-robin platform assignment
+        let normPostPlatform: string;
+        if (eligibleAccounts.length > 0) {
+          const targetAccount = eligibleAccounts[i % eligibleAccounts.length];
+          normPostPlatform = normalizePlatformName(targetAccount.platform);
+        } else if (job.platforms && job.platforms.length > 0) {
+          normPostPlatform = normalizePlatformName(job.platforms[i % job.platforms.length]);
+        } else {
+          normPostPlatform = post.platform ? normalizePlatformName(post.platform) : 'Instagram';
         }
 
-        if (!post.scheduledDate.startsWith(job.month)) {
-          throw new BadRequestException(`Scheduled date ${post.scheduledDate} does not belong to the requested month ${job.month}.`);
+        if (!scheduledDate || !scheduledDate.startsWith(job.month)) {
+          throw new BadRequestException(`Scheduled date ${scheduledDate} does not belong to the requested month ${job.month}.`);
         }
 
-        const scheduledAt = new Date(`${post.scheduledDate}T${post.scheduledTime}:00`);
-        if (isNaN(scheduledAt.getTime())) {
-          throw new BadRequestException(`Invalid scheduled date/time: ${post.scheduledDate} ${post.scheduledTime}`);
-        }
+        const timeStr = (post.scheduledTime && /^\d{2}:\d{2}$/.test(post.scheduledTime))
+          ? post.scheduledTime
+          : timeSlots[i % timeSlots.length];
+
+        const scheduledAt = new Date(`${scheduledDate}T${timeStr}:00`);
+        const finalScheduledAt = isNaN(scheduledAt.getTime())
+          ? new Date(`${scheduledDate}T09:00:00`)
+          : scheduledAt;
 
         const [inserted] = await tx
           .insert(schema.contentCalendar)
@@ -1016,16 +1219,30 @@ export class CalendarService {
             userId: job.userId,
             title: post.title,
             caption: post.caption,
-            platform: post.platform as any,
+            platform: normPostPlatform as any,
             status: 'SCHEDULED',
             approvalStatus: 'PENDING',
-            scheduledAt,
+            scheduledAt: finalScheduledAt,
             hashtags: post.hashtags ?? [],
             aiGenerated: true,
           })
           .returning();
 
         savedPostIds.push(inserted.id);
+
+        // Save any associated variations/suggestions as contentSuggestions linked to this post
+        if (group.suggestions && group.suggestions.length > 0) {
+          for (const v of group.suggestions) {
+            await tx.insert(schema.contentSuggestions).values({
+              userId: job.userId,
+              postId: inserted.id,
+              title: v.title || inserted.title,
+              type: 'caption',
+              content: v.caption || v.content || v.text || '',
+              hashtags: v.hashtags || [],
+            });
+          }
+        }
       }
 
       await tx
@@ -1036,6 +1253,19 @@ export class CalendarService {
           updatedAt: new Date(),
         })
         .where(eq(schema.calendarGenerationJobs.id, job.id));
+
+      this.logger.log(
+        `[CalendarGeneration] jobId=${job.id} expected=${expectedCount || primaryCount} received=${rawPosts.length} uniqueLogicalPosts=${primaryCount} duplicates=0 numberOfInsertedRows=${savedPostIds.length}`
+      );
+
+      // Trigger AI suggestion generation in background for the newly saved calendar posts
+      if (this.contentSuggestionsService && savedPostIds.length > 0) {
+        for (const pId of savedPostIds) {
+          void this.contentSuggestionsService.triggerN8nGeneration(pId, job.userId).catch(err => {
+            console.error('[CalendarService] Background AI suggestion trigger error:', err);
+          });
+        }
+      }
 
       return {
         success: true,
@@ -1060,10 +1290,12 @@ export class CalendarService {
         free: 8,
         starter: 30,
         growth: 150,
+        brand: 300,
+        enterprise: 300,
         'brand-domination': 300,
       };
-      limit = typeof subscription.plan.monthlyPostLimit === 'number' 
-        ? subscription.plan.monthlyPostLimit 
+      limit = typeof subscription.plan.monthlyPostLimit === 'number'
+        ? subscription.plan.monthlyPostLimit
         : (slugMap[subscription.plan.slug || 'free'] || 8);
       slug = subscription.plan.slug || 'free';
     } else {
@@ -1108,11 +1340,28 @@ export class CalendarService {
 
     const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(userId, targetDate);
 
+    let maxSocialAccounts = 2;
+    let planName = 'Free';
+    try {
+      const subscription = await this.subscriptionsService.findByUserId(userId);
+      if (subscription?.plan) {
+        maxSocialAccounts = subscription.plan.maxSocialAccounts;
+        planName = subscription.plan.name;
+      }
+    } catch (_err) {
+      // fallback
+    }
+
+    const connectedAccounts = await this.getConnectedAccountsForUser(userId);
     const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
 
     return {
       month: monthKey,
       plan: slug,
+      planName,
+      maxSocialAccounts,
+      connectedAccountCount: connectedAccounts.length,
+      connectedAccounts,
       monthlyLimit: limit,
       monthlyUsed: currentCount,
       monthlyRemaining: Math.max(0, limit - currentCount),

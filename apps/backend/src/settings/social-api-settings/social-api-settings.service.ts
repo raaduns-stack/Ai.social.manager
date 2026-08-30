@@ -8,7 +8,7 @@ import { encryptSecret, maskSecret } from '../../common/utils/encryption.util';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
-const VALID_PLATFORMS = ['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok'];
+const VALID_PLATFORMS = ['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'discord'];
 
 @Injectable()
 export class SocialApiSettingsService {

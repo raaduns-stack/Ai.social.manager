@@ -145,6 +145,7 @@ export default function SocialAccounts() {
       linkedin: 'LinkedIn',
       x: 'X (Twitter)',
       youtube: 'YouTube',
+      discord: 'Discord',
     }
     return mapping[platform.toLowerCase()] || platform
   }

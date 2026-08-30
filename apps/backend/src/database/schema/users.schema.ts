@@ -11,8 +11,8 @@ export const roleEnum = pgEnum('role', [
 ]);
 
 export const accountStatusEnum = pgEnum('account_status', [
-  'REGISTRATION_IN_PROGRESS',
   'EMAIL_VERIFICATION_PENDING',
+  'REGISTRATION_IN_PROGRESS',
   'ACTIVE',
   'SUSPENDED',
   'DELETED',
@@ -39,6 +39,7 @@ export const users = pgTable('users', {
   firstLoginAt: timestamp('first_login_at'),
   lastLoginAt: timestamp('last_login_at'),
   suspendedAt: timestamp('suspended_at'),
+  deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

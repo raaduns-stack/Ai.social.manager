@@ -40,8 +40,10 @@
     "drizzle-orm": "^0.45.2",
     "express-basic-auth": "^1.2.1",
     "nodemailer": "^9.0.5",
+    "oauth-1.0a": "^2.2.6",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
+    "passport-tumblr": "^0.1.2",
     "postgres": "^3.4.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"

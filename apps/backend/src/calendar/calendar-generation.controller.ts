@@ -47,6 +47,14 @@ export class GenerateCalendarRequestDto {
 }
 
 export class GeneratedPostDto {
+  @ApiProperty({ example: 'item-1', required: false })
+  @IsOptional()
+  generationItemId?: string | number;
+
+  @ApiProperty({ example: 1, required: false })
+  @IsOptional()
+  postIndex?: number;
+
   @ApiProperty({ example: 'Social Media Strategy' })
   @IsString()
   @IsNotEmpty()
@@ -57,28 +65,44 @@ export class GeneratedPostDto {
   @IsNotEmpty()
   caption!: string;
 
-  @ApiProperty({ example: 'Facebook' })
+  @ApiProperty({ example: 'Facebook', required: false })
   @IsString()
-  @IsNotEmpty()
-  platform!: string;
+  @IsOptional()
+  platform?: string;
 
-  @ApiProperty({ example: '2026-09-01' })
+  @ApiProperty({ example: '2026-09-01', required: false })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{4}-\d{2}-\d{2}$/, { message: 'scheduledDate must be in YYYY-MM-DD format' })
-  scheduledDate!: string;
+  @IsOptional()
+  scheduledDate?: string;
 
-  @ApiProperty({ example: '09:00' })
+  @ApiProperty({ example: '09:00', required: false })
   @IsString()
-  @IsNotEmpty()
-  @Matches(/^\d{2}:\d{2}$/, { message: 'scheduledTime must be in HH:mm format' })
-  scheduledTime!: string;
+  @IsOptional()
+  scheduledTime?: string;
 
   @ApiProperty({ example: ['#marketing', '#socialmedia'], type: [String], required: false })
   @IsArray()
   @IsString({ each: true })
   @IsOptional()
   hashtags?: string[];
+
+  @IsOptional()
+  isVariation?: boolean;
+
+  @IsOptional()
+  isSuggestion?: boolean;
+
+  @IsOptional()
+  parentId?: string;
+
+  @IsOptional()
+  topic?: string;
+
+  @IsOptional()
+  variations?: any[];
+
+  @IsOptional()
+  suggestions?: any[];
 }
 
 export class N8nGenerationResultDto {
@@ -92,6 +116,10 @@ export class N8nGenerationResultDto {
   @IsNotEmpty()
   @Matches(/^\d{4}-\d{2}$/, { message: 'month must be in YYYY-MM format' })
   month!: string;
+
+  @ApiProperty({ example: 8, required: false })
+  @IsOptional()
+  expectedPostCount?: number;
 
   @ApiProperty({ type: [GeneratedPostDto] })
   @IsArray()

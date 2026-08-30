@@ -13,6 +13,7 @@ import { AdminLoginHistoryController } from './login-history/admin-login-history
 import { LoginHistoryModule } from '../login-history/login-history.module';
 import { AdminActivityLogsController } from './activity-logs/admin-activity-logs.controller';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
     PromptManagementModule,
     LoginHistoryModule,
     ActivityLogsModule,
+    AuthModule,
   ],
   controllers: [
     AdminController,

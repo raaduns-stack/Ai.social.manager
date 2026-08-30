@@ -8,6 +8,8 @@ import { seedPlans as runPlansSeeding } from '../database/seeding';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { UserRole, ALL_ADMIN_ROLES } from '../common/enums/roles.enum';
 import { CreateStaffDto } from './dto/create-staff.dto';
+import { AuthService } from '../auth/auth.service';
+import { ErrorCode } from '../common/enums/error-codes.enum';
 
 type Database = PostgresJsDatabase<typeof schema>;
 const SALT_ROUNDS = 10;
@@ -17,6 +19,7 @@ export class AdminService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly authService: AuthService,
   ) {}
 
   /**
@@ -116,8 +119,12 @@ export class AdminService {
           : null,
         status: u.accountStatus === 'SUSPENDED' || !u.isActive
           ? 'Suspended'
+          : u.accountStatus === 'DELETED'
+          ? 'Deleted'
           : u.accountStatus === 'EMAIL_VERIFICATION_PENDING' || !u.isEmailVerified
-          ? 'Email Pending'
+          ? 'Email Verification'
+          : u.accountStatus === 'REGISTRATION_IN_PROGRESS'
+          ? 'Registration in Progress'
           : 'Active',
       };
 
@@ -135,10 +142,16 @@ export class AdminService {
       // Apply Tab / Status Filters
       if (query?.tab) {
         const t = query.tab.toLowerCase();
-        if (t === 'verified' && (userObj.accountStatus !== 'ACTIVE' || !userObj.isEmailVerified)) {
+        if (t === 'verified' && !userObj.isEmailVerified) {
           continue;
         }
-        if (t === 'email_pending' && (userObj.isEmailVerified && userObj.accountStatus !== 'EMAIL_VERIFICATION_PENDING')) {
+        if (t === 'email_pending' && (userObj.isEmailVerified || userObj.accountStatus !== 'EMAIL_VERIFICATION_PENDING')) {
+          continue;
+        }
+        if (t === 'registration_in_progress' && userObj.accountStatus !== 'REGISTRATION_IN_PROGRESS') {
+          continue;
+        }
+        if (t === 'active' && userObj.accountStatus !== 'ACTIVE') {
           continue;
         }
         if (t === 'kyc_pending' && (userObj.kycStatus === 'APPROVED')) {
@@ -158,7 +171,8 @@ export class AdminService {
       if (query?.status && query.status !== 'all') {
         if (query.status.toLowerCase() === 'active' && userObj.status !== 'Active') continue;
         if (query.status.toLowerCase() === 'suspended' && userObj.status !== 'Suspended') continue;
-        if (query.status.toLowerCase() === 'email pending' && userObj.status !== 'Email Pending') continue;
+        if ((query.status.toLowerCase() === 'email pending' || query.status.toLowerCase() === 'email verification') && userObj.status !== 'Email Verification') continue;
+        if (query.status.toLowerCase() === 'registration in progress' && userObj.status !== 'Registration in Progress') continue;
       }
 
       if (query?.plan && query.plan !== 'all') {
@@ -190,6 +204,7 @@ export class AdminService {
 
     let totalUsers = 0;
     let activeUsers = 0;
+    let registrationInProgress = 0;
     let pendingVerification = 0;
     let kycPending = 0;
     let kycUnderReview = 0;
@@ -232,6 +247,8 @@ export class AdminService {
         suspendedUsers++;
       } else if (!u.isEmailVerified || u.accountStatus === 'EMAIL_VERIFICATION_PENDING') {
         pendingVerification++;
+      } else if (u.accountStatus === 'REGISTRATION_IN_PROGRESS') {
+        registrationInProgress++;
       } else if (u.accountStatus === 'ACTIVE') {
         activeUsers++;
       }
@@ -254,6 +271,7 @@ export class AdminService {
     return {
       totalUsers,
       activeUsers,
+      registrationInProgress,
       pendingVerification,
       kycPending,
       kycUnderReview,
@@ -472,7 +490,7 @@ export class AdminService {
     phoneNumber?: string;
     country?: string;
     role?: UserRole;
-    accountStatus?: 'ACTIVE' | 'EMAIL_VERIFICATION_PENDING';
+    accountStatus?: 'ACTIVE' | 'REGISTRATION_IN_PROGRESS' | 'EMAIL_VERIFICATION_PENDING';
     accountManagerId?: string;
   }) {
     const existing = await this.db.query.users.findFirst({
@@ -485,38 +503,40 @@ export class AdminService {
     const passwordToHash = dto.password || 'SocialPilot@2026!';
     const passwordHash = await bcrypt.hash(passwordToHash, SALT_ROUNDS);
     const now = new Date();
-    const isVerified = dto.accountStatus === 'ACTIVE';
+    const [user] = await this.db.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(schema.users)
+        .values({
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          businessName: dto.businessName ?? null,
+          phoneNumber: dto.phoneNumber ?? null,
+          country: dto.country ?? null,
+          role: dto.role || UserRole.USER,
+          accountManagerId: dto.accountManagerId ?? null,
+          registeredAt: now,
+        })
+        .returning();
 
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email: dto.email,
-        passwordHash,
-        fullName: dto.fullName,
-        businessName: dto.businessName ?? null,
-        phoneNumber: dto.phoneNumber ?? null,
-        country: dto.country ?? null,
-        role: dto.role || UserRole.USER,
-        accountStatus: dto.accountStatus || 'EMAIL_VERIFICATION_PENDING',
-        isActive: true,
-        isEmailVerified: isVerified,
-        emailVerifiedAt: isVerified ? now : null,
-        accountManagerId: dto.accountManagerId ?? null,
-        registeredAt: now,
-      })
-      .returning();
+      const targetStatus = dto.accountStatus || 'EMAIL_VERIFICATION_PENDING';
+      const isLogin = targetStatus === 'ACTIVE';
+      await this.authService.applyUserStatusTransition(createdUser.id, targetStatus as any, tx, isLogin);
 
-    // Assign default free plan if none exists
-    const freePlan = await this.db.query.plans.findFirst({
-      where: eq(schema.plans.slug, 'free'),
-    });
-    if (freePlan) {
-      await this.db.insert(schema.subscriptions).values({
-        userId: user.id,
-        planId: freePlan.id,
-        status: 'active',
+      // Assign default free plan if none exists
+      const freePlan = await tx.query.plans.findFirst({
+        where: eq(schema.plans.slug, 'free'),
       });
-    }
+      if (freePlan) {
+        await tx.insert(schema.subscriptions).values({
+          userId: createdUser.id,
+          planId: freePlan.id,
+          status: 'active',
+        });
+      }
+
+      return [createdUser];
+    });
 
     await this.activityLogsService.record({
       userId: user.id,
@@ -586,18 +606,8 @@ export class AdminService {
       throw new NotFoundException('User not found');
     }
 
-    const now = new Date();
-    const newStatus = suspend ? 'SUSPENDED' : (user.isEmailVerified ? 'ACTIVE' : 'EMAIL_VERIFICATION_PENDING');
-
-    await this.db
-      .update(schema.users)
-      .set({
-        accountStatus: newStatus as any,
-        isActive: !suspend,
-        suspendedAt: suspend ? now : null,
-        updatedAt: now,
-      })
-      .where(eq(schema.users.id, userId));
+    const targetStatus = suspend ? 'SUSPENDED' : 'ACTIVE';
+    const updatedUser = await this.authService.applyUserStatusTransition(userId, targetStatus);
 
     await this.activityLogsService.record({
       userId,
@@ -609,7 +619,7 @@ export class AdminService {
         : `Admin activated user account: ${user.email}`,
     });
 
-    return { success: true, accountStatus: newStatus, isActive: !suspend };
+    return { success: true, accountStatus: updatedUser.accountStatus, isActive: updatedUser.isActive };
   }
 
   /**
@@ -631,14 +641,7 @@ export class AdminService {
       description: `Admin soft-deleted user account: ${user.email}`,
     });
 
-    await this.db
-      .update(schema.users)
-      .set({
-        accountStatus: 'DELETED',
-        isActive: false,
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.users.id, userId));
+    await this.authService.applyUserStatusTransition(userId, 'DELETED');
 
     return { success: true };
   }
@@ -724,21 +727,30 @@ export class AdminService {
   }
 
   async getSubscriptions() {
-    const subs = await this.db.query.subscriptions.findMany({
-      with: {
-        user: true,
-        plan: true,
-      },
-      orderBy: [desc(schema.subscriptions.createdAt)],
-    });
+    const subs = await this.db
+      .select({
+        id: schema.subscriptions.id,
+        status: schema.subscriptions.status,
+        currentPeriodEnd: schema.subscriptions.currentPeriodEnd,
+        userFullName: schema.users.fullName,
+        userEmail: schema.users.email,
+        planName: schema.plans.name,
+        planPrice: schema.plans.price,
+      })
+      .from(schema.subscriptions)
+      .innerJoin(schema.plans, eq(schema.subscriptions.planId, schema.plans.id))
+      .leftJoin(schema.users, eq(schema.subscriptions.userId, schema.users.id))
+      .where(ne(schema.plans.slug, 'free'))
+      .orderBy(desc(schema.subscriptions.createdAt));
+
     return subs.map((s) => ({
       id: s.id,
-      customerName: s.user?.fullName || '—',
-      email: s.user?.email || '—',
-      plan: s.plan?.name || '—',
+      customerName: s.userFullName || '—',
+      email: s.userEmail || '—',
+      plan: s.planName || '—',
       status: s.status,
       renewsOn: s.currentPeriodEnd,
-      amount: s.plan?.price || 0,
+      amount: s.planPrice || 0,
     }));
   }
 
@@ -805,7 +817,10 @@ export class AdminService {
     ];
 
     if (!ALLOWED_STAFF_ROLES.includes(dto.role as UserRole)) {
-      throw new BadRequestException('Invalid staff role provided.');
+      throw new BadRequestException({
+        message: 'Invalid staff role provided.',
+        errorCode: ErrorCode.INVALID_STAFF_ROLE,
+      });
     }
 
     const existing = await this.db.query.users.findFirst({
@@ -816,17 +831,21 @@ export class AdminService {
     }
 
     const passwordHash = await bcrypt.hash(dto.password, 10);
-    const [user] = await this.db
-      .insert(schema.users)
-      .values({
-        email: dto.email,
-        passwordHash,
-        fullName: dto.fullName,
-        role: dto.role as any,
-        isEmailVerified: true,
-        isActive: true,
-      })
-      .returning();
+    const [user] = await this.db.transaction(async (tx) => {
+      const [createdUser] = await tx
+        .insert(schema.users)
+        .values({
+          email: dto.email,
+          passwordHash,
+          fullName: dto.fullName,
+          role: dto.role as any,
+        })
+        .returning();
+
+      await this.authService.applyUserStatusTransition(createdUser.id, 'ACTIVE', tx);
+
+      return [createdUser];
+    });
 
     // Record new staff registration
     void this.activityLogsService.record({

@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { AuthService } from '../auth/auth.service';
 import * as schema from '../database/schema';
 
 describe('AdminController - Role Permissions Roundtrip', () => {
@@ -65,6 +66,10 @@ describe('AdminController - Role Permissions Roundtrip', () => {
         {
           provide: ActivityLogsService,
           useValue: {},
+        },
+        {
+          provide: AuthService,
+          useValue: { register: jest.fn() },
         },
       ],
     })

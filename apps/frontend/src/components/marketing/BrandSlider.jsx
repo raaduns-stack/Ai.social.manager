@@ -61,7 +61,7 @@ export default function BrandSlider() {
                 <img
                   src={brand.logo}
                   alt={`${brand.name} logo`}
-                  className="h-10 md:h-12 w-auto max-w-[150px] object-contain transition-all duration-300 mix-blend-multiply"
+                  className="h-16 md:h-20 w-auto max-w-[150px] object-contain transition-all duration-300 mix-blend-multiply"
                 />
               </div>
             ))}
@@ -77,7 +77,7 @@ export default function BrandSlider() {
                 <img
                   src={brand.logo}
                   alt={`${brand.name} logo`}
-                  className="h-10 md:h-12 w-auto max-w-[150px] object-contain transition-all duration-300 mix-blend-multiply"
+                  className="h-16 md:h-20 w-auto max-w-[150px] object-contain transition-all duration-300 mix-blend-multiply"
                 />
               </div>
             ))}

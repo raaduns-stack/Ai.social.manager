@@ -71,4 +71,5 @@ export const SOCIAL_PLATFORMS = [
   'x',
   'youtube',
   'linkedin',
+  'discord',
 ]

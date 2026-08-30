@@ -74,6 +74,7 @@ export interface ApiErrorResponse {
   path: string;
   timestamp: string;
   message: string | string[] | object;
+  errorCode?: string;
 }
 
 export type UploadCategory =

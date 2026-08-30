@@ -159,114 +159,107 @@ function PlatformBadge({ platform }) {
 export default function AISuggestions() {
   const [activePlatform, setActivePlatform] = useState('All')
   const [isRegenerating, setIsRegenerating] = useState(false)
-  const [suggestions, setSuggestions] = useState([])// React state hook initializing an array to hold generated content suggestions
+  const [suggestions, setSuggestions] = useState([])
   const [copiedId, setCopiedId] = useState(null)
+  const [genError, setGenError] = useState(null)
 
   // Stored Ratings: { [id]: { type: 'like' | 'dislike', stars: number } }
   const [ratings, setRatings] = useState({})
 
-  /**
- * Triggers initial data retrieval on component mount.
- */
   useEffect(() => {
-  loadSuggestions()
-}, [])
+    loadSuggestions()
+  }, [])
 
-/**
- * Fetches suggestions from the backend service and transforms 
- * database payload objects into UI-ready presentation models.
- */
-const loadSuggestions = async () => {
-  try {
-    const data = await getSuggestions()
+  const loadSuggestions = async () => {
+    try {
+      const data = await getSuggestions()
 
-    const mapped = data.map((item) => {
-      const feedback = item.feedback
+      const mapped = data.map((item) => {
+        const feedback = item.feedback
 
-      return {
-        id: item.id,
-        title: item.type === 'caption' ? 'AI Caption' : 'AI Content Idea',
-        description: item.content,
-        caption: item.content,
-        hashtags: item.hashtags || [],
-        platform: 'Instagram',
-        type: item.type,
-        tone: 'primary',
-        borderClass: 'border-l-primary',
-        scheduledDate: new Date(item.createdAt).toLocaleDateString(),
+        return {
+          id: item.id,
+          title: item.type === 'caption' ? 'AI Caption' : 'AI Content Idea',
+          description: item.content,
+          caption: item.content,
+          hashtags: item.hashtags || [],
+          platform: 'Instagram',
+          type: item.type,
+          tone: 'primary',
+          borderClass: 'border-l-primary',
+          scheduledDate: new Date(item.createdAt).toLocaleDateString(),
 
-        image:
-          'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&w=800&q=80',
+          image:
+            'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&w=800&q=80',
 
-        feedback,
-      }
-    })
-
-    setSuggestions(mapped)
-
-    // Restore previously saved ratings
-    const savedRatings = {}
-
-    mapped.forEach((item) => {
-      if (item.feedback) { 
-        savedRatings[item.id] = {
-          type: item.feedback.reaction === 'up' ? 'like' : 'dislike',
-          stars: item.feedback.rating,
+          feedback,
         }
-      }
-    })
+      })
 
-    setRatings(savedRatings)
-  } catch (error) {
-    console.error('Failed to load suggestions:', error)
+      setSuggestions(mapped)
+
+      // Restore previously saved ratings
+      const savedRatings = {}
+
+      mapped.forEach((item) => {
+        if (item.feedback) {
+          savedRatings[item.id] = {
+            type: item.feedback.reaction === 'up' ? 'like' : 'dislike',
+            stars: item.feedback.rating,
+          }
+        }
+      })
+
+      setRatings(savedRatings)
+    } catch (error) {
+      console.error('Failed to load suggestions:', error)
+    }
   }
-}
-  // Rating Modal State
-  const [ratingTarget, setRatingTarget] = useState(null) // { id, type: 'like' | 'dislike' } | null
-  const [selectedStars, setSelectedStars] = useState(0)
-  const [hoveredStars, setHoveredStars] = useState(0)
 
   const filteredSuggestions = suggestions.filter((card) => {
     if (activePlatform === 'All') return true
     return card.platform === activePlatform
   })
 
-  /**
- * Triggers API call to generate a new content caption, transforms the 
- * response into a UI-ready suggestion object, and prepends it to state.
- */
- const handleRegenerate = async () => {
-  try {
+  const handleRegenerate = async () => {
     setIsRegenerating(true)
+    setGenError(null)
 
-    const data = await generateCaption('Coffee Shop')
-    const targetPlatform = activePlatform === 'All' ? 'Instagram' : activePlatform
-    trackEvent('content_generated', { platform: targetPlatform })
+    // Set 4-minute timeout safeguard (240,000 ms)
+    const timeoutId = setTimeout(() => {
+      setGenError('AI suggestion generation is taking longer than expected. Please try regenerating again.')
+      setIsRegenerating(false)
+    }, 240000)
 
-    const newSuggestion = {
-      id: data.id,
-      type: 'caption',
-      platform: 'Instagram',
-      tone: 'primary',
-      borderClass: 'border-l-primary',
-      title: 'AI Generated Caption',
-      description:
-        'A fresh AI-generated caption created specifically for your business.',
-      caption: data.caption,
-      hashtags: data.hashtags || [],
-      scheduledDate: new Date().toLocaleDateString(),
-      image:
-        'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
+    try {
+      const data = await generateCaption('Business')
+      clearTimeout(timeoutId)
+      const targetPlatform = activePlatform === 'All' ? 'Instagram' : activePlatform
+      trackEvent('content_generated', { platform: targetPlatform })
+
+      const newSuggestion = {
+        id: data.id,
+        type: 'caption',
+        platform: 'Instagram',
+        tone: 'primary',
+        borderClass: 'border-l-primary',
+        title: 'AI Generated Caption',
+        description: 'A fresh AI-generated caption created specifically for your business.',
+        caption: data.caption,
+        hashtags: data.hashtags || [],
+        scheduledDate: new Date().toLocaleDateString(),
+        image: 'https://images.unsplash.com/photo-1495474472287-4d71bcdd2085?auto=format&fit=crop&w=600&q=80',
+      }
+
+      setSuggestions((prev) => [newSuggestion, ...prev])
+    } catch (error) {
+      clearTimeout(timeoutId)
+      console.error('Failed to generate suggestion:', error)
+      setGenError(error?.response?.data?.message || error?.message || 'Failed to generate AI suggestion.')
+    } finally {
+      setIsRegenerating(false)
     }
-
-    setSuggestions((prev) => [newSuggestion, ...prev])
-  } catch (error) {
-    console.error('Failed to generate suggestion:', error)
-    alert('Failed to generate suggestion.')
-  } finally {
-    setIsRegenerating(false)
   }
-}
 
   const handleCopy = (id, text) => {
     navigator.clipboard.writeText(text).then(() => {
@@ -275,46 +268,26 @@ const loadSuggestions = async () => {
     })
   }
 
-  const openRatingModal = (id, type) => {
-    const existing = ratings[id]
-    setRatingTarget({ id, type })
-    setSelectedStars(existing?.stars || 0)
-    setHoveredStars(0)
+  const handleInstantRating = async (suggestionId, selectedStars, selectedReaction) => {
+    try {
+      await saveSuggestionFeedback(
+        String(suggestionId),
+        selectedReaction === 'like' ? 'up' : 'down',
+        selectedStars,
+      )
+
+      setRatings((prev) => ({
+        ...prev,
+        [suggestionId]: {
+          type: selectedReaction,
+          stars: selectedStars,
+        },
+      }))
+    } catch (error) {
+      console.error('Failed to save feedback:', error)
+      alert(error?.response?.data?.message || 'Failed to save rating.')
+    }
   }
-/**
-   * Submits user rating and reaction feedback to the API for the active content suggestion.
-   */
-  const handleSaveRating = async () => {
-  if (!ratingTarget || selectedStars === 0) {
-    return
-  }
-
-  try {
-    await saveSuggestionFeedback(
-      String(ratingTarget.id),
-      ratingTarget.type === 'like' ? 'up' : 'down',
-      selectedStars,
-    )
-
-    setRatings((prev) => ({
-      ...prev,
-      [ratingTarget.id]: {
-        type: ratingTarget.type,
-        stars: selectedStars,
-      },
-    }))
-
-    alert('Feedback saved successfully!')
-  } catch (error) {
-    console.error('Failed to save feedback:', error)
-    alert('Failed to save feedback.')
-    return
-  }
-
-  setRatingTarget(null)
-  setSelectedStars(0)
-  setHoveredStars(0)
-}
 
   return (
     <div className="space-y-6">
@@ -322,20 +295,34 @@ const loadSuggestions = async () => {
       <PageHeader
         title="AI Content Suggestions"
         description="Central repository for all AI-generated posts and scheduling recommendations."
-         action={
-           <Button
-             variant="primary"
-             onClick={handleRegenerate}
-             disabled={isRegenerating}
-             className="gap-2 shadow-soft font-semibold"
-           >
-           {/* Animated loading spinner icon displayed when a request is in progress */}
-             <RefreshCw size={16} className={isRegenerating ? 'animate-spin' : ''} />
-             {/* Dynamic button label reflecting current loading state */}
-             <span>{isRegenerating ? 'Regenerating...' : 'Regenerate Ideas'}</span>
-           </Button>
-         }
+        action={
+          <Button
+            variant="primary"
+            onClick={handleRegenerate}
+            disabled={isRegenerating}
+            className="gap-2 shadow-soft font-semibold"
+          >
+            <RefreshCw size={16} className={isRegenerating ? 'animate-spin' : ''} />
+            <span>{isRegenerating ? 'Regenerating...' : 'Regenerate Suggestion'}</span>
+          </Button>
+        }
       />
+
+      {/* Generation Timeout / Error Alert Banner */}
+      {genError && (
+        <Card className="p-4 bg-red-50 border-red-200 text-red-800 flex flex-wrap items-center justify-between gap-3">
+          <p className="text-sm font-medium">{genError}</p>
+          <Button
+            variant="primary"
+            size="sm"
+            onClick={handleRegenerate}
+            disabled={isRegenerating}
+            className="text-xs font-bold"
+          >
+            Regenerate Suggestion
+          </Button>
+        </Card>
+      )}
 
       {/* Filters Bar */}
       <Card className="p-4 flex flex-wrap items-center justify-between gap-3 bg-surface shadow-soft">
@@ -378,10 +365,10 @@ const loadSuggestions = async () => {
           </div>
           <h3 className="text-lg font-bold text-ink">No suggestions found for {activePlatform}</h3>
           <p className="text-sm text-ink-muted max-w-md mx-auto">
-            There are currently no AI suggestions scheduled for this platform account. Select another platform or click "Show All Platforms".
+            There are currently no AI suggestions available. Click "Regenerate Suggestion" or create an AI calendar to view recommendations.
           </p>
-          <Button variant="outline" size="sm" onClick={() => setActivePlatform('All')} className="mt-2">
-            Show All Platforms
+          <Button variant="outline" size="sm" onClick={handleRegenerate} disabled={isRegenerating} className="mt-2">
+            Regenerate Suggestion
           </Button>
         </Card>
       ) : (
@@ -392,10 +379,12 @@ const loadSuggestions = async () => {
         >
           {filteredSuggestions.map((card) => {
             const userRating = ratings[card.id]
-            // Logic: Exclude if Thumbs Down & rating < 3 OR rating < 2
             const isExcluded = userRating
               ? (userRating.type === 'dislike' && userRating.stars < 3) || userRating.stars < 2
               : false
+
+            const currentStars = userRating?.stars || 0
+            const currentReaction = userRating?.type || null
 
             return (
               <Card
@@ -407,7 +396,7 @@ const loadSuggestions = async () => {
                     : 'bg-surface/80 backdrop-blur-sm'
                 }`}
               >
-                 {/* Header Badges: Social Platform, Category Type, Scheduled Date & Excluded Lock Badge */}
+                {/* Header Badges */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
                     <PlatformBadge platform={card.platform} />
@@ -470,58 +459,56 @@ const loadSuggestions = async () => {
                   ))}
                 </div>
 
-                {/* User Feedback & Rating Status Bar */}
-                {userRating && (
-                  <div className="bg-canvas/90 p-2.5 rounded-control border border-border flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5 font-medium text-ink">
-                      <span>Feedback:</span>
-                      <Badge tone={userRating.type === 'like' ? 'success' : 'danger'} className="gap-1 font-bold">
-                        {userRating.type === 'like' ? <ThumbsUp size={12} /> : <ThumbsDown size={12} />}
-                        {userRating.type === 'like' ? 'Liked' : 'Disliked'}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-1 text-amber-500 font-bold">
-                      <div className="flex">
-                        {[1, 2, 3, 4, 5].map((s) => (
-                          <Star
-                            key={s}
-                            size={12}
-                            className={s <= userRating.stars ? 'fill-current text-amber-500' : 'text-border'}
-                          />
-                        ))}
-                      </div>
-                      <span>{userRating.stars}/5</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Bottom Actions Row */}
+                {/* Bottom Actions Row: Instant Rating & Synchronization */}
                 <div className="mt-auto pt-4 flex items-center justify-between border-t border-border/40 gap-4 flex-wrap">
-                  {/* Thumb Buttons */}
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openRatingModal(card.id, 'like')}
-                      className={`p-2 h-auto rounded-control hover:bg-canvas ${
-                        userRating?.type === 'like' ? 'text-primary-700 bg-primary-50 font-bold' : 'text-ink-muted'
-                      }`}
-                      title="Thumbs Up"
-                    >
-                      <ThumbsUp size={16} className={userRating?.type === 'like' ? 'fill-current' : ''} />
-                    </Button>
+                  <div className="flex items-center gap-3">
+                    {/* Interactive Star Picker (Saves instantly) */}
+                    <div className="flex items-center gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            const reactionVal = s >= 3 ? 'like' : 'dislike'
+                            handleInstantRating(card.id, s, reactionVal)
+                          }}
+                          className="p-0.5 hover:scale-110 transition-transform focus:outline-none cursor-pointer"
+                          title={`Rate ${s} star${s > 1 ? 's' : ''}`}
+                        >
+                          <Star
+                            size={16}
+                            className={s <= currentStars ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                          />
+                        </button>
+                      ))}
+                    </div>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openRatingModal(card.id, 'dislike')}
-                      className={`p-2 h-auto rounded-control hover:bg-canvas ${
-                        userRating?.type === 'dislike' ? 'text-danger bg-red-50 font-bold' : 'text-ink-muted'
-                      }`}
-                      title="Thumbs Down"
-                    >
-                      <ThumbsDown size={16} className={userRating?.type === 'dislike' ? 'fill-current' : ''} />
-                    </Button>
+                    {/* Thumbs Up / Thumbs Down (Saves instantly) */}
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleInstantRating(card.id, 5, 'like')}
+                        className={`p-1.5 h-auto rounded-control hover:bg-canvas cursor-pointer ${
+                          currentReaction === 'like' ? 'text-accent bg-accent/10 font-bold' : 'text-ink-muted'
+                        }`}
+                        title="Thumbs Up (5 stars)"
+                      >
+                        <ThumbsUp size={16} className={currentReaction === 'like' ? 'fill-current' : ''} />
+                      </Button>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleInstantRating(card.id, 2, 'dislike')}
+                        className={`p-1.5 h-auto rounded-control hover:bg-canvas cursor-pointer ${
+                          currentReaction === 'dislike' ? 'text-danger bg-red-50 font-bold' : 'text-ink-muted'
+                        }`}
+                        title="Thumbs Down (2 stars)"
+                      >
+                        <ThumbsDown size={16} className={currentReaction === 'dislike' ? 'fill-current' : ''} />
+                      </Button>
+                    </div>
 
                     <Button
                       variant="ghost"
@@ -536,7 +523,6 @@ const loadSuggestions = async () => {
                     </Button>
                   </div>
 
-                  {/* Scheduling Status Button */}
                   <div>
                     {isExcluded ? (
                       <Button variant="ghost" disabled size="sm" className="text-xs text-danger font-bold opacity-80 gap-1">
@@ -554,66 +540,6 @@ const loadSuggestions = async () => {
           })}
         </div>
       )}
-
-      {/* Interactive 1 to 5 Star Rating Modal */}
-      <Modal
-        open={ratingTarget !== null}
-        onClose={() => setRatingTarget(null)}
-        title="Rate AI Suggestion"
-      >
-        <div className="space-y-5 text-center py-2">
-          <p className="text-sm text-ink-muted">
-            How would you rate this AI suggestion? Posts rated below 3 stars with a Thumbs Down or under 2 stars overall will be excluded from scheduling.
-          </p>
-
-          {/* Interactive Star Selection */}
-          <div className="flex justify-center items-center gap-2 py-3">
-            {[1, 2, 3, 4, 5].map((star) => {
-              const isActive = star <= (hoveredStars || selectedStars)
-              return (
-                <button
-                  key={star}
-                  type="button"
-                  onClick={() => setSelectedStars(star)}
-                  onMouseEnter={() => setHoveredStars(star)}
-                  onMouseLeave={() => setHoveredStars(0)}
-                  className="p-1 transition-transform hover:scale-110 focus:outline-none"
-                  aria-label={`Rate ${star} star`}
-                >
-                  <Star
-                    size={32}
-                    className={`transition-colors ${
-                      isActive ? 'text-amber-500 fill-amber-500' : 'text-border hover:text-amber-300'
-                    }`}
-                  />
-                </button>
-              )
-            })}
-          </div>
-
-          <p className="text-xs font-semibold text-ink h-4">
-            {selectedStars === 5 && '🌟 Outstanding idea! Ready for high-intent publishing.'}
-            {selectedStars === 4 && '👍 Great post suggestion.'}
-            {selectedStars === 3 && '👌 Acceptable quality.'}
-            {selectedStars === 2 && '⚠️ Subpar quality. Will be excluded from publishing.'}
-            {selectedStars === 1 && '🚫 Poor recommendation. Permanently excluded.'}
-          </p>
-
-          {/* Modal Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="outline" onClick={() => setRatingTarget(null)}>
-              Cancel
-            </Button>
-            <Button
-              variant="primary"
-              disabled={selectedStars === 0}
-              onClick={handleSaveRating}
-            >
-              Submit Rating
-            </Button>
-          </div>
-        </div>
-      </Modal>
     </div>
   )
 }

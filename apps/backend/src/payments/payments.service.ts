@@ -112,23 +112,32 @@ export class PaymentsService {
    * Handle incoming Flutterwave webhook notifications.
    */
   async handleWebhook(verifHashHeader: string | undefined, payload: any) {
-    const secretHash =
-      this.configService.get<string>('payments.webhookSecretHash') ||
-      process.env.FLUTTERWAVE_WEBHOOK_SECRET_HASH;
+    try {
+      const secretHash =
+        this.configService.get<string>('payments.webhookSecretHash') ||
+        process.env.FLUTTERWAVE_WEBHOOK_SECRET_HASH;
 
-    if (!verifHashHeader || verifHashHeader !== secretHash) {
-      throw new UnauthorizedException('Invalid or missing verif-hash header');
-    }
-
-    if (payload?.event === 'charge.completed' && payload?.data?.status === 'successful') {
-      const transactionId = payload.data.id || payload.data.tx_ref;
-      if (transactionId) {
-        // Re-verify the transaction against Flutterwave API before activating anything
-        return this.verifyAndFulfillTransaction(String(transactionId));
+      if (!verifHashHeader || verifHashHeader !== secretHash) {
+        console.error('[Webhook Error] Invalid or missing verif-hash header');
+        throw new UnauthorizedException('Invalid or missing verif-hash header');
       }
-    }
 
-    return { status: 'ignored' };
+      console.log('[Webhook Received]', JSON.stringify(payload));
+
+      if (payload?.event === 'charge.completed' && payload?.data?.status === 'successful') {
+        const transactionId = payload.data.id || payload.data.tx_ref;
+        if (!transactionId) {
+          console.error('[Webhook Error] Missing transaction identifier in payload:', payload);
+          throw new BadRequestException('Missing transaction identifier');
+        }
+        return await this.verifyAndFulfillTransaction(String(transactionId));
+      }
+
+      return { status: 'ignored' };
+    } catch (error: any) {
+      console.error('[Webhook Exception] Webhook processing failed:', error.message, error.stack);
+      throw error;
+    }
   }
 
   /**
@@ -139,15 +148,17 @@ export class PaymentsService {
       this.configService.get<string>('payments.flutterwaveSecretKey') ||
       process.env.FLUTTERWAVE_SECRET_KEY;
 
-    const response = await fetch(
-      `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${secretKey}`,
-        },
+    const isNumeric = /^\d+$/.test(transactionId);
+    const url = isNumeric
+      ? `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`
+      : `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${transactionId}`;
+
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
       },
-    );
+    });
 
     const flwRes = await response.json();
 

@@ -12,6 +12,7 @@
  * group chat before editing this, don't edit silently on your branch.
  * ---------------------------------------------------------------------------
  */
+import { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 import { AdminAuthProvider } from "../context/AdminAuthContext";
 import RequireAdminAuth from "./RequireAdminAuth";
@@ -52,6 +53,23 @@ import AdminForgotPassword from "../pages/Admin/AdminForgotPassword";
 import NotFound from "../pages/NotFound";
 
 export default function AdminRoutes() {
+  useEffect(() => {
+    let meta = document.querySelector('meta[name="robots"]');
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.setAttribute('name', 'robots');
+      document.head.appendChild(meta);
+    }
+    meta.setAttribute('content', 'noindex, nofollow');
+
+    return () => {
+      const metaToRemove = document.querySelector('meta[name="robots"]');
+      if (metaToRemove) {
+        metaToRemove.parentNode?.removeChild(metaToRemove);
+      }
+    };
+  }, []);
+
   return (
     <AdminAuthProvider>
       <Routes>

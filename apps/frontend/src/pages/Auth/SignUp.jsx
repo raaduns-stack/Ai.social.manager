@@ -71,10 +71,35 @@ export default function SignUp() {
     setApiError(null)
 
     try {
-      await register(formData.email, formData.password, formData.fullName, formData.companyName)
+      const res = await register(formData.email, formData.password, formData.fullName, formData.companyName)
+      if (res?.requiresVerification) {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: "We've sent a new verification code to your email.",
+              type: 'success',
+            },
+          })
+        )
+        navigate(`/verify-email?email=${encodeURIComponent(res.email)}`)
+        return
+      }
       trackEvent('sign_up', { method: 'email' })
       navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`)
     } catch (err) {
+      const data = err?.response?.data
+      if (data?.requiresVerification) {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: "We've sent a new verification code to your email.",
+              type: 'success',
+            },
+          })
+        )
+        navigate(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        return
+      }
       setApiError(err)
     } finally {
       setLoading(false)

@@ -36,6 +36,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Wand2,
+  Lock,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -62,42 +63,88 @@ import { getMyKyc } from '../../features/kyc/kyc-api'
 import { trackEvent } from '../../lib/analytics'
 import apiClient from '../../lib/api-client'
 
+function formatPlatformName(platform) {
+  if (!platform) return platform
+  const lower = platform.toLowerCase()
+  if (lower === 'instagram') return 'Instagram'
+  if (lower === 'linkedin') return 'LinkedIn'
+  if (lower === 'x' || lower === 'twitter' || lower === 'x / twitter') return 'X / Twitter'
+  if (lower === 'tiktok') return 'TikTok'
+  if (lower === 'facebook') return 'Facebook'
+  if (lower === 'discord') return 'Discord'
+  if (lower === 'youtube') return 'YouTube'
+  if (lower === 'pinterest') return 'Pinterest'
+  if (lower === 'tumblr') return 'Tumblr'
+  if (lower === 'snapchat') return 'Snapchat'
+  return platform.charAt(0).toUpperCase() + platform.slice(1)
+}
+
 // ─── Helper: map platform name to icon and colour ─────────────────────────────
 function getPlatformMeta(platform) {
-  switch (platform) {
+  const norm = formatPlatformName(platform)
+  switch (norm) {
     case 'Instagram': return { icon: <Camera size={12} />, colour: 'danger' }
-    case 'LinkedIn':  return { icon: <Linkedin size={12} />, colour: 'primary' }
+    case 'LinkedIn': return { icon: <Linkedin size={12} />, colour: 'primary' }
     case 'X / Twitter': return { icon: <Twitter size={12} />, colour: 'neutral' }
-    case 'TikTok':   return { icon: <Music size={12} />, colour: 'warning' }
-    case 'Facebook':  return { icon: <Facebook size={12} />, colour: 'primary' }
-    default:          return { icon: <Share2 size={12} />, colour: 'neutral' }
+    case 'TikTok': return { icon: <Music size={12} />, colour: 'warning' }
+    case 'Facebook': return { icon: <Facebook size={12} />, colour: 'primary' }
+    default: return { icon: <Share2 size={12} />, colour: 'neutral' }
   }
 }
 
 // ─── Helper: map approvalStatus to Badge tone and label ───────────────────────
 function getApprovalMeta(status) {
   switch (status) {
-    case 'APPROVED':          return { tone: 'success',  label: 'Approved',          icon: <CheckCircle2 size={12} /> }
-    case 'PENDING':           return { tone: 'warning',  label: 'Pending Review',    icon: <Clock size={12} /> }
-    case 'REVISION_REQUIRED': return { tone: 'warning',  label: 'Revision Required', icon: <FileEdit size={12} /> }
-    case 'REJECTED':          return { tone: 'danger',   label: 'Rejected',          icon: <XCircle size={12} /> }
-    default:                  return { tone: 'neutral',  label: status,              icon: <AlertCircle size={12} /> }
+    case 'APPROVED': return { tone: 'success', label: 'Approved', icon: <CheckCircle2 size={12} /> }
+    case 'PENDING': return { tone: 'warning', label: 'Pending Review', icon: <Clock size={12} /> }
+    case 'REVISION_REQUIRED': return { tone: 'warning', label: 'Revision Required', icon: <FileEdit size={12} /> }
+    case 'REJECTED': return { tone: 'danger', label: 'Rejected', icon: <XCircle size={12} /> }
+    default: return { tone: 'neutral', label: status, icon: <AlertCircle size={12} /> }
   }
 }
 
 // ─── Helper: map postStatus to Badge tone ─────────────────────────────────────
 function getStatusMeta(status) {
   switch (status) {
-    case 'SCHEDULED':  return { tone: 'primary',  label: 'Scheduled' }
-    case 'PUBLISHED':  return { tone: 'success',  label: 'Published' }
-    case 'DRAFT':      return { tone: 'neutral',  label: 'Draft' }
-    default:           return { tone: 'neutral',  label: status }
+    case 'SCHEDULED': return { tone: 'primary', label: 'Scheduled' }
+    case 'PUBLISHED': return { tone: 'success', label: 'Published' }
+    case 'DRAFT': return { tone: 'neutral', label: 'Draft' }
+    default: return { tone: 'neutral', label: status }
   }
 }
 
 // ─── Helper: format date for display ─────────────────────────────────────────
+function toDateKey(isoStringOrDate) {
+  if (!isoStringOrDate) return ''
+  if (typeof isoStringOrDate === 'string') {
+    if (isoStringOrDate.includes('T')) {
+      return isoStringOrDate.split('T')[0]
+    }
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoStringOrDate)) {
+      return isoStringOrDate
+    }
+  }
+  const d = new Date(isoStringOrDate)
+  if (isNaN(d.getTime())) return ''
+  const yyyy = d.getUTCFullYear()
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
+  return `${yyyy}-${mm}-${dd}`
+}
+
 function formatDate(isoString) {
   if (!isoString) return '—'
+  const str = String(isoString)
+  if (str.includes('T') || /^\d{4}-\d{2}-\d{2}/.test(str)) {
+    const datePart = str.split('T')[0]
+    const [y, m, d] = datePart.split('-').map(Number)
+    if (y && m && d) {
+      const dateObj = new Date(y, m - 1, d)
+      return dateObj.toLocaleDateString('en-US', {
+        weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      })
+    }
+  }
   return new Date(isoString).toLocaleDateString('en-US', {
     weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
   })
@@ -105,6 +152,19 @@ function formatDate(isoString) {
 
 function formatTime(isoString) {
   if (!isoString) return '—'
+  const str = String(isoString)
+  if (str.includes('T')) {
+    const timePart = str.split('T')[1]?.substring(0, 5)
+    if (timePart && timePart.includes(':')) {
+      const [h, m] = timePart.split(':').map(Number)
+      if (!isNaN(h) && !isNaN(m)) {
+        const period = h >= 12 ? 'PM' : 'AM'
+        const displayH = h % 12 === 0 ? 12 : h % 12
+        const displayM = String(m).padStart(2, '0')
+        return `${String(displayH).padStart(2, '0')}:${displayM} ${period}`
+      }
+    }
+  }
   return new Date(isoString).toLocaleTimeString('en-US', {
     hour: '2-digit', minute: '2-digit',
   })
@@ -112,8 +172,8 @@ function formatTime(isoString) {
 
 // ─── Tab config ───────────────────────────────────────────────────────────────
 const TABS = [
-  { id: 'all',       label: 'All Content' },
-  { id: 'upcoming',  label: 'Upcoming Posts' },
+  { id: 'all', label: 'All Content' },
+  { id: 'upcoming', label: 'Upcoming Posts' },
   { id: 'published', label: 'Published Posts' },
 ]
 
@@ -135,10 +195,10 @@ function PostCard({ post, onClick }) {
   const { icon, colour } = getPlatformMeta(post.platform)
   const approval = getApprovalMeta(post.approvalStatus)
   const dateStr = post.scheduledAt
-    ? new Date(post.scheduledAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
+    ? formatTime(post.scheduledAt)
     : post.publishedAt
-    ? new Date(post.publishedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
-    : null
+      ? formatTime(post.publishedAt)
+      : null
 
   return (
     <button
@@ -168,12 +228,12 @@ function PostCard({ post, onClick }) {
 
 // ─── Month calendar grid ───────────────────────────────────────────────────────
 function MonthView({ posts, currentDate, onPostClick }) {
-  const year  = currentDate.getFullYear()
+  const year = currentDate.getFullYear()
   const month = currentDate.getMonth()
 
   // Build days of month aligned to week (Sun = 0)
   const firstDay = new Date(year, month, 1)
-  const lastDay  = new Date(year, month + 1, 0)
+  const lastDay = new Date(year, month + 1, 0)
   const startPad = firstDay.getDay()  // 0 = Sun
   const totalCells = startPad + lastDay.getDate()
   const cells = Array.from({ length: Math.ceil(totalCells / 7) * 7 })
@@ -183,8 +243,8 @@ function MonthView({ posts, currentDate, onPostClick }) {
     const map = {}
     posts.forEach(p => {
       const ts = p.scheduledAt || p.publishedAt || p.createdAt
-      if (!ts) return
-      const key = ts.split('T')[0]
+      const key = toDateKey(ts)
+      if (!key) return
       if (!map[key]) map[key] = []
       map[key].push(p)
     })
@@ -192,7 +252,7 @@ function MonthView({ posts, currentDate, onPostClick }) {
   }, [posts])
 
   const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = toDateKey(new Date())
 
   return (
     <div className="border border-border rounded-card overflow-hidden">
@@ -207,9 +267,8 @@ function MonthView({ posts, currentDate, onPostClick }) {
         {cells.map((_, idx) => {
           const dayNum = idx - startPad + 1
           const isValid = dayNum >= 1 && dayNum <= lastDay.getDate()
-          const dateStr = isValid
-            ? `${year}-${String(month + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
-            : null
+          const cellDate = isValid ? new Date(year, month, dayNum) : null
+          const dateStr = cellDate ? toDateKey(cellDate) : null
           const dayPosts = dateStr ? (postsByDate[dateStr] || []) : []
           const isToday = dateStr === todayStr
 
@@ -272,20 +331,20 @@ function WeekView({ posts, currentDate, onPostClick }) {
     const map = {}
     posts.forEach(p => {
       const ts = p.scheduledAt || p.publishedAt || p.createdAt
-      if (!ts) return
-      const key = ts.split('T')[0]
+      const key = toDateKey(ts)
+      if (!key) return
       if (!map[key]) map[key] = []
       map[key].push(p)
     })
     return map
   }, [posts])
 
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = toDateKey(new Date())
 
   return (
     <div className="grid grid-cols-7 gap-2">
       {days.map(d => {
-        const dateStr = d.toISOString().split('T')[0]
+        const dateStr = toDateKey(d)
         const dayPosts = postsByDate[dateStr] || []
         const isToday = dateStr === todayStr
         return (
@@ -317,12 +376,12 @@ function WeekView({ posts, currentDate, onPostClick }) {
 
 // ─── Day view ──────────────────────────────────────────────────────────────────
 function DayView({ posts, currentDate, onPostClick }) {
-  const dateStr = currentDate.toISOString().split('T')[0]
+  const dateStr = toDateKey(currentDate)
 
   // Filter posts for the selected day
   const dayPosts = useMemo(() => posts.filter(p => {
     const ts = p.scheduledAt || p.publishedAt || p.createdAt
-    return ts && ts.startsWith(dateStr)
+    return toDateKey(ts) === dateStr
   }), [posts, dateStr])
 
   const label = currentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
@@ -344,19 +403,18 @@ function DayView({ posts, currentDate, onPostClick }) {
   )
 }
 
-// ─── AI Suggestion Card Component (Frees rating and handles selection) ──────────
+// ─── AI Suggestion Card Component (Instant rating & auto-synchronization) ─────
 function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
-  const [rating, setRating] = useState(suggestion.feedback?.rating || 0)
-  const [reaction, setReaction] = useState(suggestion.feedback?.reaction || null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const isRated = !!suggestion.feedback
-  const stars = isRated ? suggestion.feedback.rating : rating
-  const finalReaction = isRated ? (suggestion.feedback.reaction === 'up' ? 'like' : 'dislike') : reaction
+  const feedback = suggestion.feedback || null
+  const stars = feedback?.rating || 0
+  const reaction = feedback?.reaction ? (feedback.reaction === 'up' ? 'like' : 'dislike') : null
+  const isRated = !!feedback
   const isEligible = isRated ? stars >= 3 : true
 
-  async function handleRate(selectedStars, selectedReaction) {
-    if (isRated || isSubmitting) return
+  async function handleSaveInstant(selectedStars, selectedReaction) {
+    if (isSubmitting) return
     setIsSubmitting(true)
     try {
       const fb = await saveSuggestionFeedback(
@@ -366,10 +424,20 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
       )
       onFeedbackSaved(suggestion.id, fb)
     } catch (err) {
-      alert(err.message || 'Failed to save feedback.')
+      alert(err?.response?.data?.message || err?.message || 'Failed to save feedback.')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  function handleStarClick(selectedStar) {
+    const reactionVal = selectedStar >= 3 ? 'like' : 'dislike'
+    handleSaveInstant(selectedStar, reactionVal)
+  }
+
+  function handleThumbsClick(reactionType) {
+    const starVal = reactionType === 'like' ? 5 : 2
+    handleSaveInstant(starVal, reactionType)
   }
 
   return (
@@ -395,72 +463,48 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border/40">
-        {/* Rating and reaction */}
-        <div className="flex items-center gap-2">
-          {isRated ? (
-            <div className="text-xs font-semibold text-primary-700 flex items-center gap-1.5 bg-primary-50 border border-primary-100 px-2 py-1 rounded">
-              <span>Rating saved:</span>
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <Star
-                    key={s}
-                    size={11}
-                    className={s <= stars ? 'fill-primary-600 text-primary-600' : 'text-gray-300'}
-                  />
-                ))}
-              </div>
-              <span className="uppercase font-bold text-[9px] text-primary-600">
-                ({finalReaction === 'like' ? '👍 Liked' : '👎 Disliked'})
-              </span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2.5">
-              {/* Star Picker */}
-              <div className="flex">
-                {[1, 2, 3, 4, 5].map(s => (
-                  <button
-                    key={s}
-                    type="button"
-                    onClick={() => setRating(s)}
-                    className="p-0.5 hover:scale-110 transition-transform"
-                  >
-                    <Star
-                      size={13}
-                      className={s <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
-                    />
-                  </button>
-                ))}
-              </div>
-              {/* Reaction Buttons */}
-              <div className="flex gap-1">
-                <button
-                  type="button"
-                  onClick={() => setReaction('like')}
-                  className={`p-1 rounded hover:bg-canvas transition-colors ${reaction === 'like' ? 'text-accent' : 'text-ink-muted'}`}
-                >
-                  <ThumbsUp size={13} className={reaction === 'like' ? 'fill-accent' : ''} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setReaction('dislike')}
-                  className={`p-1 rounded hover:bg-canvas transition-colors ${reaction === 'dislike' ? 'text-danger' : 'text-ink-muted'}`}
-                >
-                  <ThumbsDown size={13} className={reaction === 'dislike' ? 'fill-danger' : ''} />
-                </button>
-              </div>
-              {rating > 0 && reaction && (
-                <Button
-                  size="xs"
-                  variant="primary"
-                  onClick={() => handleRate(rating, reaction)}
-                  disabled={isSubmitting}
-                  className="text-[10px] py-0.5 px-2 font-bold"
-                >
-                  Submit
-                </Button>
-              )}
-            </div>
-          )}
+        {/* Instant Rating and reaction (no Submit button) */}
+        <div className="flex items-center gap-3">
+          {/* Star Picker */}
+          <div className="flex items-center gap-0.5">
+            {[1, 2, 3, 4, 5].map(s => (
+              <button
+                key={s}
+                type="button"
+                disabled={isSubmitting}
+                onClick={() => handleStarClick(s)}
+                className="p-0.5 hover:scale-110 transition-transform focus:outline-none cursor-pointer"
+                title={`Rate ${s} star${s > 1 ? 's' : ''}`}
+              >
+                <Star
+                  size={15}
+                  className={s <= stars ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}
+                />
+              </button>
+            ))}
+          </div>
+
+          {/* Reaction Buttons */}
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleThumbsClick('like')}
+              className={`p-1.5 rounded hover:bg-canvas transition-colors cursor-pointer ${reaction === 'like' ? 'text-accent bg-accent/10 font-bold' : 'text-ink-muted'}`}
+              title="Thumbs Up (5 stars)"
+            >
+              <ThumbsUp size={14} className={reaction === 'like' ? 'fill-accent' : ''} />
+            </button>
+            <button
+              type="button"
+              disabled={isSubmitting}
+              onClick={() => handleThumbsClick('dislike')}
+              className={`p-1.5 rounded hover:bg-canvas transition-colors cursor-pointer ${reaction === 'dislike' ? 'text-danger bg-danger/10 font-bold' : 'text-ink-muted'}`}
+              title="Thumbs Down (2 stars)"
+            >
+              <ThumbsDown size={14} className={reaction === 'dislike' ? 'fill-danger' : ''} />
+            </button>
+          </div>
         </div>
 
         {/* Action Button */}
@@ -477,6 +521,14 @@ function SuggestionCard({ suggestion, post, onSelected, onFeedbackSaved }) {
       </div>
     </Card>
   )
+}
+
+function isPostLockedForEdit(post) {
+  if (!post || !post.scheduledAt) return false
+  const scheduledTime = new Date(post.scheduledAt).getTime()
+  if (isNaN(scheduledTime)) return false
+  const currentTime = Date.now()
+  return (scheduledTime - currentTime) <= (5 * 60 * 1000)
 }
 
 // ─── Post Details Modal ────────────────────────────────────────────────────────
@@ -505,32 +557,24 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
     }
   }, [connectedPlatforms, editPlatform])
 
-  // Compute week range for scheduling input
+
+  // Compute week range for scheduling input (same week as post's current scheduledAt)
   const weekLimits = useMemo(() => {
     if (!post || !post.scheduledAt) return { min: '', max: '' }
-    const date = new Date(post.scheduledAt)
+    const dateKey = toDateKey(post.scheduledAt)
+    if (!dateKey) return { min: '', max: '' }
+    const [y, m, d] = dateKey.split('-').map(Number)
+    const date = new Date(y, m - 1, d)
     const day = date.getDay() // 0 = Sunday, 1 = Monday, etc.
-    
-    // Start of week is Sunday
-    const startOfWeek = new Date(date)
-    startOfWeek.setDate(date.getDate() - day)
-    
-    // End of week is Saturday
-    const endOfWeek = new Date(startOfWeek)
-    endOfWeek.setDate(startOfWeek.getDate() + 6)
-    
-    const formatDateStr = (d) => {
-      const yyyy = d.getFullYear()
-      const mm = String(d.getMonth() + 1).padStart(2, '0')
-      const dd = String(d.getDate()).padStart(2, '0')
-      return `${yyyy}-${mm}-${dd}`
-    }
-    
+    const start = new Date(date)
+    start.setDate(date.getDate() - day)
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
     return {
-      min: formatDateStr(startOfWeek),
-      max: formatDateStr(endOfWeek),
+      min: toDateKey(start),
+      max: toDateKey(end),
     }
-  }, [post])
+  }, [post?.scheduledAt])
 
   useEffect(() => {
     if (post) {
@@ -538,15 +582,18 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
       setEditCaption(post.caption)
       setEditPlatform(post.platform)
       if (post.scheduledAt) {
-        const d = new Date(post.scheduledAt)
-        const yyyy = d.getFullYear()
-        const mm = String(d.getMonth() + 1).padStart(2, '0')
-        const dd = String(d.getDate()).padStart(2, '0')
-        setEditDate(`${yyyy}-${mm}-${dd}`)
+        setEditDate(toDateKey(post.scheduledAt))
 
-        const hh = String(d.getHours()).padStart(2, '0')
-        const min = String(d.getMinutes()).padStart(2, '0')
-        setEditTime(`${hh}:${min}`)
+        const str = String(post.scheduledAt)
+        if (str.includes('T')) {
+          const timePart = str.split('T')[1]?.substring(0, 5)
+          setEditTime(timePart || '12:00')
+        } else {
+          const d = new Date(post.scheduledAt)
+          const hh = String(d.getHours()).padStart(2, '0')
+          const min = String(d.getMinutes()).padStart(2, '0')
+          setEditTime(`${hh}:${min}`)
+        }
       } else {
         setEditDate('')
         setEditTime('')
@@ -554,8 +601,8 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
       setIsEditing(false)
       setShowSuggestions(false)
     }
-  // Only reset when the selected POST changes — NOT on every feedback update
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // Only reset when the selected POST changes — NOT on every feedback update
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post?.id])
 
   // Fetch suggestions when the panel opens (or a different post is selected)
@@ -563,7 +610,7 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
     if (post && showSuggestions) {
       loadSuggestions()
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [post?.id, showSuggestions])
 
   async function loadSuggestions() {
@@ -594,11 +641,22 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
 
   async function handleSaveEdits(e) {
     e.preventDefault()
+    if (isPostLockedForEdit(post)) {
+      alert('This post can no longer be edited because it is within 5 minutes of its scheduled posting time.')
+      return
+    }
+    if (weekLimits.min && weekLimits.max && editDate) {
+      if (editDate < weekLimits.min || editDate > weekLimits.max) {
+        alert(`You can only reschedule this post to another date within the same week (${weekLimits.min} to ${weekLimits.max}).`)
+        return
+      }
+    }
     setIsSaving(true)
     try {
       let scheduledAt = null
       if (editDate) {
-        scheduledAt = editTime ? `${editDate}T${editTime}:00` : `${editDate}T12:00:00`
+        const timePart = editTime || '12:00'
+        scheduledAt = `${editDate}T${timePart}:00.000Z`
       }
       const updated = await updateCalendarPost(post.id, {
         title: editTitle,
@@ -638,12 +696,12 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
       prev.map((s) =>
         s.id === suggestionId
           ? {
-              ...s,
-              feedback: {
-                reaction: feedback.reaction,
-                rating: feedback.rating,
-              },
-            }
+            ...s,
+            feedback: {
+              reaction: feedback.reaction,
+              rating: feedback.rating,
+            },
+          }
           : s
       )
     )
@@ -652,12 +710,12 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
       const updatedSuggestions = post.suggestions.map((s) =>
         s.id === suggestionId
           ? {
-              ...s,
-              feedback: {
-                reaction: feedback.reaction,
-                rating: feedback.rating,
-              },
-            }
+            ...s,
+            feedback: {
+              reaction: feedback.reaction,
+              rating: feedback.rating,
+            },
+          }
           : s
       )
       onUpdated({ ...post, suggestions: updatedSuggestions })
@@ -667,7 +725,8 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
   if (!post) return null
   const platform = getPlatformMeta(post.platform)
   const approval = getApprovalMeta(post.approvalStatus)
-  const status   = getStatusMeta(post.status)
+  const status = getStatusMeta(post.status)
+  const isLocked = isPostLockedForEdit(post)
 
   if (showSuggestions) {
     return (
@@ -691,15 +750,24 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
         {loadingSuggestions ? (
           <div className="py-16 text-center text-ink-muted">
             <RefreshCw className="animate-spin mx-auto mb-2 text-primary" size={24} />
-            <p className="text-sm font-medium">Generating 4 tailored suggestions...</p>
+            <p className="text-sm font-medium">Generating tailored suggestions...</p>
           </div>
         ) : errorSuggestions ? (
           <div className="p-4 text-center bg-red-50 text-danger border border-red-200 rounded">
             <p className="text-sm">{errorSuggestions}</p>
             <Button size="xs" onClick={loadSuggestions} className="mt-2 block mx-auto">Retry</Button>
           </div>
+        ) : suggestions.length === 0 ? (
+          <div className="py-12 text-center text-ink-muted space-y-3">
+            <Sparkles className="mx-auto text-primary opacity-40" size={32} />
+            <p className="text-sm font-semibold text-ink">No suggestions available yet</p>
+            <p className="text-xs max-w-sm mx-auto">Click 'Regenerate Suggestions' to create AI suggestions for this post.</p>
+            <Button size="sm" variant="primary" onClick={handleRegenerate} disabled={regenerating}>
+              Regenerate Suggestions
+            </Button>
+          </div>
         ) : (
-        <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-[55vh] overflow-y-auto pr-1">
             {/* Post media preview */}
             {post.mediaUrl && (
               <img
@@ -767,12 +835,14 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
             </div>
 
             <div>
-              <label className="text-xs font-bold text-ink-muted uppercase block mb-1">Scheduled Date</label>
+              <label className="text-xs font-bold text-ink-muted uppercase block mb-1">
+                Scheduled Date {weekLimits.min && weekLimits.max ? <span className="text-[10px] font-normal text-primary">({weekLimits.min} – {weekLimits.max})</span> : null}
+              </label>
               <input
                 type="date"
                 value={editDate}
-                min={weekLimits.min}
-                max={weekLimits.max}
+                min={weekLimits.min || undefined}
+                max={weekLimits.max || undefined}
                 onChange={(e) => setEditDate(e.target.value)}
                 className="w-full h-10 px-3 border border-border rounded-control bg-surface text-ink text-sm focus:ring-2 focus:ring-primary focus:outline-none"
               />
@@ -793,7 +863,7 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
             <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" disabled={isSaving}>
+            <Button type="submit" variant="primary" disabled={isSaving || isLocked}>
               {isSaving ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
@@ -821,6 +891,11 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
         {post.aiGenerated && (
           <Badge tone="primary" className="flex items-center gap-1">
             <Sparkles size={10} /> AI Generated
+          </Badge>
+        )}
+        {isLocked && (
+          <Badge tone="warning" className="flex items-center gap-1">
+            <Lock size={10} /> Locked (5m limit)
           </Badge>
         )}
       </div>
@@ -879,10 +954,22 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
 
       {/* Actions Footer */}
       <div className="pt-4 border-t border-border flex flex-wrap justify-between items-center gap-3">
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="font-semibold text-xs">
-            Edit Post
-          </Button>
+        <div className="flex gap-2 items-center">
+          {isLocked ? (
+            <Button
+              variant="outline"
+              size="sm"
+              disabled
+              className="font-semibold text-xs opacity-50 cursor-not-allowed border-amber-300 text-amber-700 bg-amber-50 flex items-center gap-1"
+              title="Editing disabled: Post is within 5 minutes of scheduled time or past"
+            >
+              <Lock size={12} className="text-amber-600" /> Locked (5m limit)
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="font-semibold text-xs">
+              Edit Post
+            </Button>
+          )}
           <Button
             variant="primary"
             size="sm"
@@ -908,13 +995,13 @@ export default function ContentCalendar() {
   const userId = user?.id
 
   // ── State ──
-  const [activeTab, setActiveTab]   = useState('all')
+  const [activeTab, setActiveTab] = useState('all')
   const [activeView, setActiveView] = useState('Month')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedPost, setSelectedPost] = useState(null)
 
   // Separate fetch state per tab to avoid mixing data
-  const [allPosts, setAllPosts]           = useState([])
+  const [allPosts, setAllPosts] = useState([])
   const [upcomingPosts, setUpcomingPosts] = useState([])
   const [publishedPosts, setPublishedPosts] = useState([])
 
@@ -922,7 +1009,7 @@ export default function ContentCalendar() {
   const [loading, setLoading] = useState(false)
   const [kycLoading, setKycLoading] = useState(true)
   const [kycRecord, setKycRecord] = useState(null)
-  const [error, setError]     = useState(null)
+  const [error, setError] = useState(null)
 
   // ── AI Calendar Generation state ────────────────────────────────────────────
   const [showGenerateModal, setShowGenerateModal] = useState(false)
@@ -961,16 +1048,9 @@ export default function ContentCalendar() {
       setUsageInfo(usage)
 
       if (Array.isArray(socialAccountsRes.data)) {
-        const platformMap = {
-          instagram: 'Instagram',
-          linkedin: 'LinkedIn',
-          x: 'X / Twitter',
-          tiktok: 'TikTok',
-          facebook: 'Facebook'
-        }
         const connected = socialAccountsRes.data
           .filter(acc => acc.status === 'connected')
-          .map(acc => platformMap[acc.platform])
+          .map(acc => formatPlatformName(acc.platform))
           .filter(Boolean)
         setConnectedPlatforms(connected)
         setGenPlatforms(connected)
@@ -991,9 +1071,19 @@ export default function ContentCalendar() {
 
   // ── Derive the active post list based on tab ────────────────────────────────
   const activePosts = useMemo(() => {
-    if (activeTab === 'upcoming')  return upcomingPosts
-    if (activeTab === 'published') return publishedPosts
-    return allPosts
+    let raw = allPosts
+    if (activeTab === 'upcoming') raw = upcomingPosts
+    else if (activeTab === 'published') raw = publishedPosts
+
+    const seen = new Set()
+    const result = []
+    for (const p of raw) {
+      if (p && p.id && !seen.has(p.id)) {
+        seen.add(p.id)
+        result.push(p)
+      }
+    }
+    return result
   }, [activeTab, allPosts, upcomingPosts, publishedPosts])
 
   // ── Calendar navigation ─────────────────────────────────────────────────────
@@ -1064,8 +1154,8 @@ export default function ContentCalendar() {
         text: 'Calendar generation started. Your AI-generated posts will appear shortly…',
       })
 
-      // Poll the job status every 5 seconds until GENERATED or FAILED
-      const MAX_POLLS = 60          // 5 min max (60 × 5s)
+      // Poll the job status every 5 seconds until GENERATED or FAILED (4 minutes timeout = 48 polls)
+      const MAX_POLLS = 48          // 4 min max (48 × 5s)
       let polls = 0
       const pollInterval = setInterval(async () => {
         polls += 1
@@ -1087,6 +1177,7 @@ export default function ContentCalendar() {
             setGenMessage({
               type: 'error',
               text: 'Calendar generation failed. Please try again or contact support.',
+              canRetry: true,
             })
           } else if (polls >= MAX_POLLS) {
             clearInterval(pollInterval)
@@ -1094,7 +1185,8 @@ export default function ContentCalendar() {
             setGenJobId(null)
             setGenMessage({
               type: 'error',
-              text: 'Generation is taking longer than expected. Refresh the page in a few minutes.',
+              text: 'Content calendar generation is taking longer than expected. Please try regenerating again.',
+              canRetry: true,
             })
           }
         } catch (_pollErr) {
@@ -1104,7 +1196,7 @@ export default function ContentCalendar() {
     } catch (err) {
       setGenLoading(false)
       const msg = err?.response?.data?.message || err?.message || 'Failed to start AI calendar generation.'
-      setGenMessage({ type: 'error', text: msg })
+      setGenMessage({ type: 'error', text: msg, canRetry: true })
     }
   }
 
@@ -1132,8 +1224,8 @@ export default function ContentCalendar() {
       {kycBlocked && (
         <KycOverlay kycRecord={kycRecord} onRefresh={fetchAll} />
       )}
-      
-      <div 
+
+      <div
         className={kycBlocked ? 'opacity-40 pointer-events-none select-none' : ''}
         aria-hidden={kycBlocked}
       >
@@ -1145,297 +1237,306 @@ export default function ContentCalendar() {
         {/* ── AI Generation status banner ── */}
         {genMessage && (
           <div
-            className={`mb-4 flex items-start gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${
-              genMessage.type === 'success'
+            className={`mb-4 flex items-center justify-between gap-3 rounded-lg border px-4 py-3 text-sm font-medium ${genMessage.type === 'success'
                 ? 'border-green-200 bg-green-50 text-green-800'
                 : 'border-red-200 bg-red-50 text-red-800'
-            }`}
+              }`}
           >
-            {genMessage.type === 'success'
-              ? <CheckCircle2 size={16} className="mt-0.5 shrink-0 text-green-600" />
-              : <AlertCircle size={16} className="mt-0.5 shrink-0 text-red-500" />}
-            <span className="flex-1 leading-relaxed">{genMessage.text}</span>
-            <button
-              onClick={() => setGenMessage(null)}
-              className="ml-2 shrink-0 text-inherit opacity-60 hover:opacity-100 transition-opacity"
-              aria-label="Dismiss"
-            >
-              <XCircle size={14} />
-            </button>
+            <div className="flex items-center gap-3">
+              {genMessage.type === 'success'
+                ? <CheckCircle2 size={16} className="shrink-0 text-green-600" />
+                : <AlertCircle size={16} className="shrink-0 text-red-500" />}
+              <span className="leading-relaxed">{genMessage.text}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {genMessage.canRetry && (
+                <button
+                  onClick={() => {
+                    setGenMessage(null)
+                    setShowGenerateModal(true)
+                  }}
+                  className="px-3 py-1 bg-red-600 text-white rounded text-xs font-bold hover:bg-red-700 transition-colors cursor-pointer"
+                >
+                  Regenerate / Try Again
+                </button>
+              )}
+              <button
+                onClick={() => setGenMessage(null)}
+                className="text-inherit opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                aria-label="Dismiss"
+              >
+                <XCircle size={16} />
+              </button>
+            </div>
           </div>
         )}
 
         {/* ── Tab bar ── */}
-      <div className="flex gap-1 mb-6 border-b border-canvas">
-        {TABS.map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === tab.id
-                ? 'border-primary-600 text-primary-700'
-                : 'border-transparent text-ink-muted hover:text-ink'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-        <div className="ml-auto flex items-center gap-3 pb-2">
-          {usageInfo && (
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-medium text-ink">
-              <span className="text-ink-muted capitalize">{usageInfo.plan} Plan:</span>
-              <Badge tone={usageInfo.monthlyRemaining === 0 ? 'danger' : 'primary'} className="text-[10px] py-0 px-1.5">
-                {usageInfo.monthlyUsed} / {usageInfo.monthlyLimit} posts
-              </Badge>
-            </div>
-          )}
-          {/* Generate AI Calendar button */}
-          <button
-            id="generate-ai-calendar-btn"
-            onClick={() => {
-              setGenMessage(null)
-              setShowGenerateModal(true)
-            }}
-            disabled={genLoading}
-            title={genLoading ? 'Generation in progress…' : 'Generate AI Calendar'}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${
-              genLoading
-                ? 'cursor-not-allowed bg-primary-100 text-primary-400'
-                : 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-soft hover:from-primary-700 hover:to-primary-600 active:scale-95'
-            }`}
-          >
-            {genLoading
-              ? (<><RefreshCw size={13} className="animate-spin" /><span>Generating…</span></>)
-              : (<><Wand2 size={13} /><span>Generate AI Calendar</span></>)}
-          </button>
-          {/* Regular refresh button — untouched */}
-          <Button variant="ghost" size="sm" onClick={fetchAll} title="Refresh">
-            <RefreshCw size={14} />
-          </Button>
-        </div>
-      </div>
-
-      {/* ── Calendar / List view selector ── */}
-      {activeTab === 'all' && (
-        <div className="grid grid-cols-12 gap-6 mb-6">
-          {/* Main Calendar Card */}
-          <Card className="col-span-12 lg:col-span-9 p-6">
-            {/* View switcher + navigation */}
-            <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
-              {/* Month / Week / Day buttons */}
-              <div className="flex rounded-lg border border-border overflow-hidden bg-canvas p-1 shadow-soft">
-                {VIEWS.map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setActiveView(v)}
-                    className={`px-4 py-1.5 text-xs font-bold rounded-control transition-all ${
-                      activeView === v
-                        ? 'bg-surface text-primary shadow-soft'
-                        : 'text-ink-muted hover:text-ink'
-                    }`}
-                  >
-                    {v}
-                  </button>
-                ))}
+        <div className="flex gap-1 mb-6 border-b border-canvas">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.id
+                  ? 'border-primary-600 text-primary-700'
+                  : 'border-transparent text-ink-muted hover:text-ink'
+                }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+          <div className="ml-auto flex items-center gap-3 pb-2">
+            {usageInfo && (
+              <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-surface border border-border rounded-lg text-xs font-medium text-ink">
+                <span className="text-ink-muted capitalize">{usageInfo.plan} Plan:</span>
+                <Badge tone={usageInfo.monthlyRemaining === 0 ? 'danger' : 'primary'} className="text-[10px] py-0 px-1.5">
+                  {usageInfo.monthlyUsed} / {usageInfo.monthlyLimit} posts
+                </Badge>
               </div>
-
-              {/* Navigation arrows + label */}
-              <div className="flex items-center gap-2">
-                <button onClick={navigatePrev} className="p-1.5 rounded-control border border-border hover:bg-canvas text-ink-muted hover:text-ink transition-colors">
-                  <ChevronLeft size={16} />
-                </button>
-                <span className="text-sm font-bold text-ink min-w-[180px] text-center font-headline-lg">{calendarLabel}</span>
-                <button onClick={navigateNext} className="p-1.5 rounded-control border border-border hover:bg-canvas text-ink-muted hover:text-ink transition-colors">
-                  <ChevronRight size={16} />
-                </button>
-                <button onClick={() => setCurrentDate(new Date())} className="text-xs font-semibold text-primary hover:underline ml-2">
-                  Today
-                </button>
-              </div>
-            </div>
-
-            {/* Loading skeleton */}
-            {loading ? (
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
-              </div>
-            ) : activePosts.length === 0 ? (
-              <div className="text-center py-16 text-ink-muted">
-                <CalendarDays className="mx-auto mb-3 opacity-30 text-primary" size={40} />
-                <p className="font-bold text-ink">No scheduled posts</p>
-                <p className="text-xs mt-1 text-ink-muted">Select an AI draft or create a post to get started.</p>
-              </div>
-            ) : (
-              <>
-                {activeView === 'Month' && (
-                  <MonthView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
-                )}
-                {activeView === 'Week' && (
-                  <WeekView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
-                )}
-                {activeView === 'Day' && (
-                  <DayView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
-                )}
-              </>
             )}
-          </Card>
+            {/* Generate AI Calendar button */}
+            <button
+              id="generate-ai-calendar-btn"
+              onClick={() => {
+                setGenMessage(null)
+                setShowGenerateModal(true)
+              }}
+              disabled={genLoading}
+              title={genLoading ? 'Generation in progress…' : 'Generate AI Calendar'}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all ${genLoading
+                  ? 'cursor-not-allowed bg-primary-100 text-primary-400'
+                  : 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-soft hover:from-primary-700 hover:to-primary-600 active:scale-95'
+                }`}
+            >
+              {genLoading
+                ? (<><RefreshCw size={13} className="animate-spin" /><span>Generating…</span></>)
+                : (<><Wand2 size={13} /><span>Generate AI Calendar</span></>)}
+            </button>
+            {/* Regular refresh button — untouched */}
+            <Button variant="ghost" size="sm" onClick={fetchAll} title="Refresh">
+              <RefreshCw size={14} />
+            </Button>
+          </div>
+        </div>
 
-          {/* Sidebar Recommendations Drafts List */}
-          <div className="col-span-12 lg:col-span-3 space-y-4">
-            <Card className="p-4 border border-primary/20 bg-gradient-to-br from-surface to-primary/5 flex flex-col gap-2">
-              <div className="flex items-center gap-1.5">
-                <Sparkles size={16} className="text-primary animate-pulse" />
-                <h4 className="text-xs font-bold text-ink uppercase tracking-wider">AI Draft Suggestions</h4>
+        {/* ── Calendar / List view selector ── */}
+        {activeTab === 'all' && (
+          <div className="grid grid-cols-12 gap-6 mb-6">
+            {/* Main Calendar Card */}
+            <Card className="col-span-12 lg:col-span-9 p-6">
+              {/* View switcher + navigation */}
+              <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
+                {/* Month / Week / Day buttons */}
+                <div className="flex rounded-lg border border-border overflow-hidden bg-canvas p-1 shadow-soft">
+                  {VIEWS.map(v => (
+                    <button
+                      key={v}
+                      onClick={() => setActiveView(v)}
+                      className={`px-4 py-1.5 text-xs font-bold rounded-control transition-all ${activeView === v
+                          ? 'bg-surface text-primary shadow-soft'
+                          : 'text-ink-muted hover:text-ink'
+                        }`}
+                    >
+                      {v}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Navigation arrows + label */}
+                <div className="flex items-center gap-2">
+                  <button onClick={navigatePrev} className="p-1.5 rounded-control border border-border hover:bg-canvas text-ink-muted hover:text-ink transition-colors">
+                    <ChevronLeft size={16} />
+                  </button>
+                  <span className="text-sm font-bold text-ink min-w-[180px] text-center font-headline-lg">{calendarLabel}</span>
+                  <button onClick={navigateNext} className="p-1.5 rounded-control border border-border hover:bg-canvas text-ink-muted hover:text-ink transition-colors">
+                    <ChevronRight size={16} />
+                  </button>
+                  <button onClick={() => setCurrentDate(new Date())} className="text-xs font-semibold text-primary hover:underline ml-2">
+                    Today
+                  </button>
+                </div>
               </div>
-              <p className="text-[11px] text-ink-muted leading-relaxed">
-                Click to schedule or drag these AI-crafted templates directly into your calendar.
-              </p>
+
+              {/* Loading skeleton */}
+              {loading ? (
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 7 }).map((_, i) => <SkeletonCard key={i} />)}
+                </div>
+              ) : activePosts.length === 0 ? (
+                <div className="text-center py-16 text-ink-muted">
+                  <CalendarDays className="mx-auto mb-3 opacity-30 text-primary" size={40} />
+                  <p className="font-bold text-ink">No scheduled posts</p>
+                  <p className="text-xs mt-1 text-ink-muted">Select an AI draft or create a post to get started.</p>
+                </div>
+              ) : (
+                <>
+                  {activeView === 'Month' && (
+                    <MonthView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
+                  )}
+                  {activeView === 'Week' && (
+                    <WeekView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
+                  )}
+                  {activeView === 'Day' && (
+                    <DayView posts={activePosts} currentDate={currentDate} onPostClick={setSelectedPost} />
+                  )}
+                </>
+              )}
             </Card>
 
-            {[
-              { title: 'SaaS Automation Roadmap', platform: 'LinkedIn', category: 'Educational', length: '5 Steps' },
-              { title: 'Behind the Scenes: Product Sprint', platform: 'Instagram', category: 'Reel Draft', length: '15s video' },
-              { title: 'Why Quality Beats Velocity', platform: 'X / Twitter', category: 'Growth Hook', length: 'Short form' },
-              { title: 'Customer Onboarding Checklists', platform: 'LinkedIn', category: 'Case Study', length: 'Text post' }
-            ].map((draft, idx) => {
-              const meta = getPlatformMeta(draft.platform)
-              return (
-                <Card
-                  key={idx}
-                  className="p-4 border border-border bg-surface hover:border-primary-200 transition-all shadow-soft cursor-grab active:cursor-grabbing hover:-translate-y-0.5"
-                >
-                  <div className="flex items-center justify-between gap-2 mb-2">
-                    <span className="text-[9px] bg-primary-50 text-primary border border-primary-100/50 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                      {draft.category}
-                    </span>
-                    <span className="text-[10px] text-ink-muted">{draft.length}</span>
-                  </div>
-                  <h5 className="text-xs font-bold text-ink leading-snug line-clamp-2">{draft.title}</h5>
-                  <div className="flex items-center gap-1.5 mt-3 text-[10px] text-ink-muted pt-2 border-t border-border/40">
-                    <span className="flex items-center gap-1">
-                      {meta.icon}
-                      <span className="font-semibold">{draft.platform}</span>
-                    </span>
-                  </div>
-                </Card>
-              )
-            })}
-          </div>
-        </div>
-      )}
+            {/* Sidebar Recommendations Drafts List */}
+            <div className="col-span-12 lg:col-span-3 space-y-4">
+              <Card className="p-4 border border-primary/20 bg-gradient-to-br from-surface to-primary/5 flex flex-col gap-2">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles size={16} className="text-primary animate-pulse" />
+                  <h4 className="text-xs font-bold text-ink uppercase tracking-wider">AI Draft Suggestions</h4>
+                </div>
+                <p className="text-[11px] text-ink-muted leading-relaxed">
+                  Click to schedule or drag these AI-crafted templates directly into your calendar.
+                </p>
+              </Card>
 
-      {/* ── Upcoming / Published list view ── */}
-      {(activeTab === 'upcoming' || activeTab === 'published') && (
-        <Card>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-semibold text-ink flex items-center gap-2">
-              {activeTab === 'upcoming' ? <Clock size={16} className="text-primary-600" /> : <CheckCircle2 size={16} className="text-accent-600" />}
-              {activeTab === 'upcoming' ? 'Upcoming Posts' : 'Published Posts'}
-              {!loading && (
-                <Badge tone="neutral" className="ml-1">{activePosts.length}</Badge>
-              )}
-            </h3>
-          </div>
-
-          {loading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+              {[
+                { title: 'SaaS Automation Roadmap', platform: 'LinkedIn', category: 'Educational', length: '5 Steps' },
+                { title: 'Behind the Scenes: Product Sprint', platform: 'Instagram', category: 'Reel Draft', length: '15s video' },
+                { title: 'Why Quality Beats Velocity', platform: 'X / Twitter', category: 'Growth Hook', length: 'Short form' },
+                { title: 'Customer Onboarding Checklists', platform: 'LinkedIn', category: 'Case Study', length: 'Text post' }
+              ].map((draft, idx) => {
+                const meta = getPlatformMeta(draft.platform)
+                return (
+                  <Card
+                    key={idx}
+                    className="p-4 border border-border bg-surface hover:border-primary-200 transition-all shadow-soft cursor-grab active:cursor-grabbing hover:-translate-y-0.5"
+                  >
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <span className="text-[9px] bg-primary-50 text-primary border border-primary-100/50 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        {draft.category}
+                      </span>
+                      <span className="text-[10px] text-ink-muted">{draft.length}</span>
+                    </div>
+                    <h5 className="text-xs font-bold text-ink leading-snug line-clamp-2">{draft.title}</h5>
+                    <div className="flex items-center gap-1.5 mt-3 text-[10px] text-ink-muted pt-2 border-t border-border/40">
+                      <span className="flex items-center gap-1">
+                        {meta.icon}
+                        <span className="font-semibold">{draft.platform}</span>
+                      </span>
+                    </div>
+                  </Card>
+                )
+              })}
             </div>
-          ) : activePosts.length === 0 ? (
-            <div className="text-center py-12 text-ink-muted">
-              <List className="mx-auto mb-3 opacity-30" size={32} />
-              <p className="font-medium">
-                {activeTab === 'upcoming' ? 'No upcoming posts' : 'No published posts yet'}
+          </div>
+        )}
+
+        {/* ── Upcoming / Published list view ── */}
+        {(activeTab === 'upcoming' || activeTab === 'published') && (
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-ink flex items-center gap-2">
+                {activeTab === 'upcoming' ? <Clock size={16} className="text-primary-600" /> : <CheckCircle2 size={16} className="text-accent-600" />}
+                {activeTab === 'upcoming' ? 'Upcoming Posts' : 'Published Posts'}
+                {!loading && (
+                  <Badge tone="neutral" className="ml-1">{activePosts.length}</Badge>
+                )}
+              </h3>
+            </div>
+
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+              </div>
+            ) : activePosts.length === 0 ? (
+              <div className="text-center py-12 text-ink-muted">
+                <List className="mx-auto mb-3 opacity-30" size={32} />
+                <p className="font-medium">
+                  {activeTab === 'upcoming' ? 'No upcoming posts' : 'No published posts yet'}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {activePosts.map(post => (
+                  <PostCard key={post.id} post={post} onClick={setSelectedPost} />
+                ))}
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* ── Post details modal ── */}
+        <PostDetailModal
+          post={selectedPost}
+          onClose={() => setSelectedPost(null)}
+          connectedPlatforms={connectedPlatforms}
+          onUpdated={(updatedPost) => {
+            setAllPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
+            setUpcomingPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
+            setPublishedPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
+            setSelectedPost(updatedPost)
+          }}
+        />
+
+        {/* ── Generate AI Calendar platform-selection modal ── */}
+        <Modal
+          open={showGenerateModal}
+          onClose={() => setShowGenerateModal(false)}
+          title="✨ Generate AI Calendar"
+          className="max-w-md"
+        >
+          <p className="text-sm text-ink-muted mb-4 leading-relaxed">
+            Select the platforms you want AI to create posts for in{' '}
+            <strong className="text-ink">{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>.
+            The posts will appear in your calendar once generation completes.
+          </p>
+
+          {/* Platform checkboxes */}
+          <div className="space-y-2 mb-6">
+            {connectedPlatforms.length === 0 ? (
+              <p className="text-sm text-danger italic">
+                Please connect at least one social channel to generate a calendar.
               </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {activePosts.map(post => (
-                <PostCard key={post.id} post={post} onClick={setSelectedPost} />
-              ))}
-            </div>
-          )}
-        </Card>
-      )}
+            ) : (
+              connectedPlatforms.map(platform => (
+                <label
+                  key={platform}
+                  className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${genPlatforms.includes(platform)
+                      ? 'border-primary-300 bg-primary-50 text-primary-800'
+                      : 'border-border bg-surface text-ink-muted hover:border-primary-200'
+                    }`}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-primary w-4 h-4"
+                    checked={genPlatforms.includes(platform)}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        setGenPlatforms(prev => [...prev, platform])
+                      } else {
+                        setGenPlatforms(prev => prev.filter(p => p !== platform))
+                      }
+                    }}
+                  />
+                  <span className="text-sm font-medium">{platform}</span>
+                </label>
+              ))
+            )}
+          </div>
 
-      {/* ── Post details modal ── */}
-      <PostDetailModal
-        post={selectedPost}
-        onClose={() => setSelectedPost(null)}
-        connectedPlatforms={connectedPlatforms}
-        onUpdated={(updatedPost) => {
-          setAllPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
-          setUpcomingPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
-          setPublishedPosts(prev => prev.map(p => p.id === updatedPost.id ? updatedPost : p))
-          setSelectedPost(updatedPost)
-        }}
-      />
-
-      {/* ── Generate AI Calendar platform-selection modal ── */}
-      <Modal
-        open={showGenerateModal}
-        onClose={() => setShowGenerateModal(false)}
-        title="✨ Generate AI Calendar"
-        className="max-w-md"
-      >
-        <p className="text-sm text-ink-muted mb-4 leading-relaxed">
-          Select the platforms you want AI to create posts for in{' '}
-          <strong className="text-ink">{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</strong>.
-          The posts will appear in your calendar once generation completes.
-        </p>
-
-        {/* Platform checkboxes */}
-        <div className="space-y-2 mb-6">
-          {connectedPlatforms.length === 0 ? (
-            <p className="text-sm text-danger italic">
-              Please connect at least one social channel to generate a calendar.
-            </p>
-          ) : (
-            connectedPlatforms.map(platform => (
-              <label
-                key={platform}
-                className={`flex items-center gap-3 rounded-lg border px-3 py-2.5 cursor-pointer transition-all ${
-                  genPlatforms.includes(platform)
-                    ? 'border-primary-300 bg-primary-50 text-primary-800'
-                    : 'border-border bg-surface text-ink-muted hover:border-primary-200'
+          <div className="flex justify-end gap-2 border-t border-border pt-4">
+            <Button variant="outline" size="sm" onClick={() => setShowGenerateModal(false)}>
+              Cancel
+            </Button>
+            <button
+              onClick={handleGenerateAICalendar}
+              disabled={genPlatforms.length === 0}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-all ${genPlatforms.length === 0
+                  ? 'cursor-not-allowed bg-primary-100 text-primary-400'
+                  : 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-soft hover:from-primary-700 hover:to-primary-600'
                 }`}
-              >
-                <input
-                  type="checkbox"
-                  className="accent-primary w-4 h-4"
-                  checked={genPlatforms.includes(platform)}
-                  onChange={e => {
-                    if (e.target.checked) {
-                      setGenPlatforms(prev => [...prev, platform])
-                    } else {
-                      setGenPlatforms(prev => prev.filter(p => p !== platform))
-                    }
-                  }}
-                />
-                <span className="text-sm font-medium">{platform}</span>
-              </label>
-            ))
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
-          <Button variant="outline" size="sm" onClick={() => setShowGenerateModal(false)}>
-            Cancel
-          </Button>
-          <button
-            onClick={handleGenerateAICalendar}
-            disabled={genPlatforms.length === 0}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-bold transition-all ${
-              genPlatforms.length === 0
-                ? 'cursor-not-allowed bg-primary-100 text-primary-400'
-                : 'bg-gradient-to-r from-primary-600 to-primary-500 text-white shadow-soft hover:from-primary-700 hover:to-primary-600'
-            }`}
-          >
-            <Wand2 size={14} />
-            Generate for {currentDate.toLocaleDateString('en-US', { month: 'long' })}
-          </button>
-        </div>
-      </Modal>
+            >
+              <Wand2 size={14} />
+              Generate for {currentDate.toLocaleDateString('en-US', { month: 'long' })}
+            </button>
+          </div>
+        </Modal>
       </div>
     </div>
   )

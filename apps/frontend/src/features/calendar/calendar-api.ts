@@ -19,7 +19,7 @@ import api from '../../lib/api-client'
 
 export type PostStatus = 'DRAFT' | 'SCHEDULED' | 'PUBLISHED'
 export type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUIRED'
-export type Platform = 'Instagram' | 'LinkedIn' | 'X / Twitter' | 'TikTok' | 'Facebook'
+export type Platform = string
 
 export interface CalendarPost {
   id: string
@@ -96,9 +96,21 @@ export interface GenerationJob {
   updatedAt: string
 }
 
+export interface ConnectedAccountInfo {
+  id: string
+  platform: string
+  accountHandle: string
+  status: string
+  connectedAt?: string
+}
+
 export interface CalendarUsage {
   month: string
   plan: string
+  planName?: string
+  maxSocialAccounts?: number
+  connectedAccountCount?: number
+  connectedAccounts?: ConnectedAccountInfo[]
   monthlyLimit: number
   monthlyUsed: number
   monthlyRemaining: number

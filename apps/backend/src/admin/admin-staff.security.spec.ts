@@ -5,6 +5,7 @@ import { CreateStaffDto } from './dto/create-staff.dto';
 import { UserRole } from '../common/enums/roles.enum';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { AuthService } from '../auth/auth.service';
 import { BadRequestException, ConflictException } from '@nestjs/common';
 import { ROLES_KEY } from '../auth/decorators/roles.decorator';
 import { Reflector } from '@nestjs/core';
@@ -18,6 +19,7 @@ describe('AdminStaffSecurity - Staff Account Creation', () => {
 
   beforeEach(async () => {
     dbMock = {
+      transaction: jest.fn().mockImplementation((cb) => cb(dbMock)),
       query: {
         users: {
           findFirst: jest.fn(),
@@ -52,6 +54,10 @@ describe('AdminStaffSecurity - Staff Account Creation', () => {
         {
           provide: ActivityLogsService,
           useValue: activityLogsMock,
+        },
+        {
+          provide: AuthService,
+          useValue: { register: jest.fn(), applyUserStatusTransition: jest.fn().mockResolvedValue(true) },
         },
       ],
     }).compile();

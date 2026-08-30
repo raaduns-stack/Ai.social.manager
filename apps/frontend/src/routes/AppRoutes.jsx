@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import { usePageTracking } from '../hooks/useAnalytics'
 
 // Layouts
@@ -14,6 +14,7 @@ import Pricing from '../pages/Pricing'
 import Contact from '../pages/Contact'
 import PrivacyPolicy from '../pages/PrivacyPolicy'
 import TermsOfService from '../pages/TermsOfService'
+import NotFound from '../pages/NotFound'
 
 // Auth pages
 import Login from '../pages/Auth/Login'
@@ -99,8 +100,17 @@ export default function AppRoutes() {
         <Route path="settings" element={<Settings />} />
       </Route>
 
+      {/* Redirect for Tumblr OAuth callback URL */}
+      <Route
+        path="/settings/accounts"
+        element={<Navigate to={{ pathname: "/dashboard/channels", search: window.location.search }} replace />}
+      />
+
       {/* Admin Panel */}
       <Route path="/admin/*" element={<AdminRoutes />} />
+
+      {/* Catch-all 404 for unmatched customer-facing routes */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

@@ -18,4 +18,7 @@ export default defineConfig({
     },
   },
   assetsInclude: ['**/*.PNG', '**/*.png'],
+  build: {
+    sourcemap: true,
+  },
 })

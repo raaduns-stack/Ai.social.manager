@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useAuthStore } from '../../store/auth-store'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
 import Button from '../../components/ui/Button'
@@ -15,6 +16,7 @@ import { trackEvent } from '../../lib/analytics'
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
 import {
+  MessageSquare,
   Camera,
   Music,
   Linkedin,
@@ -27,9 +29,12 @@ import {
   HelpCircle,
   AlertTriangle,
   CheckCircle2,
+  ChevronDown,
 } from 'lucide-react'
 
 export default function Channels() {
+  const apiBase = (import.meta.env?.VITE_API_BASE_URL || 'http://localhost:4000/api').replace(/\/api$/, '')
+
   // ---- KYC state ----
   // kycRecord: null (loading) | object (loaded). When kycRecord.status === 'approved'
   // the overlay is hidden and the user can interact with channels normally.
@@ -48,6 +53,37 @@ export default function Channels() {
 
   useEffect(() => {
     fetchKyc()
+  }, [])
+
+  // useEffect to handle Tumblr OAuth callback query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tumblrStatus = params.get('tumblr')
+    if (tumblrStatus) {
+      if (tumblrStatus === 'success') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: 'Tumblr account connected successfully!',
+              type: 'success',
+            },
+          })
+        )
+        fetchChannels()
+      } else if (tumblrStatus === 'error') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: 'Failed to connect Tumblr account.',
+              type: 'error',
+            },
+          })
+        )
+      }
+      // Strip params from URL
+      const cleanUrl = window.location.pathname + window.location.hash
+      window.history.replaceState({}, document.title, cleanUrl)
+    }
   }, [])
 
   // True when the KYC overlay should be shown (block channel interactions)
@@ -85,6 +121,10 @@ export default function Channels() {
         return 'YouTube Studio';
       case 'facebook':
         return 'Facebook Page';
+      case 'tumblr':
+        return 'Tumblr Blog';
+      case 'discord':
+        return 'Discord Channel';
       default:
         return platform;
     }
@@ -122,10 +162,36 @@ export default function Channels() {
       });
   };
 
-  // Fetch channels on component mount
+  // Fetch channels on component mount + check for OAuth callback query parameters
   useEffect(() => {
     fetchChannels();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('discord') === 'connected') {
+      trackEvent('social_account_connected', { platform: 'discord' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+      fetchChannels();
+    } else if (params.get('discord') === 'error') {
+      const reason = params.get('reason') || 'authorization_failed';
+      setFetchError(`Discord connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   }, []);
+
+  /** Helper to trigger Discord OAuth flow */
+  const startDiscordOAuth = () => {
+    apiClient
+      .get('/channels/discord/connect')
+      .then((res) => {
+        if (res.data?.authUrl) {
+          window.location.href = res.data.authUrl;
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to initiate Discord connection:', err);
+        setConnectError('Failed to initiate Discord OAuth flow. Please try again.');
+      });
+  };
 
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
@@ -135,6 +201,7 @@ export default function Channels() {
   const [selectedPlatform, setSelectedPlatform] = useState('instagram')
   const [newHandle, setNewHandle] = useState('')
   const [connectError, setConnectError] = useState('')
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   // Dynamically compute stats from state
   // Stats will recompute automatically when channels change
@@ -175,6 +242,16 @@ export default function Channels() {
           icon: <Facebook size={24} />,
           style: { backgroundColor: '#1877F2' },
         }
+      case 'tumblr':
+        return {
+          icon: <span className="font-serif text-xl font-bold leading-none">t</span>,
+          style: { backgroundColor: '#35465d' },
+        }
+      case 'discord':
+        return {
+          icon: <MessageSquare size={24} />,
+          style: { backgroundColor: '#5865F2' },
+        }
       default:
         return {
           icon: <Link size={24} />,
@@ -186,6 +263,29 @@ export default function Channels() {
   // Handle individual card connect/disconnect button clicks
   const handleChannelAction = (id, currentStatus) => {
     const channel = channels.find((c) => c.id === id);
+    if (channel && channel.platform === 'tumblr') {
+      if (currentStatus === 'Connected') {
+        apiClient
+          .delete(`/social-accounts/${id}`)
+          .then(() => {
+            trackEvent('social_account_disconnected', { platform: 'tumblr' })
+            fetchChannels()
+          })
+          .catch((error) => {
+            console.error('Failed to disconnect Tumblr:', error)
+          })
+      } else {
+        const token = useAuthStore.getState().accessToken
+        window.location.href = `${apiBase}/auth/tumblr?token=${token}`
+      }
+      return;
+    }
+
+    if (channel && channel.platform === 'discord' && currentStatus !== 'Connected') {
+      startDiscordOAuth();
+      return;
+    }
+
     if (currentStatus === 'Connected') {
       // Disconnect channel via backend DELETE
       apiClient
@@ -215,6 +315,7 @@ export default function Channels() {
             })
             .catch((error) => {
               console.error('Failed to reconnect channel:', error);
+              setFetchError(error?.response?.data?.message || 'Failed to reconnect channel.');
             });
         } else {
           // New connection
@@ -230,6 +331,7 @@ export default function Channels() {
             })
             .catch((error) => {
               console.error('Failed to connect new channel:', error);
+              setFetchError(error?.response?.data?.message || 'Failed to connect new channel.');
             });
         }
       }
@@ -239,6 +341,19 @@ export default function Channels() {
   // Handle adding/connecting account via Top Right Modal
   const handleConnectSubmit = (e) => {
     e.preventDefault();
+    if (selectedPlatform === 'tumblr') {
+      setIsConnectModalOpen(false)
+      const token = useAuthStore.getState().accessToken
+      window.location.href = `${apiBase}/auth/tumblr?token=${token}`
+      return;
+    }
+
+    if (selectedPlatform === 'discord') {
+      startDiscordOAuth();
+      setIsConnectModalOpen(false);
+      return;
+    }
+
     if (!newHandle.trim()) {
       setConnectError('Please enter an account handle or username.');
       return;
@@ -257,15 +372,14 @@ export default function Channels() {
       .then(() => {
         trackEvent('social_account_connected', { platform: selectedPlatform })
         fetchChannels();
-      })
-      .catch((error) => {
-        console.error('Failed to connect account:', error);
-        setConnectError('Failed to connect account.');
-      })
-      .finally(() => {
         setNewHandle('');
         setConnectError('');
         setIsConnectModalOpen(false);
+      })
+      .catch((error) => {
+        console.error('Failed to connect account:', error);
+        const errMsg = error?.response?.data?.message || 'Failed to connect account.';
+        setConnectError(errMsg);
       });
   };
 
@@ -285,14 +399,63 @@ export default function Channels() {
             title="Social Channels"
             description="Manage your connected social accounts and synchronization status."
             action={
-              <Button
-                variant="primary"
-                className="flex items-center gap-1.5 font-medium"
-                onClick={() => setIsConnectModalOpen(true)}
-              >
-                <Plus size={18} />
-                Connect New Account
-              </Button>
+              <div className="relative w-full md:w-auto flex justify-start md:justify-end">
+                <Button
+                  variant="primary"
+                  className="flex items-center gap-1.5 font-medium w-full md:w-auto justify-center"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <Plus size={18} />
+                  Connect Account
+                  <ChevronDown size={16} />
+                </Button>
+                {isDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40 cursor-default"
+                      onClick={() => setIsDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-2 w-56 rounded-control border border-border bg-surface shadow-lg py-1 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="px-3 py-2 text-xs font-semibold text-ink-muted border-b border-border/40 mb-1 uppercase tracking-wider">
+                        Select Platform
+                      </div>
+                      {[
+                        { key: 'instagram', label: 'Instagram Business', icon: <Camera size={14} className="text-pink-500" /> },
+                        { key: 'tiktok', label: 'TikTok Pro', icon: <Music size={14} className="text-ink" /> },
+                        { key: 'linkedin', label: 'LinkedIn Company', icon: <Linkedin size={14} className="text-primary" /> },
+                        { key: 'x', label: 'X / Twitter', icon: <span className="font-bold text-xs leading-none text-ink">X</span> },
+                        { key: 'youtube', label: 'YouTube Studio', icon: <Youtube size={14} className="text-red-500" /> },
+                        { key: 'facebook', label: 'Facebook Page', icon: <Facebook size={14} className="text-blue-600" /> },
+                        { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-serif text-sm font-bold leading-none text-blue-900">t</span> },
+                        { key: 'discord', label: 'Discord Channel', icon: <MessageSquare size={14} className="text-indigo-500" /> },
+                      ].map((plat) => (
+                        <button
+                          key={plat.key}
+                          type="button"
+                          className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-canvas flex items-center gap-2.5 transition-colors font-medium"
+                          onClick={() => {
+                            setIsDropdownOpen(false)
+                            if (plat.key === 'tumblr') {
+                              const token = useAuthStore.getState().accessToken
+                              window.location.href = `${apiBase}/auth/tumblr?token=${token}`
+                            } else if (plat.key === 'discord') {
+                              startDiscordOAuth()
+                            } else {
+                              setSelectedPlatform(plat.key)
+                              setIsConnectModalOpen(true)
+                            }
+                          }}
+                        >
+                          <span className="w-5 h-5 rounded bg-canvas flex items-center justify-center shrink-0">
+                            {plat.icon}
+                          </span>
+                          {plat.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             }
           />
 
@@ -356,10 +519,10 @@ export default function Channels() {
                 const isConnected = channel.status === 'Connected'
                 return (
                   <Card
-                    key={channel.id}
-                    className={`p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border ${
-                      isConnected ? 'border-primary/20 bg-gradient-to-br from-surface to-primary/5 border-t-4 border-t-primary' : 'border-border'
-                    }`}
+                     key={channel.id}
+                     className={`p-6 flex flex-col justify-between hover:shadow-hover transition-all duration-150 transform hover:-translate-y-0.5 border ${
+                       isConnected ? 'border-primary/20 bg-gradient-to-br from-surface to-primary/5 border-t-4 border-t-primary' : 'border-border'
+                     }`}
                   >
                     <div>
                       <div className="flex justify-between items-start mb-6">
@@ -462,21 +625,25 @@ export default function Channels() {
                   className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="instagram">Instagram Business</option>
+                  <option value="discord">Discord Channel</option>
                   <option value="tiktok">TikTok Pro</option>
                   <option value="linkedin">LinkedIn Company</option>
                   <option value="x">X / Twitter</option>
                   <option value="youtube">YouTube Studio</option>
                   <option value="facebook">Facebook Page</option>
+                  <option value="tumblr">Tumblr Blog</option>
                 </select>
               </div>
 
-              <Input
-                label="Account Handle or Page Name"
-                required
-                value={newHandle}
-                onChange={(e) => setNewHandle(e.target.value)}
-                placeholder="e.g. @mybrand_official or Brand Page"
-              />
+              {selectedPlatform !== 'tumblr' && selectedPlatform !== 'discord' && (
+                <Input
+                  label="Account Handle or Page Name"
+                  required
+                  value={newHandle}
+                  onChange={(e) => setNewHandle(e.target.value)}
+                  placeholder="e.g. @mybrand_official or Brand Page"
+                />
+              )}
 
               <p className="text-xs text-ink-muted italic leading-relaxed">
                 * Clicking Connect will redirect you to the platform's official OAuth consent page.

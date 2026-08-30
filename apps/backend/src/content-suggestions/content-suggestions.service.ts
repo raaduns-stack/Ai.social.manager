@@ -144,9 +144,17 @@ export class ContentSuggestionsService {
         ),
     });
 
-    // Rating is final! Enforce this on the backend.
     if (existingFeedback) {
-      throw new BadRequestException('Feedback has already been submitted for this suggestion and cannot be modified.');
+      const [updated] = await this.db
+        .update(schema.contentFeedback)
+        .set({
+          reaction,
+          rating,
+          createdAt: new Date(),
+        })
+        .where(eq(schema.contentFeedback.id, existingFeedback.id))
+        .returning();
+      return updated;
     }
 
     // Create the first feedback record.
@@ -165,7 +173,7 @@ export class ContentSuggestionsService {
 
   /**
    * Fetch AI suggestions generated for a specific calendar post.
-   * If none exist, triggers n8n workflow using real postId and userId.
+   * Only returns existing suggestions and never triggers generation on GET.
    */
   async findForPost(postId: string, userId: string) {
     const post = await this.db.query.contentCalendar.findFirst({
@@ -206,8 +214,7 @@ export class ContentSuggestionsService {
       });
     }
 
-    // Trigger n8n workflow for fresh suggestion generation
-    return this.triggerN8nGeneration(postId, userId);
+    return [];
   }
 
   /**

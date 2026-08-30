@@ -3,12 +3,12 @@
  */
 export default function PageHeader({ title, description, action }) {
   return (
-    <div className="mb-6 flex items-start justify-between gap-4">
+    <div className="mb-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
       <div>
         <h1 className="text-xl font-semibold text-ink">{title}</h1>
         {description && <p className="mt-1 text-sm text-ink-muted">{description}</p>}
       </div>
-      {action}
+      {action && <div className="w-full md:w-auto flex justify-start md:justify-end shrink-0">{action}</div>}
     </div>
   )
 }
