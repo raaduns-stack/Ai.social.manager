@@ -841,9 +841,38 @@ export class CalendarService {
       throw new BadRequestException(`Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`);
     }
 
-    // Limit checks
+    // Group incoming posts: 1 primary content item per topic/post, extra variations become suggestions
+    const groupedItems: { primary: any; suggestions: any[] }[] = [];
+    const mapByTopic = new Map<string, { primary: any; suggestions: any[] }>();
+
+    for (const raw of (dto.posts || [])) {
+      if (!raw) continue;
+      const isVariation = Boolean(raw.isVariation || raw.isSuggestion || raw.parentId);
+      const topicKey = (raw.topic || raw.parentTitle || raw.title || '').trim().toLowerCase();
+
+      if (isVariation && topicKey && mapByTopic.has(topicKey)) {
+        mapByTopic.get(topicKey)!.suggestions.push(raw);
+      } else if (topicKey && mapByTopic.has(topicKey) && !raw.isPrimary) {
+        mapByTopic.get(topicKey)!.suggestions.push(raw);
+      } else {
+        const itemSuggestions = Array.isArray(raw.variations)
+          ? [...raw.variations]
+          : Array.isArray(raw.suggestions)
+            ? [...raw.suggestions]
+            : [];
+        const group = { primary: raw, suggestions: itemSuggestions };
+        groupedItems.push(group);
+        if (topicKey) {
+          mapByTopic.set(topicKey, group);
+        }
+      }
+    }
+
+    const primaryItems = groupedItems.map((g) => g.primary);
+    const newPostsCount = primaryItems.length;
+
+    // Limit checks based on primary posts count
     const { limit, currentCount } = await this.getMonthlyLimitAndUsage(job.userId, new Date(`${job.month}-01`));
-    const newPostsCount = dto.posts.length;
 
     if (currentCount + newPostsCount > limit) {
       throw new BadRequestException(
@@ -944,7 +973,7 @@ export class CalendarService {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       }
 
-      // Check if requested posts exceed what can fit under the weekly limit
+      // Check if requested primary posts exceed what can fit under the weekly limit
       let totalCapacity = 0;
       for (const w of weeks) {
         if (w.daysInMonth.length > 0 && w.capacity > 0) {
@@ -952,14 +981,14 @@ export class CalendarService {
         }
       }
 
-      if (isFree && dto.posts.length > totalCapacity) {
+      if (isFree && primaryItems.length > totalCapacity) {
         throw new BadRequestException(
-          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${dto.posts.length}.`
+          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${primaryItems.length}.`
         );
       }
 
-      // For each new post, find the best week to assign it
-      for (const post of dto.posts) {
+      // For each primary post group, find the best week to assign it
+      for (const group of groupedItems) {
         let bestWeek: WeekData | null = null;
         let minTotalPosts = Infinity;
 
@@ -980,16 +1009,16 @@ export class CalendarService {
           );
         }
 
-        bestWeek.assigned.push(post);
+        bestWeek.assigned.push(group);
       }
 
-      // Distribute assigned posts to specific days in each week
+      // Distribute assigned primary post groups to specific days in each week
       const dayCounts = new Map<number, number>();
       for (const [dayTime, count] of existingPostsByDay.entries()) {
         dayCounts.set(dayTime, count);
       }
 
-      const scheduledPosts: any[] = [];
+      const scheduledGroups: { group: { primary: any; suggestions: any[] }; scheduledDate: string }[] = [];
 
       for (const w of weeks) {
         const k = w.assigned.length;
@@ -998,7 +1027,7 @@ export class CalendarService {
         const Dw = w.daysInMonth.length;
 
         for (let i = 0; i < k; i++) {
-          const post = w.assigned[i];
+          const group = w.assigned[i];
           const prefIndex = Math.floor((i + 0.5) * Dw / k);
 
           let bestDay: Date | null = null;
@@ -1034,8 +1063,8 @@ export class CalendarService {
           const monthVal = String(bestDay.getMonth() + 1).padStart(2, '0');
           const dateVal = String(bestDay.getDate()).padStart(2, '0');
 
-          scheduledPosts.push({
-            ...post,
+          scheduledGroups.push({
+            group,
             scheduledDate: `${yearVal}-${monthVal}-${dateVal}`,
           });
         }
@@ -1057,8 +1086,9 @@ export class CalendarService {
 
       const timeSlots = ['09:00', '14:00', '18:00', '11:00'];
 
-      for (let i = 0; i < scheduledPosts.length; i++) {
-        const post = scheduledPosts[i];
+      for (let i = 0; i < scheduledGroups.length; i++) {
+        const { group, scheduledDate } = scheduledGroups[i];
+        const post = group.primary;
 
         // Round-robin platform assignment
         let normPostPlatform: string;
@@ -1071,17 +1101,17 @@ export class CalendarService {
           normPostPlatform = post.platform ? normalizePlatformName(post.platform) : 'Instagram';
         }
 
-        if (!post.scheduledDate || !post.scheduledDate.startsWith(job.month)) {
-          throw new BadRequestException(`Scheduled date ${post.scheduledDate} does not belong to the requested month ${job.month}.`);
+        if (!scheduledDate || !scheduledDate.startsWith(job.month)) {
+          throw new BadRequestException(`Scheduled date ${scheduledDate} does not belong to the requested month ${job.month}.`);
         }
 
         const timeStr = (post.scheduledTime && /^\d{2}:\d{2}$/.test(post.scheduledTime))
           ? post.scheduledTime
           : timeSlots[i % timeSlots.length];
 
-        const scheduledAt = new Date(`${post.scheduledDate}T${timeStr}:00`);
+        const scheduledAt = new Date(`${scheduledDate}T${timeStr}:00`);
         const finalScheduledAt = isNaN(scheduledAt.getTime())
-          ? new Date(`${post.scheduledDate}T09:00:00`)
+          ? new Date(`${scheduledDate}T09:00:00`)
           : scheduledAt;
 
         const [inserted] = await tx
@@ -1100,6 +1130,20 @@ export class CalendarService {
           .returning();
 
         savedPostIds.push(inserted.id);
+
+        // Save any associated variations/suggestions as contentSuggestions linked to this post
+        if (group.suggestions && group.suggestions.length > 0) {
+          for (const v of group.suggestions) {
+            await tx.insert(schema.contentSuggestions).values({
+              userId: job.userId,
+              postId: inserted.id,
+              title: v.title || inserted.title,
+              type: 'caption',
+              content: v.caption || v.content || v.text || '',
+              hashtags: v.hashtags || [],
+            });
+          }
+        }
       }
 
       await tx
