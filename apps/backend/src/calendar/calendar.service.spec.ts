@@ -17,7 +17,13 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
   let existingPosts: any[] = [];
   let insertedPosts: any[] = [];
-  let jobMock: any;
+  let jobMock: any = {
+    id: 'job-id',
+    userId: 'user-id',
+    month: '2026-08',
+    platforms: ['Facebook', 'Instagram'],
+    status: 'PENDING',
+  };
   let socialAccountsMock: any[];
 
   const mockTx = {
@@ -116,14 +122,36 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
           }
           return existingPosts;
         }),
+        findFirst: jest.fn().mockImplementation(() => Promise.resolve(null)),
       },
       social_accounts: {
         findMany: jest.fn().mockImplementation(() => socialAccountsMock),
       },
     },
     transaction: jest.fn().mockImplementation((cb) => cb(mockTx)),
-    update: jest.fn().mockReturnThis(),
-    set: jest.fn().mockReturnThis(),
+    delete: jest.fn().mockImplementation(() => ({
+      where: jest.fn().mockResolvedValue([]),
+    })),
+    update: jest.fn().mockImplementation(() => ({
+      set: jest.fn().mockImplementation((val) => {
+        if (val && val.status) {
+          jobMock.status = val.status;
+        }
+        return {
+          where: jest.fn().mockImplementation(() => {
+            return Promise.resolve([{ id: 'mock-id' }]);
+          }),
+        };
+      }),
+    })),
+    set: jest.fn().mockImplementation((val) => {
+      if (val && val.status) {
+        jobMock.status = val.status;
+      }
+      return {
+        where: jest.fn().mockResolvedValue([]),
+      };
+    }),
     where: jest.fn().mockResolvedValue([]),
   };
 
@@ -134,13 +162,24 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
       { platform: 'facebook', status: 'connected' },
       { platform: 'instagram', status: 'connected' },
     ];
-    jobMock = {
-      id: 'job-id',
-      userId: 'user-id',
-      month: '2026-08',
-      platforms: ['Facebook', 'Instagram'],
-      status: 'PENDING',
-    };
+    jobMock.id = 'job-id';
+    jobMock.userId = 'user-id';
+    jobMock.month = '2026-08';
+    jobMock.platforms = ['Facebook', 'Instagram'];
+    jobMock.status = 'PENDING';
+
+    mockDb.update = jest.fn().mockImplementation(() => ({
+      set: jest.fn().mockImplementation((val: any) => {
+        if (val && val.status) {
+          jobMock.status = val.status;
+        }
+        return {
+          where: jest.fn().mockImplementation(() => {
+            return Promise.resolve([{ id: 'mock-id' }]);
+          }),
+        };
+      }),
+    }));
 
     mockSubscriptionsService = {
       findByUserId: jest.fn().mockResolvedValue({ plan: { slug: 'free' } }),
@@ -533,5 +572,219 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         new Date('2026-08-31T23:59:59').getTime()
       );
     }
+  });
+
+  // 10. TEST 2: n8n returns the same logical post 8 times (duplicate generationItemId) -> 0 rows inserted, generation rejected
+  it('TEST 2: should reject generation and insert 0 rows if n8n returns repeated copies of the same logical post', async () => {
+    jobMock.month = '2026-08';
+    const duplicatePostsPayload = Array.from({ length: 8 }).map(() => ({
+      generationItemId: 'item-101',
+      title: 'Identical Post Title',
+      caption: 'Identical Caption Content',
+      platform: 'Instagram',
+      scheduledDate: '2026-08-05',
+    }));
+
+    await expect(
+      service.handleN8nResult('job-id', {
+        customerId: 'user-id',
+        month: '2026-08',
+        posts: duplicatePostsPayload,
+      })
+    ).rejects.toThrow(BadRequestException);
+
+    expect(jobMock.status).toBe('FAILED');
+  });
+
+  // 11. TEST 3: n8n callback sent twice for the same jobId -> first callback inserts rows; second callback returns idempotently
+  it('TEST 3: should handle duplicate job callbacks idempotently without inserting additional rows', async () => {
+    jobMock.month = '2026-08';
+    jobMock.status = 'GENERATING';
+
+    const postsPayload = Array.from({ length: 8 }).map((_, i) => ({
+      generationItemId: `item-${i + 1}`,
+      title: `Unique Post Title ${i + 1}`,
+      caption: `Unique Post Caption ${i + 1}`,
+      platform: 'Facebook',
+      scheduledDate: `2026-08-01`,
+    }));
+
+    const result1 = (await service.handleN8nResult('job-id', {
+      customerId: 'user-id',
+      month: '2026-08',
+      posts: postsPayload,
+    })) as any;
+
+    expect(result1.success).toBe(true);
+    expect(insertedPosts.length).toBe(8);
+
+    // Second callback
+    jobMock.status = 'GENERATED';
+    const result2 = (await service.handleN8nResult('job-id', {
+      customerId: 'user-id',
+      month: '2026-08',
+      posts: postsPayload,
+    })) as any;
+
+    expect(result2.success).toBe(true);
+    expect(result2.message).toBe('Job already processed.');
+    expect(insertedPosts.length).toBe(8); // No extra posts added
+  });
+
+  // 12. TEST 4: Two different logical posts have the same platform and scheduledAt -> both allowed
+  it('TEST 4: should allow two different logical posts sharing the same platform and scheduledAt', async () => {
+    jobMock.month = '2026-08';
+
+    const postsPayload = [
+      {
+        generationItemId: 'item-1',
+        title: 'Morning Strategy Update',
+        caption: 'Detailed morning breakdown...',
+        platform: 'LinkedIn',
+        scheduledDate: '2026-08-10',
+        scheduledTime: '09:00',
+      },
+      {
+        generationItemId: 'item-2',
+        title: 'Evening Case Study Launch',
+        caption: 'Detailed evening case study...',
+        platform: 'LinkedIn',
+        scheduledDate: '2026-08-10',
+        scheduledTime: '09:00',
+      },
+    ];
+
+    const result = (await service.handleN8nResult('job-id', {
+      customerId: 'user-id',
+      month: '2026-08',
+      posts: postsPayload,
+    })) as any;
+
+    expect(result.success).toBe(true);
+    expect(insertedPosts.length).toBe(2);
+  });
+
+  // 13. TEST 5 & TEST 6: User edits post A's date and title -> post A changes; post B remains completely unchanged
+  it('TEST 5 & TEST 6: should edit post A by ID without cloning, creating duplicates, or affecting post B', async () => {
+    // Setup existing posts in db
+    const futureDateA = new Date(Date.now() + 86400000 * 10);
+    const futureDateB = new Date(Date.now() + 86400000 * 12);
+    const postA = {
+      id: 'post-uuid-a',
+      userId: 'user-id',
+      title: 'Original Post A Title',
+      caption: 'Original Post A Caption',
+      platform: 'Instagram',
+      scheduledAt: futureDateA,
+      status: 'SCHEDULED',
+      approvalStatus: 'PENDING',
+      mediaUrl: null,
+      hashtags: [],
+      aiGenerated: true,
+      selectedSuggestionId: null,
+      adminNotes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const postB = {
+      id: 'post-uuid-b',
+      userId: 'user-id',
+      title: 'Unchanged Post B Title',
+      caption: 'Unchanged Post B Caption',
+      platform: 'Instagram',
+      scheduledAt: futureDateB,
+      status: 'SCHEDULED',
+      approvalStatus: 'PENDING',
+      mediaUrl: null,
+      hashtags: [],
+      aiGenerated: true,
+      selectedSuggestionId: null,
+      adminNotes: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    mockDb.query.contentCalendar.findFirst = jest.fn().mockImplementation((config) => {
+      const id = config.where.right?.value || 'post-uuid-a';
+      if (id === 'post-uuid-a') return Promise.resolve(postA);
+      if (id === 'post-uuid-b') return Promise.resolve(postB);
+      return Promise.resolve(null);
+    });
+
+    const nextDayA = new Date(futureDateA.getTime() + 86400000);
+    const updateSetMock = jest.fn().mockReturnValue({
+      where: jest.fn().mockReturnValue({
+        returning: jest.fn().mockImplementation(() => {
+          postA.title = 'Updated Post A Title';
+          postA.scheduledAt = nextDayA;
+          return Promise.resolve([postA]);
+        }),
+      }),
+    });
+    mockDb.update = jest.fn().mockReturnValue({ set: updateSetMock });
+
+    const updatedA = await service.updateForUser('post-uuid-a', 'user-id', {
+      title: 'Updated Post A Title',
+      scheduledAt: nextDayA.toISOString(),
+    });
+
+    expect(updatedA.id).toBe('post-uuid-a');
+    expect(updatedA.title).toBe('Updated Post A Title');
+    expect(postB.title).toBe('Unchanged Post B Title');
+    expect(postB.scheduledAt.toISOString()).toBe(futureDateB.toISOString());
+  });
+
+  // 14. TEST 8: n8n returns fewer posts than requested expectedPostCount -> 0 rows inserted
+  it('TEST 8: should reject generation if n8n returns fewer posts than expectedPostCount', async () => {
+    jobMock.month = '2026-08';
+    const postsPayload = Array.from({ length: 5 }).map((_, i) => ({
+      generationItemId: `item-${i + 1}`,
+      title: `Title ${i + 1}`,
+      caption: `Caption ${i + 1}`,
+      platform: 'Facebook',
+      scheduledDate: '2026-08-01',
+    }));
+
+    await expect(
+      service.handleN8nResult('job-id', {
+        customerId: 'user-id',
+        month: '2026-08',
+        expectedPostCount: 8,
+        posts: postsPayload,
+      })
+    ).rejects.toThrow(BadRequestException);
+
+    expect(jobMock.status).toBe('FAILED');
+  });
+
+  // 15. TEST 9: n8n returns duplicate titles but different logical IDs and different captions -> allowed
+  it('TEST 9: should allow duplicate titles if logical IDs and captions differ', async () => {
+    jobMock.month = '2026-08';
+    const postsPayload = [
+      {
+        generationItemId: 'item-101',
+        title: 'Weekly Roundup',
+        caption: 'First weekly roundup edition...',
+        platform: 'LinkedIn',
+        scheduledDate: '2026-08-05',
+      },
+      {
+        generationItemId: 'item-102',
+        title: 'Weekly Roundup',
+        caption: 'Second weekly roundup edition with different content...',
+        platform: 'LinkedIn',
+        scheduledDate: '2026-08-12',
+      },
+    ];
+
+    const result = (await service.handleN8nResult('job-id', {
+      customerId: 'user-id',
+      month: '2026-08',
+      posts: postsPayload,
+    })) as any;
+
+    expect(result.success).toBe(true);
+    expect(insertedPosts.length).toBe(2);
   });
 });
