@@ -30,10 +30,6 @@ export class PublishingService {
   }) {
     const platformLower = body.platform.toLowerCase();
 
-    if (platformLower === 'snapchat') {
-      return this.publishToSnapchat(body);
-    }
-
     // Look up social account details to resolve userId if not explicitly provided
     let userId = body.userId;
     let targetChannelId = '';
