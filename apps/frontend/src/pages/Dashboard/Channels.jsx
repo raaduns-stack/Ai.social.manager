@@ -411,6 +411,11 @@ export default function Channels() {
       startDiscordOAuth();
       setIsConnectModalOpen(false);
       return;
+
+    // Snapchat uses OAuth redirect — bypass handle form
+    if (selectedPlatform === 'snapchat') {
+      handleSnapchatConnect()
+      return
     }
 
 
@@ -740,4 +745,6 @@ export default function Channels() {
       </div>
     </div>
   )
+}
+
 }

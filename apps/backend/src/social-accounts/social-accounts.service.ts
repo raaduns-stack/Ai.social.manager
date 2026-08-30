@@ -14,7 +14,6 @@ import { NotificationsService } from '../notifications/notifications.service';
 
 import { encryptSecret, decryptSecret } from '../common/utils/encryption.util';
 
-
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
