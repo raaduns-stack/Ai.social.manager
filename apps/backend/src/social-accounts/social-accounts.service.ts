@@ -28,6 +28,7 @@ export class SocialAccountsService {
     private readonly subscriptionsService: SubscriptionsService,
     private readonly configService: ConfigService,
     private readonly notificationsService: NotificationsService,
+    private readonly configService: ConfigService,
   ) {}
 
   /**

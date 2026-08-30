@@ -9,6 +9,8 @@ import { SocialAccountsService } from '../social-accounts/social-accounts.servic
 import { decryptSecret } from '../common/utils/encryption.util';
 import { TumblrService } from '../channels/tumblr/tumblr.service';
 import { DiscordService } from '../channels/discord/discord.service';
+import { SocialAccountsService } from '../social-accounts/social-accounts.service';
+import { decryptSecret } from '../common/utils/encryption.util';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -23,6 +25,7 @@ export class PublishingService {
     private readonly socialAccountsService: SocialAccountsService,
     private readonly tumblrService: TumblrService,
     private readonly discordService: DiscordService,
+    private readonly socialAccountsService: SocialAccountsService,
   ) {}
 
   async dispatchPost(body: {
@@ -39,6 +42,10 @@ export class PublishingService {
     }
 
     const platformLower = body.platform.toLowerCase();
+
+    if (platformLower === 'snapchat') {
+      return this.publishToSnapchat(body);
+    }
 
     // Look up social account details to resolve userId if not explicitly provided
     let userId = body.userId;
