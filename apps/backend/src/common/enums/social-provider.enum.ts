@@ -6,4 +6,6 @@ export enum SocialProvider {
   YOUTUBE = 'youtube',
   LINKEDIN = 'linkedin',
   DISCORD = 'discord',
+
+  SNAPCHAT = 'snapchat',
 }

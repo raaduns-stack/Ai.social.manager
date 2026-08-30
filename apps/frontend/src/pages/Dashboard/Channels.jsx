@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react'
 import { useAuthStore } from '../../store/auth-store'
 import PageHeader from '../../components/layout/PageHeader'
@@ -16,7 +15,6 @@ import { trackEvent } from '../../lib/analytics'
 // KYC overlay — rendered when user's KYC is not yet approved
 import KycOverlay from '../../features/kyc/KycOverlay'
 import { getMyKyc } from '../../features/kyc/kyc-api'
-import { useSearchParams } from 'react-router-dom'
 import {
   MessageSquare,
   Camera,
@@ -24,7 +22,6 @@ import {
   Linkedin,
   Youtube,
   Facebook,
-  Ghost,
   Plus,
   RefreshCw,
   Link,
@@ -58,21 +55,42 @@ export default function Channels() {
     fetchKyc()
   }, [])
 
+  // useEffect to handle Tumblr OAuth callback query parameters
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const tumblrStatus = params.get('tumblr')
+    if (tumblrStatus) {
+      if (tumblrStatus === 'success') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: 'Tumblr account connected successfully!',
+              type: 'success',
+            },
+          })
+        )
+        fetchChannels()
+      } else if (tumblrStatus === 'error') {
+        window.dispatchEvent(
+          new CustomEvent('app-toast', {
+            detail: {
+              message: 'Failed to connect Tumblr account.',
+              type: 'error',
+            },
+          })
+        )
+      }
+      // Strip params from URL
+      const cleanUrl = window.location.pathname + window.location.hash
+      window.history.replaceState({}, document.title, cleanUrl)
+    }
+  }, [])
+
   // True when the KYC overlay should be shown (block channel interactions)
   const kycBlocked = kycLoading || kycRecord?.status !== 'approved'
 
   // State for channels list
   const [channels, setChannels] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [fetchError, setFetchError] = useState(null);
-
-  // Modals state
-  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false);
-  const [selectedPlatform, setSelectedPlatform] = useState('instagram');
-  const [newHandle, setNewHandle] = useState('');
-  const [connectError, setConnectError] = useState('');
-  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-  const [connectLoading, setConnectLoading] = useState(false);
 
   // Helper to map backend status to UI status
   const mapStatus = (status) => {
@@ -107,8 +125,6 @@ export default function Channels() {
         return 'Tumblr Blog';
       case 'discord':
         return 'Discord Channel';
-      case 'snapchat':
-        return 'Snapchat (Public Profile)';
       default:
         return platform;
     }
@@ -146,195 +162,46 @@ export default function Channels() {
       });
   };
 
-  // Unified listener for all OAuth callbacks (Discord, Tumblr, Snapchat, TikTok)
+  // Fetch channels on component mount + check for OAuth callback query parameters
   useEffect(() => {
     fetchChannels();
 
     const params = new URLSearchParams(window.location.search);
-    let shouldCleanUrl = false;
-
-    // Discord callback
-    const discordStatus = params.get('discord');
-    if (discordStatus === 'connected') {
+    if (params.get('discord') === 'connected') {
       trackEvent('social_account_connected', { platform: 'discord' });
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: 'Discord channel connected successfully!', type: 'success' },
-        })
-      );
-      shouldCleanUrl = true;
-    } else if (discordStatus === 'error') {
-      const reason = params.get('reason') || 'authorization_failed';
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: `Discord connection failed: ${decodeURIComponent(reason)}`, type: 'error' },
-        })
-      );
-      shouldCleanUrl = true;
-    }
-
-    // Tumblr callback
-    const tumblrStatus = params.get('tumblr');
-    if (tumblrStatus === 'success') {
-      trackEvent('social_account_connected', { platform: 'tumblr' });
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: 'Tumblr account connected successfully!', type: 'success' },
-        })
-      );
-      shouldCleanUrl = true;
-    } else if (tumblrStatus === 'error') {
-      const message = params.get('message') || 'Failed to connect Tumblr account.';
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: `Tumblr connection failed: ${decodeURIComponent(message)}`, type: 'error' },
-        })
-      );
-      shouldCleanUrl = true;
-    }
-
-    // Snapchat callback
-    const snapConnected = params.get('connected');
-    const snapError = params.get('snapchat_error');
-    if (snapConnected === 'snapchat') {
-      trackEvent('social_account_connected', { platform: 'snapchat' });
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: 'Snapchat connected successfully!', type: 'success' },
-        })
-      );
-      shouldCleanUrl = true;
-    } else if (snapError) {
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: `Snapchat connection failed: ${decodeURIComponent(snapError)}`, type: 'error' },
-        })
-      );
-      shouldCleanUrl = true;
-    }
-
-    // TikTok callback
-    const tiktokStatus = params.get('tiktok');
-    if (tiktokStatus === 'connected') {
-      trackEvent('social_account_connected', { platform: 'tiktok' });
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: 'TikTok account connected successfully!', type: 'success' },
-        })
-      );
-      shouldCleanUrl = true;
-    } else if (tiktokStatus === 'error') {
-      const reason = params.get('reason') || 'authorization_failed';
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: { message: `TikTok connection failed: ${decodeURIComponent(reason)}`, type: 'error' },
-        })
-      );
-      shouldCleanUrl = true;
-    }
-
-    if (shouldCleanUrl) {
-      const cleanUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, cleanUrl);
+      window.history.replaceState({}, document.title, window.location.pathname);
       fetchChannels();
+    } else if (params.get('discord') === 'error') {
+      const reason = params.get('reason') || 'authorization_failed';
+      setFetchError(`Discord connection failed: ${reason}`);
+      window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
   /** Helper to trigger Discord OAuth flow */
   const startDiscordOAuth = () => {
-    setConnectLoading(true);
-    setConnectError('');
     apiClient
       .get('/channels/discord/connect')
       .then((res) => {
         if (res.data?.authUrl) {
-          setIsConnectModalOpen(false);
           window.location.href = res.data.authUrl;
-        } else {
-          throw new Error('No authorization URL returned by server.');
         }
       })
       .catch((err) => {
         console.error('Failed to initiate Discord connection:', err);
-        const errMsg = err?.response?.data?.message || err?.message || 'Failed to initiate Discord connection.';
-        setConnectError(errMsg);
-        window.dispatchEvent(
-          new CustomEvent('app-toast', {
-            detail: {
-              message: `Discord connection failed: ${errMsg}`,
-              type: 'error',
-            },
-          })
-        );
-      })
-      .finally(() => {
-        setConnectLoading(false);
+        setConnectError('Failed to initiate Discord OAuth flow. Please try again.');
       });
   };
 
-  /** Helper to trigger TikTok OAuth flow */
-  const startTikTokOAuth = () => {
-    setConnectLoading(true);
-    setConnectError('');
-    apiClient
-      .get('/channels/tiktok/connect')
-      .then((res) => {
-        if (res.data?.authUrl) {
-          setIsConnectModalOpen(false);
-          window.location.href = res.data.authUrl;
-        } else {
-          throw new Error('No authorization URL returned by server.');
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to initiate TikTok connection:', err);
-        const errMsg = err?.response?.data?.message || err?.message || 'Failed to initiate TikTok connection.';
-        setConnectError(errMsg);
-        window.dispatchEvent(
-          new CustomEvent('app-toast', {
-            detail: {
-              message: `TikTok connection failed: ${errMsg}`,
-              type: 'error',
-            },
-          })
-        );
-      })
-      .finally(() => {
-        setConnectLoading(false);
-      });
-  };
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
-  /** Helper to trigger Tumblr OAuth flow */
-  const startTumblrOAuth = () => {
-    setConnectLoading(true);
-    setConnectError('');
-    apiClient
-      .get('/channels/tumblr/connect')
-      .then((res) => {
-        if (res.data?.authUrl) {
-          setIsConnectModalOpen(false);
-          window.location.href = res.data.authUrl;
-        } else {
-          throw new Error('No authorization URL returned by server.');
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to initiate Tumblr connection:', err);
-        const errMsg = err?.response?.data?.message || err?.message || 'Failed to initiate Tumblr connection.';
-        setConnectError(errMsg);
-        window.dispatchEvent(
-          new CustomEvent('app-toast', {
-            detail: {
-              message: `Tumblr connection failed: ${errMsg}`,
-              type: 'error',
-            },
-          })
-        );
-      })
-      .finally(() => {
-        setConnectLoading(false);
-      });
-  };
+  // Modals state
+  const [isConnectModalOpen, setIsConnectModalOpen] = useState(false)
+  const [selectedPlatform, setSelectedPlatform] = useState('instagram')
+  const [newHandle, setNewHandle] = useState('')
+  const [connectError, setConnectError] = useState('')
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   // Dynamically compute stats from state
   // Stats will recompute automatically when channels change
@@ -385,11 +252,6 @@ export default function Channels() {
           icon: <MessageSquare size={24} />,
           style: { backgroundColor: '#5865F2' },
         }
-      case 'snapchat':
-        return {
-          icon: <Ghost size={24} />,
-          style: { backgroundColor: '#FFFC00', color: '#000000' },
-        }
       default:
         return {
           icon: <Link size={24} />,
@@ -398,36 +260,31 @@ export default function Channels() {
     }
   }
 
-  /** Initiate Snapchat OAuth: ask backend for the auth URL, then redirect the browser. */
-  const handleSnapchatConnect = async () => {
-    setConnectLoading(true);
-    setConnectError('');
-    try {
-      const res = await apiClient.get('/social-accounts/snapchat/connect?json=true');
-      const { url } = res.data;
-      if (!url) throw new Error('No authorization URL returned by the server.');
-      // Close modal before redirecting so it doesn't flash on return
-      setIsConnectModalOpen(false);
-      window.location.href = url;
-    } catch (err) {
-      const msg = err?.response?.data?.message || err?.message || 'Failed to start Snapchat OAuth. Please try again.';
-      setConnectError(msg);
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: {
-            message: `Snapchat connection failed: ${msg}`,
-            type: 'error',
-          },
-        })
-      );
-    } finally {
-      setConnectLoading(false);
-    }
-  };
-
   // Handle individual card connect/disconnect button clicks
   const handleChannelAction = (id, currentStatus) => {
     const channel = channels.find((c) => c.id === id);
+    if (channel && channel.platform === 'tumblr') {
+      if (currentStatus === 'Connected') {
+        apiClient
+          .delete(`/social-accounts/${id}`)
+          .then(() => {
+            trackEvent('social_account_disconnected', { platform: 'tumblr' })
+            fetchChannels()
+          })
+          .catch((error) => {
+            console.error('Failed to disconnect Tumblr:', error)
+          })
+      } else {
+        const token = useAuthStore.getState().accessToken
+        window.location.href = `${apiBase}/auth/tumblr?token=${token}`
+      }
+      return;
+    }
+
+    if (channel && channel.platform === 'discord' && currentStatus !== 'Connected') {
+      startDiscordOAuth();
+      return;
+    }
 
     if (currentStatus === 'Connected') {
       // Disconnect channel via backend DELETE
@@ -435,97 +292,65 @@ export default function Channels() {
         .delete(`/social-accounts/${id}`)
         .then(() => {
           if (channel) {
-            trackEvent('social_account_disconnected', { platform: channel.platform });
+            trackEvent('social_account_disconnected', { platform: channel.platform })
           }
-          window.dispatchEvent(
-            new CustomEvent('app-toast', {
-              detail: {
-                message: `${channel?.name || 'Channel'} disconnected successfully.`,
-                type: 'success',
-              },
-            })
-          );
           fetchChannels();
         })
         .catch((error) => {
           console.error('Failed to disconnect channel:', error);
-          window.dispatchEvent(
-            new CustomEvent('app-toast', {
-              detail: {
-                message: error?.response?.data?.message || 'Failed to disconnect channel.',
-                type: 'error',
-              },
-            })
-          );
-        });
-      return;
-    }
-
-    // Reconnecting or connecting
-    if (channel?.platform === 'snapchat') {
-      handleSnapchatConnect();
-      return;
-    }
-    if (channel?.platform === 'discord') {
-      startDiscordOAuth();
-      return;
-    }
-    if (channel?.platform === 'tiktok') {
-      startTikTokOAuth();
-      return;
-    }
-    if (channel?.platform === 'tumblr') {
-      startTumblrOAuth();
-      return;
-    }
-
-    // Direct handle platform reconnect
-    if (channel && channel.id) {
-      apiClient
-        .patch(`/social-accounts/${id}`, { status: 'connected' })
-        .then(() => {
-          trackEvent('social_account_connected', { platform: channel.platform });
-          window.dispatchEvent(
-            new CustomEvent('app-toast', {
-              detail: {
-                message: `${channel.name} reconnected successfully!`,
-                type: 'success',
-              },
-            })
-          );
-          fetchChannels();
-        })
-        .catch((error) => {
-          console.error('Failed to reconnect channel:', error);
-          setFetchError(error?.response?.data?.message || 'Failed to reconnect channel.');
         });
     } else {
-      setSelectedPlatform(channel?.platform || 'instagram');
-      setIsConnectModalOpen(true);
+      // Connect or reconnect channel
+      const handleInput = prompt('Enter account handle/name to link:', '@');
+      if (handleInput && handleInput.trim() !== '' && handleInput !== '@') {
+        if (channel && channel.id) {
+          // Reconnect existing account: set status to connected
+          apiClient
+            .patch(`/social-accounts/${id}`, { status: 'connected' })
+            .then(() => {
+              if (channel) {
+                trackEvent('social_account_connected', { platform: channel.platform })
+              }
+              fetchChannels();
+            })
+            .catch((error) => {
+              console.error('Failed to reconnect channel:', error);
+              setFetchError(error?.response?.data?.message || 'Failed to reconnect channel.');
+            });
+        } else {
+          // New connection
+          const payload = {
+            platform: selectedPlatform,
+            accountHandle: handleInput,
+          };
+          apiClient
+            .post('/social-accounts', payload)
+            .then(() => {
+              trackEvent('social_account_connected', { platform: selectedPlatform })
+              fetchChannels();
+            })
+            .catch((error) => {
+              console.error('Failed to connect new channel:', error);
+              setFetchError(error?.response?.data?.message || 'Failed to connect new channel.');
+            });
+        }
+      }
     }
   };
 
   // Handle adding/connecting account via Top Right Modal
   const handleConnectSubmit = (e) => {
     e.preventDefault();
-
-    if (selectedPlatform === 'snapchat') {
-      handleSnapchatConnect();
+    if (selectedPlatform === 'tumblr') {
+      setIsConnectModalOpen(false)
+      const token = useAuthStore.getState().accessToken
+      window.location.href = `${apiBase}/auth/tumblr?token=${token}`
       return;
     }
 
     if (selectedPlatform === 'discord') {
       startDiscordOAuth();
-      return;
-    }
-
-    if (selectedPlatform === 'tiktok') {
-      startTikTokOAuth();
-      return;
-    }
-
-    if (selectedPlatform === 'tumblr') {
-      startTumblrOAuth();
+      setIsConnectModalOpen(false);
       return;
     }
 
@@ -542,20 +367,10 @@ export default function Channels() {
           : `@${newHandle}`,
     };
 
-    setConnectLoading(true);
-    setConnectError('');
     apiClient
       .post('/social-accounts', payload)
       .then(() => {
-        trackEvent('social_account_connected', { platform: selectedPlatform });
-        window.dispatchEvent(
-          new CustomEvent('app-toast', {
-            detail: {
-              message: `${getDisplayName(selectedPlatform)} connected successfully!`,
-              type: 'success',
-            },
-          })
-        );
+        trackEvent('social_account_connected', { platform: selectedPlatform })
         fetchChannels();
         setNewHandle('');
         setConnectError('');
@@ -565,9 +380,6 @@ export default function Channels() {
         console.error('Failed to connect account:', error);
         const errMsg = error?.response?.data?.message || 'Failed to connect account.';
         setConnectError(errMsg);
-      })
-      .finally(() => {
-        setConnectLoading(false);
       });
   };
 
@@ -616,25 +428,21 @@ export default function Channels() {
                         { key: 'facebook', label: 'Facebook Page', icon: <Facebook size={14} className="text-blue-600" /> },
                         { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-heading text-sm font-bold leading-none text-blue-900">t</span> },
                         { key: 'discord', label: 'Discord Channel', icon: <MessageSquare size={14} className="text-indigo-500" /> },
-                        { key: 'snapchat', label: 'Snapchat', icon: <Ghost size={14} className="text-black" /> },
                       ].map((plat) => (
                         <button
                           key={plat.key}
                           type="button"
                           className="w-full text-left px-4 py-2 text-sm text-ink hover:bg-canvas flex items-center gap-2.5 transition-colors font-medium"
                           onClick={() => {
-                            setIsDropdownOpen(false);
-                            if (plat.key === 'snapchat') {
-                              handleSnapchatConnect();
+                            setIsDropdownOpen(false)
+                            if (plat.key === 'tumblr') {
+                              const token = useAuthStore.getState().accessToken
+                              window.location.href = `${apiBase}/auth/tumblr?token=${token}`
                             } else if (plat.key === 'discord') {
-                              startDiscordOAuth();
-                            } else if (plat.key === 'tiktok') {
-                              startTikTokOAuth();
-                            } else if (plat.key === 'tumblr') {
-                              startTumblrOAuth();
+                              startDiscordOAuth()
                             } else {
-                              setSelectedPlatform(plat.key);
-                              setIsConnectModalOpen(true);
+                              setSelectedPlatform(plat.key)
+                              setIsConnectModalOpen(true)
                             }
                           }}
                         >
@@ -709,7 +517,6 @@ export default function Channels() {
               {channels.map((channel) => {
                 const details = getPlatformDetails(channel.platform)
                 const isConnected = channel.status === 'Connected'
-                const isSnapchat = channel.platform === 'snapchat'
                 return (
                   <Card
                      key={channel.id}
@@ -720,7 +527,7 @@ export default function Channels() {
                     <div>
                       <div className="flex justify-between items-start mb-6">
                         <div
-                          className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-soft ${isSnapchat ? 'text-black' : 'text-white'}`}
+                          className="w-12 h-12 rounded-xl flex items-center justify-center text-white shadow-soft"
                           style={details.style}
                         >
                           {details.icon}
@@ -746,7 +553,7 @@ export default function Channels() {
                             }`}
                         >
                           {channel.status === 'Connected'
-                            ? `Synced: ${channel.lastSynced ? new Date(channel.lastSynced).toLocaleDateString() : 'Active'}`
+                            ? `Synced: ${new Date(channel.lastSynced).toLocaleDateString()}`
                             : channel.status === 'Action Required'
                               ? 'Token expired. Reconnect needed.'
                               : 'Waiting for authentication...'}
@@ -814,7 +621,7 @@ export default function Channels() {
                 <label className="text-sm font-medium text-ink">Choose Social Platform</label>
                 <select
                   value={selectedPlatform}
-                  onChange={(e) => { setSelectedPlatform(e.target.value); setConnectError(''); setNewHandle(''); }}
+                  onChange={(e) => setSelectedPlatform(e.target.value)}
                   className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                 >
                   <option value="instagram">Instagram Business</option>
@@ -825,19 +632,10 @@ export default function Channels() {
                   <option value="youtube">YouTube Studio</option>
                   <option value="facebook">Facebook Page</option>
                   <option value="tumblr">Tumblr Blog</option>
-                  <option value="snapchat">Snapchat (Public Profile)</option>
                 </select>
               </div>
 
-              {['snapchat', 'discord', 'tiktok', 'tumblr'].includes(selectedPlatform) ? (
-                <div className="rounded-control border border-primary/20 bg-primary/5 p-4 text-sm text-ink leading-relaxed">
-                  <div className="font-semibold text-primary mb-1">OAuth Authorization Required</div>
-                  {selectedPlatform === 'snapchat' && 'Snapchat uses OAuth 2.0. Clicking Connect will redirect you to Snapchat to authorize access to your Public Profile.'}
-                  {selectedPlatform === 'discord' && 'Discord uses OAuth 2.0. Clicking Connect will redirect you to Discord to authorize your bot and select a channel.'}
-                  {selectedPlatform === 'tiktok' && 'TikTok Pro uses Login Kit. Clicking Connect will redirect you to TikTok to authorize video uploads and profile access.'}
-                  {selectedPlatform === 'tumblr' && 'Tumblr uses OAuth 1.0a. Clicking Connect will redirect you to Tumblr to authorize access to your blogs.'}
-                </div>
-              ) : (
+              {selectedPlatform !== 'tumblr' && selectedPlatform !== 'discord' && (
                 <Input
                   label="Account Handle or Page Name"
                   required
@@ -848,7 +646,7 @@ export default function Channels() {
               )}
 
               <p className="text-xs text-ink-muted italic leading-relaxed">
-                * Connecting channels securely links your official account with RaaSocial.
+                * Clicking Connect will redirect you to the platform's official OAuth consent page.
               </p>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -856,16 +654,11 @@ export default function Channels() {
                   type="button"
                   variant="outline"
                   onClick={() => setIsConnectModalOpen(false)}
-                  disabled={connectLoading}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" variant="primary" disabled={connectLoading}>
-                  {connectLoading
-                    ? 'Connecting...'
-                    : ['snapchat', 'discord', 'tiktok', 'tumblr'].includes(selectedPlatform)
-                      ? `Connect via ${getDisplayName(selectedPlatform).split(' ')[0]}`
-                      : 'Connect Account'}
+                <Button type="submit" variant="primary">
+                  Connect Account
                 </Button>
               </div>
             </form>
