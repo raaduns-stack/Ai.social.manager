@@ -47,7 +47,7 @@ export async function sendPublishingNotification(
 
     if (providers.sendInApp) {
       await providers.sendInApp(customer.id, {
-        type: 'PUBLISHING',
+        type: isSuccess ? 'CONTENT_PUBLISHED' : 'CONTENT_PUBLISH_FAILED',
         title,
         message,
         postId,
@@ -63,7 +63,7 @@ export async function sendPublishingNotification(
 
   const record = {
     userId: customer.id,
-    type: 'PUBLISHING',
+    type: isSuccess ? 'CONTENT_PUBLISHED' : 'CONTENT_PUBLISH_FAILED',
     title,
     message,
     channel: 'BOTH',

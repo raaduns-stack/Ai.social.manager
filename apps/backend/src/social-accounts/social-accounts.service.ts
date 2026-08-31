@@ -7,6 +7,7 @@ import { CreateSocialAccountDto } from './dto/create-social-account.dto';
 import { UpdateSocialAccountDto } from './dto/update-social-account.dto';
 import { KycService } from '../kyc/kyc.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -17,6 +18,7 @@ export class SocialAccountsService {
     // KycService is injected to enforce KYC-approval before any channel connection
     private readonly kycService: KycService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -99,33 +101,37 @@ export class SocialAccountsService {
 
   /** Update status and token expiration for a specific social account. */
   async update(userId: string, id: string, dto: UpdateSocialAccountDto) {
-    if (dto.status === 'connected') {
-      const existing = await this.db.query.social_accounts.findFirst({
-        where: and(eq(schema.social_accounts.id, id), eq(schema.social_accounts.userId, userId)),
-      });
-      if (existing && existing.status !== 'connected') {
-        let activePlan: schema.Plan;
-        try {
-          const sub = await this.subscriptionsService.findByUserId(userId);
-          activePlan = sub.plan;
-        } catch (err) {
-          const freePlan = await this.db.query.plans.findFirst({
-            where: eq(schema.plans.slug, 'free'),
-          });
-          activePlan = freePlan || ({ name: 'Free', maxSocialAccounts: 2 } as any);
-        }
-        const connectedAccounts = await this.db.query.social_accounts.findMany({
-          where: and(
-            eq(schema.social_accounts.userId, userId),
-            eq(schema.social_accounts.status, 'connected'),
-          ),
+    const existing = await this.db.query.social_accounts.findFirst({
+      where: and(eq(schema.social_accounts.id, id), eq(schema.social_accounts.userId, userId)),
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Social account not found');
+    }
+
+    if (dto.status === 'connected' && existing.status !== 'connected') {
+      let activePlan: schema.Plan;
+      try {
+        const sub = await this.subscriptionsService.findByUserId(userId);
+        activePlan = sub.plan;
+      } catch (err) {
+        const freePlan = await this.db.query.plans.findFirst({
+          where: eq(schema.plans.slug, 'free'),
         });
-        if (connectedAccounts.length >= activePlan.maxSocialAccounts) {
-          throw new BadRequestException(
-            `You have reached the maximum limit of ${activePlan.maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`
-          );
-        }
+        activePlan = freePlan || ({ name: 'Free', maxSocialAccounts: 2 } as any);
       }
+      const connectedAccounts = await this.db.query.social_accounts.findMany({
+        where: and(
+          eq(schema.social_accounts.userId, userId),
+          eq(schema.social_accounts.status, 'connected'),
+        ),
+      });
+      if (connectedAccounts.length >= activePlan.maxSocialAccounts) {
+        throw new BadRequestException(
+          `You have reached the maximum limit of ${activePlan.maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`
+        );
+      }
+    }
     }
 
     const allowedUpdates: Partial<Record<keyof UpdateSocialAccountDto, any>> = {};
@@ -140,9 +146,24 @@ export class SocialAccountsService {
       })
       .where(and(eq(schema.social_accounts.id, id), eq(schema.social_accounts.userId, userId)))
       .returning();
+
     if (!updated) {
       throw new NotFoundException('Social account not found');
     }
+
+    if (dto.status !== undefined && dto.status !== existing.status) {
+      const platform = updated.platform;
+      const handle = updated.accountHandle;
+
+      if (dto.status === 'disconnected') {
+        void this.notificationsService.triggerAccountDisconnected({ userId, platform, accountHandle: handle });
+      } else if (dto.status === 'action_required') {
+        void this.notificationsService.triggerAccountReauthorizationRequired({ userId, platform, accountHandle: handle });
+      } else if (dto.status === 'connected' && existing.status !== 'connected') {
+        void this.notificationsService.triggerAccountReconnected({ userId, platform, accountHandle: handle });
+      }
+    }
+
     return updated;
   }
 

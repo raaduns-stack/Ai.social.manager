@@ -23,6 +23,7 @@ export * from './role-permissions.schema';
 export * from './scheduled-posts.schema';
 export * from './publishing-logs.schema';
 export * from './notifications.schema';
+export * from './scheduled-notifications.schema';
 export * from './relations';
 
 

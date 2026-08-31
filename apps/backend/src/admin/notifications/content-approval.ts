@@ -37,8 +37,8 @@ export async function sendContentApprovalNotification(
 
     if (providers.sendInApp) {
       await providers.sendInApp(customer.id, {
-        type: 'APPROVAL',
-        title,
+        type: 'CONTENT_APPROVAL',
+        title: contentTitle,
         message,
         contentId,
         reviewUrl,
@@ -50,17 +50,17 @@ export async function sendContentApprovalNotification(
     error = err?.message || 'Content approval notification failed';
   }
 
-  const record = {
-    userId: customer.id,
-    type: 'APPROVAL',
-    title,
-    message,
-    channel: 'BOTH',
-    status,
-    error,
-    metadata: { contentId, reviewUrl },
-    createdAt: new Date(),
-  };
+    const record = {
+      userId: customer.id,
+      type: 'CONTENT_APPROVAL',
+      title: contentTitle,
+      message,
+      channel: 'IN_APP',
+      status: 'SENT',
+      error,
+      metadata: { contentId, reviewUrl },
+      createdAt: new Date(),
+    };
 
   if (providers.saveNotificationLog) {
     await providers.saveNotificationLog(record);

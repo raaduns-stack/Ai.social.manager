@@ -9,6 +9,8 @@ export interface AnnouncementRequest {
   message: string;
   targetUserIds?: string[];
   channel: 'EMAIL' | 'IN_APP' | 'BOTH';
+  actionUrl?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface NotificationRecord {
@@ -19,6 +21,8 @@ export interface NotificationRecord {
   channel: string;
   status: 'SENT' | 'FAILED';
   error?: string | null;
+  actionUrl?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface NotificationProviders {
@@ -32,7 +36,7 @@ export async function sendSystemAnnouncement(
   request: AnnouncementRequest,
   providers: NotificationProviders
 ) {
-  const { title, message, targetUserIds, channel } = request;
+  const { title, message, targetUserIds, channel, actionUrl, metadata } = request;
   const users = await providers.getCustomers(targetUserIds);
   const notificationRecords: NotificationRecord[] = [];
 
@@ -49,14 +53,14 @@ export async function sendSystemAnnouncement(
         );
       }
 
-      if ((channel === 'IN_APP' || channel === 'BOTH') && providers.sendInApp) {
-        await providers.sendInApp(user.id, {
-          type: 'ANNOUNCEMENT',
-          title,
-          message,
-          timestamp: new Date(),
-        });
-      }
+    if ((channel === 'IN_APP' || channel === 'BOTH') && providers.sendInApp) {
+      await providers.sendInApp(user.id, {
+        type: 'SYSTEM_ANNOUNCEMENT',
+        title,
+        message,
+        timestamp: new Date(),
+      });
+    }
     } catch (err: any) {
       status = 'FAILED';
       error = err?.message || 'Failed to dispatch system announcement';
@@ -64,12 +68,14 @@ export async function sendSystemAnnouncement(
 
     notificationRecords.push({
       userId: user.id,
-      type: 'ANNOUNCEMENT',
+      type: 'SYSTEM_ANNOUNCEMENT',
       title,
       message,
       channel,
       status,
       error,
+      actionUrl,
+      metadata,
     });
   }
 

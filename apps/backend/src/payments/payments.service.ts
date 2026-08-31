@@ -12,6 +12,7 @@ import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { PlansService } from '../plans/plans.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -192,6 +194,15 @@ export class PaymentsService {
         })
         .where(eq(schema.payments.id, payment.id));
 
+      void this.notificationsService.triggerSubscriptionPaymentFailed({
+        userId: payment.userId,
+        subscriptionId: payment.subscriptionId || '',
+        paymentId: payment.id,
+        amount: payment.amount,
+        currency: payment.currency,
+        reason: flwRes.data?.message || undefined,
+      });
+
       throw new BadRequestException(
         `Payment verification failed. Paid amount: ${amount} ${currency}, Expected: ${expectedAmount} ${payment.currency}`,
       );
@@ -230,6 +241,14 @@ export class PaymentsService {
       })
       .where(eq(schema.payments.id, payment.id));
 
+    void this.notificationsService.triggerSubscriptionPaymentSuccess({
+      userId: payment.userId,
+      subscriptionId: payment.subscriptionId || '',
+      paymentId: payment.id,
+      amount: payment.amount,
+      currency: payment.currency,
+    });
+
     // Activate the subscription
     if (payment.subscriptionId) {
       const plan = payment.planId ? await this.plansService.findById(payment.planId) : null;
@@ -243,7 +262,7 @@ export class PaymentsService {
       }
 
       // Expire any previous active subscriptions for this user
-      await this.db
+      const expiredSubs = await this.db
         .update(schema.subscriptions)
         .set({
           status: 'expired',
@@ -255,7 +274,15 @@ export class PaymentsService {
             eq(schema.subscriptions.status, 'active'),
             ne(schema.subscriptions.id, payment.subscriptionId),
           ),
-        );
+        )
+        .returning();
+
+      for (const expired of expiredSubs) {
+        void this.notificationsService.triggerSubscriptionExpired({
+          userId: expired.userId,
+          subscriptionId: expired.id,
+        });
+      }
 
       // Activate the pending subscription and ensure planId is correct
       await this.db
@@ -280,7 +307,7 @@ export class PaymentsService {
       }
 
       // Expire any existing active subscription for this user
-      await this.db
+      const expiredSubs = await this.db
         .update(schema.subscriptions)
         .set({ status: 'expired', updatedAt: new Date() })
         .where(
@@ -288,7 +315,15 @@ export class PaymentsService {
             eq(schema.subscriptions.userId, payment.userId),
             eq(schema.subscriptions.status, 'active'),
           ),
-        );
+        )
+        .returning();
+
+      for (const expired of expiredSubs) {
+        void this.notificationsService.triggerSubscriptionExpired({
+          userId: expired.userId,
+          subscriptionId: expired.id,
+        });
+      }
 
       // Insert a fresh active subscription
       await this.db.insert(schema.subscriptions).values({
@@ -302,7 +337,7 @@ export class PaymentsService {
 
     // Automatically create an invoice record
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    await this.db.insert(schema.invoices).values({
+    const [invoice] = await this.db.insert(schema.invoices).values({
       userId: payment.userId,
       paymentId: payment.id,
       subscriptionId: payment.subscriptionId,
@@ -311,6 +346,15 @@ export class PaymentsService {
       currency: payment.currency,
       status: 'paid',
       pdfUrl: null,
+    }).returning();
+
+    void this.notificationsService.triggerInvoiceAvailable({
+      userId: payment.userId,
+      subscriptionId: payment.subscriptionId || '',
+      invoiceId: invoice.id,
+      invoiceNumber,
+      amount: payment.amount,
+      currency: payment.currency,
     });
 
     return {

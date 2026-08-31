@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Patch, Delete, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -14,12 +14,26 @@ export class CustomerNotificationsController {
   @Get()
   @ApiOperation({ summary: "Get current customer's in-app notifications" })
   @ApiQuery({ name: 'unreadOnly', required: false, type: Boolean })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'offset', required: false, type: Number })
   getFeed(
     @CurrentUser() user: { userId: string },
     @Query('unreadOnly') unreadOnly?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
   ) {
     const isUnreadOnly = unreadOnly === 'true' || unreadOnly === '1';
-    return this.notificationsService.getCustomerFeed(user.userId, isUnreadOnly);
+    return this.notificationsService.getCustomerNotifications(user.userId, {
+      unreadOnly: isUnreadOnly,
+      limit: limit ? Number(limit) : undefined,
+      offset: offset ? Number(offset) : undefined,
+    });
+  }
+
+  @Get('unread-count')
+  @ApiOperation({ summary: "Get current customer's unread notification count" })
+  getUnreadCount(@CurrentUser() user: { userId: string }) {
+    return this.notificationsService.getUnreadCount(user.userId);
   }
 
   @Patch('read-all')
@@ -35,5 +49,14 @@ export class CustomerNotificationsController {
     @Param('id') id: string,
   ) {
     return this.notificationsService.markAsRead(user.userId, id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a notification' })
+  deleteNotification(
+    @CurrentUser() user: { userId: string },
+    @Param('id') id: string,
+  ) {
+    return this.notificationsService.deleteNotification(user.userId, id);
   }
 }

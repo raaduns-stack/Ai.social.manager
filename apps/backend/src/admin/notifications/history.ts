@@ -1,11 +1,20 @@
+import { NotificationType, NotificationChannel, DeliveryStatus, NotificationPriority } from '../../common/enums';
+
 export interface HistoryQueryFilters {
   page?: number;
   limit?: number;
   userId?: string;
-  type?: 'ANNOUNCEMENT' | 'SUBSCRIPTION' | 'APPROVAL' | 'PUBLISHING' | 'MAINTENANCE';
-  status?: 'SENT' | 'FAILED' | 'PENDING';
-  startDate?: Date;
-  endDate?: Date;
+  type?: NotificationType;
+  status?: DeliveryStatus;
+  channel?: NotificationChannel;
+  priority?: NotificationPriority;
+  senderId?: string;
+  startDate?: string;
+  endDate?: string;
+  isRead?: boolean | string;
+  search?: string;
+  sortBy?: 'createdAt' | 'readAt' | 'sentAt';
+  sortOrder?: 'asc' | 'desc';
 }
 
 export interface HistoryRepository {

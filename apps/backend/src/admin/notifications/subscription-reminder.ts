@@ -45,7 +45,7 @@ export async function sendSubscriptionReminder(
 
   const notificationRecord = {
     userId: user.id,
-    type: 'SUBSCRIPTION',
+    type: 'SUBSCRIPTION_RENEWAL_REMINDER',
     title,
     message,
     channel: 'EMAIL',
