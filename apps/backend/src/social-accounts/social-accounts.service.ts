@@ -132,7 +132,6 @@ export class SocialAccountsService {
         );
       }
     }
-    }
 
     const allowedUpdates: Partial<Record<keyof UpdateSocialAccountDto, any>> = {};
     if (dto.status !== undefined) allowedUpdates.status = dto.status;
