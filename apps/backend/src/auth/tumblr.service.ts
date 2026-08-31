@@ -1,12 +1,13 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SocialAccountsService } from '../social-accounts/social-accounts.service';
-import OAuth from 'oauth-1.0a';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const OAuth = require('oauth-1.0a');
 import * as crypto from 'crypto';
 
 @Injectable()
 export class TumblrService {
-  private readonly oauth: OAuth;
+  private readonly oauth: any;
   private readonly logger = new Logger(TumblrService.name);
 
   constructor(
@@ -26,7 +27,7 @@ export class TumblrService {
         secret: consumerSecret,
       },
       signature_method: 'HMAC-SHA1',
-      hash_function(base_string, key) {
+      hash_function(base_string: string, key: string) {
         return crypto
           .createHmac('sha1', key)
           .update(base_string)
