@@ -24,9 +24,9 @@ CREATE TABLE "scheduled_notifications" (
 	"updated_at" timestamp DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
-ALTER TABLE "notifications" ALTER COLUMN "type" SET DATA TYPE "undefined"."notification_type";--> statement-breakpoint
-ALTER TABLE "notifications" ALTER COLUMN "channel" SET DATA TYPE "undefined"."notification_channel";--> statement-breakpoint
-ALTER TABLE "notifications" ALTER COLUMN "status" SET DATA TYPE "undefined"."delivery_status";--> statement-breakpoint
+ALTER TABLE "notifications" ALTER COLUMN "type" SET DATA TYPE "public"."notification_type";--> statement-breakpoint
+ALTER TABLE "notifications" ALTER COLUMN "channel" SET DATA TYPE "public"."notification_channel";--> statement-breakpoint
+ALTER TABLE "notifications" ALTER COLUMN "status" SET DATA TYPE "public"."delivery_status";--> statement-breakpoint
 ALTER TABLE "notifications" ALTER COLUMN "status" SET DEFAULT 'SENT';--> statement-breakpoint
 ALTER TABLE "notifications" ADD COLUMN "sender_id" uuid;--> statement-breakpoint
 ALTER TABLE "notifications" ADD COLUMN "priority" "notification_priority" DEFAULT 'NORMAL' NOT NULL;--> statement-breakpoint
