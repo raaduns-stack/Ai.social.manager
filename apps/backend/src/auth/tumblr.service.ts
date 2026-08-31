@@ -1,42 +1,45 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SocialAccountsService } from '../social-accounts/social-accounts.service';
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const OAuth = require('oauth-1.0a');
+import OAuth from 'oauth-1.0a';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class TumblrService {
-  private readonly oauth: any;
+  private readonly oauth: OAuth | null;
   private readonly logger = new Logger(TumblrService.name);
 
   constructor(
     private readonly configService: ConfigService,
     private readonly socialAccountsService: SocialAccountsService,
   ) {
-    const consumerKey = process.env.TUMBLR_CONSUMER_KEY;
-    const consumerSecret = process.env.TUMBLR_CONSUMER_SECRET;
+    const consumerKey = this.configService.get<string>('tumblr.consumerKey') || process.env.TUMBLR_CONSUMER_KEY;
+    const consumerSecret = this.configService.get<string>('tumblr.consumerSecret') || process.env.TUMBLR_CONSUMER_SECRET;
 
     if (!consumerKey || !consumerSecret) {
-      throw new Error('TUMBLR_CONSUMER_KEY or TUMBLR_CONSUMER_SECRET is missing from environmental variables.');
+      this.logger.warn('TUMBLR_CONSUMER_KEY or TUMBLR_CONSUMER_SECRET is missing from environmental variables.');
+      this.oauth = null;
+    } else {
+      this.oauth = new OAuth({
+        consumer: {
+          key: consumerKey,
+          secret: consumerSecret,
+        },
+        signature_method: 'HMAC-SHA1',
+        hash_function(base_string: string, key: string) {
+          return crypto
+            .createHmac('sha1', key)
+            .update(base_string)
+            .digest('base64');
+        },
+      });
     }
-
-    this.oauth = new OAuth({
-      consumer: {
-        key: consumerKey,
-        secret: consumerSecret,
-      },
-      signature_method: 'HMAC-SHA1',
-      hash_function(base_string: string, key: string) {
-        return crypto
-          .createHmac('sha1', key)
-          .update(base_string)
-          .digest('base64');
-      },
-    });
   }
 
   async getRequestToken(): Promise<{ oauth_token: string; oauth_token_secret: string }> {
+    if (!this.oauth) {
+      throw new BadRequestException('Tumblr integration is not configured. Please set TUMBLR_CONSUMER_KEY and TUMBLR_CONSUMER_SECRET.');
+    }
     const requestTokenUrl = 'https://www.tumblr.com/oauth/request_token';
     const backendUrl = this.configService.get<string>('backendUrl') || process.env.BACKEND_URL || 'http://localhost:4000';
     const apiPrefix = this.configService.get<string>('apiPrefix') || process.env.API_PREFIX || 'api';
@@ -88,6 +91,9 @@ export class TumblrService {
     oauthTokenSecret: string,
     oauthVerifier: string,
   ): Promise<{ token: string; tokenSecret: string; blogName: string }> {
+    if (!this.oauth) {
+      throw new BadRequestException('Tumblr integration is not configured. Please set TUMBLR_CONSUMER_KEY and TUMBLR_CONSUMER_SECRET.');
+    }
     const accessTokenUrl = 'https://www.tumblr.com/oauth/access_token';
 
     const requestData = {
@@ -142,6 +148,9 @@ export class TumblrService {
   }
 
   private async fetchBlogName(token: string, tokenSecret: string): Promise<string> {
+    if (!this.oauth) {
+      throw new BadRequestException('Tumblr integration is not configured.');
+    }
     const userInfoUrl = 'https://api.tumblr.com/v2/user/info';
 
     const requestData = {
