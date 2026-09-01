@@ -1,6 +1,6 @@
 // payment-analytics.ts
 
-export type PaymentStatus = 'successful' | 'pending' | 'failed' | 'refunded';
+export type PaymentStatus = 'successful' | 'pending' | 'failed';
 
 export interface PaymentAnalyticsQuery {
   startDate?: Date;
@@ -85,7 +85,6 @@ export class PaymentAnalyticsService {
       successful: { status: 'successful', count: 0, totalVolume: 0, percentageOfTotal: 0 },
       pending: { status: 'pending', count: 0, totalVolume: 0, percentageOfTotal: 0 },
       failed: { status: 'failed', count: 0, totalVolume: 0, percentageOfTotal: 0 },
-      refunded: { status: 'refunded', count: 0, totalVolume: 0, percentageOfTotal: 0 },
     };
 
     statusResults.forEach((res: any) => {
