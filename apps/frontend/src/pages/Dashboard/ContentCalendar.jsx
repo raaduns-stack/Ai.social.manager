@@ -1154,8 +1154,8 @@ export default function ContentCalendar() {
         text: 'Calendar generation started. Your AI-generated posts will appear shortly…',
       })
 
-      // Poll the job status every 5 seconds until GENERATED or FAILED (4 minutes timeout = 48 polls)
-      const MAX_POLLS = 48          // 4 min max (48 × 5s)
+      // Poll the job status every 5 seconds until GENERATED, FAILED, or TIMED_OUT (10 minutes timeout = 120 polls)
+      const MAX_POLLS = 120
       let polls = 0
       const pollInterval = setInterval(async () => {
         polls += 1
@@ -1167,16 +1167,26 @@ export default function ContentCalendar() {
             setGenJobId(null)
             setGenMessage({
               type: 'success',
-              text: '✅ AI calendar generated! Your new posts are now in the calendar.',
+              text: 'AI calendar generated! Your new posts are now in the calendar.',
             })
-            await fetchAll()   // Auto-refresh the calendar
+            await fetchAll()
           } else if (latest.status === 'FAILED') {
+            clearInterval(pollInterval)
+            setGenLoading(false)
+            setGenJobId(null)
+            const errorText = latest.errorInfo || 'Calendar generation failed. Please try again or contact support.'
+            setGenMessage({
+              type: 'error',
+              text: errorText,
+              canRetry: true,
+            })
+          } else if (latest.status === 'TIMED_OUT') {
             clearInterval(pollInterval)
             setGenLoading(false)
             setGenJobId(null)
             setGenMessage({
               type: 'error',
-              text: 'Calendar generation failed. Please try again or contact support.',
+              text: 'Calendar generation timed out. The AI service did not respond in time. Please try again.',
               canRetry: true,
             })
           } else if (polls >= MAX_POLLS) {

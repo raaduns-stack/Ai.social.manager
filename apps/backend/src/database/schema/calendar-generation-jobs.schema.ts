@@ -6,6 +6,7 @@ import {
   timestamp,
   pgEnum,
   json,
+  integer,
 } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
@@ -15,6 +16,7 @@ export const calendarJobStatusEnum = pgEnum('calendar_job_status', [
   'GENERATING',
   'GENERATED',
   'FAILED',
+  'TIMED_OUT',
 ]);
 
 export const calendarGenerationJobs = pgTable('calendar_generation_jobs', {
@@ -27,6 +29,7 @@ export const calendarGenerationJobs = pgTable('calendar_generation_jobs', {
   status: calendarJobStatusEnum('status').notNull().default('PENDING'),
   errorInfo: text('error_info'),
   resultIds: json('result_ids').$type<string[]>().default([]),
+  expectedPostCount: integer('expected_post_count'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });

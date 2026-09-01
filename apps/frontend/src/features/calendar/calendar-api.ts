@@ -86,7 +86,7 @@ export interface GenerateCalendarRequestDto {
   platforms: Platform[]
 }
 
-export type GenerationJobStatus = 'PENDING' | 'GENERATING' | 'GENERATED' | 'FAILED'
+export type GenerationJobStatus = 'PENDING' | 'GENERATING' | 'GENERATED' | 'FAILED' | 'TIMED_OUT'
 
 export interface GenerationJob {
   id: string
