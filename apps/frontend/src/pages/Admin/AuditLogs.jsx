@@ -63,10 +63,20 @@ export default function AuditLogs() {
   // Dynamic filter for log records
   const filteredLogs = useMemo(() => {
     return logs.filter((log) => {
-      const matchesType = selectedType === 'All' || log.type === selectedType
+      const logModule = log.module || log.type || ''
+      const matchesType =
+        selectedType === 'All' ||
+        logModule.toLowerCase() === selectedType.toLowerCase()
+
+      const detailText = log.description || log.detail || log.action || ''
+      const actorText = log.userName || log.actor || ''
+      const queryLower = searchQuery.toLowerCase()
+
       const matchesSearch =
-        log.detail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        log.actor.toLowerCase().includes(searchQuery.toLowerCase())
+        !searchQuery ||
+        detailText.toLowerCase().includes(queryLower) ||
+        actorText.toLowerCase().includes(queryLower)
+
       return matchesType && matchesSearch
     })
   }, [logs, selectedType, searchQuery])
