@@ -411,6 +411,7 @@ export default function Channels() {
       startDiscordOAuth();
       setIsConnectModalOpen(false);
       return;
+    }
 
     // Snapchat uses OAuth redirect — bypass handle form
     if (selectedPlatform === 'snapchat') {
@@ -492,6 +493,7 @@ export default function Channels() {
                         { key: 'facebook', label: 'Facebook Page', icon: <Facebook size={14} className="text-blue-600" /> },
                         { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-serif text-sm font-bold leading-none text-blue-900">t</span> },
                         { key: 'discord', label: 'Discord Channel', icon: <MessageSquare size={14} className="text-indigo-500" /> },
+                        { key: 'snapchat', label: 'Snapchat', icon: <Ghost size={14} className="text-black" /> },
                       ].map((plat) => (
                         <button
                           key={plat.key}
@@ -738,6 +740,4 @@ export default function Channels() {
       </div>
     </div>
   )
-}
-
 }

@@ -27,6 +27,13 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
   let socialAccountsMock: any[];
 
   const mockTx = {
+    select: jest.fn().mockImplementation(() => ({
+      from: jest.fn().mockImplementation(() => ({
+        where: jest.fn().mockImplementation(() => ({
+          for: jest.fn().mockImplementation(() => Promise.resolve([jobMock])),
+        })),
+      })),
+    })),
     query: {
       contentCalendar: {
         findMany: jest.fn().mockImplementation((config) => {
@@ -78,12 +85,29 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         };
       }),
     })),
-    update: jest.fn().mockReturnThis(),
-    set: jest.fn().mockReturnThis(),
-    where: jest.fn().mockResolvedValue([]),
+    update: jest.fn().mockImplementation(() => ({
+      set: jest.fn().mockImplementation((val: any) => {
+        if (val && val.status) {
+          jobMock.status = val.status;
+        }
+        if (val && val.resultIds) {
+          jobMock.resultIds = val.resultIds;
+        }
+        return {
+          where: jest.fn().mockResolvedValue([]),
+        };
+      }),
+    })),
   };
 
   const mockDb = {
+    select: jest.fn().mockImplementation(() => ({
+      from: jest.fn().mockImplementation(() => ({
+        where: jest.fn().mockImplementation(() => ({
+          for: jest.fn().mockImplementation(() => Promise.resolve([jobMock])),
+        })),
+      })),
+    })),
     query: {
       calendarGenerationJobs: {
         findFirst: jest.fn().mockImplementation(() => jobMock),
@@ -334,6 +358,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
     // Reset and test Leap Year February 2028 (29 days)
     insertedPosts = [];
+    jobMock.status = 'PENDING';
     jobMock.month = '2028-02';
     postsPayload = Array.from({ length: 8 }).map((_, i) => ({
       title: `Post ${i + 1}`,
@@ -618,8 +643,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
     expect(result1.success).toBe(true);
     expect(insertedPosts.length).toBe(8);
 
-    // Second callback
-    jobMock.status = 'GENERATED';
+    // Second callback (jobMock.status is automatically GENERATED from first call)
     const result2 = (await service.handleN8nResult('job-id', {
       customerId: 'user-id',
       month: '2026-08',
@@ -628,7 +652,36 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
     expect(result2.success).toBe(true);
     expect(result2.message).toBe('Job already processed.');
+    expect(result2.skipped).toBe(true);
     expect(insertedPosts.length).toBe(8); // No extra posts added
+  });
+
+  it('TEST 3b: should handle 20 repeated callbacks for the same jobId and result in exactly 8 inserted posts total', async () => {
+    jobMock.month = '2026-08';
+    jobMock.status = 'GENERATING';
+
+    const postsPayload = Array.from({ length: 8 }).map((_, i) => ({
+      generationItemId: `item-${i + 1}`,
+      title: `Unique Post Title ${i + 1}`,
+      caption: `Unique Post Caption ${i + 1}`,
+      platform: 'Facebook',
+      scheduledDate: `2026-08-01`,
+    }));
+
+    for (let i = 0; i < 20; i++) {
+      const res = (await service.handleN8nResult('job-id', {
+        customerId: 'user-id',
+        month: '2026-08',
+        posts: postsPayload,
+      })) as any;
+      expect(res.success).toBe(true);
+      if (i > 0) {
+        expect(res.skipped).toBe(true);
+        expect(res.message).toBe('Job already processed.');
+      }
+    }
+
+    expect(insertedPosts.length).toBe(8);
   });
 
   // 12. TEST 4: Two different logical posts have the same platform and scheduledAt -> both allowed

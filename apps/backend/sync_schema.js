@@ -1,7 +1,8 @@
 const postgres = require('postgres');
 require('dotenv').config({ path: './.env' });
 
-const sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
+const sslConfig = (process.env.DATABASE_URL || '').includes('sslmode=require') ? { ssl: 'require' } : {};
+const sql = postgres(process.env.DATABASE_URL, sslConfig);
 
 async function sync() {
   try {
