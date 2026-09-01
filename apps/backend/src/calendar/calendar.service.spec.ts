@@ -226,7 +226,6 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
     mockNotificationsService = {
       triggerCalendarUploaded: jest.fn(),
     };
-    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -248,14 +247,12 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
           useValue: mockCustomerProfileService,
         },
         {
-        {
           provide: ContentSuggestionsService,
           useValue: mockContentSuggestionsService,
         },
         {
           provide: NotificationsService,
           useValue: mockNotificationsService,
-        },
         },
       ],
     }).compile();
