@@ -8,6 +8,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { UserRole } from '../common/enums/roles.enum';
+import * as bcrypt from 'bcrypt';
 
 describe('AuthService Security - Role Isolation', () => {
   let authService: AuthService;
@@ -26,9 +27,16 @@ describe('AuthService Security - Role Isolation', () => {
       returning: returningMock,
     });
     dbMock = {
+      transaction: jest.fn().mockImplementation((cb) => cb(dbMock)),
       query: {
         users: {
-          findFirst: jest.fn().mockResolvedValue(null),
+          findFirst: jest.fn().mockResolvedValueOnce(null).mockResolvedValue({
+            id: 'user-123',
+            email: 'test@example.com',
+            fullName: 'Test User',
+            role: UserRole.USER,
+            accountStatus: 'EMAIL_VERIFICATION_PENDING',
+          }),
         },
         plans: {
           findFirst: jest.fn().mockResolvedValue({ id: 'plan-123', slug: 'free' }),
@@ -136,6 +144,12 @@ describe('AuthService Security - Role Isolation', () => {
       newPassword: 'newPassword12345',
       role: UserRole.SUPER_ADMIN,
     };
+    const hashedCurrent = await bcrypt.hash('currentPassword123', 10);
+    dbMock.query.users.findFirst.mockReset();
+    dbMock.query.users.findFirst.mockResolvedValue({
+      id: 'user-123',
+      passwordHash: hashedCurrent,
+    });
 
     await authService.changePassword('user-123', changePasswordPayload as any);
 

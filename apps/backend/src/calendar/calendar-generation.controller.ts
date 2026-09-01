@@ -47,6 +47,14 @@ export class GenerateCalendarRequestDto {
 }
 
 export class GeneratedPostDto {
+  @ApiProperty({ example: 'item-1', required: false })
+  @IsOptional()
+  generationItemId?: string | number;
+
+  @ApiProperty({ example: 1, required: false })
+  @IsOptional()
+  postIndex?: number;
+
   @ApiProperty({ example: 'Social Media Strategy' })
   @IsString()
   @IsNotEmpty()
@@ -77,6 +85,24 @@ export class GeneratedPostDto {
   @IsString({ each: true })
   @IsOptional()
   hashtags?: string[];
+
+  @IsOptional()
+  isVariation?: boolean;
+
+  @IsOptional()
+  isSuggestion?: boolean;
+
+  @IsOptional()
+  parentId?: string;
+
+  @IsOptional()
+  topic?: string;
+
+  @IsOptional()
+  variations?: any[];
+
+  @IsOptional()
+  suggestions?: any[];
 }
 
 export class N8nGenerationResultDto {
@@ -90,6 +116,10 @@ export class N8nGenerationResultDto {
   @IsNotEmpty()
   @Matches(/^\d{4}-\d{2}$/, { message: 'month must be in YYYY-MM format' })
   month!: string;
+
+  @ApiProperty({ example: 8, required: false })
+  @IsOptional()
+  expectedPostCount?: number;
 
   @ApiProperty({ type: [GeneratedPostDto] })
   @IsArray()

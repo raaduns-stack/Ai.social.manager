@@ -36,6 +36,7 @@ import {
   ThumbsUp,
   ThumbsDown,
   Wand2,
+  Lock,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -125,9 +126,9 @@ function toDateKey(isoStringOrDate) {
   }
   const d = new Date(isoStringOrDate)
   if (isNaN(d.getTime())) return ''
-  const yyyy = d.getFullYear()
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
+  const yyyy = d.getUTCFullYear()
+  const mm = String(d.getUTCMonth() + 1).padStart(2, '0')
+  const dd = String(d.getUTCDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
 }
 

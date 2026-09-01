@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -67,6 +68,8 @@ export function normalizePlatformName(platform: string): string {
 
 @Injectable()
 export class CalendarService {
+  private readonly logger = new Logger(CalendarService.name);
+
   constructor(
     @Inject(DATABASE_CONNECTION)
     private readonly db: Database,
@@ -802,7 +805,7 @@ export class CalendarService {
     };
   }
 
-  async handleN8nResult(jobId: string, dto: { customerId: string; month: string; posts: any[] }) {
+  async handleN8nResult(jobId: string, dto: { customerId: string; month: string; expectedPostCount?: number; posts: any[] }) {
     try {
       return await this.saveGeneratedCalendar(jobId, dto);
     } catch (err: any) {
@@ -820,62 +823,208 @@ export class CalendarService {
     }
   }
 
-  private async saveGeneratedCalendar(jobId: string, dto: { customerId: string; month: string; posts: any[] }) {
-    const job = await this.db.query.calendarGenerationJobs.findFirst({
-      where: eq(schema.calendarGenerationJobs.id, jobId),
-    });
-
-    if (!job) {
-      throw new NotFoundException('Generation job not found.');
-    }
-
-    if (job.userId !== dto.customerId) {
-      throw new BadRequestException('Job customer ID mismatch.');
-    }
-
-    if (job.status === 'GENERATED') {
-      return { success: true, message: 'Job already processed.' };
-    }
-
-    if (job.month !== dto.month) {
-      throw new BadRequestException(`Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`);
-    }
-
-    // Limit checks
-    const { limit, currentCount } = await this.getMonthlyLimitAndUsage(job.userId, new Date(`${job.month}-01`));
-    const newPostsCount = dto.posts.length;
-
-    if (currentCount + newPostsCount > limit) {
-      throw new BadRequestException(
-        `Saving these posts would exceed your monthly limit of ${limit} posts. Current posts: ${currentCount}, attempted to add: ${newPostsCount}.`
-      );
-    }
-
-    const connectedPlatforms = await this.getConnectedPlatformsForUser(job.userId);
-    let subscription;
-    try {
-      subscription = await this.subscriptionsService.findByUserId(job.userId);
-    } catch (err) {
-      subscription = { plan: { slug: 'free' } };
-    }
-    const slug = subscription?.plan?.slug || 'free';
-
-    // Parse the requested month
-    const [yearStr, monthStr] = job.month.split('-');
-    const year = parseInt(yearStr, 10);
-    const monthIndex = parseInt(monthStr, 10) - 1;
-
-    const firstDay = new Date(year, monthIndex, 1);
-    const lastDay = new Date(year, monthIndex + 1, 0); // last day of month
-
-    const firstWeekStart = this.getWeekRange(firstDay).start;
-    const lastWeekEnd = this.getWeekRange(lastDay).end;
-
-    // Get the weekly limit based on the plan
-    const isFree = slug === 'free';
-    const weeklyLimit = isFree ? 2 : Infinity;
-
+  private async saveGeneratedCalendar(jobId: string, dto: { customerId: string; month: string; expectedPostCount?: number; posts: any[] }) {
     return await this.db.transaction(async (tx) => {
+      let job: schema.CalendarGenerationJob | undefined;
+
+      if ((tx as any).select) {
+        const jobs = await (tx as any)
+          .select()
+          .from(schema.calendarGenerationJobs)
+          .where(eq(schema.calendarGenerationJobs.id, jobId))
+          .for('update');
+        job = jobs[0];
+      } else {
+        job = await tx.query.calendarGenerationJobs.findFirst({
+          where: eq(schema.calendarGenerationJobs.id, jobId),
+        });
+      }
+
+      if (!job) {
+        throw new NotFoundException('Generation job not found.');
+      }
+
+      const statusBefore = job.status;
+
+      if (job.status === 'GENERATED') {
+        this.logger.log(
+          `[CalendarGeneration] jobId=${jobId} occurrence=duplicate_callback jobStatusBefore=${statusBefore} skipped=true numberOfInsertedRows=0 jobStatusAfter=${statusBefore}`
+        );
+        return {
+          success: true,
+          message: 'Job already processed.',
+          postCount: (job.resultIds || []).length,
+          skipped: true,
+        };
+      }
+
+      if (job.userId !== dto.customerId) {
+        throw new BadRequestException('Job customer ID mismatch.');
+      }
+
+      if (job.month !== dto.month) {
+        throw new BadRequestException(`Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`);
+      }
+
+      const rawPosts = dto.posts || [];
+      if (!Array.isArray(rawPosts) || rawPosts.length === 0) {
+        this.logger.error(
+          `[CalendarGeneration] jobId=${jobId} occurrence=validation_failed jobStatusBefore=${statusBefore} skipped=true numberOfInsertedRows=0 jobStatusAfter=FAILED expected=${dto.expectedPostCount || 0} received=0 uniqueLogicalPosts=0 duplicates=0`
+        );
+        throw new BadRequestException('Generation rejected: no posts provided in payload.');
+      }
+
+      const seenLogicalIds = new Set<string>();
+      const duplicateLogicalIds: string[] = [];
+      const seenPayloads = new Set<string>();
+      const duplicatePayloads: string[] = [];
+
+      for (let index = 0; index < rawPosts.length; index++) {
+        const raw = rawPosts[index];
+        if (!raw) continue;
+
+        const isVariation = Boolean(raw.isVariation || raw.isSuggestion || raw.parentId);
+
+        // Logical ID tracking
+        const logicalId = raw.generationItemId !== undefined && raw.generationItemId !== null
+          ? String(raw.generationItemId)
+          : raw.postIndex !== undefined && raw.postIndex !== null
+            ? String(raw.postIndex)
+            : raw.id !== undefined && raw.id !== null
+              ? String(raw.id)
+              : raw.itemIndex !== undefined && raw.itemIndex !== null
+                ? String(raw.itemIndex)
+                : null;
+
+        if (logicalId !== null) {
+          const fullKey = `${jobId}:${logicalId}`;
+          if (seenLogicalIds.has(fullKey)) {
+            duplicateLogicalIds.push(logicalId);
+          } else {
+            seenLogicalIds.add(fullKey);
+          }
+        }
+
+        // Secondary payload check (only for primary posts)
+        if (!isVariation) {
+          const titleStr = (raw.title || '').trim().toLowerCase();
+          const captionStr = (raw.caption || '').trim().toLowerCase();
+          const platformStr = (raw.platform || '').trim().toLowerCase();
+          const dateStr = (raw.scheduledDate || raw.scheduledAt || '').trim().toLowerCase();
+          const payloadKey = `${titleStr}|${captionStr}|${platformStr}|${dateStr}`;
+
+          if (seenPayloads.has(payloadKey)) {
+            duplicatePayloads.push(titleStr || `Item ${index + 1}`);
+          } else {
+            seenPayloads.add(payloadKey);
+          }
+        }
+      }
+
+      // Validation: Duplicate Logical IDs
+      if (duplicateLogicalIds.length > 0) {
+        this.logger.error(
+          `[CalendarGeneration] jobId=${jobId} occurrence=validation_failed jobStatusBefore=${statusBefore} skipped=true numberOfInsertedRows=0 jobStatusAfter=FAILED expected=${dto.expectedPostCount || rawPosts.length} received=${rawPosts.length} uniqueLogicalPosts=${seenLogicalIds.size} duplicates=${duplicateLogicalIds.length}`
+        );
+        throw new BadRequestException(
+          `Generation rejected: duplicate logical post detected (${duplicateLogicalIds.join(', ')}).`
+        );
+      }
+
+      // Validation: Duplicate Payloads
+      if (duplicatePayloads.length > 0) {
+        this.logger.error(
+          `[CalendarGeneration] jobId=${jobId} occurrence=validation_failed jobStatusBefore=${statusBefore} skipped=true numberOfInsertedRows=0 jobStatusAfter=FAILED expected=${dto.expectedPostCount || rawPosts.length} received=${rawPosts.length} uniqueLogicalPosts=${rawPosts.length} duplicatePayloads=${duplicatePayloads.length}`
+        );
+        throw new BadRequestException(
+          `Generation rejected: duplicate post payload detected (${duplicatePayloads.join(', ')}).`
+        );
+      }
+
+      // Group incoming posts: 1 primary content item per topic/post, extra variations become suggestions
+      const groupedItems: { primary: any; suggestions: any[] }[] = [];
+      const mapByTopic = new Map<string, { primary: any; suggestions: any[] }>();
+
+      for (let index = 0; index < rawPosts.length; index++) {
+        const raw = rawPosts[index];
+        if (!raw) continue;
+
+        const isVariation = Boolean(raw.isVariation || raw.isSuggestion || raw.parentId);
+        const topicKey = (raw.topic || raw.parentTitle || raw.title || '').trim().toLowerCase();
+
+        if (isVariation && topicKey && mapByTopic.has(topicKey)) {
+          mapByTopic.get(topicKey)!.suggestions.push(raw);
+          continue;
+        } else if (topicKey && mapByTopic.has(topicKey) && !raw.isPrimary) {
+          mapByTopic.get(topicKey)!.suggestions.push(raw);
+          continue;
+        }
+
+        const itemSuggestions = Array.isArray(raw.variations)
+          ? [...raw.variations]
+          : Array.isArray(raw.suggestions)
+            ? [...raw.suggestions]
+            : [];
+
+        const group = { primary: raw, suggestions: itemSuggestions };
+        groupedItems.push(group);
+        if (topicKey) {
+          mapByTopic.set(topicKey, group);
+        }
+      }
+
+      const primaryItems = groupedItems.map((g) => g.primary);
+      const primaryCount = primaryItems.length;
+      const expectedCount = dto.expectedPostCount;
+
+      // Validation: Expected vs Received count
+      if (expectedCount !== undefined && expectedCount !== null && primaryCount !== expectedCount) {
+        this.logger.error(
+          `[CalendarGeneration] jobId=${jobId} occurrence=validation_failed jobStatusBefore=${statusBefore} skipped=true numberOfInsertedRows=0 jobStatusAfter=FAILED expected=${expectedCount} received=${primaryCount} uniqueLogicalPosts=${seenLogicalIds.size || primaryCount} duplicates=${duplicateLogicalIds.length}`
+        );
+        throw new BadRequestException(
+          `Generation rejected: expected ${expectedCount} posts but received ${primaryCount}.`
+        );
+      }
+
+      const newPostsCount = primaryCount;
+
+      // Limit checks based on primary posts count
+      const { limit, currentCount } = await this.getMonthlyLimitAndUsage(job.userId, new Date(`${job.month}-01`));
+
+      if (currentCount + newPostsCount > limit) {
+        this.logger.error(
+          `[CalendarGeneration] jobId=${jobId} occurrence=validation_failed jobStatusBefore=${statusBefore} skipped=true numberOfInsertedRows=0 jobStatusAfter=FAILED expected=${expectedCount || primaryCount} received=${rawPosts.length} uniqueLogicalPosts=${primaryCount} duplicates=0 (Limit Exceeded)`
+        );
+        throw new BadRequestException(
+          `Saving these posts would exceed your monthly limit of ${limit} posts. Current posts: ${currentCount}, attempted to add: ${newPostsCount}.`
+        );
+      }
+
+      const connectedPlatforms = await this.getConnectedPlatformsForUser(job.userId);
+      let subscription;
+      try {
+        subscription = await this.subscriptionsService.findByUserId(job.userId);
+      } catch (err) {
+        subscription = { plan: { slug: 'free' } };
+      }
+      const slug = subscription?.plan?.slug || 'free';
+
+      // Parse the requested month
+      const [yearStr, monthStr] = job.month.split('-');
+      const year = parseInt(yearStr, 10);
+      const monthIndex = parseInt(monthStr, 10) - 1;
+
+      const firstDay = new Date(year, monthIndex, 1);
+      const lastDay = new Date(year, monthIndex + 1, 0); // last day of month
+
+      const firstWeekStart = this.getWeekRange(firstDay).start;
+      const lastWeekEnd = this.getWeekRange(lastDay).end;
+
+      // Get the weekly limit based on the plan
+      const isFree = slug === 'free';
+      const weeklyLimit = isFree ? 2 : Infinity;
+
       // Fetch all existing scheduled posts for this user in overlapping weeks, inside the transaction
       const existingPostsInOverlap = await tx.query.contentCalendar.findMany({
         where: (fields, { and, eq, gte, lte }) =>
@@ -944,7 +1093,7 @@ export class CalendarService {
         currentWeekStart.setDate(currentWeekStart.getDate() + 7);
       }
 
-      // Check if requested posts exceed what can fit under the weekly limit
+      // Check if requested primary posts exceed what can fit under the weekly limit
       let totalCapacity = 0;
       for (const w of weeks) {
         if (w.daysInMonth.length > 0 && w.capacity > 0) {
@@ -952,14 +1101,14 @@ export class CalendarService {
         }
       }
 
-      if (isFree && dto.posts.length > totalCapacity) {
+      if (isFree && primaryItems.length > totalCapacity) {
         throw new BadRequestException(
-          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${dto.posts.length}.`
+          `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${primaryItems.length}.`
         );
       }
 
-      // For each new post, find the best week to assign it
-      for (const post of dto.posts) {
+      // For each primary post group, find the best week to assign it
+      for (const group of groupedItems) {
         let bestWeek: WeekData | null = null;
         let minTotalPosts = Infinity;
 
@@ -980,16 +1129,16 @@ export class CalendarService {
           );
         }
 
-        bestWeek.assigned.push(post);
+        bestWeek.assigned.push(group);
       }
 
-      // Distribute assigned posts to specific days in each week
+      // Distribute assigned primary post groups to specific days in each week
       const dayCounts = new Map<number, number>();
       for (const [dayTime, count] of existingPostsByDay.entries()) {
         dayCounts.set(dayTime, count);
       }
 
-      const scheduledPosts: any[] = [];
+      const scheduledGroups: { group: { primary: any; suggestions: any[] }; scheduledDate: string }[] = [];
 
       for (const w of weeks) {
         const k = w.assigned.length;
@@ -998,7 +1147,7 @@ export class CalendarService {
         const Dw = w.daysInMonth.length;
 
         for (let i = 0; i < k; i++) {
-          const post = w.assigned[i];
+          const group = w.assigned[i];
           const prefIndex = Math.floor((i + 0.5) * Dw / k);
 
           let bestDay: Date | null = null;
@@ -1034,8 +1183,8 @@ export class CalendarService {
           const monthVal = String(bestDay.getMonth() + 1).padStart(2, '0');
           const dateVal = String(bestDay.getDate()).padStart(2, '0');
 
-          scheduledPosts.push({
-            ...post,
+          scheduledGroups.push({
+            group,
             scheduledDate: `${yearVal}-${monthVal}-${dateVal}`,
           });
         }
@@ -1057,8 +1206,9 @@ export class CalendarService {
 
       const timeSlots = ['09:00', '14:00', '18:00', '11:00'];
 
-      for (let i = 0; i < scheduledPosts.length; i++) {
-        const post = scheduledPosts[i];
+      for (let i = 0; i < scheduledGroups.length; i++) {
+        const { group, scheduledDate } = scheduledGroups[i];
+        const post = group.primary;
 
         // Round-robin platform assignment
         let normPostPlatform: string;
@@ -1071,17 +1221,17 @@ export class CalendarService {
           normPostPlatform = post.platform ? normalizePlatformName(post.platform) : 'Instagram';
         }
 
-        if (!post.scheduledDate || !post.scheduledDate.startsWith(job.month)) {
-          throw new BadRequestException(`Scheduled date ${post.scheduledDate} does not belong to the requested month ${job.month}.`);
+        if (!scheduledDate || !scheduledDate.startsWith(job.month)) {
+          throw new BadRequestException(`Scheduled date ${scheduledDate} does not belong to the requested month ${job.month}.`);
         }
 
         const timeStr = (post.scheduledTime && /^\d{2}:\d{2}$/.test(post.scheduledTime))
           ? post.scheduledTime
           : timeSlots[i % timeSlots.length];
 
-        const scheduledAt = new Date(`${post.scheduledDate}T${timeStr}:00`);
+        const scheduledAt = new Date(`${scheduledDate}T${timeStr}:00`);
         const finalScheduledAt = isNaN(scheduledAt.getTime())
-          ? new Date(`${post.scheduledDate}T09:00:00`)
+          ? new Date(`${scheduledDate}T09:00:00`)
           : scheduledAt;
 
         const [inserted] = await tx
@@ -1100,6 +1250,20 @@ export class CalendarService {
           .returning();
 
         savedPostIds.push(inserted.id);
+
+        // Save any associated variations/suggestions as contentSuggestions linked to this post
+        if (group.suggestions && group.suggestions.length > 0) {
+          for (const v of group.suggestions) {
+            await tx.insert(schema.contentSuggestions).values({
+              userId: job.userId,
+              postId: inserted.id,
+              title: v.title || inserted.title,
+              type: 'caption',
+              content: v.caption || v.content || v.text || '',
+              hashtags: v.hashtags || [],
+            });
+          }
+        }
       }
 
       await tx
@@ -1110,6 +1274,10 @@ export class CalendarService {
           updatedAt: new Date(),
         })
         .where(eq(schema.calendarGenerationJobs.id, job.id));
+
+      this.logger.log(
+        `[CalendarGeneration] jobId=${job.id} occurrence=first_callback jobStatusBefore=${statusBefore} skipped=false numberOfInsertedRows=${savedPostIds.length} jobStatusAfter=GENERATED expected=${expectedCount || primaryCount} received=${rawPosts.length} uniqueLogicalPosts=${primaryCount} duplicates=0`
+      );
 
       // Trigger AI suggestion generation in background for the newly saved calendar posts
       if (this.contentSuggestionsService && savedPostIds.length > 0) {
