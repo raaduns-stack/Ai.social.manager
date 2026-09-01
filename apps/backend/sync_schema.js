@@ -57,6 +57,19 @@ async function sync() {
         ADD COLUMN IF NOT EXISTS "owner_id_uploaded_at" timestamp;
     `);
 
+    // 4. Add missing columns and enum values to calendar_generation_jobs table
+    await sql.unsafe(`
+      DO $$ BEGIN
+        ALTER TYPE "calendar_job_status" ADD VALUE IF NOT EXISTS 'TIMED_OUT';
+      EXCEPTION
+        WHEN undefined_object THEN null;
+        WHEN duplicate_object THEN null;
+      END $$;
+
+      ALTER TABLE calendar_generation_jobs
+        ADD COLUMN IF NOT EXISTS "expected_post_count" integer;
+    `);
+
     console.log('Database schema successfully updated!');
   } catch (err) {
     console.error('Error syncing DB schema:', err);
