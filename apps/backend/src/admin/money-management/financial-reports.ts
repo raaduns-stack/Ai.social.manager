@@ -8,7 +8,7 @@ export interface RawTransactionInput {
   id: string;
   customerId: string;
   amount: number;
-  status: 'successful' | 'pending' | 'failed' | 'refunded';
+  status: 'successful' | 'pending' | 'failed';
   revenueSource?: string;
   planName?: string;
   createdAt: string;
@@ -18,8 +18,6 @@ export interface SummaryOverview {
   totalRevenue: number;
   successfulTransactionsCount: number;
   failedTransactionsCount: number;
-  refundedTransactionsCount: number;
-  totalRefundedAmount: number;
   averageOrderValue: number;
 }
 
@@ -61,8 +59,6 @@ export async function getFinancialReport(
   let totalRevenue = 0;
   let successfulTransactionsCount = 0;
   let failedTransactionsCount = 0;
-  let refundedTransactionsCount = 0;
-  let totalRefundedAmount = 0;
 
   const sourceMap: Record<string, number> = {};
   const planMap: Record<string, { totalRevenue: number; customers: Set<string> }> = {};
@@ -85,9 +81,6 @@ export async function getFinancialReport(
       planMap[plan].customers.add(tx.customerId);
     } else if (tx.status === 'failed') {
       failedTransactionsCount += 1;
-    } else if (tx.status === 'refunded') {
-      refundedTransactionsCount += 1;
-      totalRefundedAmount += tx.amount;
     }
   });
 
@@ -119,8 +112,6 @@ export async function getFinancialReport(
       totalRevenue: Number(totalRevenue.toFixed(2)),
       successfulTransactionsCount,
       failedTransactionsCount,
-      refundedTransactionsCount,
-      totalRefundedAmount: Number(totalRefundedAmount.toFixed(2)),
       averageOrderValue: Number(averageOrderValue.toFixed(2)),
     },
     revenueTrend: [],

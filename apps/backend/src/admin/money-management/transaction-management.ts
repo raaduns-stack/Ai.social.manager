@@ -43,7 +43,7 @@ export interface PaginatedTransactionsResponse {
 
 export interface IssueResolutionRequest {
     transactionId: string;
-    action: 'refund' | 'mark_verified' | 'flag_dispute';
+    action: 'mark_verified' | 'flag_dispute';
     reason: string;
     adminUserId: string;
 }
@@ -114,7 +114,7 @@ export class TransactionManagementService {
     }
 
     /**
-     * Processes live status updates and refund actions in the database
+     * Processes live status updates in the database
      */
     async resolveTransactionIssue(
         request: IssueResolutionRequest
@@ -125,14 +125,12 @@ export class TransactionManagementService {
             throw new Error(`Transaction with ID ${request.transactionId} not found.`);
         }
 
-        const newStatus: PaymentStatus = request.action === 'refund' ? 'refunded' : transaction.status;
-
         // Persist real updates to database
         const updatedTransaction = await this.dbContext.findByIdAndUpdate(
             request.transactionId,
             {
                 $set: {
-                    status: newStatus,
+                    status: transaction.status,
                     updatedAt: new Date(),
                     'metadata.lastIssueResolution': {
                         action: request.action,

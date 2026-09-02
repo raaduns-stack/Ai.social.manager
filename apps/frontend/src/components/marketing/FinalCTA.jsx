@@ -9,7 +9,7 @@ export default function FinalCTA() {
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#1A1A1A_1px,transparent_1px),linear-gradient(to_bottom,#1A1A1A_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30"></div>
       
       <div className="max-w-7xl mx-auto px-6 text-center flex flex-col items-center relative z-10">
-        <h2 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-white leading-tight tracking-tight mb-6 max-w-2xl">
+        <h2 className="text-4xl md:text-5xl font-extrabold font-heading text-white leading-tight tracking-tight mb-6 max-w-2xl">
           Ready to make social media easier?
         </h2>
         <p className="text-base md:text-lg text-[#999999] max-w-lg mb-10 leading-relaxed">

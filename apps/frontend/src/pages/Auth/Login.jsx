@@ -97,7 +97,7 @@ export default function Login() {
     <div className="w-full space-y-8">
       {/* Form Header */}
       <div className="text-left space-y-2">
-        <h2 className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#111111] tracking-tight">Sign In</h2>
+        <h2 className="font-heading text-3xl font-bold text-[#111111] tracking-tight">Sign In</h2>
         <p className="text-sm text-[#666666]">Welcome back. Please enter your details.</p>
       </div>
 

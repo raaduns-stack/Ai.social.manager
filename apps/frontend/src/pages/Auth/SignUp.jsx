@@ -110,7 +110,7 @@ export default function SignUp() {
     <div className="w-full space-y-8">
       {/* Header */}
       <div className="text-left space-y-2">
-        <h2 className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#111111] tracking-tight">Create Account</h2>
+        <h2 className="font-heading text-3xl font-bold text-[#111111] tracking-tight">Create Account</h2>
         <p className="text-sm text-[#666666]">Join 2,000+ marketing teams using AI to grow.</p>
       </div>
 

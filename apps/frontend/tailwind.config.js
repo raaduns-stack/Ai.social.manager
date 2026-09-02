@@ -105,6 +105,7 @@ export default {
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
+        heading: ['Plus Jakarta Sans'],
         "headline-lg": ["Plus Jakarta Sans"],
         "headline-xl": ["Plus Jakarta Sans"],
         "display-lg": ["Plus Jakarta Sans"],

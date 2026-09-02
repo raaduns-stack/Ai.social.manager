@@ -261,8 +261,6 @@ export default function MoneyManagement() {
     let pendingAmount = 0
     let failedCount = 0
     let failedAmount = 0
-    let refundedCount = 0
-    let refundedAmount = 0
 
     payments.forEach(p => {
       const status = p.status?.toLowerCase()
@@ -275,9 +273,6 @@ export default function MoneyManagement() {
       } else if (status === 'failed') {
         failedCount++
         failedAmount += p.amount
-      } else if (status === 'refunded') {
-        refundedCount++
-        refundedAmount += p.amount
       }
     })
 
@@ -313,16 +308,6 @@ export default function MoneyManagement() {
         isPositive: false,
         borderClass: 'border-l-danger',
         tone: 'danger',
-      },
-      {
-        id: 'refunded',
-        label: 'Refunded',
-        count: refundedCount.toLocaleString(),
-        amount: formatPrice(refundedAmount),
-        change: totalCount > 0 ? `${Math.round((refundedCount / totalCount) * 100)}%` : '0%',
-        isPositive: null,
-        borderClass: 'border-l-primary',
-        tone: 'neutral',
       },
     ]
   }, [payments])
@@ -620,7 +605,7 @@ export default function MoneyManagement() {
       {/* Section 2: Payment Analytics */}
       <section className="space-y-4">
         <h2 className="text-lg font-semibold text-ink">Payment Analytics</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {paymentAnalytics.map((item) => (
             <Card key={item.id} className={`p-6 border-l-4 ${item.borderClass}`}>
               <div className="text-xs font-medium text-ink-muted mb-2">{item.label}</div>
@@ -835,7 +820,6 @@ export default function MoneyManagement() {
                 <option value="successful">Successful</option>
                 <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
-                <option value="refunded">Refunded</option>
               </select>
             </div>
 

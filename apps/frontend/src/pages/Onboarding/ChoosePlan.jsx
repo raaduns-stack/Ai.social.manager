@@ -71,7 +71,7 @@ export default function ChoosePlan() {
     <div className="w-full space-y-12 py-8 max-w-5xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Header Section */}
       <div className="text-center max-w-2xl mx-auto space-y-3">
-        <h1 className="text-3xl md:text-5xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight">
+        <h1 className="text-3xl md:text-5xl font-bold font-heading text-[#111111] tracking-tight">
           Select your growth engine.
         </h1>
         <p className="text-base md:text-lg text-[#666666] leading-relaxed">
@@ -114,14 +114,14 @@ export default function ChoosePlan() {
 
                   <div className="space-y-6">
                     <div className="text-left">
-                      <h3 className="text-2xl font-bold text-[#111111] font-['Plus_Jakarta_Sans'] tracking-tight mb-2">
+                      <h3 className="text-2xl font-bold text-[#111111] font-heading tracking-tight mb-2">
                         {plan.name === 'Brand Domination' ? 'Enterprise' : plan.name}
                       </h3>
                       <p className="text-sm text-[#666666] leading-relaxed mb-4">
                         {plan.description || PLAN_DETAILS[plan.slug]?.description || ''}
                       </p>
                       <div className="flex items-baseline gap-1 mt-2">
-                        <span className="text-4xl font-extrabold text-[#111111] font-['Plus_Jakarta_Sans'] tracking-tight">
+                        <span className="text-4xl font-extrabold text-[#111111] font-heading tracking-tight">
                           {formatPrice(plan)}
                         </span>
                         {!isEnterprise && (

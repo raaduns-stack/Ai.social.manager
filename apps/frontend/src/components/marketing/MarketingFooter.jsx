@@ -7,7 +7,7 @@ export default function MarketingFooter() {
       <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-12 gap-8 md:gap-12">
         {/* Company Intro column */}
         <div className="md:col-span-5 space-y-4">
-          <Link to="/" className="text-2xl font-extrabold tracking-tight font-['Plus_Jakarta_Sans']">
+          <Link to="/" className="text-2xl font-extrabold tracking-tight font-heading">
             RaaSocial<span className="text-[#FF6600]">.</span>
           </Link>
           <p className="text-sm text-[#999999] max-w-sm leading-relaxed">

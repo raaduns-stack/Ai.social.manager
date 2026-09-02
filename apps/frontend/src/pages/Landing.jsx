@@ -14,7 +14,7 @@ export default function Landing() {
     <div className="w-full">
       {/* Hero Section */}
       <header className="pt-16 md:pt-24 pb-20 px-6 max-w-7xl mx-auto flex flex-col items-center text-center select-none">
-        <h1 className="text-5xl md:text-7xl lg:text-[72px] font-extrabold text-[#111111] max-w-[900px] mb-6 leading-[1.1] md:leading-[1.1] font-['Plus_Jakarta_Sans'] tracking-tight">
+        <h1 className="text-5xl md:text-7xl lg:text-[72px] font-extrabold text-[#111111] max-w-[900px] mb-6 leading-[1.1] md:leading-[1.1] font-heading tracking-tight">
           Your social media on <br />
           autopilot. <br />
           <span className="text-[#FF6600]">Powered by Kleos.</span>
