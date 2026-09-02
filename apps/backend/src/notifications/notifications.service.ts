@@ -5,6 +5,7 @@ import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { MailerService } from '../mailer/mailer.service';
 import { UserRole } from '../common/enums/roles.enum';
+import sanitizeHtml from 'sanitize-html';
 
 // Import the existing admin notification pure functions
 import { sendSystemAnnouncement, AnnouncementRequest } from '../admin/notifications/system-announcements';
@@ -24,6 +25,41 @@ export class NotificationsService {
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly mailerService: MailerService,
   ) {}
+
+  private sanitizeHtml(html: string): string {
+    return sanitizeHtml(html, {
+      allowedTags: [
+        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'blockquote',
+        'code', 'pre', 'hr', 'sub', 'sup',
+      ],
+      allowedAttributes: {
+        a: ['href', 'title', 'target', 'rel'],
+        span: ['style'],
+        div: ['style'],
+        p: ['style'],
+        h1: ['style'],
+        h2: ['style'],
+        h3: ['style'],
+        h4: ['style'],
+        h5: ['style'],
+        h6: ['style'],
+      },
+      allowedSchemes: ['http', 'https', 'mailto'],
+      allowedSchemesByTag: {
+        a: ['href', 'xlink:href'],
+      },
+      transformTags: {
+        'a': (tagName: string, attribs: { [key: string]: string }) => {
+          if (attribs.href && !attribs.rel) {
+            attribs.rel = 'noopener noreferrer';
+            attribs.target = '_blank';
+          }
+          return { tagName, attribs };
+        },
+      },
+    } as any);
+  }
 
   // ---------------------------------------------------------------------------
   // Core Data Access
@@ -47,6 +83,7 @@ export class NotificationsService {
     actionUrl?: string | null;
     metadata?: Record<string, any>;
   }) {
+    const sanitizedMessage = this.sanitizeHtml(data.message);
     const [record] = await this.db.insert(schema.notifications).values({
       userId: data.userId,
       senderId: data.senderId,
@@ -55,7 +92,7 @@ export class NotificationsService {
       status: (data.status || 'SENT') as any,
       priority: (data.priority || 'NORMAL') as any,
       title: data.title,
-      message: data.message,
+      message: sanitizedMessage,
       error: data.error,
       readAt: data.readAt,
       sentAt: data.sentAt || new Date(),
@@ -94,7 +131,7 @@ export class NotificationsService {
       status: (r.status || 'SENT') as any,
       priority: (r.priority || 'NORMAL') as any,
       title: r.title,
-      message: r.message,
+      message: this.sanitizeHtml(r.message),
       error: r.error,
       sentAt: new Date(),
       scheduledFor: r.scheduledFor,
