@@ -27,7 +27,6 @@ import {
   markAsRead,
   markAllAsRead,
   deleteNotification,
-  CustomerNotification,
 } from '../../features/customer/notifications-api'
 
 const TYPE_VISUAL = {
