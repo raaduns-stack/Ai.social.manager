@@ -74,8 +74,9 @@ export default function Login() {
       trackEvent('login', { method: 'email' })
       navigate('/dashboard')
     } catch (err) {
-      const data = err?.response?.data
-      if (data?.requiresVerification) {
+      const data = err?.response?.data || err
+      if (data?.requiresVerification || err?.errorCode === 'EMAIL_NOT_VERIFIED') {
+        const email = data?.email || formData.email
         window.dispatchEvent(
           new CustomEvent('app-toast', {
             detail: {
@@ -84,7 +85,7 @@ export default function Login() {
             },
           })
         )
-        navigate(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`)
         return
       }
       setApiError(err)
