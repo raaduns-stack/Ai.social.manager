@@ -39,7 +39,7 @@ export class AdminNotificationsController {
       }
     }
 
-    return this.notificationsService.dispatchSystemAnnouncement({
+    const result = await this.notificationsService.dispatchSystemAnnouncement({
       title: dto.title,
       message: dto.message,
       targetUserIds: dto.targetUserIds,
@@ -47,6 +47,20 @@ export class AdminNotificationsController {
       actionUrl: dto.actionUrl,
       metadata: dto.metadata,
     }, user.userId);
+
+    // Mirror the announcement into each admin/staff user's own feed so
+    // the admin navbar bell surfaces it without re-broadcasting to clients.
+    await this.notificationsService.broadcastToStaffRole({
+      type: 'SYSTEM_ANNOUNCEMENT',
+      title: `[Admin copy] ${dto.title}`,
+      message: dto.message,
+      priority: 'NORMAL',
+      metadata: { ...(dto.metadata || {}), mirrorOf: 'system-announcement' },
+      actionUrl: dto.actionUrl,
+      senderId: user.userId,
+    });
+
+    return result;
   }
 
   @Post('maintenance')

@@ -413,6 +413,51 @@ export class NotificationsService {
     };
   }
 
+  /**
+   * Persist a notification into every active staff/admin user's own feed so
+   * the admin navbar bell surfaces it. Customers are intentionally excluded.
+   */
+  async broadcastToStaffRole(payload: {
+    type: string;
+    title: string;
+    message: string;
+    priority?: 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
+    actionUrl?: string;
+    metadata?: Record<string, any>;
+    senderId?: string;
+  }) {
+    const admins = await this.db.query.users.findMany({
+      where: inArray(schema.users.role, [
+        UserRole.SUPER_ADMIN,
+        UserRole.ACCOUNT_MANAGER,
+        UserRole.REVIEWER,
+        UserRole.SUPPORT_STAFF,
+        UserRole.DESIGNER,
+      ]),
+    });
+
+    if (admins.length === 0) {
+      return { totalTargeted: 0, records: [] };
+    }
+
+    const records = await this.createBulkNotifications(
+      admins.map((admin) => ({
+        userId: admin.id,
+        type: payload.type,
+        channel: 'IN_APP',
+        status: 'SENT',
+        priority: payload.priority || 'NORMAL',
+        title: payload.title,
+        message: payload.message,
+        actionUrl: payload.actionUrl,
+        senderId: payload.senderId,
+        metadata: payload.metadata,
+      }))
+    );
+
+    return { totalTargeted: admins.length, records };
+  }
+
   // ---------------------------------------------------------------------------
   // Admin Operations
   // ---------------------------------------------------------------------------
@@ -910,11 +955,13 @@ export class NotificationsService {
   }
 
   async triggerSecurityNotice(data: { userId?: string; title: string; message: string; broadcast?: boolean }) {
-    const targets = data.broadcast
-      ? await this.db.query.users.findMany({ where: eq(schema.users.role, UserRole.USER) })
-      : data.userId
-        ? await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) })
-        : [];
+    let targets: any[] = [];
+    if (data.userId) {
+      targets = await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) });
+    } else if (data.broadcast) {
+      // Broadcast to every active user: customers + admin staff
+      targets = await this.db.query.users.findMany({ where: eq(schema.users.isActive, true) });
+    }
 
     const records = await this.createBulkNotifications(
       targets.map((user) => ({
@@ -932,11 +979,12 @@ export class NotificationsService {
   }
 
   async triggerFeatureUpdate(data: { userId?: string; title: string; message: string; broadcast?: boolean }) {
-    const targets = data.broadcast
-      ? await this.db.query.users.findMany({ where: eq(schema.users.role, UserRole.USER) })
-      : data.userId
-        ? await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) })
-        : [];
+    let targets: any[] = [];
+    if (data.userId) {
+      targets = await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) });
+    } else if (data.broadcast) {
+      targets = await this.db.query.users.findMany({ where: eq(schema.users.isActive, true) });
+    }
 
     const records = await this.createBulkNotifications(
       targets.map((user) => ({
@@ -954,11 +1002,12 @@ export class NotificationsService {
   }
 
   async triggerServiceUpdate(data: { userId?: string; title: string; message: string; broadcast?: boolean }) {
-    const targets = data.broadcast
-      ? await this.db.query.users.findMany({ where: eq(schema.users.role, UserRole.USER) })
-      : data.userId
-        ? await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) })
-        : [];
+    let targets: any[] = [];
+    if (data.userId) {
+      targets = await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) });
+    } else if (data.broadcast) {
+      targets = await this.db.query.users.findMany({ where: eq(schema.users.isActive, true) });
+    }
 
     const records = await this.createBulkNotifications(
       targets.map((user) => ({
