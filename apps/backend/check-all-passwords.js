@@ -1,49 +1,37 @@
-require('dotenv/config');
-const postgres = require('postgres');
+require('dotenv').config();
+const { neon } = require('@neondatabase/serverless');
 const bcrypt = require('bcrypt');
+const sql = neon(process.env.DATABASE_URL);
 
-const passwords = [
-  'Password123!',
-  'Password123',
-  'Pass123!',
-  'treasure',
-  'adejumo',
-  'adejumotreasure',
-  'adejumo123',
-  'treasure123',
-  'adejumotreasure123',
-  'password',
-  'admin',
-  'Admin123!',
-  'Admin123',
-  '123456',
-  '12345678',
-  'SecurePass123!'
-];
-
-async function check() {
-  const sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
-  try {
-    const users = await sql`SELECT id, email, role, password_hash, account_status, is_email_verified FROM users`;
-    console.log(`Found ${users.length} users:`);
-    for (const u of users) {
-      let matched = false;
-      for (const p of passwords) {
-        if (await bcrypt.compare(p, u.password_hash)) {
-          console.log(`MATCH: ${u.email} (${u.role}) -> password: "${p}"`);
-          matched = true;
-          break;
-        }
-      }
-      if (!matched) {
-        console.log(`NO MATCH for ${u.email} (${u.role}) - Hash: ${u.password_hash}`);
+(async () => {
+  const users = await sql.query(
+    "SELECT id, email, role, account_status, is_active, is_email_verified, password_hash FROM users ORDER BY created_at DESC"
+  );
+  console.log('Total users:', users.length);
+  for (const u of users) {
+    let bcryptHashOk = false;
+    let hashStartsWithBcrypt = u.password_hash && u.password_hash.startsWith('$2');
+    if (hashStartsWithBcrypt) {
+      // Try common test passwords
+      const testPasswords = ['TestPass123!', 'Admin@2026', 'Admin@2026!', 'Password123!', 'Password123', 'admin123', 'test123', 'RaaSocial123!'];
+      for (const p of testPasswords) {
+        try {
+          if (await bcrypt.compare(p, u.password_hash)) {
+            bcryptHashOk = p;
+            break;
+          }
+        } catch {}
       }
     }
-  } catch (err) {
-    console.error(err);
-  } finally {
-    await sql.end();
+    console.log({
+      id: u.id.slice(0, 8),
+      email: u.email,
+      role: u.role,
+      accountStatus: u.account_status,
+      isActive: u.is_active,
+      isEmailVerified: u.is_email_verified,
+      hasBcryptHash: hashStartsWithBcrypt,
+      workingPassword: bcryptHashOk || 'NONE',
+    });
   }
-}
-
-check();
+})();
