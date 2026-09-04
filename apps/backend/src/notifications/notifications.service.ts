@@ -684,6 +684,62 @@ export class NotificationsService {
     });
   }
 
+  async triggerKycApproved(data: { userId: string; businessName: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'SERVICE_UPDATE',
+      channel: 'BOTH',
+      priority: 'HIGH',
+      title: 'KYC Verification Approved',
+      message: `Your business verification for "${data.businessName}" has been approved. You now have full access to platform features.`,
+      relatedEntityType: 'kyc',
+      actionUrl: '/dashboard/channels',
+      metadata: { businessName: data.businessName, status: 'approved' },
+    });
+  }
+
+  async triggerKycRejected(data: { userId: string; businessName: string; reason?: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'SERVICE_UPDATE',
+      channel: 'BOTH',
+      priority: 'HIGH',
+      title: 'KYC Verification Rejected',
+      message: `Your business verification for "${data.businessName}" was rejected.${data.reason ? ` Reason: ${data.reason}` : ''}`,
+      relatedEntityType: 'kyc',
+      actionUrl: '/dashboard/channels',
+      metadata: { businessName: data.businessName, status: 'rejected', reason: data.reason },
+    });
+  }
+
+  async triggerKycResubmissionRequired(data: { userId: string; businessName: string; reason?: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'SERVICE_UPDATE',
+      channel: 'BOTH',
+      priority: 'HIGH',
+      title: 'KYC Resubmission Required',
+      message: `Your business verification for "${data.businessName}" requires updated documentation.${data.reason ? ` Reason: ${data.reason}` : ''}`,
+      relatedEntityType: 'kyc',
+      actionUrl: '/dashboard/channels',
+      metadata: { businessName: data.businessName, status: 'resubmission_required', reason: data.reason },
+    });
+  }
+
+  async triggerKycSubmitted(data: { userId: string; businessName: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'SERVICE_UPDATE',
+      channel: 'IN_APP',
+      priority: 'NORMAL',
+      title: 'KYC Verification Submitted',
+      message: `Your business verification for "${data.businessName}" was submitted and is pending review.`,
+      relatedEntityType: 'kyc',
+      actionUrl: '/dashboard/channels',
+      metadata: { businessName: data.businessName, status: 'pending' },
+    });
+  }
+
   async triggerAccountDisconnected(data: { userId: string; platform: string; accountHandle: string }) {
     return this.createNotification({
       userId: data.userId,

@@ -126,13 +126,42 @@ export class PaymentsService {
 
       console.log('[Webhook Received]', JSON.stringify(payload));
 
-      if (payload?.event === 'charge.completed' && payload?.data?.status === 'successful') {
-        const transactionId = payload.data.id || payload.data.tx_ref;
+      if (payload?.event === 'charge.completed') {
+        const transactionId = payload.data?.id || payload.data?.tx_ref;
         if (!transactionId) {
           console.error('[Webhook Error] Missing transaction identifier in payload:', payload);
           throw new BadRequestException('Missing transaction identifier');
         }
-        return await this.verifyAndFulfillTransaction(String(transactionId));
+
+        if (payload?.data?.status === 'successful') {
+          return await this.verifyAndFulfillTransaction(String(transactionId));
+        } else {
+          // Process failed/cancelled webhook
+          const txRef = payload.data?.tx_ref || String(transactionId);
+          const payment = await this.db.query.payments.findFirst({
+            where: eq(schema.payments.gatewayReference, txRef),
+          });
+
+          if (payment && payment.status === 'pending') {
+            await this.db
+              .update(schema.payments)
+              .set({
+                status: 'failed',
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.payments.id, payment.id));
+
+            void this.notificationsService.triggerSubscriptionPaymentFailed({
+              userId: payment.userId,
+              subscriptionId: payment.subscriptionId || '',
+              paymentId: payment.id,
+              amount: payment.amount,
+              currency: payment.currency,
+              reason: payload.data?.processor_response || 'Payment failed or cancelled',
+            });
+          }
+          return { status: 'failed' };
+        }
       }
 
       return { status: 'ignored' };
@@ -150,31 +179,59 @@ export class PaymentsService {
       this.configService.get<string>('payments.flutterwaveSecretKey') ||
       process.env.FLUTTERWAVE_SECRET_KEY;
 
-    const isNumeric = /^\d+$/.test(transactionId);
-    const url = isNumeric
-      ? `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`
-      : `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${transactionId}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-      },
+    // Try finding payment record first by gateway reference or id
+    let payment = await this.db.query.payments.findFirst({
+      where: eq(schema.payments.gatewayReference, transactionId),
     });
 
-    const flwRes = await response.json();
+    if (!payment) {
+      // Try by UUID id if transactionId looks like a UUID
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(transactionId);
+      if (isUuid) {
+        payment = await this.db.query.payments.findFirst({
+          where: eq(schema.payments.id, transactionId),
+        });
+      }
+    }
 
-    if (flwRes.status !== 'success' || !flwRes.data) {
-      throw new BadRequestException(
-        flwRes.message || 'Failed to verify transaction with Flutterwave',
-      );
+    const isNumeric = /^\d+$/.test(transactionId);
+    const lookupRef = payment?.gatewayReference || transactionId;
+    const url = isNumeric
+      ? `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`
+      : `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(lookupRef)}`;
+
+    let flwRes: any;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+        },
+      });
+      flwRes = await response.json();
+    } catch (err: any) {
+      console.error('[Payment Verification Fetch Error]', err);
+      if (payment && payment.status === 'pending') {
+        await this.markPaymentFailed(payment, err.message || 'Verification service network error');
+      }
+      throw new BadRequestException('Payment verification service network error');
+    }
+
+    if (!flwRes || flwRes.status !== 'success' || !flwRes.data) {
+      const failureReason = flwRes?.message || 'Transaction not verified with Flutterwave';
+      if (payment && payment.status === 'pending') {
+        await this.markPaymentFailed(payment, failureReason);
+      }
+      throw new BadRequestException(failureReason);
     }
 
     const { tx_ref, status, amount, currency } = flwRes.data;
 
-    const payment = await this.db.query.payments.findFirst({
-      where: eq(schema.payments.gatewayReference, tx_ref),
-    });
+    if (!payment) {
+      payment = await this.db.query.payments.findFirst({
+        where: eq(schema.payments.gatewayReference, tx_ref),
+      });
+    }
 
     if (!payment) {
       throw new NotFoundException(`Payment record not found for tx_ref: ${tx_ref}`);
@@ -186,29 +243,34 @@ export class PaymentsService {
     const isSuccessful = status === 'successful' && isAmountValid && isCurrencyValid;
 
     if (!isSuccessful) {
-      await this.db
-        .update(schema.payments)
-        .set({
-          status: 'failed',
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.payments.id, payment.id));
-
-      void this.notificationsService.triggerSubscriptionPaymentFailed({
-        userId: payment.userId,
-        subscriptionId: payment.subscriptionId || '',
-        paymentId: payment.id,
-        amount: payment.amount,
-        currency: payment.currency,
-        reason: flwRes.data?.message || undefined,
-      });
+      const reason = flwRes.data?.processor_response || flwRes.data?.message || `Payment status: ${status}`;
+      await this.markPaymentFailed(payment, reason);
 
       throw new BadRequestException(
-        `Payment verification failed. Paid amount: ${amount} ${currency}, Expected: ${expectedAmount} ${payment.currency}`,
+        `Payment verification failed. Status: ${status}, Paid: ${amount} ${currency}, Expected: ${expectedAmount} ${payment.currency}`,
       );
     }
 
     return this.fulfillPayment(payment.id);
+  }
+
+  private async markPaymentFailed(payment: any, reason?: string) {
+    await this.db
+      .update(schema.payments)
+      .set({
+        status: 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.payments.id, payment.id));
+
+    void this.notificationsService.triggerSubscriptionPaymentFailed({
+      userId: payment.userId,
+      subscriptionId: payment.subscriptionId || '',
+      paymentId: payment.id,
+      amount: payment.amount,
+      currency: payment.currency,
+      reason: reason || 'Payment failed or cancelled',
+    });
   }
 
   /**
