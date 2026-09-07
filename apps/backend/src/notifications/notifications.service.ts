@@ -740,6 +740,24 @@ export class NotificationsService {
     });
   }
 
+  async triggerAccountConnected(data: { userId: string; platform: string; accountHandle: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'ACCOUNT_CONNECTION_CONNECTED',
+      channel: 'BOTH',
+      priority: 'NORMAL',
+      title: `${data.platform} Account Connected`,
+      message: `Your ${data.platform} account (${data.accountHandle}) has been successfully connected.`,
+      relatedEntityType: 'social_account',
+      relatedEntityId: data.accountHandle,
+      actionUrl: '/dashboard/social-accounts',
+      metadata: {
+        platform: data.platform,
+        accountHandle: data.accountHandle,
+      },
+    });
+  }
+
   async triggerAccountDisconnected(data: { userId: string; platform: string; accountHandle: string }) {
     return this.createNotification({
       userId: data.userId,
@@ -897,6 +915,44 @@ export class NotificationsService {
       metadata: {
         ticketId: data.ticketId,
         subject: data.subject,
+      },
+    });
+  }
+
+  async triggerSubscriptionPaymentPending(data: { userId: string; subscriptionId?: string; paymentId?: string; amount: number; currency: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'SUBSCRIPTION_PAYMENT_PENDING',
+      channel: 'IN_APP',
+      priority: 'NORMAL',
+      title: 'Payment Pending',
+      message: `Your payment of ${data.currency} ${(data.amount / 100).toFixed(2)} is pending verification.`,
+      relatedEntityType: 'payment',
+      relatedEntityId: data.paymentId,
+      actionUrl: '/dashboard/billing',
+      metadata: {
+        subscriptionId: data.subscriptionId,
+        paymentId: data.paymentId,
+        amount: data.amount,
+        currency: data.currency,
+      },
+    });
+  }
+
+  async triggerSubscriptionPlanChanged(data: { userId: string; subscriptionId?: string; planName: string }) {
+    return this.createNotification({
+      userId: data.userId,
+      type: 'SUBSCRIPTION_PLAN_CHANGED',
+      channel: 'BOTH',
+      priority: 'HIGH',
+      title: 'Subscription Plan Updated',
+      message: `Your subscription has been updated to the ${data.planName} plan.`,
+      relatedEntityType: 'subscription',
+      relatedEntityId: data.subscriptionId,
+      actionUrl: '/dashboard/billing',
+      metadata: {
+        subscriptionId: data.subscriptionId,
+        planName: data.planName,
       },
     });
   }

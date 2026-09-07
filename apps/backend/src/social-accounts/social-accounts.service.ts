@@ -89,6 +89,13 @@ export class SocialAccountsService {
         connectedAt: new Date(),
       })
       .returning();
+
+    void this.notificationsService.triggerAccountConnected({
+      userId,
+      platform: account.platform,
+      accountHandle: account.accountHandle,
+    });
+
     return account;
   }
 
