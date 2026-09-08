@@ -128,7 +128,7 @@ const initialSuggestions = [
   },
 ]
 
-const platforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok']
+const platforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook', 'Tumblr', 'Discord']
 
 function PlatformBadge({ platform }) {
   let icon = <Share2 size={12} />
