@@ -344,6 +344,10 @@ export default function MoneyManagement() {
     ]
   }, [payments])
 
+  const activeSubscriptions = useMemo(() => {
+    return subscriptions.filter(sub => !sub.status || sub.status.toLowerCase() === 'active')
+  }, [subscriptions])
+
   // Calculate Subscription tier breakdown
   const subscriptionBreakdown = useMemo(() => {
     let freeCount = 0
@@ -351,7 +355,7 @@ export default function MoneyManagement() {
     let growthCount = 0
     let enterpriseCount = 0
 
-    subscriptions.forEach(sub => {
+    activeSubscriptions.forEach(sub => {
       const p = sub.plan?.toLowerCase() || ''
       if (p.includes('free')) {
         freeCount++
@@ -364,7 +368,7 @@ export default function MoneyManagement() {
       }
     })
 
-    const totalCount = subscriptions.length || 1
+    const totalCount = activeSubscriptions.length || 1
 
     return [
       { label: 'Free Plan', amount: freeCount.toString(), share: `${Math.round((freeCount / totalCount) * 100)}% Share`, color: 'bg-primary-300' },
@@ -372,17 +376,17 @@ export default function MoneyManagement() {
       { label: 'Growth Tier', amount: growthCount.toString(), share: `${Math.round((growthCount / totalCount) * 100)}% Share`, color: 'bg-accent' },
       { label: 'Enterprise Tier', amount: enterpriseCount.toString(), share: `${Math.round((enterpriseCount / totalCount) * 100)}% Share`, color: 'bg-warning' },
     ]
-  }, [subscriptions])
+  }, [activeSubscriptions])
 
   // Dynamic values for donut diagram
   const subscriptionPercentages = useMemo(() => {
-    const total = subscriptions.length || 1
+    const total = activeSubscriptions.length || 1
     let free = 0
     let starter = 0
     let growth = 0
     let enterprise = 0
 
-    subscriptions.forEach(sub => {
+    activeSubscriptions.forEach(sub => {
       const p = sub.plan?.toLowerCase() || ''
       if (p.includes('free')) free++
       else if (p.includes('starter')) starter++
@@ -396,7 +400,7 @@ export default function MoneyManagement() {
       growth: Math.round((growth / total) * 100),
       enterprise: Math.round((enterprise / total) * 100),
     }
-  }, [subscriptions])
+  }, [activeSubscriptions])
 
   // Dynamic Payment Methods percentage
   const paymentMethodsPercentages = useMemo(() => {

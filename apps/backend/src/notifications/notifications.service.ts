@@ -31,10 +31,11 @@ export class NotificationsService {
       allowedTags: [
         'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'blockquote',
-        'code', 'pre', 'hr', 'sub', 'sup',
+        'code', 'pre', 'hr', 'sub', 'sup', 'img',
       ],
       allowedAttributes: {
         a: ['href', 'title', 'target', 'rel'],
+        img: ['src', 'alt', 'width', 'height', 'style'],
         span: ['style'],
         div: ['style'],
         p: ['style'],
@@ -45,9 +46,10 @@ export class NotificationsService {
         h5: ['style'],
         h6: ['style'],
       },
-      allowedSchemes: ['http', 'https', 'mailto'],
+      allowedSchemes: ['http', 'https', 'mailto', 'data'],
       allowedSchemesByTag: {
         a: ['href', 'xlink:href'],
+        img: ['src'],
       },
       transformTags: {
         'a': (tagName: string, attribs: { [key: string]: string }) => {

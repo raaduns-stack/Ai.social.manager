@@ -740,7 +740,7 @@ export class AdminService {
       .from(schema.subscriptions)
       .innerJoin(schema.plans, eq(schema.subscriptions.planId, schema.plans.id))
       .leftJoin(schema.users, eq(schema.subscriptions.userId, schema.users.id))
-      .where(ne(schema.plans.slug, 'free'))
+      .where(and(ne(schema.plans.slug, 'free'), eq(schema.subscriptions.status, 'active')))
       .orderBy(desc(schema.subscriptions.createdAt));
 
     return subs.map((s) => ({
