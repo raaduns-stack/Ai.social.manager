@@ -9,11 +9,15 @@ import { SubscriptionRemindersJob } from './jobs/subscription-reminders.job';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [ContentSuggestionsModule],
+  imports: [ContentSuggestionsModule, NotificationsModule],
   controllers: [SchedulingController],
-  providers: [SchedulingService, DispatchDuePostsJob, AutoApprovePostsJob],
-  providers: [SchedulingService, DispatchDuePostsJob, DispatchScheduledNotificationsJob, SubscriptionRemindersJob],
-  imports: [NotificationsModule],
+  providers: [
+    SchedulingService,
+    DispatchDuePostsJob,
+    AutoApprovePostsJob,
+    DispatchScheduledNotificationsJob,
+    SubscriptionRemindersJob,
+  ],
   exports: [SchedulingService],
 })
 export class SchedulingModule {}
