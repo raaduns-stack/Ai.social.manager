@@ -35,6 +35,7 @@ import { SchedulingModule } from './scheduling/scheduling.module';
 import { PublishingModule } from './publishing/publishing.module';
 import { ChannelsModule } from './channels/channels.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { DesignerModule } from './designer/designer.module';
 
 import * as path from 'path';
 
@@ -87,6 +88,7 @@ import * as path from 'path';
     PublishingModule,
     ChannelsModule,
     NotificationsModule,
+    DesignerModule,
     // Next modules to add here as they're built:
     // UsersModule, ContentCalendarModule, UploadsModule,
     // AiModule (Gemini/OpenClaw integration), NotificationsModule
