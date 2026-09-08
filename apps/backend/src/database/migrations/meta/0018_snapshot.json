@@ -1,9 +1,5 @@
 {
-<<<<<<< Updated upstream
   "id": "7138cabc-03b2-48fe-af6e-0f4e0f495468",
-=======
-  "id": "9401b42e-bed8-41cd-b393-b5eef26006f4",
->>>>>>> Stashed changes
   "prevId": "2eb73c07-1d2b-4252-a88e-169a8388b22e",
   "version": "7",
   "dialect": "postgresql",
@@ -140,15 +136,12 @@
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< Updated upstream
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
         },
-=======
->>>>>>> Stashed changes
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3129,8 +3122,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
-<<<<<<< Updated upstream
-=======
     },
     "public.designer_profiles": {
       "name": "designer_profiles",
@@ -4042,7 +4033,6 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
->>>>>>> Stashed changes
     }
   },
   "enums": {
@@ -4050,13 +4040,8 @@
       "name": "account_status",
       "schema": "public",
       "values": [
-<<<<<<< Updated upstream
         "EMAIL_VERIFICATION_PENDING",
         "REGISTRATION_IN_PROGRESS",
-=======
-        "REGISTRATION_IN_PROGRESS",
-        "EMAIL_VERIFICATION_PENDING",
->>>>>>> Stashed changes
         "ACTIVE",
         "SUSPENDED",
         "DELETED"
@@ -4300,8 +4285,6 @@
         "PUBLISHED",
         "FAILED"
       ]
-<<<<<<< Updated upstream
-=======
     },
     "public.task_priority": {
       "name": "task_priority",
@@ -4375,7 +4358,6 @@
         "revision_required",
         "accepted"
       ]
->>>>>>> Stashed changes
     }
   },
   "schemas": {},

@@ -1,11 +1,6 @@
 {
-<<<<<<< HEAD
-  "id": "3640256a-bdee-4f6f-91ea-a8d8f67c17ec",
-  "prevId": "786502a9-9d84-4819-95f2-127dff89bac3",
-=======
-  "id": "d31638c0-4909-4d61-a78e-b84817f8da30",
-  "prevId": "0019_calendar_job_expected_count",
->>>>>>> ea942c2 (designer portal)
+  "id": "0019_calendar_job_expected_count",
+  "prevId": "7138cabc-03b2-48fe-af6e-0f4e0f495468",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -104,21 +99,6 @@
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-=======
-        "password_reset_token": {
-          "name": "password_reset_token",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "password_reset_expires_at": {
-          "name": "password_reset_expires_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
->>>>>>> ea942c2 (designer portal)
         "account_manager_id": {
           "name": "account_manager_id",
           "type": "uuid",
@@ -1501,12 +1481,11 @@
           "type": "json",
           "primaryKey": false,
           "notNull": true,
-          "default": "'[]'::json"
+          "default": "'[]'"
         },
         "status": {
           "name": "status",
           "type": "calendar_job_status",
-          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "'PENDING'"
@@ -1522,17 +1501,14 @@
           "type": "json",
           "primaryKey": false,
           "notNull": false,
-          "default": "'[]'::json"
+          "default": "'[]'"
         },
-<<<<<<< HEAD
-=======
         "expected_post_count": {
           "name": "expected_post_count",
           "type": "integer",
           "primaryKey": false,
           "notNull": false
         },
->>>>>>> ea942c2 (designer portal)
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3152,13 +3128,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-<<<<<<< HEAD
-    "public.notifications": {
-      "name": "notifications",
-=======
     "public.designer_profiles": {
       "name": "designer_profiles",
->>>>>>> ea942c2 (designer portal)
       "schema": "",
       "columns": {
         "id": {
@@ -3174,39 +3145,6 @@
           "primaryKey": false,
           "notNull": true
         },
-<<<<<<< HEAD
-        "sender_id": {
-          "name": "sender_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "type": {
-          "name": "type",
-          "type": "notification_type",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "channel": {
-          "name": "channel",
-          "type": "notification_channel",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "delivery_status",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'SENT'"
-        },
-        "priority": {
-          "name": "priority",
-          "type": "notification_priority",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'NORMAL'"
-=======
         "bio": {
           "name": "bio",
           "type": "text",
@@ -3281,7 +3219,6 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
->>>>>>> ea942c2 (designer portal)
         },
         "title": {
           "name": "title",
@@ -3289,53 +3226,6 @@
           "primaryKey": false,
           "notNull": true
         },
-<<<<<<< HEAD
-        "message": {
-          "name": "message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "is_read": {
-          "name": "is_read",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "read_at": {
-          "name": "read_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scheduled_for": {
-          "name": "scheduled_for",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "related_entity_type": {
-          "name": "related_entity_type",
-          "type": "varchar(100)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "related_entity_id": {
-          "name": "related_entity_id",
-=======
         "brief": {
           "name": "brief",
           "type": "text",
@@ -3372,26 +3262,10 @@
         },
         "assigned_by": {
           "name": "assigned_by",
->>>>>>> ea942c2 (designer portal)
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-<<<<<<< HEAD
-        "action_url": {
-          "name": "action_url",
-          "type": "varchar(2048)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-=======
->>>>>>> ea942c2 (designer portal)
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -3409,21 +3283,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-<<<<<<< HEAD
-        "notifications_user_id_users_id_fk": {
-          "name": "notifications_user_id_users_id_fk",
-          "tableFrom": "notifications",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-=======
         "tasks_assigned_to_users_id_fk": {
           "name": "tasks_assigned_to_users_id_fk",
           "tableFrom": "tasks",
           "tableTo": "users",
           "columnsFrom": [
             "assigned_to"
->>>>>>> ea942c2 (designer portal)
           ],
           "columnsTo": [
             "id"
@@ -3431,21 +3296,12 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-<<<<<<< HEAD
-        "notifications_sender_id_users_id_fk": {
-          "name": "notifications_sender_id_users_id_fk",
-          "tableFrom": "notifications",
-          "tableTo": "users",
-          "columnsFrom": [
-            "sender_id"
-=======
         "tasks_assigned_by_users_id_fk": {
           "name": "tasks_assigned_by_users_id_fk",
           "tableFrom": "tasks",
           "tableTo": "users",
           "columnsFrom": [
             "assigned_by"
->>>>>>> ea942c2 (designer portal)
           ],
           "columnsTo": [
             "id"
@@ -3460,13 +3316,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-<<<<<<< HEAD
-    "public.scheduled_notifications": {
-      "name": "scheduled_notifications",
-=======
     "public.submission_activities": {
       "name": "submission_activities",
->>>>>>> ea942c2 (designer portal)
       "schema": "",
       "columns": {
         "id": {
@@ -3476,87 +3327,24 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-<<<<<<< HEAD
-        "user_id": {
-          "name": "user_id",
-=======
         "submission_id": {
           "name": "submission_id",
->>>>>>> ea942c2 (designer portal)
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
-<<<<<<< HEAD
-        "created_by_id": {
-          "name": "created_by_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "type": {
-          "name": "type",
-          "type": "notification_type",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "channel": {
-          "name": "channel",
-          "type": "notification_channel",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "priority": {
-          "name": "priority",
-          "type": "notification_priority",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'NORMAL'"
-        },
-=======
         "type": {
           "name": "type",
           "type": "varchar(50)",
           "primaryKey": false,
           "notNull": true
         },
->>>>>>> ea942c2 (designer portal)
         "title": {
           "name": "title",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
-<<<<<<< HEAD
-        "message": {
-          "name": "message",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "metadata": {
-          "name": "metadata",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "scheduled_for": {
-          "name": "scheduled_for",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "repeat_interval": {
-          "name": "repeat_interval",
-          "type": "varchar(50)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "repeat_until": {
-          "name": "repeat_until",
-          "type": "timestamp",
-          "primaryKey": false,
-=======
         "user_id": {
           "name": "user_id",
           "type": "uuid",
@@ -3711,37 +3499,10 @@
           "name": "description",
           "type": "text",
           "primaryKey": false,
->>>>>>> ea942c2 (designer portal)
           "notNull": false
         },
         "status": {
           "name": "status",
-<<<<<<< HEAD
-          "type": "scheduled_notification_status",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'PENDING'"
-        },
-        "last_attempted_at": {
-          "name": "last_attempted_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "attempts": {
-          "name": "attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "max_attempts": {
-          "name": "max_attempts",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 3
-=======
           "type": "submission_status",
           "typeSchema": "public",
           "primaryKey": false,
@@ -3759,7 +3520,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
->>>>>>> ea942c2 (designer portal)
         },
         "created_at": {
           "name": "created_at",
@@ -3778,14 +3538,6 @@
       },
       "indexes": {},
       "foreignKeys": {
-<<<<<<< HEAD
-        "scheduled_notifications_user_id_users_id_fk": {
-          "name": "scheduled_notifications_user_id_users_id_fk",
-          "tableFrom": "scheduled_notifications",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-=======
         "submissions_task_id_tasks_id_fk": {
           "name": "submissions_task_id_tasks_id_fk",
           "tableFrom": "submissions",
@@ -4252,7 +4004,6 @@
           "tableTo": "submissions",
           "columnsFrom": [
             "submission_id"
->>>>>>> ea942c2 (designer portal)
           ],
           "columnsTo": [
             "id"
@@ -4260,14 +4011,6 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-<<<<<<< HEAD
-        "scheduled_notifications_created_by_id_users_id_fk": {
-          "name": "scheduled_notifications_created_by_id_users_id_fk",
-          "tableFrom": "scheduled_notifications",
-          "tableTo": "users",
-          "columnsFrom": [
-            "created_by_id"
-=======
         "image_to_code_designer_id_users_id_fk": {
           "name": "image_to_code_designer_id_users_id_fk",
           "tableFrom": "image_to_code",
@@ -4292,85 +4035,6 @@
           ]
         }
       },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.designer_invitations": {
-      "name": "designer_invitations",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "email": {
-          "name": "email",
-          "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "token_hash": {
-          "name": "token_hash",
-          "type": "varchar(128)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "invited_by": {
-          "name": "invited_by",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consumed_at": {
-          "name": "consumed_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "designer_invitations_invited_by_users_id_fk": {
-          "name": "designer_invitations_invited_by_users_id_fk",
-          "tableFrom": "designer_invitations",
-          "tableTo": "users",
-          "columnsFrom": [
-            "invited_by"
->>>>>>> ea942c2 (designer portal)
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -4565,12 +4229,7 @@
         "PENDING",
         "GENERATING",
         "GENERATED",
-<<<<<<< HEAD
         "FAILED"
-=======
-        "FAILED",
-        "TIMED_OUT"
->>>>>>> ea942c2 (designer portal)
       ]
     },
     "public.kyc_status": {
@@ -4632,75 +4291,6 @@
         "FAILED"
       ]
     },
-<<<<<<< HEAD
-    "public.delivery_status": {
-      "name": "delivery_status",
-      "schema": "public",
-      "values": [
-        "PENDING",
-        "SENT",
-        "FAILED",
-        "SCHEDULED",
-        "CANCELLED"
-      ]
-    },
-    "public.notification_channel": {
-      "name": "notification_channel",
-      "schema": "public",
-      "values": [
-        "EMAIL",
-        "IN_APP",
-        "BOTH",
-        "WHATSAPP"
-      ]
-    },
-    "public.notification_priority": {
-      "name": "notification_priority",
-      "schema": "public",
-      "values": [
-        "LOW",
-        "NORMAL",
-        "HIGH",
-        "URGENT"
-      ]
-    },
-    "public.notification_type": {
-      "name": "notification_type",
-      "schema": "public",
-      "values": [
-        "SYSTEM_ANNOUNCEMENT",
-        "MAINTENANCE",
-        "CONTENT_APPROVAL",
-        "CONTENT_PUBLISHED",
-        "CONTENT_PUBLISH_FAILED",
-        "SUBSCRIPTION_RENEWAL_REMINDER",
-        "SUBSCRIPTION_EXPIRED",
-        "SUBSCRIPTION_PAYMENT_SUCCESS",
-        "SUBSCRIPTION_PAYMENT_FAILED",
-        "SUBSCRIPTION_INVOICE_AVAILABLE",
-        "ACCOUNT_CONNECTION_DISCONNECTED",
-        "ACCOUNT_CONNECTION_REAUTHORIZATION_REQUIRED",
-        "ACCOUNT_CONNECTION_RECONNECTED",
-        "CALENDAR_UPLOADED",
-        "TICKET_RECEIVED",
-        "TICKET_ASSIGNED",
-        "TICKET_RESPONDED",
-        "TICKET_RESOLVED",
-        "TICKET_CLOSED",
-        "SECURITY_NOTICE",
-        "FEATURE_UPDATE",
-        "SERVICE_UPDATE"
-      ]
-    },
-    "public.scheduled_notification_status": {
-      "name": "scheduled_notification_status",
-      "schema": "public",
-      "values": [
-        "PENDING",
-        "DISPATCHED",
-        "FAILED",
-        "CANCELLED"
-=======
     "public.task_priority": {
       "name": "task_priority",
       "schema": "public",
@@ -4772,7 +4362,6 @@
         "submitted",
         "revision_required",
         "accepted"
->>>>>>> ea942c2 (designer portal)
       ]
     }
   },

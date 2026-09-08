@@ -24,6 +24,13 @@ export * from './scheduled-posts.schema';
 export * from './publishing-logs.schema';
 export * from './notifications.schema';
 export * from './scheduled-notifications.schema';
+export * from './designer-profiles.schema';
+export * from './tasks.schema';
+export * from './submissions.schema';
+export * from './designer-payments.schema';
+export * from './designer-notifications.schema';
+export * from './image-to-code.schema';
+export * from './designer-invitations.schema';
 export * from './relations';
 
 

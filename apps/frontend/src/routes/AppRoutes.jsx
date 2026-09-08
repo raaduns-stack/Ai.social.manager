@@ -110,13 +110,11 @@ export default function AppRoutes() {
       {/* Admin Panel */}
       <Route path="/admin/*" element={<AdminRoutes />} />
 
-<<<<<<< Updated upstream
-      {/* Catch-all 404 for unmatched customer-facing routes */}
-      <Route path="*" element={<NotFound />} />
-=======
       {/* Designer Portal — isolated entry via footer link */}
       <Route path="/designer/*" element={<DesignerRoutes />} />
->>>>>>> Stashed changes
+
+      {/* Catch-all 404 for unmatched customer-facing routes */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   )
 }

@@ -12,7 +12,7 @@ import { ErrorCode } from '../common/enums/error-codes.enum';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { Request } from 'express';
 import { DATABASE_CONNECTION } from '../database/database.module';
@@ -59,6 +59,58 @@ export class AuthService {
    * @param dto The user's registration data (email, password, etc.)
    * @returns An object containing the created user and JWT tokens
    */
+  async designerRegister(dto: import('./dto/designer-register.dto').DesignerRegisterDto) {
+    const existing = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, dto.email),
+    });
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    const [user] = await this.db
+      .insert(schema.users)
+      .values({
+        email: dto.email,
+        passwordHash,
+        fullName: dto.fullName,
+        role: UserRole.DESIGNER,
+        accountStatus: 'EMAIL_VERIFICATION_PENDING',
+        isActive: true,
+        isEmailVerified: false,
+        emailVerificationCode: code,
+        emailVerificationExpiresAt: expiresAt,
+        registeredAt: new Date(),
+      })
+      .returning();
+
+    const freePlan = await this.db.query.plans.findFirst({
+      where: eq(schema.plans.slug, 'free'),
+    });
+    if (freePlan) {
+      await this.db.insert(schema.subscriptions).values({
+        userId: user.id,
+        planId: freePlan.id,
+        status: 'active',
+      });
+    }
+
+    await this.mailerService.sendVerificationCode(user, code);
+
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'DESIGNER_REGISTERED',
+      module: 'Auth',
+      description: `New designer registered: ${user.email}`,
+    });
+
+    return this.issueTokens(user);
+  }
+
   async register(dto: RegisterDto) {
     const existing = await this.db.query.users.findFirst({
       where: eq(schema.users.email, dto.email),
@@ -428,8 +480,202 @@ export class AuthService {
     return { message: 'Verification code resent' };
   }
 
-  async changePassword(userId: string, dto: import('./dto/change-password.dto').ChangePasswordDto) {
+  private hashToken(rawToken: string): string {
+    return createHash('sha256').update(rawToken).digest('hex');
+  }
+
+  /**
+   * Starts a password-reset flow. Always returns the same neutral message —
+   * whether or not the email exists — so callers cannot enumerate accounts.
+   * Mail failures are logged, never surfaced, for the same reason.
+   */
+  async forgotPassword(dto: import('./dto/forgot-password.dto').ForgotPasswordDto) {
+    const neutral = { message: 'If an account exists for this email, a reset link has been sent.' };
     const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, dto.email),
+    });
+    if (!user) {
+      return neutral;
+    }
+
+    // Rate limiting: 1 request per 30 seconds per email (shared map, own key space)
+    const key = `forgot:${dto.email}`;
+    const lastSent = this.resendLimits.get(key);
+    const now = Date.now();
+    if (lastSent && now - lastSent < 30000) {
+      return neutral;
+    }
+    this.resendLimits.set(key, now);
+
+    const rawToken = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+    await this.db
+      .update(schema.users)
+      .set({
+        passwordResetToken: this.hashToken(rawToken),
+        passwordResetExpiresAt: expiresAt,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, user.id));
+
+    try {
+      await this.mailerService.sendPasswordResetLink(user, rawToken);
+    } catch {
+      // Logged inside the mailer; keep the response neutral.
+    }
+
+    return neutral;
+  }
+
+  async resetPassword(dto: import('./dto/reset-password.dto').ResetPasswordDto) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.passwordResetToken, this.hashToken(dto.token)),
+    });
+    if (!user) {
+      throw new BadRequestException('Invalid reset link.');
+    }
+
+    if (!user.passwordResetExpiresAt || new Date() > user.passwordResetExpiresAt) {
+      throw new BadRequestException('Reset link has expired. Please request a new one.');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+
+    await this.db
+      .update(schema.users)
+      .set({
+        passwordHash,
+        passwordResetToken: null,
+        passwordResetExpiresAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.users.id, user.id));
+
+    return { message: 'Password reset successfully. You can now sign in.' };
+  }
+
+  /**
+   * Issues an org invitation for a designer account. Any prior unconsumed
+   * invites for the same email are invalidated so only the newest link works.
+   */
+  async createDesignerInvitation(
+    invitedById: string,
+    dto: import('./dto/create-designer-invitation.dto').CreateDesignerInvitationDto,
+  ) {
+    const existing = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, dto.email),
+    });
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    await this.db
+      .delete(schema.designerInvitations)
+      .where(
+        and(
+          eq(schema.designerInvitations.email, dto.email),
+          isNull(schema.designerInvitations.consumedAt),
+        ),
+      );
+
+    const rawToken = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const [invite] = await this.db
+      .insert(schema.designerInvitations)
+      .values({
+        email: dto.email,
+        tokenHash: this.hashToken(rawToken),
+        invitedBy: invitedById,
+        expiresAt,
+      })
+      .returning();
+
+    await this.mailerService.sendDesignerInvitation(dto.email, rawToken);
+
+    void this.activityLogsService.record({
+      userId: invitedById,
+      userName: invitedById,
+      action: 'DESIGNER_INVITED',
+      module: 'Auth',
+      description: `Designer invitation sent to: ${dto.email}`,
+    });
+
+    return { message: 'Invitation sent', invitationId: invite.id };
+  }
+
+  /**
+   * Consumes an invitation: creates the role=designer user (invite proves
+   * email ownership, so the account activates immediately) and issues tokens.
+   */
+  async designerActivate(dto: import('./dto/designer-activate.dto').DesignerActivateDto) {
+    const invite = await this.db.query.designerInvitations.findFirst({
+      where: eq(schema.designerInvitations.tokenHash, this.hashToken(dto.token)),
+    });
+    if (!invite) {
+      throw new BadRequestException('Invalid activation link.');
+    }
+    if (invite.consumedAt) {
+      throw new BadRequestException('This invitation has already been used.');
+    }
+    if (new Date() > invite.expiresAt) {
+      throw new BadRequestException('This invitation has expired. Please ask for a new one.');
+    }
+
+    const existing = await this.db.query.users.findFirst({
+      where: eq(schema.users.email, invite.email),
+    });
+    if (existing) {
+      throw new ConflictException('An account with this email already exists');
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
+    const now = new Date();
+
+    const [user] = await this.db
+      .insert(schema.users)
+      .values({
+        email: invite.email,
+        passwordHash,
+        fullName: dto.fullName,
+        role: UserRole.DESIGNER,
+        accountStatus: 'ACTIVE',
+        isActive: true,
+        isEmailVerified: true,
+        emailVerifiedAt: now,
+        registeredAt: now,
+      })
+      .returning();
+
+    const freePlan = await this.db.query.plans.findFirst({
+      where: eq(schema.plans.slug, 'free'),
+    });
+    if (freePlan) {
+      await this.db.insert(schema.subscriptions).values({
+        userId: user.id,
+        planId: freePlan.id,
+        status: 'active',
+      });
+    }
+
+    await this.db
+      .update(schema.designerInvitations)
+      .set({ consumedAt: now, updatedAt: now })
+      .where(eq(schema.designerInvitations.id, invite.id));
+
+    void this.activityLogsService.record({
+      userId: user.id,
+      userName: user.fullName,
+      action: 'DESIGNER_ACTIVATED',
+      module: 'Auth',
+      description: `Invited designer activated: ${user.email}`,
+    });
+
+    return this.issueTokens(user);
+  }
+
+  async changePassword(userId: string, dto: import('./dto/change-password.dto').ChangePasswordDto) {    const user = await this.db.query.users.findFirst({
       where: eq(schema.users.id, userId),
     });
     if (!user) {
