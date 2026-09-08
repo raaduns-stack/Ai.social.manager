@@ -521,7 +521,11 @@ export class ContentSuggestionsService {
    * Approve a specific variation, resolve parent post metadata, check social connection,
    * and schedule the post.
    */
-  async approveVariation(variationId: string, dto: ApproveVariationDto) {
+  async approveVariation(
+    variationId: string,
+    dto: ApproveVariationDto,
+    approvalSource: 'MANUAL' | 'SYSTEM' = 'MANUAL',
+  ) {
     // 1. Look up the variation
     const variation = await this.db.query.contentSuggestions.findFirst({
       where: eq(schema.contentSuggestions.id, variationId),
@@ -588,7 +592,7 @@ export class ContentSuggestionsService {
         })
         .returning();
       scheduledPost = inserted;
-    } catch (err) {
+    } catch (err: any) {
       // Check for unique key constraint conflict (Postgres code 23505)
       if (err.code === '23505') {
         const existingScheduled = await this.db.query.scheduledPosts.findFirst({
@@ -609,6 +613,21 @@ export class ContentSuggestionsService {
       .update(schema.contentSuggestions)
       .set({ approvalStatus: 'APPROVED' })
       .where(eq(schema.contentSuggestions.id, variation.id));
+
+    // 7. Update parent content_calendar post status & approval source
+    await this.db
+      .update(schema.contentCalendar)
+      .set({
+        approvalStatus: 'APPROVED',
+        approvalSource: approvalSource,
+        status: 'SCHEDULED',
+        selectedSuggestionId: variation.id,
+        ...(approvalSource === 'SYSTEM'
+          ? { adminNotes: post.adminNotes ? `${post.adminNotes} (Auto-approved by system)` : 'Auto-approved by system grace window job' }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentCalendar.id, variation.postId));
 
     return scheduledPost;
   }
