@@ -28,37 +28,53 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const url = config.url || '';
-    const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin') || window.location.pathname.startsWith('/admin');
-    const isDesignerRequest = url.startsWith('/designer') || url.startsWith('/api/designer') || window.location.pathname.startsWith('/designer');
+    const isPublicAuthRoute =
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/verify-email') ||
+      url.includes('/auth/resend-verification') ||
+      url.includes('/auth/forgot-password') ||
+      url.includes('/auth/reset-password');
 
-    if (isAdminRequest) {
-      const adminSessionStr = localStorage.getItem('admin_session');
-      if (adminSessionStr) {
-        try {
-          const adminSession = JSON.parse(adminSessionStr);
-          if (adminSession?.accessToken && config.headers) {
-            config.headers.Authorization = `Bearer ${adminSession.accessToken}`;
+    if (!isPublicAuthRoute) {
+      const isAdminRequest =
+        url.startsWith('/admin') ||
+        url.startsWith('/api/admin') ||
+        window.location.pathname.startsWith('/admin');
+      const isDesignerRequest =
+        url.startsWith('/designer') ||
+        url.startsWith('/api/designer') ||
+        window.location.pathname.startsWith('/designer');
+
+      if (isAdminRequest) {
+        const adminSessionStr = localStorage.getItem('admin_session');
+        if (adminSessionStr) {
+          try {
+            const adminSession = JSON.parse(adminSessionStr);
+            if (adminSession?.accessToken && config.headers) {
+              config.headers.Authorization = `Bearer ${adminSession.accessToken}`;
+            }
+          } catch (e) {
+            // ignore
           }
-        } catch (e) {
-          // ignore
         }
-      }
-    } else if (isDesignerRequest) {
-      const designerSessionStr = localStorage.getItem('designer_session');
-      if (designerSessionStr) {
-        try {
-          const designerSession = JSON.parse(designerSessionStr);
-          if (designerSession?.accessToken && config.headers) {
-            config.headers.Authorization = `Bearer ${designerSession.accessToken}`;
+      } else if (isDesignerRequest) {
+        const designerSessionStr = localStorage.getItem('designer_session');
+        if (designerSessionStr) {
+          try {
+            const designerSession = JSON.parse(designerSessionStr);
+            if (designerSession?.accessToken && config.headers) {
+              config.headers.Authorization = `Bearer ${designerSession.accessToken}`;
+            }
+          } catch (e) {
+            // ignore
           }
-        } catch (e) {
-          // ignore
         }
-      }
-    } else {
-      const { accessToken } = useAuthStore.getState();
-      if (accessToken && config.headers) {
-        config.headers.Authorization = `Bearer ${accessToken}`;
+      } else {
+        const { accessToken } = useAuthStore.getState();
+        if (accessToken && config.headers) {
+          config.headers.Authorization = `Bearer ${accessToken}`;
+        }
       }
     }
     return config;
