@@ -774,6 +774,106 @@ export class AdminService {
     }));
   }
 
+  async generatePaymentReceiptPdf(paymentId: string): Promise<Buffer> {
+    const payment = await this.db.query.payments.findFirst({
+      where: eq(schema.payments.id, paymentId),
+      with: {
+        user: true,
+        plan: true,
+      },
+    });
+
+    if (!payment) {
+      throw new NotFoundException('Payment record not found');
+    }
+
+    const amountFormatted = `${payment.currency || 'NGN'} ${(payment.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const dateStr = new Date(payment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const customerName = payment.user?.fullName || 'Valued Customer';
+    const customerEmail = payment.user?.email || 'N/A';
+    const planName = payment.plan?.name || 'Subscription Plan';
+    const gatewayStr = (payment.gateway || 'flutterwave').toUpperCase();
+    const refStr = payment.gatewayReference || payment.id;
+    const statusStr = (payment.status || 'successful').toUpperCase();
+
+    const pdfString = `%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Length 1200 >>
+stream
+BT
+/F1 24 Tf
+50 730 Td
+(AISOCIAL MANAGER) Tj
+0 -26 Td
+/F2 10 Tf
+(Official Payment Receipt) Tj
+0 -40 Td
+/F1 14 Tf
+(RECEIPT & TRANSACTION DETAILS) Tj
+0 -20 Td
+/F2 11 Tf
+(Transaction Ref: ${refStr}) Tj
+0 -18 Td
+(Date: ${dateStr}) Tj
+0 -18 Td
+(Payment Gateway: ${gatewayStr}) Tj
+0 -18 Td
+(Payment Status: ${statusStr}) Tj
+0 -35 Td
+/F1 14 Tf
+(CUSTOMER DETAILS) Tj
+0 -20 Td
+/F2 11 Tf
+(Customer Name: ${customerName}) Tj
+0 -18 Td
+(Customer Email: ${customerEmail}) Tj
+0 -35 Td
+/F1 14 Tf
+(PAYMENT SUMMARY) Tj
+0 -20 Td
+/F2 11 Tf
+(Plan / Item: ${planName}) Tj
+0 -18 Td
+(Total Amount Paid: ${amountFormatted}) Tj
+0 -45 Td
+/F1 11 Tf
+(Thank you for choosing AISocial Manager!) Tj
+ET
+endstream
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000262 00000 n 
+0000000335 00000 n 
+0000000403 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1650
+%%EOF`;
+
+    return Buffer.from(pdfString);
+  }
+
   async seedPlans() {
     await runPlansSeeding(this.db);
     return { success: true, message: 'Canonical plans seeded successfully' };

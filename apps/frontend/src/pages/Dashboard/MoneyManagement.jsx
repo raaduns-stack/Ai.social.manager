@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Search,
   Loader2,
+  CheckCircle2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -23,7 +24,7 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import ErrorBanner from '../../components/error-banner'
-import { getAdminBillingStats, getAdminSubscriptions, getAdminPayments } from '../../features/admin/admin-api'
+import { getAdminBillingStats, getAdminSubscriptions, getAdminPayments, downloadPaymentReceipt } from '../../features/admin/admin-api'
 
 // Helper function to format cents to NGN currency
 const formatPrice = (cents) => {
@@ -58,8 +59,39 @@ export default function MoneyManagement() {
   const [methodFilter, setMethodFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTransaction, setSelectedTransaction] = useState(null)
+  const [selectedReceiptForDownload, setSelectedReceiptForDownload] = useState(null)
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false)
+  const [receiptToast, setReceiptToast] = useState(null)
   const [reportType, setReportType] = useState('Quarterly Report')
   const [isGenerating, setIsGenerating] = useState(false)
+
+  const handleConfirmReceiptDownload = async () => {
+    if (!selectedReceiptForDownload) return
+    setIsDownloadingReceipt(true)
+    try {
+      await downloadPaymentReceipt(
+        selectedReceiptForDownload.id,
+        selectedReceiptForDownload.id
+      )
+      setSelectedReceiptForDownload(null)
+      setReceiptToast({
+        show: true,
+        message: `Receipt for transaction ${selectedReceiptForDownload.id} downloaded successfully!`,
+        type: 'success',
+      })
+      setTimeout(() => setReceiptToast(null), 4000)
+    } catch (err) {
+      console.error('Failed to download receipt:', err)
+      setReceiptToast({
+        show: true,
+        message: err?.response?.data?.message || err.message || 'Failed to download receipt PDF.',
+        type: 'error',
+      })
+      setTimeout(() => setReceiptToast(null), 4000)
+    } finally {
+      setIsDownloadingReceipt(false)
+    }
+  }
 
   // API Data States
   const [stats, setStats] = useState({ totalRevenue: 0, activeSubscriptions: 0, pendingPayments: 0 })
@@ -984,9 +1016,12 @@ export default function MoneyManagement() {
               <Button variant="outline" size="sm" onClick={() => setSelectedTransaction(null)}>
                 Close
               </Button>
-              <Button variant="primary" size="sm" className="gap-1.5" onClick={() => {
-                alert(`Receipt downloaded for transaction ${selectedTransaction.id}`)
-              }}>
+              <Button
+                variant="primary"
+                size="sm"
+                className="gap-1.5 cursor-pointer"
+                onClick={() => setSelectedReceiptForDownload(selectedTransaction)}
+              >
                 <Download size={14} /> Download Receipt
               </Button>
             </div>
@@ -1084,6 +1119,87 @@ export default function MoneyManagement() {
           </div>
         </Card>
       </section>
+
+      {/* Receipt Download Confirmation Modal */}
+      <Modal
+        open={Boolean(selectedReceiptForDownload)}
+        onClose={() => !isDownloadingReceipt && setSelectedReceiptForDownload(null)}
+        title="Download Transaction Receipt"
+      >
+        {selectedReceiptForDownload && (
+          <div className="space-y-4 text-left">
+            <div className="p-4 bg-canvas rounded-card border border-border space-y-2.5">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Customer Name:</span>
+                <span className="font-bold text-ink">{selectedReceiptForDownload.customerName}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Email:</span>
+                <span className="text-ink">{selectedReceiptForDownload.email || '—'}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Subscription Plan:</span>
+                <span className="font-semibold text-ink">{selectedReceiptForDownload.plan}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Amount Paid:</span>
+                <span className="font-bold text-ink">{formatPrice(selectedReceiptForDownload.amount)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Payment Gateway:</span>
+                <span className="text-ink capitalize font-medium">{selectedReceiptForDownload.method}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Transaction Date:</span>
+                <span className="text-ink">{formatDate(selectedReceiptForDownload.date)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Status:</span>
+                <Badge tone={selectedReceiptForDownload.status?.toLowerCase() === 'successful' || selectedReceiptForDownload.status?.toLowerCase() === 'success' ? 'success' : 'neutral'}>
+                  {selectedReceiptForDownload.status}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Confirm to generate and download the official payment receipt for this transaction.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelectedReceiptForDownload(null)}
+                disabled={isDownloadingReceipt}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleConfirmReceiptDownload}
+                disabled={isDownloadingReceipt}
+                className="gap-2 cursor-pointer font-bold shadow-soft"
+              >
+                <Download size={16} />
+                {isDownloadingReceipt ? 'Downloading...' : 'Download Receipt PDF'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modern In-App Receipt Toast Notification */}
+      {receiptToast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-card shadow-hover border text-sm font-medium flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 ${
+            receiptToast.type === 'success'
+              ? 'bg-surface text-ink border-green-500/40 shadow-soft'
+              : 'bg-surface text-danger border-danger/40 shadow-soft'
+          }`}
+        >
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+          <span>{receiptToast.message}</span>
+        </div>
+      )}
     </div>
   )
 }

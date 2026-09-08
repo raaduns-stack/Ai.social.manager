@@ -204,6 +204,20 @@ export async function getAdminPayments(): Promise<AdminPayment[]> {
   return response.data
 }
 
+export async function downloadPaymentReceipt(paymentId: string, filenameRef?: string): Promise<void> {
+  const response = await api.get(`/admin/billing/payments/${paymentId}/receipt`, {
+    responseType: 'blob',
+  })
+  const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
+  const link = document.createElement('a')
+  link.href = url
+  link.setAttribute('download', `Receipt-${filenameRef || paymentId}.pdf`)
+  document.body.appendChild(link)
+  link.click()
+  link.remove()
+  window.URL.revokeObjectURL(url)
+}
+
 export interface BackendRolePermission {
   id: string;
   role: string;
