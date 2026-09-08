@@ -133,7 +133,7 @@ export default function VerifyEmail() {
         <div className="w-16 h-16 bg-[#FFF5F0] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#FFEBE0]">
           <Mail className="text-[#FF6600] w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight">Verify your email</h1>
+        <h1 className="text-3xl font-bold font-heading text-[#111111] tracking-tight">Verify your email</h1>
         <p className="text-sm text-[#666666] leading-relaxed">
           We sent a 6-digit verification code to <strong className="text-[#111111] font-semibold">{email}</strong>.
           Enter the code below to activate your account.

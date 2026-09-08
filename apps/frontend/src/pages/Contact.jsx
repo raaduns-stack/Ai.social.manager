@@ -51,7 +51,7 @@ export default function Contact() {
           <span className="bg-[#FFEBE0] text-[#FF6600] font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full">
             Get in touch
           </span>
-          <h1 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-4">
+          <h1 className="text-4xl md:text-5xl font-extrabold font-heading text-[#111111] tracking-tight mt-4">
             Have a question? We're here to help.
           </h1>
           <p className="text-base md:text-lg text-[#666666] max-w-2xl mx-auto leading-relaxed">
@@ -69,7 +69,7 @@ export default function Contact() {
                   <CheckCircle2 className="w-8 h-8" />
                 </div>
                 <div className="space-y-2">
-                  <h2 className="text-2xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight">
+                  <h2 className="text-2xl font-extrabold font-heading text-[#111111] tracking-tight">
                     Message Sent Successfully!
                   </h2>
                   <p className="text-sm md:text-base text-[#666666] max-w-md mx-auto leading-relaxed font-sans font-medium">
@@ -173,7 +173,7 @@ export default function Contact() {
                     <Mail className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#111111] font-['Plus_Jakarta_Sans']">Email Us</h3>
+                    <h3 className="text-base font-bold text-[#111111] font-heading">Email Us</h3>
                     <p className="text-sm text-[#666666] mt-0.5 font-sans">
                       <a href="mailto:Support@raaduns.com" className="hover:text-[#FF6600] transition-colors">
                         Support@raaduns.com
@@ -187,7 +187,7 @@ export default function Contact() {
                     <Phone className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#111111] font-['Plus_Jakarta_Sans']">Call Us</h3>
+                    <h3 className="text-base font-bold text-[#111111] font-heading">Call Us</h3>
                     <p className="text-sm text-[#666666] mt-0.5 font-sans">
                       <a href="tel:+2349120879032" className="hover:text-[#FF6600] transition-colors">
                         +234 912 087 9032
@@ -201,7 +201,7 @@ export default function Contact() {
                     <MapPin className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="text-base font-bold text-[#111111] font-['Plus_Jakarta_Sans']">Visit Us</h3>
+                    <h3 className="text-base font-bold text-[#111111] font-heading">Visit Us</h3>
                     <p className="text-sm text-[#666666] mt-0.5 leading-relaxed font-sans font-medium">
                       Suite B6, 2XL Mall,<br />
                       Beside Zenith Bank,<br />

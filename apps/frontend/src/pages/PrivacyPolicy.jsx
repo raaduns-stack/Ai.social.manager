@@ -84,7 +84,7 @@ function parseContent(text) {
     if (i === 0 || line === 'RaaSocial Privacy Policy') {
       flushList(i);
       elements.push(
-        <h1 key={i} className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mb-8 border-b border-gray-100 pb-6">
+        <h1 key={i} className="text-4xl md:text-5xl font-extrabold font-heading text-[#111111] tracking-tight mb-8 border-b border-gray-100 pb-6">
           {line}
         </h1>
       );
@@ -92,7 +92,7 @@ function parseContent(text) {
       // e.g. "1. Information We Collect" or "10. Subscriptions and Billing"
       flushList(i);
       elements.push(
-        <h2 key={i} className="text-2xl md:text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-12 mb-5">
+        <h2 key={i} className="text-2xl md:text-3xl font-bold font-heading text-[#111111] tracking-tight mt-12 mb-5">
           {line}
         </h2>
       );
@@ -100,7 +100,7 @@ function parseContent(text) {
       // e.g. "1.1 Account and Personal Information"
       flushList(i);
       elements.push(
-        <h3 key={i} className="text-xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-8 mb-4">
+        <h3 key={i} className="text-xl font-bold font-heading text-[#111111] tracking-tight mt-8 mb-4">
           {line}
         </h3>
       );

@@ -84,6 +84,7 @@ export interface AdminSubscription {
 export interface AdminPayment {
   id: string
   customerName: string
+  email?: string
   plan: string
   amount: number
   date: string
