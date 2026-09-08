@@ -143,6 +143,13 @@
       "breakpoints": true
     },
     {
+      "idx": 20,
+      "version": "7",
+      "when": 1788200000000,
+      "tag": "0020_platform_enum_and_auto_approve",
+      "breakpoints": true
+    },
+    {
       "idx": 18,
       "version": "7",
       "when": 1787843494927,
