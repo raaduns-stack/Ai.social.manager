@@ -1016,8 +1016,8 @@ export default function ContentCalendar() {
   const [genLoading, setGenLoading] = useState(false)
   const [genMessage, setGenMessage] = useState(null)   // { type: 'success'|'error', text: string }
   const [genJobId, setGenJobId] = useState(null)
-  // Selected platforms for generation (defaults to all five)
-  const ALL_PLATFORMS = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook']
+  // Selected platforms for generation (defaults to all seven)
+  const ALL_PLATFORMS = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook', 'Tumblr', 'Discord']
   const [genPlatforms, setGenPlatforms] = useState([])
   const [connectedPlatforms, setConnectedPlatforms] = useState([])
 
