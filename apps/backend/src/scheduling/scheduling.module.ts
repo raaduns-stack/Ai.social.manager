@@ -8,7 +8,11 @@ import { ContentSuggestionsModule } from '../content-suggestions/content-suggest
 @Module({
   imports: [ContentSuggestionsModule],
   controllers: [SchedulingController],
-  providers: [SchedulingService, DispatchDuePostsJob, AutoApprovePostsJob],
+  providers: [
+    SchedulingService,
+    DispatchDuePostsJob,
+    AutoApprovePostsJob,
+  ],
   exports: [SchedulingService],
 })
 export class SchedulingModule {}
