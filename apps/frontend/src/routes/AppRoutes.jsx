@@ -43,6 +43,7 @@ import Support from '../pages/Dashboard/Support'
 import Notifications from '../pages/Dashboard/Notifications'
 import Settings from '../pages/Dashboard/Settings'
 import AdminRoutes from './AdminRoutes'
+import DesignerRoutes from './DesignerRoutes'
 
 /**
  * Central route map. This mirrors the 20-prompt Stitch sequence 1:1 —
@@ -109,8 +110,13 @@ export default function AppRoutes() {
       {/* Admin Panel */}
       <Route path="/admin/*" element={<AdminRoutes />} />
 
+<<<<<<< Updated upstream
       {/* Catch-all 404 for unmatched customer-facing routes */}
       <Route path="*" element={<NotFound />} />
+=======
+      {/* Designer Portal — isolated entry via footer link */}
+      <Route path="/designer/*" element={<DesignerRoutes />} />
+>>>>>>> Stashed changes
     </Routes>
   )
 }
