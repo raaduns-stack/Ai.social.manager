@@ -765,6 +765,7 @@ export class AdminService {
     return pays.map((p) => ({
       id: p.id,
       customerName: p.user?.fullName || '—',
+      email: p.user?.email || '—',
       plan: p.plan?.name || '—',
       amount: p.amount,
       date: p.createdAt,

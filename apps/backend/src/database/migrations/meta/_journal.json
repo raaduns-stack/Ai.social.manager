@@ -141,6 +141,27 @@
       "when": 1788100000000,
       "tag": "0019_calendar_job_expected_count",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1787843494927,
+      "tag": "0018_nifty_johnny_blaze",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1788064000000,
+      "tag": "0019_notifications_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1788193375414,
+      "tag": "0020_calm_unicorn",
+      "breakpoints": true
     }
   ]
 }

@@ -244,7 +244,7 @@ export default function Channels() {
         }
       case 'tumblr':
         return {
-          icon: <span className="font-serif text-xl font-bold leading-none">t</span>,
+          icon: <span className="font-heading text-xl font-bold leading-none">t</span>,
           style: { backgroundColor: '#35465d' },
         }
       case 'discord':
@@ -426,7 +426,7 @@ export default function Channels() {
                         { key: 'x', label: 'X / Twitter', icon: <span className="font-bold text-xs leading-none text-ink">X</span> },
                         { key: 'youtube', label: 'YouTube Studio', icon: <Youtube size={14} className="text-red-500" /> },
                         { key: 'facebook', label: 'Facebook Page', icon: <Facebook size={14} className="text-blue-600" /> },
-                        { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-serif text-sm font-bold leading-none text-blue-900">t</span> },
+                        { key: 'tumblr', label: 'Tumblr Blog', icon: <span className="font-heading text-sm font-bold leading-none text-blue-900">t</span> },
                         { key: 'discord', label: 'Discord Channel', icon: <MessageSquare size={14} className="text-indigo-500" /> },
                       ].map((plat) => (
                         <button

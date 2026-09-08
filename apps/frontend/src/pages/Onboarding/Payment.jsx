@@ -10,7 +10,7 @@ export default function Payment() {
         <div className="w-16 h-16 bg-[#FFF5F0] rounded-full flex items-center justify-center mx-auto mb-4 border border-[#FFEBE0]">
           <CreditCard className="text-[#FF6600] w-6 h-6" />
         </div>
-        <h1 className="text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight">Payment Setup</h1>
+        <h1 className="text-3xl font-bold font-heading text-[#111111] tracking-tight">Payment Setup</h1>
         <p className="text-sm text-[#666666] leading-relaxed">
           Please select a plan from the pricing grid to complete your subscription.
         </p>

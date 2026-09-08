@@ -1037,17 +1037,17 @@ export default function ContentCalendar() {
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
-        getMyKyc(),
-        apiClient.get('/social-accounts'),
-        getCalendarUsage(userId, targetMonth),
+        getMyKyc().catch(() => null),
+        apiClient.get('/social-accounts').catch(() => ({ data: [] })),
+        getCalendarUsage(userId, targetMonth).catch(() => null),
       ])
-      setAllPosts(all)
-      setUpcomingPosts(upcoming)
-      setPublishedPosts(published)
+      setAllPosts(all || [])
+      setUpcomingPosts(upcoming || [])
+      setPublishedPosts(published || [])
       setKycRecord(kyc)
       setUsageInfo(usage)
 
-      if (Array.isArray(socialAccountsRes.data)) {
+      if (Array.isArray(socialAccountsRes?.data)) {
         const connected = socialAccountsRes.data
           .filter(acc => acc.status === 'connected')
           .map(acc => formatPlatformName(acc.platform))

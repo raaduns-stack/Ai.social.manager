@@ -28,6 +28,7 @@ import * as schema from '../database/schema';
 import { SubmitKycDto } from './dto/submit-kyc.dto';
 import { ReviewKycDto } from './dto/review-kyc.dto';
 import { ActivityLogsService } from '../activity-logs/activity-logs.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -36,6 +37,7 @@ export class KycService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly activityLogsService: ActivityLogsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -167,6 +169,11 @@ export class KycService {
       description: isUpdate 
         ? `Submitted KYC update request for business: ${dto.businessName}`
         : `Submitted initial KYC verification for business: ${dto.businessName}`,
+    });
+
+    void this.notificationsService.triggerKycSubmitted({
+      userId,
+      businessName: dto.businessName,
     });
 
     return created;
@@ -349,6 +356,25 @@ export class KycService {
         .where(eq(schema.users.id, record.userId));
     }
 
+    if (dto.status === 'approved') {
+      void this.notificationsService.triggerKycApproved({
+        userId: record.userId,
+        businessName: record.businessName,
+      });
+    } else if (dto.status === 'rejected') {
+      void this.notificationsService.triggerKycRejected({
+        userId: record.userId,
+        businessName: record.businessName,
+        reason: dto.rejectionReason ?? undefined,
+      });
+    } else if (dto.status === 'resubmission_required') {
+      void this.notificationsService.triggerKycResubmissionRequired({
+        userId: record.userId,
+        businessName: record.businessName,
+        reason: dto.rejectionReason ?? undefined,
+      });
+    }
+
     return updated;
   }
 
@@ -437,6 +463,12 @@ export class KycService {
       action: 'KYC_DOCUMENT_REJECTED',
       module: 'user_management',
       description: `Rejected document ${docType} for KYC record ${kycId}. Reason: ${finalReason}`,
+    });
+
+    void this.notificationsService.triggerKycRejected({
+      userId: record.userId,
+      businessName: record.businessName,
+      reason: `Document (${docLabel}) was rejected. ${finalReason}`,
     });
 
     return updated;
