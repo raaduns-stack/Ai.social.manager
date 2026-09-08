@@ -134,8 +134,85 @@ export class MailerService {
     }
   }
 
-  async sendWelcomeEmail(user: User): Promise<void> {
+  async sendPasswordResetLink(user: User, rawToken: string): Promise<void> {
     const { transporter, from } = await this.getTransporterAndFrom();
+    const frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:5173';
+    const resetUrl = `${frontendUrl}/designer/reset-password?token=${rawToken}`;
+    const subject = 'Reset your RaaSocial designer password';
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #4f46e5; margin-bottom: 20px;">Reset your password</h2>
+        <p>Hi ${user.fullName},</p>
+        <p>We received a request to reset the password for your RaaSocial designer account. Click the link below to choose a new password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${resetUrl}" style="display: inline-block; background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Reset password</a>
+        </div>
+        <p>If the button does not work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; font-size: 13px; color: #334155;">${resetUrl}</p>
+        <p>This link is valid for 15 minutes. If you did not request this, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+        <p style="font-size: 12px; color: #64748b;">© 2026 RaaSocial. All rights reserved.</p>
+      </div>
+    `;
+
+    if (transporter) {
+      try {
+        await transporter.sendMail({
+          from,
+          to: user.email,
+          subject,
+          html,
+        });
+        this.logger.log(`Password reset email sent to ${user.email}`);
+      } catch (error) {
+        this.logger.error(`Failed to send password reset email to ${user.email}`, error);
+        throw error;
+      }
+    } else {
+      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Reset URL: ${resetUrl}`);
+    }
+  }
+
+  async sendDesignerInvitation(email: string, rawToken: string): Promise<void> {
+    const { transporter, from } = await this.getTransporterAndFrom();
+    const frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:5173';
+    const activateUrl = `${frontendUrl}/designer/activate?token=${rawToken}`;
+    const subject = 'You are invited as a RaaSocial graphic designer';
+    const html = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <h2 style="color: #FF6600; margin-bottom: 20px; border-bottom: 2px solid #FFEBE0; padding-bottom: 10px;">Designer invitation</h2>
+        <p>Hi,</p>
+        <p>You have been invited to join RaaSocial as a graphic designer. Click the link below to activate your account and set your password:</p>
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${activateUrl}" style="display: inline-block; background-color: #FF6600; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">Activate account</a>
+        </div>
+        <p>If the button does not work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; font-size: 13px; color: #334155;">${activateUrl}</p>
+        <p>This invitation is valid for 7 days. If you were not expecting this, please ignore this email.</p>
+        <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 30px 0;" />
+        <p style="font-size: 12px; color: #64748b;">© 2026 RaaSocial. All rights reserved.</p>
+      </div>
+    `;
+
+    if (transporter) {
+      try {
+        await transporter.sendMail({
+          from,
+          to: email,
+          subject,
+          html,
+        });
+        this.logger.log(`Designer invitation sent to ${email}`);
+      } catch (error) {
+        this.logger.error(`Failed to send designer invitation to ${email}`, error);
+        throw error;
+      }
+    } else {
+      this.logger.log(`[MOCK EMAIL] To: ${email} | Subject: ${subject} | Activate URL: ${activateUrl}`);
+    }
+  }
+
+  async sendWelcomeEmail(user: User): Promise<void> {    const { transporter, from } = await this.getTransporterAndFrom();
     const subject = 'Welcome to RaaSocial!';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">

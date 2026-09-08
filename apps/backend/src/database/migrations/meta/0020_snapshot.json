@@ -1,6 +1,6 @@
 {
-  "id": "7138cabc-03b2-48fe-af6e-0f4e0f495468",
-  "prevId": "2eb73c07-1d2b-4252-a88e-169a8388b22e",
+  "id": "d31638c0-4909-4d61-a78e-b84817f8da30",
+  "prevId": "0019_calendar_job_expected_count",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -95,6 +95,18 @@
         },
         "email_verification_expires_at": {
           "name": "email_verification_expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password_reset_token": {
+          "name": "password_reset_token",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "password_reset_expires_at": {
+          "name": "password_reset_expires_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false
@@ -1503,6 +1515,12 @@
           "primaryKey": false,
           "notNull": false,
           "default": "'[]'::json"
+        },
+        "expected_post_count": {
+          "name": "expected_post_count",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -4033,6 +4051,84 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.designer_invitations": {
+      "name": "designer_invitations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "varchar(128)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "invited_by": {
+          "name": "invited_by",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "consumed_at": {
+          "name": "consumed_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "designer_invitations_invited_by_users_id_fk": {
+          "name": "designer_invitations_invited_by_users_id_fk",
+          "tableFrom": "designer_invitations",
+          "tableTo": "users",
+          "columnsFrom": [
+            "invited_by"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -4224,7 +4320,8 @@
         "PENDING",
         "GENERATING",
         "GENERATED",
-        "FAILED"
+        "FAILED",
+        "TIMED_OUT"
       ]
     },
     "public.kyc_status": {
