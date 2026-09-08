@@ -5,7 +5,7 @@ export default {
     extend: {
       colors: {
         primary: {
-          DEFAULT: '#FF6600', // Orange
+          DEFAULT: '#FF6600', // Designer portal brand orange
           50: '#FFF5F0',
           100: '#FFEBE0',
           500: '#F95700',
@@ -13,20 +13,29 @@ export default {
           700: '#E05300',
         },
         accent: {
-          DEFAULT: '#FF6600', // Orange
+          DEFAULT: '#FF6600',
           50: '#FFF5F0',
           100: '#FFEBE0',
           500: '#F95700',
           600: '#FF6600',
         },
+        // Admin/system tokens (from ADMIN_THEME.md)
+        indigo: {
+          DEFAULT: '#4F46E5',
+          50: '#EEF2FF',
+          100: '#E0E7FF',
+          600: '#4F46E5',
+          700: '#4338CA',
+        },
+        success: '#10B981',
         warning: '#F59E0B',
         danger: '#EF4444',
         surface: '#FFFFFF',
-        canvas: '#FFFFFF',
+        canvas: '#F9FAFB',
         border: '#E5E7EB',
         ink: {
-          DEFAULT: '#111111', // Black
-          muted: '#666666',   // Gray
+          DEFAULT: '#111827',
+          muted: '#6B7280',
         },
         // Strict Color System Enforcement
         orange: {
@@ -126,15 +135,19 @@ export default {
       },
       borderRadius: {
         card: '12px',
+        premium: '16px',
         control: '8px',
         "DEFAULT": "0.125rem",
-        "lg": "0.25rem",
-        "xl": "0.5rem",
-        "full": "0.75rem"
+        "lg": "8px",
+        "xl": "12px",
+        "2xl": "16px",
+        "full": "9999px"
       },
       boxShadow: {
         soft: '0 1px 2px 0 rgba(17, 24, 39, 0.04)',
         hover: '0 4px 12px 0 rgba(17, 24, 39, 0.08)',
+        premium: '0 8px 32px rgba(17,17,17,0.08), 0 2px 8px rgba(17,17,17,0.06)',
+        'premium-hover': '0 12px 40px rgba(17,17,17,0.10), 0 4px 12px rgba(17,17,17,0.08)',
       },
       animation: {
         'marquee': 'marquee 40s linear infinite',

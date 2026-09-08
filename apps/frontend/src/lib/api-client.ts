@@ -28,6 +28,7 @@ apiClient.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const url = config.url || '';
     const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin') || window.location.pathname.startsWith('/admin');
+    const isDesignerRequest = url.startsWith('/designer') || url.startsWith('/api/designer') || window.location.pathname.startsWith('/designer');
 
     if (isAdminRequest) {
       const adminSessionStr = localStorage.getItem('admin_session');
@@ -36,6 +37,18 @@ apiClient.interceptors.request.use(
           const adminSession = JSON.parse(adminSessionStr);
           if (adminSession?.accessToken && config.headers) {
             config.headers.Authorization = `Bearer ${adminSession.accessToken}`;
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    } else if (isDesignerRequest) {
+      const designerSessionStr = localStorage.getItem('designer_session');
+      if (designerSessionStr) {
+        try {
+          const designerSession = JSON.parse(designerSessionStr);
+          if (designerSession?.accessToken && config.headers) {
+            config.headers.Authorization = `Bearer ${designerSession.accessToken}`;
           }
         } catch (e) {
           // ignore
@@ -61,6 +74,7 @@ let isRefreshing = false;
 // isRefreshing is already true.
 let adminRefreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
 let userRefreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
+let designerRefreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
 
 // Response interceptor to handle token refresh and errors
 apiClient.interceptors.response.use(
@@ -76,7 +90,8 @@ apiClient.interceptors.response.use(
         url.includes('/auth/login') ||
         url.includes('/auth/register') ||
         url.includes('/auth/refresh') ||
-        url.includes('/admin/login') // avoid loops on admin login too
+        url.includes('/admin/login') ||
+        url.includes('/designer/login')
       ) {
         throw error;
       }
@@ -92,8 +107,62 @@ apiClient.interceptors.response.use(
 
       const url = originalRequest.url || '';
       const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin') || window.location.pathname.startsWith('/admin');
+      const isDesignerRequest = url.startsWith('/designer') || url.startsWith('/api/designer') || window.location.pathname.startsWith('/designer');
 
-      if (isAdminRequest) {
+      if (isDesignerRequest) {
+        let designerRefreshToken: string | null = null;
+        const designerSessionStr = localStorage.getItem('designer_session');
+        if (designerSessionStr) {
+          try {
+            const designerSession = JSON.parse(designerSessionStr);
+            designerRefreshToken = designerSession?.refreshToken || null;
+          } catch (e) {
+            // Ignore
+          }
+        }
+
+        if (designerRefreshToken) {
+          try {
+            if (!isRefreshing) {
+              isRefreshing = true;
+              designerRefreshPromise = axios
+                .post(
+                  `${API_BASE_URL}/auth/refresh`,
+                  { refreshToken: designerRefreshToken },
+                  { headers: { Authorization: `Bearer ${designerRefreshToken}` } }
+                )
+                .then((response) => {
+                  const { accessToken: newAccessToken, refreshToken: newRefreshToken } = response.data;
+                  if (designerSessionStr) {
+                    try {
+                      const designerSession = JSON.parse(designerSessionStr);
+                      designerSession.accessToken = newAccessToken;
+                      designerSession.refreshToken = newRefreshToken;
+                      localStorage.setItem('designer_session', JSON.stringify(designerSession));
+                    } catch (e) {
+                      // Ignore
+                    }
+                  }
+                  return { accessToken: newAccessToken, refreshToken: newRefreshToken };
+                })
+                .finally(() => {
+                  isRefreshing = false;
+                  designerRefreshPromise = null;
+                });
+            }
+            const { accessToken: newAccessToken } = await (designerRefreshPromise as Promise<{ accessToken: string; refreshToken: string }>);
+            if (originalRequest.headers) originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+            return apiClient(originalRequest);
+          } catch (refreshError) {
+            localStorage.removeItem('designer_session');
+            window.location.href = '/designer/login';
+            return Promise.reject(refreshError);
+          }
+        } else {
+          localStorage.removeItem('designer_session');
+          window.location.href = '/designer/login';
+        }
+      } else if (isAdminRequest) {
         let adminRefreshToken: string | null = null;
         const adminSessionStr = localStorage.getItem('admin_session');
         if (adminSessionStr) {
@@ -251,7 +320,10 @@ apiClient.interceptors.response.use(
       } catch (e) {
         // ignore
       }
-      window.location.href = `/verify-email?email=${encodeURIComponent(email)}`;
+      const isDesignerContext = window.location.pathname.startsWith('/designer');
+      window.location.href = isDesignerContext
+        ? `/designer/verify-email?email=${encodeURIComponent(email)}`
+        : `/verify-email?email=${encodeURIComponent(email)}`;
       return new Promise(() => { }); // Halt execution to prevent login screen error toasts
       }
     }
