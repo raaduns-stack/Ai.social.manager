@@ -7,15 +7,21 @@ import { Request, Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
+import { DesignerRegisterDto } from './dto/designer-register.dto';
 import { LoginDto } from './dto/login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
+import { RolesGuard } from './guards/roles.guard';
+import { Roles } from './decorators/roles.decorator';
+import { MANAGEMENT_ROLES } from '../common/enums/roles.enum';
 import { TumblrService } from './tumblr.service';
-import { AuthGuard } from '@nestjs/passport';
 import { CurrentUser } from './decorators/current-user.decorator';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import { DesignerActivateDto } from './dto/designer-activate.dto';
+import { CreateDesignerInvitationDto } from './dto/create-designer-invitation.dto';
 
 import { ConfigService } from '@nestjs/config';
 
@@ -43,6 +49,60 @@ export class AuthController {
       });
     }
     return data;
+  }
+
+  @Post('designer/register')
+  @ApiOperation({ summary: 'Create a designer account (role=designer, isolated flow)' })
+  async designerRegister(@Body() dto: DesignerRegisterDto, @Res({ passthrough: true }) res: Response) {
+    const data = await this.authService.designerRegister(dto);
+    if (data.refreshToken) {
+      res.cookie('refreshToken', data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return data;
+  }
+
+  @Post('designer/activate')
+  @ApiOperation({ summary: 'Activate an invited designer account (consumes invitation, sets password)' })
+  async designerActivate(@Body() dto: DesignerActivateDto, @Res({ passthrough: true }) res: Response) {
+    const data = await this.authService.designerActivate(dto);
+    if (data.refreshToken) {
+      res.cookie('refreshToken', data.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      });
+    }
+    return data;
+  }
+
+  @Post('designer/invitations')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(...MANAGEMENT_ROLES)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Invite a designer by email (management only)' })
+  createDesignerInvitation(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: CreateDesignerInvitationDto,
+  ) {
+    return this.authService.createDesignerInvitation(user.userId, dto);
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request a password-reset link (neutral response, no account enumeration)' })
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password with a valid reset token' })
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   @Post('login')
