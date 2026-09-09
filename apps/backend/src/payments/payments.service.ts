@@ -12,6 +12,7 @@ import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { PlansService } from '../plans/plans.service';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -22,6 +23,7 @@ export class PaymentsService {
     private readonly configService: ConfigService,
     private readonly plansService: PlansService,
     private readonly subscriptionsService: SubscriptionsService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   /**
@@ -124,13 +126,42 @@ export class PaymentsService {
 
       console.log('[Webhook Received]', JSON.stringify(payload));
 
-      if (payload?.event === 'charge.completed' && payload?.data?.status === 'successful') {
-        const transactionId = payload.data.id || payload.data.tx_ref;
+      if (payload?.event === 'charge.completed') {
+        const transactionId = payload.data?.id || payload.data?.tx_ref;
         if (!transactionId) {
           console.error('[Webhook Error] Missing transaction identifier in payload:', payload);
           throw new BadRequestException('Missing transaction identifier');
         }
-        return await this.verifyAndFulfillTransaction(String(transactionId));
+
+        if (payload?.data?.status === 'successful') {
+          return await this.verifyAndFulfillTransaction(String(transactionId));
+        } else {
+          // Process failed/cancelled webhook
+          const txRef = payload.data?.tx_ref || String(transactionId);
+          const payment = await this.db.query.payments.findFirst({
+            where: eq(schema.payments.gatewayReference, txRef),
+          });
+
+          if (payment && payment.status === 'pending') {
+            await this.db
+              .update(schema.payments)
+              .set({
+                status: 'failed',
+                updatedAt: new Date(),
+              })
+              .where(eq(schema.payments.id, payment.id));
+
+            void this.notificationsService.triggerSubscriptionPaymentFailed({
+              userId: payment.userId,
+              subscriptionId: payment.subscriptionId || '',
+              paymentId: payment.id,
+              amount: payment.amount,
+              currency: payment.currency,
+              reason: payload.data?.processor_response || 'Payment failed or cancelled',
+            });
+          }
+          return { status: 'failed' };
+        }
       }
 
       return { status: 'ignored' };
@@ -148,31 +179,59 @@ export class PaymentsService {
       this.configService.get<string>('payments.flutterwaveSecretKey') ||
       process.env.FLUTTERWAVE_SECRET_KEY;
 
-    const isNumeric = /^\d+$/.test(transactionId);
-    const url = isNumeric
-      ? `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`
-      : `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${transactionId}`;
-
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${secretKey}`,
-      },
+    // Try finding payment record first by gateway reference or id
+    let payment = await this.db.query.payments.findFirst({
+      where: eq(schema.payments.gatewayReference, transactionId),
     });
 
-    const flwRes = await response.json();
+    if (!payment) {
+      // Try by UUID id if transactionId looks like a UUID
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(transactionId);
+      if (isUuid) {
+        payment = await this.db.query.payments.findFirst({
+          where: eq(schema.payments.id, transactionId),
+        });
+      }
+    }
 
-    if (flwRes.status !== 'success' || !flwRes.data) {
-      throw new BadRequestException(
-        flwRes.message || 'Failed to verify transaction with Flutterwave',
-      );
+    const isNumeric = /^\d+$/.test(transactionId);
+    const lookupRef = payment?.gatewayReference || transactionId;
+    const url = isNumeric
+      ? `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`
+      : `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${encodeURIComponent(lookupRef)}`;
+
+    let flwRes: any;
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${secretKey}`,
+        },
+      });
+      flwRes = await response.json();
+    } catch (err: any) {
+      console.error('[Payment Verification Fetch Error]', err);
+      if (payment && payment.status === 'pending') {
+        await this.markPaymentFailed(payment, err.message || 'Verification service network error');
+      }
+      throw new BadRequestException('Payment verification service network error');
+    }
+
+    if (!flwRes || flwRes.status !== 'success' || !flwRes.data) {
+      const failureReason = flwRes?.message || 'Transaction not verified with Flutterwave';
+      if (payment && payment.status === 'pending') {
+        await this.markPaymentFailed(payment, failureReason);
+      }
+      throw new BadRequestException(failureReason);
     }
 
     const { tx_ref, status, amount, currency } = flwRes.data;
 
-    const payment = await this.db.query.payments.findFirst({
-      where: eq(schema.payments.gatewayReference, tx_ref),
-    });
+    if (!payment) {
+      payment = await this.db.query.payments.findFirst({
+        where: eq(schema.payments.gatewayReference, tx_ref),
+      });
+    }
 
     if (!payment) {
       throw new NotFoundException(`Payment record not found for tx_ref: ${tx_ref}`);
@@ -184,20 +243,34 @@ export class PaymentsService {
     const isSuccessful = status === 'successful' && isAmountValid && isCurrencyValid;
 
     if (!isSuccessful) {
-      await this.db
-        .update(schema.payments)
-        .set({
-          status: 'failed',
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.payments.id, payment.id));
+      const reason = flwRes.data?.processor_response || flwRes.data?.message || `Payment status: ${status}`;
+      await this.markPaymentFailed(payment, reason);
 
       throw new BadRequestException(
-        `Payment verification failed. Paid amount: ${amount} ${currency}, Expected: ${expectedAmount} ${payment.currency}`,
+        `Payment verification failed. Status: ${status}, Paid: ${amount} ${currency}, Expected: ${expectedAmount} ${payment.currency}`,
       );
     }
 
     return this.fulfillPayment(payment.id);
+  }
+
+  private async markPaymentFailed(payment: any, reason?: string) {
+    await this.db
+      .update(schema.payments)
+      .set({
+        status: 'failed',
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.payments.id, payment.id));
+
+    void this.notificationsService.triggerSubscriptionPaymentFailed({
+      userId: payment.userId,
+      subscriptionId: payment.subscriptionId || '',
+      paymentId: payment.id,
+      amount: payment.amount,
+      currency: payment.currency,
+      reason: reason || 'Payment failed or cancelled',
+    });
   }
 
   /**
@@ -230,6 +303,14 @@ export class PaymentsService {
       })
       .where(eq(schema.payments.id, payment.id));
 
+    void this.notificationsService.triggerSubscriptionPaymentSuccess({
+      userId: payment.userId,
+      subscriptionId: payment.subscriptionId || '',
+      paymentId: payment.id,
+      amount: payment.amount,
+      currency: payment.currency,
+    });
+
     // Activate the subscription
     if (payment.subscriptionId) {
       const plan = payment.planId ? await this.plansService.findById(payment.planId) : null;
@@ -243,7 +324,7 @@ export class PaymentsService {
       }
 
       // Expire any previous active subscriptions for this user
-      await this.db
+      const expiredSubs = await this.db
         .update(schema.subscriptions)
         .set({
           status: 'expired',
@@ -255,7 +336,15 @@ export class PaymentsService {
             eq(schema.subscriptions.status, 'active'),
             ne(schema.subscriptions.id, payment.subscriptionId),
           ),
-        );
+        )
+        .returning();
+
+      for (const expired of expiredSubs) {
+        void this.notificationsService.triggerSubscriptionExpired({
+          userId: expired.userId,
+          subscriptionId: expired.id,
+        });
+      }
 
       // Activate the pending subscription and ensure planId is correct
       await this.db
@@ -280,7 +369,7 @@ export class PaymentsService {
       }
 
       // Expire any existing active subscription for this user
-      await this.db
+      const expiredSubs = await this.db
         .update(schema.subscriptions)
         .set({ status: 'expired', updatedAt: new Date() })
         .where(
@@ -288,7 +377,15 @@ export class PaymentsService {
             eq(schema.subscriptions.userId, payment.userId),
             eq(schema.subscriptions.status, 'active'),
           ),
-        );
+        )
+        .returning();
+
+      for (const expired of expiredSubs) {
+        void this.notificationsService.triggerSubscriptionExpired({
+          userId: expired.userId,
+          subscriptionId: expired.id,
+        });
+      }
 
       // Insert a fresh active subscription
       await this.db.insert(schema.subscriptions).values({
@@ -302,7 +399,7 @@ export class PaymentsService {
 
     // Automatically create an invoice record
     const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    await this.db.insert(schema.invoices).values({
+    const [invoice] = await this.db.insert(schema.invoices).values({
       userId: payment.userId,
       paymentId: payment.id,
       subscriptionId: payment.subscriptionId,
@@ -311,6 +408,15 @@ export class PaymentsService {
       currency: payment.currency,
       status: 'paid',
       pdfUrl: null,
+    }).returning();
+
+    void this.notificationsService.triggerInvoiceAvailable({
+      userId: payment.userId,
+      subscriptionId: payment.subscriptionId || '',
+      invoiceId: invoice.id,
+      invoiceNumber,
+      amount: payment.amount,
+      currency: payment.currency,
     });
 
     return {

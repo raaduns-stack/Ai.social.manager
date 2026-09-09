@@ -29,7 +29,7 @@ export default function Welcome() {
 
         {/* Typography Content */}
         <div className="space-y-4">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] leading-tight tracking-tight">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold font-heading text-[#111111] leading-tight tracking-tight">
             Meet Kleos. <br /> Your new social media assistant.
           </h1>
           <p className="text-base md:text-lg text-[#666666] max-w-[540px] mx-auto leading-relaxed">

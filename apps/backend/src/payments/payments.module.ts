@@ -3,9 +3,10 @@ import { PlansModule } from '../plans/plans.module';
 import { SubscriptionsModule } from '../subscriptions/subscriptions.module';
 import { PaymentsController } from './payments.controller';
 import { PaymentsService } from './payments.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [PlansModule, SubscriptionsModule],
+  imports: [PlansModule, SubscriptionsModule, NotificationsModule],
   controllers: [PaymentsController],
   providers: [PaymentsService],
   exports: [PaymentsService],

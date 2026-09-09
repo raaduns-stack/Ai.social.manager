@@ -29,6 +29,8 @@ export const systemSettings = pgTable('system_settings', {
   maintenanceMode: boolean('maintenance_mode').notNull().default(false),
   allowNewRegistrations: boolean('allow_new_registrations').notNull().default(true),
   contentApprovalRequired: boolean('content_approval_required').notNull().default(true),
+  autoApproveEnabled: boolean('auto_approve_enabled').notNull().default(true),
+  autoApproveWindowHours: integer('auto_approve_window_hours').notNull().default(24),
   dateFormat: varchar('date_format', { length: 30 }).notNull().default('DD/MM/YYYY'),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

@@ -9,7 +9,7 @@ export default function KleosWorkflow() {
           <span className="bg-[#FFEBE0] text-[#FF6600] font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full">
             Autonomous Social Management
           </span>
-          <h2 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] leading-tight tracking-tight mt-6 mb-4">
+          <h2 className="text-4xl md:text-5xl font-extrabold font-heading text-[#111111] leading-tight tracking-tight mt-6 mb-4">
             Meet Kleos.<br />
             Your intelligent social media assistant.
           </h2>
@@ -27,7 +27,7 @@ export default function KleosWorkflow() {
               </div>
               <span className="text-4xl font-extrabold text-[#E5E7EB] leading-none">01</span>
             </div>
-            <h3 className="text-lg font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+            <h3 className="text-lg font-bold text-[#111111] mb-2 font-heading">
               1. Tell Kleos about your business
             </h3>
             <p className="text-sm text-[#666666] leading-relaxed mb-6">
@@ -59,7 +59,7 @@ export default function KleosWorkflow() {
               </div>
               <span className="text-4xl font-extrabold text-[#E5E7EB] leading-none">02</span>
             </div>
-            <h3 className="text-lg font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+            <h3 className="text-lg font-bold text-[#111111] mb-2 font-heading">
               2. Kleos creates your content
             </h3>
             <p className="text-sm text-[#666666] leading-relaxed mb-6">
@@ -86,7 +86,7 @@ export default function KleosWorkflow() {
               </div>
               <span className="text-4xl font-extrabold text-[#E5E7EB] leading-none">03</span>
             </div>
-            <h3 className="text-lg font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+            <h3 className="text-lg font-bold text-[#111111] mb-2 font-heading">
               3. Review and schedule
             </h3>
             <p className="text-sm text-[#666666] leading-relaxed mb-6">
@@ -112,7 +112,7 @@ export default function KleosWorkflow() {
               </div>
               <span className="text-4xl font-extrabold text-[#E5E7EB] leading-none">04</span>
             </div>
-            <h3 className="text-lg font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+            <h3 className="text-lg font-bold text-[#111111] mb-2 font-heading">
               4. Autopilot publishing
             </h3>
             <p className="text-sm text-[#666666] leading-relaxed mb-6">

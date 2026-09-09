@@ -10,6 +10,8 @@ import { kyc } from './kyc.schema';
 import { loginHistory } from './login-history.schema';
 import { activityLogs } from './activity-logs.schema';
 import { calendarGenerationJobs } from './calendar-generation-jobs.schema';
+import { notifications } from './notifications.schema';
+import { scheduledNotifications } from './scheduled-notifications.schema';
 
 export const usersRelations = relations(users, ({ many, one }) => ({
   tickets: many(supportTickets, { relationName: 'userTickets' }),
@@ -25,9 +27,12 @@ export const usersRelations = relations(users, ({ many, one }) => ({
     references: [users.id],
     relationName: 'assignedAccountManager',
   }),
-  // KYC — one business verification record per user
   kyc: one(kyc),
   calendarGenerationJobs: many(calendarGenerationJobs),
+  notifications: many(notifications),
+  sentNotifications: many(notifications, { relationName: 'senderNotifications' }),
+  scheduledNotifications: many(scheduledNotifications),
+  createdScheduledNotifications: many(scheduledNotifications, { relationName: 'creatorScheduledNotifications' }),
 }));
 
 export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({
@@ -80,6 +85,30 @@ export const activityLogsRelations = relations(activityLogs, ({ one }) => ({
   user: one(users, {
     fields: [activityLogs.userId],
     references: [users.id],
+  }),
+}));
+
+export const notificationsRelations = relations(notifications, ({ one }) => ({
+  user: one(users, {
+    fields: [notifications.userId],
+    references: [users.id],
+  }),
+  sender: one(users, {
+    fields: [notifications.senderId],
+    references: [users.id],
+    relationName: 'senderNotifications',
+  }),
+}));
+
+export const scheduledNotificationsRelations = relations(scheduledNotifications, ({ one }) => ({
+  user: one(users, {
+    fields: [scheduledNotifications.userId],
+    references: [users.id],
+  }),
+  createdBy: one(users, {
+    fields: [scheduledNotifications.createdById],
+    references: [users.id],
+    relationName: 'creatorScheduledNotifications',
   }),
 }));
 

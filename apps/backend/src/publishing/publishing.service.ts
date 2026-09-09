@@ -7,6 +7,8 @@ import * as schema from '../database/schema';
 import { PublishingLogEntry } from '@socialpilot/shared-types';
 import { SocialAccountsService } from '../social-accounts/social-accounts.service';
 import { decryptSecret } from '../common/utils/encryption.util';
+import { TumblrService } from '../channels/tumblr/tumblr.service';
+import { DiscordService } from '../channels/discord/discord.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -19,6 +21,8 @@ export class PublishingService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly socialAccountsService: SocialAccountsService,
+    private readonly tumblrService: TumblrService,
+    private readonly discordService: DiscordService,
   ) {}
 
   async dispatchPost(body: {
@@ -28,13 +32,58 @@ export class PublishingService {
     mediaUrl: string | null;
     socialAccountId: string;
     idempotencyKey: string | null;
+    userId?: string;
   }) {
-    if (body.platform === 'snapchat') {
+    if (body.platform.toLowerCase() === 'snapchat') {
       return this.publishToSnapchat(body);
     }
 
-    // Other platforms: existing mock behavior
-    const mockPostId = `mock-${body.platform.toLowerCase()}-${Date.now()}`;
+    const platformLower = body.platform.toLowerCase();
+
+    // Look up social account details to resolve userId if not explicitly provided
+    let userId = body.userId;
+    let targetChannelId = '';
+    let targetBlogName = '';
+
+    if (body.socialAccountId) {
+      const socialAccount = await this.db.query.social_accounts.findFirst({
+        where: eq(schema.social_accounts.id, body.socialAccountId),
+      });
+      if (socialAccount) {
+        userId = socialAccount.userId;
+        targetBlogName = socialAccount.accountHandle || '';
+      }
+    }
+
+    if (platformLower === 'tumblr' && userId) {
+      this.logger.log(`Dispatching post to Tumblr for user ${userId}`);
+      const res = await this.tumblrService.sendPost(userId, {
+        blogName: targetBlogName,
+        content: body.content,
+        mediaUrl: body.mediaUrl || undefined,
+      });
+      return {
+        success: true,
+        externalPostId: res.postId,
+        postUrl: res.postUrl,
+      };
+    }
+
+    if (platformLower === 'discord' && userId) {
+      this.logger.log(`Dispatching post to Discord for user ${userId}`);
+      const res = await this.discordService.sendMessage(
+        userId,
+        targetChannelId,
+        body.content,
+      );
+      return {
+        success: true,
+        externalPostId: res.messageId,
+      };
+    }
+
+    // Mock fallback for other platforms without real adapters yet
+    const mockPostId = `mock-${platformLower}-${Date.now()}`;
     return {
       success: true,
       externalPostId: mockPostId,

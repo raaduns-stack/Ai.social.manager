@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Notification Management</title>
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+
+  <div class="admin-card">
+    <div class="tab-header">
+      <button id="tab-dispatch-btn" class="tab-btn active">Send Announcement</button>
+      <button id="tab-history-btn" class="tab-btn">Audit History</button>
+    </div>
+
+    <div id="dispatch-view" class="view">
+      <form id="announcement-form">
+        <div class="form-group">
+          <label for="announcement-title">Announcement Title</label>
+          <input type="text" id="announcement-title" placeholder="e.g., Scheduled Service Upgrade" required />
+        </div>
+
+        <div class="form-group">
+          <label for="announcement-message">Message</label>
+          <textarea id="announcement-message" rows="4" placeholder="Write notification message..." required></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="announcement-channel">Channel</label>
+          <select id="announcement-channel">
+            <option value="BOTH">In-App & Email</option>
+            <option value="EMAIL">Email Only</option>
+            <option value="IN_APP">In-App Only</option>
+          </select>
+        </div>
+
+        <button type="submit" class="submit-btn">Dispatch Broadcast</button>
+      </form>
+    </div>
+
+    <div id="history-view" class="view hidden">
+      <div class="table-controls">
+        <input type="text" id="search-input" placeholder="Search logs..." />
+        <select id="type-filter">
+          <option value="ALL">All Categories</option>
+          <option value="ANNOUNCEMENT">Announcement</option>
+          <option value="SUBSCRIPTION">Subscription</option>
+          <option value="APPROVAL">Approval</option>
+          <option value="PUBLISHING">Publishing</option>
+          <option value="MAINTENANCE">Maintenance</option>
+        </select>
+      </div>
+
+      <table class="audit-table">
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Type</th>
+            <th>Title</th>
+            <th>Channel</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="audit-table-body">
+          </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="admin.js"></script>
+</body>
+</html>

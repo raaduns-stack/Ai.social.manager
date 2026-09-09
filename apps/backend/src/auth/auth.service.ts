@@ -12,7 +12,7 @@ import { ErrorCode } from '../common/enums/error-codes.enum';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { Request } from 'express';
 import { DATABASE_CONNECTION } from '../database/database.module';
@@ -532,7 +532,7 @@ export class AuthService {
         eq(schema.subscriptions.status, 'active'),
       ),
       with: { plan: true },
-      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+      orderBy: [desc(schema.subscriptions.updatedAt)],
     });
 
     const perms = await this.getPermissions(user.id, user.role);
@@ -585,7 +585,7 @@ export class AuthService {
           eq(schema.subscriptions.status, 'active')
         ),
         with: { plan: true },
-        orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+        orderBy: [desc(schema.subscriptions.updatedAt)],
       });
     } catch (err) {
       console.error('[ERROR Auth] Failed to fetch active subscription for user:', user.id, err);
@@ -684,7 +684,6 @@ export class AuthService {
       case 'DELETED':
         updateData.accountStatus = 'DELETED';
         updateData.isActive = false;
-        updateData.deletedAt = now;
         break;
 
       default:

@@ -22,18 +22,22 @@ export default function PaymentCallbackPage() {
 
   useEffect(() => {
     async function verify() {
-      // Flutterwave sometimes appends status=cancelled directly in the URL
-      if (status_param === 'cancelled') {
-        setVerifying(false)
-        setStatus('failure')
-        setMessage('Payment was cancelled. Please try again or choose a different plan.')
-        return
-      }
-
       if (!transactionId) {
         setVerifying(false)
         setStatus('failure')
         setMessage('Missing transaction reference in redirect URL. Please contact support if you believe this is an error.')
+        return
+      }
+
+      if (status_param === 'cancelled' || status_param === 'failed') {
+        try {
+          await verifyPayment(transactionId)
+        } catch (e) {
+          // Backend has updated payment status to failed and triggered system notification
+        }
+        setVerifying(false)
+        setStatus('failure')
+        setMessage('Payment was cancelled or failed. Please try again or choose a different plan.')
         return
       }
 

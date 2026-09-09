@@ -46,6 +46,18 @@ export const postPlatformEnum = pgEnum('post_platform', [
   'X / Twitter',
   'TikTok',
   'Facebook',
+  'Tumblr',
+  'Discord',
+]);
+
+/**
+  * Source of approval for a content calendar post.
+  * - MANUAL : approved by a human user or admin
+  * - SYSTEM : auto-approved by system fallback job
+  */
+export const approvalSourceEnum = pgEnum('approval_source', [
+  'MANUAL',
+  'SYSTEM',
 ]);
 
 /**
@@ -82,7 +94,12 @@ export const contentCalendar = pgTable('content_calendar', {
     .notNull()
     .default('PENDING'),
 
-  /** Optional feedback notes left by the admin (e.g. revision instructions). */
+  /** Indicates whether approval was performed manually or by the automated fallback job. */
+  approvalSource: approvalSourceEnum('approval_source')
+    .notNull()
+    .default('MANUAL'),
+
+  /** Optional feedback notes left by the admin (e.g. revision instructions or auto-approval note). */
   adminNotes: text('admin_notes'),
 
   /** When the post is scheduled to be published (null if draft). */

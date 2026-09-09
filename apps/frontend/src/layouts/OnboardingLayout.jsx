@@ -7,7 +7,7 @@ export default function OnboardingLayout() {
   return (
     <div className="flex min-h-screen flex-col bg-white text-[#111111]">
       <header className="flex h-16 items-center justify-between px-6 border-b border-gray-200 bg-white">
-        <Link className="text-xl font-extrabold text-[#111111] tracking-tight font-['Plus_Jakarta_Sans'] hover:opacity-90 transition-opacity" to="/">
+        <Link className="text-xl font-extrabold text-[#111111] tracking-tight font-heading hover:opacity-90 transition-opacity" to="/">
           Raasocial
         </Link>
         <span className="text-xs font-semibold text-[#666666] uppercase tracking-wider font-mono">Onboarding Setup</span>

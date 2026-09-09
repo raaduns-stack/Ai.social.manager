@@ -203,4 +203,24 @@ export class MailerService {
       this.logger.log(`[MOCK EMAIL] To: support@raaduns.com | Reply-To: ${email} | Subject: ${subject} | Message: ${message}`);
     }
   }
+
+  async sendMail(to: string, subject: string, html: string): Promise<void> {
+    const { transporter, from } = await this.getTransporterAndFrom();
+    if (transporter) {
+      try {
+        await transporter.sendMail({
+          from,
+          to,
+          subject,
+          html,
+        });
+        this.logger.log(`Email sent to ${to}: ${subject}`);
+      } catch (error) {
+        this.logger.error(`Failed to send email to ${to}`, error);
+        throw error;
+      }
+    } else {
+      this.logger.log(`[MOCK EMAIL] To: ${to} | Subject: ${subject} | Content: ${html}`);
+    }
+  }
 }

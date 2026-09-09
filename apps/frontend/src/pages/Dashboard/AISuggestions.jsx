@@ -15,6 +15,8 @@ import {
   Twitter,
   Music,
   Share2,
+  CheckCircle2,
+  AlertCircle,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -26,6 +28,7 @@ import {
   getSuggestions,
   generateCaption,
   saveSuggestionFeedback,
+  approveSuggestion,
 } from '../../features/dashboard/dashboard-api'
 import { trackEvent } from '../../lib/analytics'
 
@@ -128,7 +131,7 @@ const initialSuggestions = [
   },
 ]
 
-const platforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok']
+const platforms = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook', 'Tumblr', 'Discord']
 
 function PlatformBadge({ platform }) {
   let icon = <Share2 size={12} />
@@ -162,6 +165,9 @@ export default function AISuggestions() {
   const [suggestions, setSuggestions] = useState([])
   const [copiedId, setCopiedId] = useState(null)
   const [genError, setGenError] = useState(null)
+  const [approvingId, setApprovingId] = useState(null)
+  const [approvalError, setApprovalError] = useState(null)
+  const [approvedMap, setApprovedMap] = useState({})
 
   // Stored Ratings: { [id]: { type: 'like' | 'dislike', stars: number } }
   const [ratings, setRatings] = useState({})
@@ -176,22 +182,28 @@ export default function AISuggestions() {
 
       const mapped = data.map((item) => {
         const feedback = item.feedback
+        const postPlatform = item.post?.platform
+          ? item.post.platform.charAt(0).toUpperCase() + item.post.platform.slice(1)
+          : 'Instagram'
+        const postScheduledDate = item.post?.scheduledAt
+          ? new Date(item.post.scheduledAt).toLocaleDateString()
+          : new Date(item.createdAt).toLocaleDateString()
 
         return {
           id: item.id,
-          title: item.type === 'caption' ? 'AI Caption' : 'AI Content Idea',
+          postId: item.postId || null,
+          approvalStatus: item.approvalStatus || 'PENDING_APPROVAL',
+          title: item.title || (item.type === 'caption' ? 'AI Caption' : 'AI Content Idea'),
           description: item.content,
           caption: item.content,
           hashtags: item.hashtags || [],
-          platform: 'Instagram',
+          platform: postPlatform,
           type: item.type,
           tone: 'primary',
           borderClass: 'border-l-primary',
-          scheduledDate: new Date(item.createdAt).toLocaleDateString(),
-
+          scheduledDate: postScheduledDate,
           image:
             'https://images.unsplash.com/photo-1611162618071-b39a2ec055fb?auto=format&fit=crop&w=800&q=80',
-
           feedback,
         }
       })
@@ -213,6 +225,41 @@ export default function AISuggestions() {
       setRatings(savedRatings)
     } catch (error) {
       console.error('Failed to load suggestions:', error)
+    }
+  }
+
+  const handleApprove = async (card) => {
+    setApprovingId(card.id)
+    setApprovalError(null)
+
+    try {
+      const res = await approveSuggestion(card.id)
+      trackEvent('suggestion_approved', { variationId: card.id, platform: res.platform })
+
+      setApprovedMap((prev) => ({
+        ...prev,
+        [card.id]: {
+          scheduledPostId: res.scheduledPostId,
+          platform: res.platform,
+          scheduledAt: res.scheduledAt,
+          status: res.status,
+        },
+      }))
+
+      setSuggestions((prev) =>
+        prev.map((item) =>
+          item.id === card.id ? { ...item, approvalStatus: 'APPROVED' } : item
+        )
+      )
+    } catch (error) {
+      console.error('Failed to approve suggestion:', error)
+      const message =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Failed to approve suggestion. Please ensure you have a connected social account for this platform.'
+      setApprovalError(message)
+    } finally {
+      setApprovingId(null)
     }
   }
 
@@ -324,6 +371,24 @@ export default function AISuggestions() {
         </Card>
       )}
 
+      {/* Approval Error Alert Banner */}
+      {approvalError && (
+        <Card className="p-4 bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 flex flex-wrap items-center justify-between gap-3 shadow-soft">
+          <div className="flex items-center gap-2">
+            <AlertCircle size={18} className="text-red-600 dark:text-red-400 shrink-0" />
+            <p className="text-sm font-semibold">{approvalError}</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setApprovalError(null)}
+            className="text-xs font-bold hover:bg-red-100 dark:hover:bg-red-900/40 text-red-800 dark:text-red-200"
+          >
+            Dismiss
+          </Button>
+        </Card>
+      )}
+
       {/* Filters Bar */}
       <Card className="p-4 flex flex-wrap items-center justify-between gap-3 bg-surface shadow-soft">
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
@@ -386,35 +451,53 @@ export default function AISuggestions() {
             const currentStars = userRating?.stars || 0
             const currentReaction = userRating?.type || null
 
+            const isApproved = card.approvalStatus === 'APPROVED' || Boolean(approvedMap[card.id])
+            const approvedInfo = approvedMap[card.id]
+            const isSiblingApproved = Boolean(
+              card.postId &&
+              suggestions.some(
+                (s) => s.postId === card.postId && (s.approvalStatus === 'APPROVED' || approvedMap[s.id]) && s.id !== card.id
+              )
+            )
+
             return (
               <Card
                 key={card.id}
                 hover={!isExcluded}
-                className={`p-6 flex flex-col gap-4 border-l-4 ${card.borderClass} transition-all relative overflow-hidden ${
+                className={`p-6 flex flex-col gap-4 border-l-4 ${
+                  isApproved ? 'border-l-emerald-500' : card.borderClass
+                } transition-all relative overflow-hidden ${
                   isExcluded
                     ? 'bg-canvas/70 opacity-65 grayscale-[30%] border-border pointer-events-none sm:pointer-events-auto'
+                    : isApproved
+                    ? 'bg-emerald-50/30 dark:bg-emerald-950/20 border-emerald-500/30'
                     : 'bg-surface/80 backdrop-blur-sm'
                 }`}
               >
                 {/* Header Badges */}
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <PlatformBadge platform={card.platform} />
+                    <PlatformBadge platform={approvedInfo?.platform ? (approvedInfo.platform.charAt(0).toUpperCase() + approvedInfo.platform.slice(1)) : card.platform} />
                     <Badge tone={card.tone} className="uppercase font-bold tracking-wider text-[10px]">
                       {card.type}
                     </Badge>
                     <Badge tone="neutral" className="gap-1 font-medium text-xs">
                       <CalendarDays size={12} className="text-primary" />
-                      <span>Scheduled for: {card.scheduledDate}</span>
+                      <span>Scheduled for: {approvedInfo?.scheduledAt ? new Date(approvedInfo.scheduledAt).toLocaleDateString() : card.scheduledDate}</span>
                     </Badge>
                   </div>
 
-                  {isExcluded && (
+                  {isApproved ? (
+                    <Badge tone="success" className="gap-1 font-bold text-[10px] uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                      <CheckCircle2 size={12} />
+                      <span>APPROVED</span>
+                    </Badge>
+                  ) : isExcluded ? (
                     <Badge tone="danger" className="gap-1 font-bold text-[10px] uppercase tracking-wider">
                       <Lock size={12} />
                       <span>Excluded from publishing</span>
                     </Badge>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* Generated Image Thumbnail */}
@@ -523,14 +606,39 @@ export default function AISuggestions() {
                     </Button>
                   </div>
 
-                  <div>
-                    {isExcluded ? (
+                  <div className="flex items-center gap-2">
+                    {isApproved ? (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                        <CheckCircle2 size={14} className="text-emerald-600 dark:text-emerald-400" />
+                        <span>Approved & Scheduled</span>
+                      </span>
+                    ) : isExcluded ? (
                       <Button variant="ghost" disabled size="sm" className="text-xs text-danger font-bold opacity-80 gap-1">
                         <Lock size={14} /> Never Published
                       </Button>
+                    ) : isSiblingApproved ? (
+                      <Button variant="outline" disabled size="sm" className="text-xs font-medium text-ink-muted opacity-60">
+                        Another Variation Approved
+                      </Button>
                     ) : (
-                      <Button variant="outline" size="sm" className="text-xs font-semibold text-primary">
-                        Ready to Publish
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => handleApprove(card)}
+                        disabled={approvingId === card.id}
+                        className="text-xs font-bold gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white shadow-soft"
+                      >
+                        {approvingId === card.id ? (
+                          <>
+                            <RefreshCw size={14} className="animate-spin" />
+                            <span>Approving...</span>
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle2 size={14} />
+                            <span>Approve & Schedule</span>
+                          </>
+                        )}
                       </Button>
                     )}
                   </div>

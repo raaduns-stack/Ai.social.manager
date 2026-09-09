@@ -38,7 +38,7 @@ export default function ProductValue() {
             <span className="text-[#FF6600] font-bold text-xs uppercase tracking-wider block mb-2">
               Value Focus
             </span>
-            <h2 className="text-3xl md:text-4xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] leading-tight tracking-tight mb-6">
+            <h2 className="text-3xl md:text-4xl font-extrabold font-heading text-[#111111] leading-tight tracking-tight mb-6">
               Focus on your business.<br />
               Let us handle consistency.
             </h2>
@@ -59,7 +59,7 @@ export default function ProductValue() {
                 <div className="p-2 bg-[#FFEBE0] rounded-control w-fit mb-4">
                   {val.icon}
                 </div>
-                <h3 className="text-base font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+                <h3 className="text-base font-bold text-[#111111] mb-2 font-heading">
                   {val.title}
                 </h3>
                 <p className="text-xs text-[#666666] leading-relaxed">

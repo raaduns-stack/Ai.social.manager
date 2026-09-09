@@ -22,6 +22,7 @@ import { BadRequestException } from '@nestjs/common';
 
 import { KycController, AdminKycController } from './kyc.controller';
 import { KycService } from './kyc.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 // Allowed MIME types for KYC documents
 const ALLOWED_MIME_TYPES = [
@@ -34,6 +35,7 @@ const ALLOWED_MIME_TYPES = [
 
 @Module({
   imports: [
+    NotificationsModule,
     MulterModule.register({
       storage: diskStorage({
         // Reuse the same shared `uploads/` directory on disk

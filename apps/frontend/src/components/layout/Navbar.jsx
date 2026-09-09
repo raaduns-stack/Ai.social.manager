@@ -1,21 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Bell, Search, ChevronDown, LogOut, Menu, Bolt, User } from 'lucide-react'
 import { useAuth } from '../../context/useAuth'
 import Avatar from '../ui/Avatar'
+import { getUnreadCount } from '../../features/customer/notifications-api'
 
 /**
  * Top navbar shown inside the dashboard shell.
  * Fetches user info from AuthContext and supports logout dropdown.
  */
-export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount = 0, onMenuClick }) {
+export default function Navbar({ user = { name: 'Jane Doe' }, onMenuClick }) {
   const { user: authUser, logout } = useAuth()
   const navigate = useNavigate()
   const [profileOpen, setProfileOpen] = useState(false)
+  const [unreadCount, setUnreadCount] = useState(0)
 
   const currentUser = authUser || user
   const displayName = currentUser?.fullName || currentUser?.name || 'User'
-  const fallbackAvatar = 'https://lh3.googleusercontent.com/aida-public/AB6AXuCgbu9QpWm4wQglUF3LIrDjmn1K83rcrFdD5RAiNPgHcHWuinsZHaPvps1q-NaZ8HzC0lpkNvPXGFRrCSQ0XWyhe0u_wLRdJEWSTDNxCnxG0sMQH-OphJlI2TzTqfgCOaowg7JdkqvKgEjGTFgz2r_9VCScr6dNGVGoGRVaCO_UAth5YCEPvJKswnv4pA5Fmz0iipAIL5vsE48m2rafEIwwIyK7cU2aay4Afy1lOd0dqDcsKenwrk0XNQ'
+
+  useEffect(() => {
+    let mounted = true
+    let intervalId = null
+
+    async function fetchCount() {
+      try {
+        const count = await getUnreadCount()
+        if (mounted) setUnreadCount(typeof count === 'number' ? count : 0)
+      } catch (err) {
+        if (mounted) setUnreadCount(0)
+      }
+    }
+
+    fetchCount()
+    intervalId = setInterval(fetchCount, 60000)
+
+    const handler = () => fetchCount()
+    window.addEventListener('notifications:unread-changed', handler)
+
+    return () => {
+      mounted = false
+      if (intervalId) clearInterval(intervalId)
+      window.removeEventListener('notifications:unread-changed', handler)
+    }
+  }, [])
 
   const handleLogout = () => {
     logout()
@@ -53,8 +80,10 @@ export default function Navbar({ user = { name: 'Jane Doe' }, notificationCount 
           className="relative w-10 h-10 rounded-full flex items-center justify-center text-[#666666] hover:text-[#FF6600] hover:bg-gray-50 transition-colors"
         >
           <Bell size={20} />
-          {(notificationCount > 0 || true) && (
-            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-[#FF6600] rounded-full"></span>
+          {unreadCount > 0 && (
+            <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#FF6600] text-white text-[10px] font-bold flex items-center justify-center">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
           )}
         </Link>
 

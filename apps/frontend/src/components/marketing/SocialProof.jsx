@@ -25,7 +25,7 @@ export default function SocialProof() {
         <span className="text-[#FF6600] font-bold text-xs uppercase tracking-wider block mb-2">
           Trust & Experience
         </span>
-        <h2 className="text-3xl md:text-4xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] leading-tight tracking-tight mb-4">
+        <h2 className="text-3xl md:text-4xl font-extrabold font-heading text-[#111111] leading-tight tracking-tight mb-4">
           Built for businesses that want to stay consistent.
         </h2>
         <p className="text-base text-[#666666] max-w-2xl mx-auto leading-relaxed mb-16">
@@ -42,7 +42,7 @@ export default function SocialProof() {
                 "{t.quote}"
               </p>
               <div>
-                <h4 className="text-sm font-bold text-[#111111] font-['Plus_Jakarta_Sans']">
+                <h4 className="text-sm font-bold text-[#111111] font-heading">
                   {t.author}
                 </h4>
                 <p className="text-xs text-[#999999] mt-0.5">

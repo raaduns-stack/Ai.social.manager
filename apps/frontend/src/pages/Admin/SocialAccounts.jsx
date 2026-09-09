@@ -85,7 +85,7 @@ function BillingBadge({ status }) {
 // Page component
 // ---------------------------------------------------------------------------
 const PAGE_SIZES = [10, 30, 60]
-const PLATFORMS = ['All Platforms', 'Instagram', 'Facebook', 'TikTok', 'LinkedIn', 'X (Twitter)']
+const PLATFORMS = ['All Platforms', 'Instagram', 'Facebook', 'TikTok', 'LinkedIn', 'X (Twitter)', 'Tumblr', 'Discord']
 export default function SocialAccounts() {
   const navigate = useNavigate()
 

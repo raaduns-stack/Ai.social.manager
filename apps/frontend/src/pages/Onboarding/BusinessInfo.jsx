@@ -48,7 +48,7 @@ export default function BusinessInfo() {
     <div className="w-full max-w-3xl mx-auto py-8 px-4 space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
       {/* Canvas Header */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl md:text-5xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight leading-tight">
+        <h1 className="text-3xl md:text-5xl font-bold font-heading text-[#111111] tracking-tight leading-tight">
           Tell Kleos about your business.
         </h1>
         <p className="text-base md:text-lg text-[#666666] max-w-2xl mx-auto leading-relaxed">

@@ -10,6 +10,7 @@
     "build:frontend": "npm run build --workspace=apps/frontend"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@nestjs/schedule": "^6.1.3"
   }
 }

@@ -3,7 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
-import { eq, and, lt } from 'drizzle-orm';
+import { eq, and, lt, inArray } from 'drizzle-orm';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -13,6 +14,7 @@ export class AutoCloseTicketsJob {
 
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -43,6 +45,12 @@ export class AutoCloseTicketsJob {
 
       const ids = ticketsToClose.map(t => t.id);
 
+      // Fetch tickets with user and subject before closing
+      const tickets = await this.db.query.supportTickets.findMany({
+        where: inArray(schema.supportTickets.id, ids),
+        columns: { id: true, userId: true, subject: true },
+      });
+
       // Perform updates sequentially or use IN clause (Drizzle inArray)
       // Since it's potentially large, we can loop or use a single update query.
       for (const id of ids) {
@@ -50,6 +58,14 @@ export class AutoCloseTicketsJob {
           .update(schema.supportTickets)
           .set({ status: 'closed', updatedAt: new Date() })
           .where(eq(schema.supportTickets.id, id));
+      }
+
+      for (const ticket of tickets) {
+        void this.notificationsService.triggerTicketClosed({
+          userId: ticket.userId,
+          ticketId: ticket.id,
+          subject: ticket.subject,
+        });
       }
 
       this.logger.log(`Successfully closed ${ticketsToClose.length} ticket(s).`);

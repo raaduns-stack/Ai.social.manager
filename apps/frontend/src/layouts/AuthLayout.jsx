@@ -20,7 +20,7 @@ export default function AuthLayout() {
         </div>
         {/* Messaging */}
         <div className="max-w-md">
-          <h1 className="text-5xl font-extrabold tracking-tight mb-6 leading-tight text-white font-['Plus_Jakarta_Sans']">
+          <h1 className="text-5xl font-extrabold tracking-tight mb-6 leading-tight text-white font-heading">
             Meet Kleos.<br/>
             <span className="text-[#999999]">Your AI assistant for staying consistent on social.</span>
           </h1>

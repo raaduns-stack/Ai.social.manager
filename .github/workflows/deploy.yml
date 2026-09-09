@@ -32,8 +32,8 @@ jobs:
             npm run build --workspace=apps/backend
             npm run build --workspace=apps/frontend
             
-            # 4. Run database migrations (NEW STEP)
-            npm run db:push --workspace=apps/backend
+            # 4. Run database migrations (Automated non-interactive schema sync)
+            npm run db:push:force --workspace=apps/backend
             
             # 5. Sync compiled static assets to backend
             rm -rf apps/backend/public

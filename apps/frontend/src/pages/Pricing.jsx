@@ -74,7 +74,7 @@ function PlanCard({ plan, isAnnual, onGetStarted }) {
       >
         <div>
           <div className="mb-5 text-left border-b border-gray-100 pb-5">
-            <h3 className="text-xl font-bold text-[#111111] mb-2 font-['Plus_Jakarta_Sans']">
+            <h3 className="text-xl font-bold text-[#111111] mb-2 font-heading">
               {plan.name === 'Brand Domination' ? 'Brand Domination' : plan.name}
             </h3>
             <p className="text-xs text-[#666666] leading-relaxed mb-4">
@@ -170,7 +170,7 @@ function FaqItem({ q, a }) {
         aria-expanded={open}
         className="w-full flex items-center justify-between gap-4 p-5 text-left focus:outline-none cursor-pointer"
       >
-        <span className="text-base font-semibold text-[#111111] font-['Plus_Jakarta_Sans']">{q}</span>
+        <span className="text-base font-semibold text-[#111111] font-heading">{q}</span>
         <span
           className={[
             'shrink-0 text-[#666666] transition-transform duration-300',
@@ -256,7 +256,7 @@ export default function Pricing() {
             <span className="bg-[#FFEBE0] text-[#FF6600] font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full">
               Pricing Options
             </span>
-            <h1 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-4">
+            <h1 className="text-4xl md:text-5xl font-extrabold font-heading text-[#111111] tracking-tight mt-4">
               Simple, transparent pricing.
             </h1>
             <p className="text-base md:text-lg text-[#666666] leading-relaxed">
@@ -292,7 +292,7 @@ export default function Pricing() {
 
           {/* FAQ section */}
           <section aria-labelledby="faq-heading" className="pt-16 border-t border-gray-200 max-w-3xl mx-auto">
-            <h2 id="faq-heading" className="text-2xl md:text-3xl font-bold font-['Plus_Jakarta_Sans'] text-[#111111] text-center mb-8">
+            <h2 id="faq-heading" className="text-2xl md:text-3xl font-bold font-heading text-[#111111] text-center mb-8">
               Frequently Asked Questions
             </h2>
             <div className="space-y-4">

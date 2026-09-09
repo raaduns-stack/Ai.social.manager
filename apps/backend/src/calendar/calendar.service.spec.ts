@@ -5,6 +5,7 @@ import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { ConfigService } from '@nestjs/config';
 import { CustomerProfileService } from '../settings/customer-profile/customer-profile.service';
 import { ContentSuggestionsService } from '../content-suggestions/content-suggestions.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { BadRequestException } from '@nestjs/common';
 import * as schema from '../database/schema';
 
@@ -14,6 +15,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
   let mockConfigService: any;
   let mockCustomerProfileService: any;
   let mockContentSuggestionsService: any;
+  let mockNotificationsService: any;
 
   let existingPosts: any[] = [];
   let insertedPosts: any[] = [];
@@ -221,6 +223,10 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
       triggerN8nGeneration: jest.fn().mockResolvedValue(true),
     };
 
+    mockNotificationsService = {
+      triggerCalendarUploaded: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CalendarService,
@@ -243,6 +249,10 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         {
           provide: ContentSuggestionsService,
           useValue: mockContentSuggestionsService,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();

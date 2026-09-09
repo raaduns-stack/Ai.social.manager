@@ -2,24 +2,47 @@
  * AdminNavbar.jsx
  * Top bar inside AdminLayout: search, mobile hamburger, action icons,
  * notifications bell with unread badge, and admin profile dropdown.
+ *
+ * Notification feed is fetched from the same shared backend as the
+ * customer dashboard (`/api/notifications`), since the `notifications`
+ * table is keyed by `userId` and admin users live in the same table.
  */
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Search, ChevronDown, LogOut, Menu, HelpCircle, Settings2 } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, Menu, HelpCircle, Settings2, Loader2, CheckCheck } from "lucide-react";
 import { useAdminAuth } from "../../context/useAdminAuth";
+import {
+  getCustomerNotifications,
+  getUnreadCount,
+  markAsRead,
+} from "../../features/customer/notifications-api";
+
+function relativeTime(dateInput) {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  const delta = Math.max(0, (Date.now() - d.getTime()) / 1000);
+  if (delta < 60) return "just now";
+  if (delta < 3600) return `${Math.floor(delta / 60)}m ago`;
+  if (delta < 86400) return `${Math.floor(delta / 3600)}h ago`;
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function stripHtml(html) {
+  if (!html) return "";
+  const div = document.createElement("div");
+  div.innerHTML = html;
+  return (div.textContent || div.innerText || "").trim();
+}
 
 export default function AdminNavbar({ onMenuClick }) {
   const { admin, logout } = useAdminAuth();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-
-  const unreadCount = 0;
-
-  const handleLogout = () => {
-    logout();
-    navigate("/admin/login", { replace: true });
-  };
+  const [feed, setFeed] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
+  const notifRef = useRef(null);
 
   const initials = admin?.name
     ? admin.name
@@ -29,9 +52,79 @@ export default function AdminNavbar({ onMenuClick }) {
         .toUpperCase()
     : "A";
 
+  const handleLogout = () => {
+    logout();
+    navigate("/admin/login", { replace: true });
+  };
+
+  useEffect(() => {
+    let mounted = true;
+    let intervalId = null;
+
+    async function fetchCount() {
+      try {
+        const count = await getUnreadCount();
+        if (mounted) setUnreadCount(typeof count === "number" ? count : 0);
+      } catch {
+        if (mounted) setUnreadCount(0);
+      }
+    }
+
+    fetchCount();
+    intervalId = setInterval(fetchCount, 60000);
+
+    const handler = () => fetchCount();
+    window.addEventListener("admin-notifications:unread-changed", handler);
+
+    return () => {
+      mounted = false;
+      if (intervalId) clearInterval(intervalId);
+      window.removeEventListener("admin-notifications:unread-changed", handler);
+    };
+  }, []);
+
+  const openNotifPanel = async () => {
+    const willOpen = !notifOpen;
+    setNotifOpen(willOpen);
+    if (!willOpen) return;
+    setLoadingNotifs(true);
+    try {
+      const list = await getCustomerNotifications({ limit: 10 });
+      setFeed(list);
+    } catch {
+      setFeed([]);
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    }
+    if (notifOpen) document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [notifOpen]);
+
+  const handleNotifClick = async (n) => {
+    if (!n.isRead) {
+      setFeed((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: true } : x)));
+      setUnreadCount((c) => Math.max(0, c - 1));
+      try {
+        await markAsRead(n.id);
+      } catch {
+        setFeed((prev) => prev.map((x) => (x.id === n.id ? { ...x, isRead: false } : x)));
+        setUnreadCount((c) => c + 1);
+      }
+    }
+    setNotifOpen(false);
+    navigate("/admin/notifications");
+  };
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-surface-variant bg-surface px-6 py-3 sticky top-0 z-30">
-      {/* Left Search & Mobile Toggle */}
       <div className="flex items-center gap-2 flex-1 max-w-md">
         <button
           onClick={onMenuClick}
@@ -50,38 +143,78 @@ export default function AdminNavbar({ onMenuClick }) {
         </div>
       </div>
 
-      {/* Right Actions */}
       <div className="flex items-center gap-2 relative">
-        {/* Notifications */}
-        <div className="relative">
+        <div className="relative" ref={notifRef}>
           <button
-            onClick={() => setNotifOpen((o) => !o)}
+            onClick={openNotifPanel}
             className="relative w-10 h-10 rounded-[9999px] flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
             aria-label="Notifications"
           >
             <Bell size={18} />
             {unreadCount > 0 && (
-              <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-[9999px] bg-error text-[10px] text-white">
-                {unreadCount}
+              <span className="absolute top-1 right-1 min-w-[18px] h-[18px] px-1 rounded-[9999px] bg-error text-[10px] font-bold text-white flex items-center justify-center">
+                {unreadCount > 99 ? "99+" : unreadCount}
               </span>
             )}
           </button>
 
           {notifOpen && (
-            <div className="absolute right-0 mt-2 w-72 rounded-card border border-surface-variant bg-surface shadow-hover z-50">
-              <div className="border-b border-surface-variant px-4 py-2 text-sm font-semibold text-on-surface">
-                Notifications
+            <div className="absolute right-0 mt-2 w-80 rounded-card border border-surface-variant bg-surface shadow-hover z-50 overflow-hidden">
+              <div className="border-b border-surface-variant px-4 py-2 text-sm font-semibold text-on-surface flex items-center justify-between">
+                <span>Notifications</span>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] text-on-surface-variant font-semibold uppercase tracking-wider">
+                    {unreadCount} new
+                  </span>
+                )}
               </div>
-              <div className="max-h-64 overflow-y-auto">
-                <div className="px-4 py-6 text-sm text-on-surface-variant text-center">
-                  No recent activity
-                </div>
+              <div className="max-h-80 overflow-y-auto">
+                {loadingNotifs ? (
+                  <div className="px-4 py-6 flex items-center justify-center gap-2 text-sm text-on-surface-variant">
+                    <Loader2 size={14} className="animate-spin" />
+                    Loading...
+                  </div>
+                ) : feed.length === 0 ? (
+                  <div className="px-4 py-6 text-sm text-on-surface-variant text-center">
+                    No notifications yet
+                  </div>
+                ) : (
+                  feed.map((n) => (
+                    <button
+                      key={n.id}
+                      onClick={() => handleNotifClick(n)}
+                      className={`w-full text-left px-4 py-3 border-b border-surface-variant/40 hover:bg-surface-container-low transition-colors ${
+                        !n.isRead ? "bg-primary-container/10" : ""
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold text-on-surface truncate flex-1">
+                          {n.title}
+                        </p>
+                        <span className="text-[10px] text-on-surface-variant shrink-0">
+                          {relativeTime(n.sentAt || n.createdAt)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant mt-1 line-clamp-2">
+                        {stripHtml(n.message)}
+                      </p>
+                    </button>
+                  ))
+                )}
               </div>
+              <button
+                onClick={() => {
+                  setNotifOpen(false);
+                  navigate("/admin/notifications");
+                }}
+                className="w-full px-4 py-2 text-xs font-semibold text-primary hover:bg-surface-container-low border-t border-surface-variant transition-colors"
+              >
+                View all notifications
+              </button>
             </div>
           )}
         </div>
 
-        {/* Help Button */}
         <button
           className="w-10 h-10 rounded-[9999px] flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
           aria-label="Help Center"
@@ -89,7 +222,6 @@ export default function AdminNavbar({ onMenuClick }) {
           <HelpCircle size={18} />
         </button>
 
-        {/* Settings Button */}
         <button
           className="w-10 h-10 rounded-[9999px] flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors"
           aria-label="Quick Settings"
@@ -99,7 +231,6 @@ export default function AdminNavbar({ onMenuClick }) {
 
         <div className="h-8 w-px bg-surface-variant mx-2"></div>
 
-        {/* Profile Dropdown */}
         <div className="relative">
           <button
             onClick={() => setProfileOpen((o) => !o)}

@@ -13,6 +13,7 @@ import { CreateTicketDto } from './dto/create-ticket.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { ConfigService } from '@nestjs/config';
 import { ALL_ADMIN_ROLES, UserRole } from '../common/enums/roles.enum';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -21,6 +22,7 @@ export class SupportService {
   constructor(
     @Inject(DATABASE_CONNECTION) private readonly db: Database,
     private readonly configService: ConfigService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ---------------------------------------------------------------------------
@@ -60,6 +62,13 @@ export class SupportService {
         ticketId: ticket.id,
         senderId: userId,
         message: dto.message,
+      });
+
+      void this.notificationsService.triggerTicketReceived({
+        userId,
+        ticketId: ticket.id,
+        subject: ticket.subject,
+        category: ticket.category,
       });
 
       return ticket;
@@ -248,6 +257,18 @@ export class SupportService {
       .where(eq(schema.supportTickets.id, ticketId))
       .returning();
 
+    const assignee = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, assigneeId),
+      columns: { fullName: true },
+    });
+
+    void this.notificationsService.triggerTicketAssigned({
+      userId: ticket.userId,
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      assignedToStaffName: assignee?.fullName || 'a team member',
+    });
+
     return ticket;
   }
 
@@ -271,6 +292,20 @@ export class SupportService {
 
     if (!ticket) {
       throw new NotFoundException('Support ticket not found');
+    }
+
+    if (status === 'resolved') {
+      void this.notificationsService.triggerTicketResolved({
+        userId: ticket.userId,
+        ticketId: ticket.id,
+        subject: ticket.subject,
+      });
+    } else if (status === 'closed') {
+      void this.notificationsService.triggerTicketClosed({
+        userId: ticket.userId,
+        ticketId: ticket.id,
+        subject: ticket.subject,
+      });
     }
 
     return ticket;
@@ -305,6 +340,12 @@ export class SupportService {
           message: dto.message,
         })
         .returning();
+
+      void this.notificationsService.triggerTicketResponded({
+        userId: ticket.userId,
+        ticketId: ticket.id,
+        subject: ticket.subject,
+      });
 
       return msg;
     });
