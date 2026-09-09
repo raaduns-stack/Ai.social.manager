@@ -63,3 +63,10 @@ export async function regeneratePostSuggestions(postId: string): Promise<any[]> 
   const response = await api.post<any[]>(`/content-suggestions/post/${postId}/regenerate`)
   return response.data
 }
+
+export async function approveSuggestion(variationId: string, scheduledFor?: string) {
+  const response = await api.post(`/content-suggestions/${variationId}/approve`, {
+    ...(scheduledFor ? { scheduledFor } : {}),
+  })
+  return response.data
+}
