@@ -448,6 +448,8 @@ export default function MoneyManagement() {
   // Filter transactions dynamically
   const filteredTransactions = useMemo(() => {
     return payments.filter((trx) => {
+      if (trx.status?.toLowerCase() === 'pending') return false
+
       const matchesStatus =
         statusFilter === 'All' || trx.status?.toLowerCase() === statusFilter.toLowerCase()
 
@@ -920,7 +922,6 @@ export default function MoneyManagement() {
               >
                 <option value="All">Status: All</option>
                 <option value="successful">Successful</option>
-                <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
               </select>
             </div>

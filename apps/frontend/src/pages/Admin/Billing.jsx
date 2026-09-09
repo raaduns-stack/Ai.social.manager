@@ -78,6 +78,7 @@ export default function Billing() {
   // Filter lists
   const filteredSubscriptions = useMemo(() => {
     return subscriptions.filter(sub => {
+      if ((sub.status || '').toLowerCase() === 'pending') return false
       const matchesSearch =
         (sub.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (sub.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -89,6 +90,7 @@ export default function Billing() {
 
   const filteredPayments = useMemo(() => {
     return payments.filter(pay => {
+      if ((pay.status || '').toLowerCase() === 'pending') return false
       const matchesSearch =
         (pay.customerName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (pay.plan || '').toLowerCase().includes(searchQuery.toLowerCase())
