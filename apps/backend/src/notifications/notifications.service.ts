@@ -345,7 +345,10 @@ export class NotificationsService {
           whereCondition = eq(schema.users.role, UserRole.USER);
         }
 
-        const list = await this.db.query.users.findMany({ where: whereCondition });
+        let list = await this.db.query.users.findMany({ where: whereCondition });
+        if (senderId && options?.targetAudience !== 'STAFF_DESIGNERS' && options?.targetAudience !== 'ALL') {
+          list = list.filter((u) => u.id !== senderId);
+        }
         return list.map((u) => ({
           id: u.id,
           email: u.email,
@@ -474,77 +477,34 @@ export class NotificationsService {
         senderFirstName = sender.fullName.trim().split(' ')[0];
       }
     }
+    const cleanTitle = (request.title || '').replace(/\[\s*admin\s*copy\s*\]/gi, '').trim();
     const targetAudience = request.metadata?.targetAudience;
     const providers = this.getProvidersForType('announcement', senderId, { targetAudience });
-    const result = await sendSystemAnnouncement({ ...request, senderFirstName }, providers);
+    const result = await sendSystemAnnouncement({ ...request, title: cleanTitle || 'Notification', senderFirstName }, providers);
     return result;
   }
 
   async dispatchMaintenance(request: MaintenanceNotificationRequest, senderId?: string) {
     const providers = this.getProvidersForType('maintenance', senderId);
     const result = await sendMaintenanceNotification(request, providers);
-    if (senderId && result.records) {
-      await this.createBulkNotifications(
-        result.records.map((r) => ({ ...(r as any), senderId, error: r.error ?? undefined })),
-      );
-    }
     return result;
   }
 
   async dispatchContentApproval(request: ContentApprovalRequest, senderId?: string) {
     const providers = this.getProvidersForType('approval', senderId);
     const result = await sendContentApprovalNotification(request, providers);
-    if (senderId && result.userId) {
-      await this.createNotification({
-        userId: result.userId,
-        senderId,
-        type: result.type,
-        channel: result.channel,
-        status: result.status,
-        title: result.title,
-        message: result.message,
-        error: result.error ?? undefined,
-        metadata: result.metadata,
-      });
-    }
     return result;
   }
 
   async dispatchPublishing(request: PublishingNotificationRequest, senderId?: string) {
     const providers = this.getProvidersForType('publishing', senderId);
     const result = await sendPublishingNotification(request, providers);
-    if (senderId && result.userId) {
-      await this.createNotification({
-        userId: result.userId,
-        senderId,
-        type: result.type,
-        channel: result.channel,
-        status: result.status,
-        title: result.title,
-        message: result.message,
-        error: result.error ?? undefined,
-        metadata: result.metadata,
-      });
-    }
     return result;
   }
 
   async dispatchSubscriptionReminder(request: SubscriptionReminderRequest, senderId?: string) {
     const providers = this.getProvidersForType('subscription', senderId);
     const result = await sendSubscriptionReminder(request, providers);
-    if (senderId && result.userId) {
-      await this.createNotification({
-        userId: result.userId,
-        senderId,
-        type: result.type,
-        channel: result.channel,
-        status: result.status,
-        title: result.title,
-        message: result.message,
-        error: result.error ?? undefined,
-        metadata: result.metadata,
-      });
-    }
     return result;
   }
 

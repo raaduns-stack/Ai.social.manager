@@ -111,15 +111,36 @@ function stripHtml(html) {
   return (div.textContent || div.innerText || '').trim()
 }
 
+function cleanTitle(title) {
+  if (!title) return ''
+  const cleaned = title
+    .replace(/\[\s*admin\s*copy\s*\]/gi, '')
+    .replace(/\s*-\s*admin\s*copy/gi, '')
+    .replace(/admin\s*copy/gi, '')
+    .trim()
+  return cleaned || 'Approval'
+}
+
+function formatSenderString(sender) {
+  if (!sender) return ''
+  let name = typeof sender === 'string' ? sender : (sender.fullName || sender.name || '')
+  if (!name) return ''
+  name = name.replace(/\s*\([^)]*\)/g, '')
+  name = name.replace(/SUPER ADMIN|ACCOUNT MANAGER|SUPPORT STAFF|REVIEWER|DESIGNER|CLIENT|ADMIN/gi, '')
+  name = name.trim()
+  return name ? `FROM ${name.toUpperCase()}` : ''
+}
+
 function formatBytes(bytes) {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-function NotificationPreviewCard({ title, message, type, recipientMode, selectedClient, attachments, onEditClick }) {
+function NotificationPreviewCard({ title, message, type, recipientMode, selectedClient, attachments }) {
   const typeLabel = TYPE_LABEL_FROM_DB[ANNOUNCEMENT_TYPE_TO_DB[type]] || type || 'Announcement'
   const toneVal = TYPE_TONE[typeLabel] || 'primary'
+  const displayTitle = cleanTitle(title) || (type === 'Task Notification' || type === 'Submission Notification' ? 'Approval' : typeLabel)
 
   const recipientLabel = useMemo(() => {
     if (recipientMode === 'all') return 'All Clients'
@@ -130,46 +151,39 @@ function NotificationPreviewCard({ title, message, type, recipientMode, selected
   }, [recipientMode, selectedClient])
 
   return (
-    <div className="w-full rounded-control border border-primary/30 bg-surface shadow-hover overflow-hidden transition-all">
-      <div className="p-4 border-b border-border bg-canvas/40 flex flex-wrap items-center justify-between gap-2">
+    <div className="w-full rounded-control border border-primary/30 bg-surface shadow-hover overflow-hidden transition-all mt-4">
+      <div className="p-3.5 border-b border-border bg-canvas/40 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Badge tone={toneVal}>{typeLabel}</Badge>
-          <span className="text-xs text-ink-muted">Recipient View Preview</span>
+          <span className="text-xs font-semibold text-primary">Live Recipient View Preview</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-ink-muted">
           <span>Target: <strong className="text-ink">{recipientLabel}</strong></span>
-          <button
-            type="button"
-            onClick={onEditClick}
-            className="ml-2 px-2.5 py-1 text-xs font-semibold rounded-control bg-primary text-white hover:bg-primary/90 transition-colors"
-          >
-            Edit Content
-          </button>
         </div>
       </div>
 
-      <div className="p-5 space-y-3 cursor-pointer hover:bg-canvas/10 transition-colors" onClick={onEditClick}>
+      <div className="p-4 space-y-3">
         <div className="flex items-center justify-between">
           <h4 className="text-base font-bold text-ink">
-            {title || 'Untitled Notification'}
+            {displayTitle}
           </h4>
           <span className="text-xs text-ink-muted">Just now</span>
         </div>
 
         {stripHtml(message) || attachments.length > 0 ? (
           <div
-            className="prose prose-sm max-w-none text-ink text-sm leading-relaxed"
+            className="prose prose-sm max-w-none text-ink text-sm leading-relaxed [&_img]:max-h-60 [&_img]:rounded-control [&_img]:object-cover"
             dangerouslySetInnerHTML={{ __html: message }}
           />
         ) : (
-          <p className="text-sm text-ink-muted italic py-4">
-            Nothing to preview yet. Click to write your notification content.
+          <p className="text-sm text-ink-muted italic py-2">
+            Dynamic live preview will display here as you compose your notification...
           </p>
         )}
       </div>
 
       {attachments.length > 0 && (
-        <div className="px-5 py-3 border-t border-border bg-canvas/20 text-xs text-ink-muted flex items-center gap-2">
+        <div className="px-4 py-2.5 border-t border-border bg-canvas/20 text-xs text-ink-muted flex items-center gap-2">
           <Paperclip size={14} className="text-primary" />
           <span>{attachments.length} attachment(s) included</span>
         </div>
@@ -793,7 +807,7 @@ export default function Notifications() {
     setHistoryLoading(true)
     setHistoryError(null)
     try {
-      const res = await getNotificationHistory({ limit: 50 })
+      const res = await getNotificationHistory({ limit: 100 })
       setHistory(res.data || [])
     } catch (err) {
       setHistoryError(err)
@@ -880,9 +894,9 @@ export default function Notifications() {
   }
 
   const buildFinalMessage = () => {
-    let html = formState.message
+    let html = formState.message || ''
     if (attachments.length > 0) {
-      const imageAttachments = attachments.filter((a) => a.kind === 'image')
+      const imageAttachments = attachments.filter((a) => a.kind === 'image' && !html.includes(a.dataUrl))
       const fileAttachments = attachments.filter((a) => a.kind === 'file')
       if (imageAttachments.length > 0) {
         const imageHtml = imageAttachments
@@ -924,7 +938,7 @@ export default function Notifications() {
       if (recipientMode === 'all_users') targetAudience = 'ALL'
 
       await sendSystemAnnouncement({
-        title: formState.title || ANNOUNCEMENT_TYPE_TO_DB[formState.type] || 'Notification',
+        title: cleanTitle(formState.title) || ANNOUNCEMENT_TYPE_TO_DB[formState.type] || 'Notification',
         message: finalMessage,
         channel: 'BOTH',
         priority: 'NORMAL',
@@ -940,7 +954,7 @@ export default function Notifications() {
       setSendButtonState('sent')
       setAttachments([])
       setFormState((prev) => ({ ...prev, message: '', title: '' }))
-      setShowPreview(false)
+
       await loadHistory()
 
       setTimeout(() => setSendButtonState('idle'), 2200)
@@ -954,10 +968,11 @@ export default function Notifications() {
   const filteredHistory = useMemo(() => {
     return history.filter((n) => {
       const plainMessage = stripHtml(n.message)
+      const cleanedNotiTitle = cleanTitle(n.title)
       const matchSearch =
         !searchQuery ||
         plainMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        n.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        cleanedNotiTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
         n.user?.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         n.user?.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
 
@@ -1012,7 +1027,7 @@ export default function Notifications() {
                 type="text"
                 value={formState.title}
                 onChange={(e) => setFormState((prev) => ({ ...prev, title: e.target.value }))}
-                placeholder="Notification title"
+                placeholder="Notification title (e.g. Approval)"
                 maxLength={255}
                 className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary"
               />
@@ -1035,46 +1050,25 @@ export default function Notifications() {
           />
 
           <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-ink">Message</label>
-              <button
-                type="button"
-                onClick={() => setShowPreview((prev) => !prev)}
-                className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition-colors"
-              >
-                {showPreview ? (
-                  <>
-                    <Edit3 size={14} /> Edit
-                  </>
-                ) : (
-                  <>
-                    <Eye size={14} /> Preview
-                  </>
-                )}
-              </button>
-            </div>
-
-            {showPreview ? (
-              <NotificationPreviewCard
-                title={formState.title}
-                message={buildFinalMessage()}
-                type={formState.type}
-                recipientMode={recipientMode}
-                selectedClient={clients.find((c) => c.id === selectedClientId)}
-                attachments={attachments}
-                onEditClick={() => setShowPreview(false)}
-              />
-            ) : (
-              <RichTextEditor
-                value={formState.message}
-                onChange={(html) => setFormState((prev) => ({ ...prev, message: html }))}
-                onImageSelect={handleAddImage}
-                onFileSelect={handleAddFile}
-              />
-            )}
+            <label className="text-sm font-medium text-ink">Message</label>
+            <RichTextEditor
+              value={formState.message}
+              onChange={(html) => setFormState((prev) => ({ ...prev, message: html }))}
+              onImageSelect={handleAddImage}
+              onFileSelect={handleAddFile}
+            />
           </div>
 
           <AttachmentPreview attachments={attachments} onRemove={handleRemoveAttachment} />
+
+          <NotificationPreviewCard
+            title={formState.title}
+            message={buildFinalMessage()}
+            type={formState.type}
+            recipientMode={recipientMode}
+            selectedClient={clients.find((c) => c.id === selectedClientId)}
+            attachments={attachments}
+          />
 
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-ink-muted">
@@ -1204,6 +1198,8 @@ export default function Notifications() {
                     hour: '2-digit',
                     minute: '2-digit',
                   })
+                  const cleanedNotiTitle = cleanTitle(noti.title)
+                  const senderStr = formatSenderString(noti.sender)
 
                   return (
                     <tr key={noti.id} className="hover:bg-canvas/40 transition-colors">
@@ -1217,10 +1213,15 @@ export default function Notifications() {
                         <div>{noti.user?.email || ''}</div>
                       </td>
                       <td className="px-5 py-4 font-semibold text-ink max-w-[200px] truncate">
-                        {noti.title}
+                        {cleanedNotiTitle}
                       </td>
                       <td className="px-5 py-4 text-ink-muted max-w-xs truncate">
-                        {stripHtml(noti.message)}
+                        <div>{stripHtml(noti.message)}</div>
+                        {senderStr && (
+                          <div className="text-[10px] text-ink-muted font-bold tracking-wide mt-0.5">
+                            {senderStr}
+                          </div>
+                        )}
                       </td>
                       <td className="px-5 py-4 text-xs text-ink-muted whitespace-nowrap">
                         {dateLabel}

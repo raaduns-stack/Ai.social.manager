@@ -107,6 +107,26 @@ function isSystemType(type) {
   return ['SYSTEM_ANNOUNCEMENT', 'MAINTENANCE', 'SECURITY_NOTICE', 'FEATURE_UPDATE', 'SERVICE_UPDATE'].includes(type)
 }
 
+function cleanTitle(title) {
+  if (!title) return ''
+  const cleaned = title
+    .replace(/\[\s*admin\s*copy\s*\]/gi, '')
+    .replace(/\s*-\s*admin\s*copy/gi, '')
+    .replace(/admin\s*copy/gi, '')
+    .trim()
+  return cleaned || 'Approval'
+}
+
+function formatSenderString(sender) {
+  if (!sender) return ''
+  let name = typeof sender === 'string' ? sender : (sender.fullName || sender.name || '')
+  if (!name) return ''
+  name = name.replace(/\s*\([^)]*\)/g, '')
+  name = name.replace(/SUPER ADMIN|ACCOUNT MANAGER|SUPPORT STAFF|REVIEWER|DESIGNER|CLIENT|ADMIN/gi, '')
+  name = name.trim()
+  return name ? `FROM ${name.toUpperCase()}` : ''
+}
+
 function extractImages(html) {
   const imgs = []
   const div = document.createElement('div')
@@ -379,7 +399,7 @@ export default function Notifications() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-4 mb-1">
                           <h4 className="text-sm font-semibold text-ink truncate">
-                            {item.title}
+                            {cleanTitle(item.title)}
                           </h4>
                           <span className="text-xs text-ink-muted shrink-0">
                             {isToday ? formatTime(time) : relativeTime(time)}
@@ -389,8 +409,8 @@ export default function Notifications() {
                         <NotificationBody html={item.message} />
 
                         {item.sender?.fullName && (
-                          <p className="mt-2 text-[10px] uppercase tracking-wider text-ink-muted font-semibold">
-                            From {item.sender.fullName}
+                          <p className="mt-2 text-[10px] uppercase tracking-wider text-ink-muted font-bold">
+                            {formatSenderString(item.sender)}
                           </p>
                         )}
 
