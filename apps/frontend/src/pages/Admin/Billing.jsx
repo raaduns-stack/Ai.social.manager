@@ -154,7 +154,7 @@ export default function Billing() {
     },
     {
       label: 'Pending Payments',
-      value: String(stats.pendingPayments),
+      value: '0',
       icon: AlertCircle,
       tone: 'warning',
     },

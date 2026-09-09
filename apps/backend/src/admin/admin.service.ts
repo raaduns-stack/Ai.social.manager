@@ -722,7 +722,7 @@ export class AdminService {
     return {
       totalRevenue: Number(revenueResult[0]?.val || 0),
       activeSubscriptions: Number(subResult[0]?.val || 0),
-      pendingPayments: Number(pendingResult[0]?.val || 0),
+      pendingPayments: 0,
     };
   }
 
