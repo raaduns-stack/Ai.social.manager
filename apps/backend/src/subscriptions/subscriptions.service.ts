@@ -1,18 +1,21 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, gt, lte } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class SubscriptionsService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   /** Return the logged-in user's current active subscription with plan details. */
   async findByUserId(userId: string) {
-    // First try to find an active subscription (most recently updated wins)
     const active = await this.db.query.subscriptions.findFirst({
       where: and(
         eq(schema.subscriptions.userId, userId),
@@ -24,7 +27,6 @@ export class SubscriptionsService {
 
     if (active) return active;
 
-    // Fall back to any subscription for this user so billing page never hard-errors
     const fallback = await this.db.query.subscriptions.findFirst({
       where: eq(schema.subscriptions.userId, userId),
       with: { plan: true },
@@ -67,7 +69,6 @@ export class SubscriptionsService {
 
   /** Create a new "pending" subscription (activated later by Payments module). */
   async create(userId: string, planId: string) {
-    // Verify the plan exists and is active
     const plan = await this.db.query.plans.findFirst({
       where: and(eq(schema.plans.id, planId), eq(schema.plans.isActive, true)),
     });
@@ -109,6 +110,22 @@ export class SubscriptionsService {
       .where(eq(schema.subscriptions.id, existing.id))
       .returning();
 
+    void this.notificationsService.triggerSubscriptionExpired({
+      userId: updated.userId,
+      subscriptionId: updated.id,
+    });
+
     return updated;
+  }
+
+  async findExpiringWithin(date: Date) {
+    return this.db.query.subscriptions.findMany({
+      where: and(
+        eq(schema.subscriptions.status, 'active'),
+        lte(schema.subscriptions.currentPeriodEnd, date),
+        gt(schema.subscriptions.currentPeriodEnd, new Date()),
+      ),
+      with: { plan: true },
+    });
   }
 }

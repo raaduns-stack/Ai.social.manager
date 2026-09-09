@@ -21,6 +21,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Request interceptor to attach Bearer token
@@ -328,7 +329,7 @@ apiClient.interceptors.response.use(
       }
     }
 
-    const apiError: ApiErrorResponse & { error?: string; kycStatus?: string } = {
+    const apiError: ApiErrorResponse & { error?: string; kycStatus?: string; response?: any } = {
       statusCode: errorData?.statusCode || error.response?.status || 500,
       path: errorData?.path || originalRequest?.url || '',
       timestamp: errorData?.timestamp || new Date().toISOString(),
@@ -336,6 +337,7 @@ apiClient.interceptors.response.use(
       errorCode,
       error: typeof exceptionPayload === 'object' ? exceptionPayload.error : undefined,
       kycStatus: typeof exceptionPayload === 'object' ? exceptionPayload.kycStatus : (errorData?.kycStatus || undefined),
+      response: error.response,
     };
 
     throw apiError;

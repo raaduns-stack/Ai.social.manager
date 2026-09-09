@@ -13,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'node:crypto';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { Request } from 'express';
 import { DATABASE_CONNECTION } from '../database/database.module';
@@ -779,7 +779,7 @@ export class AuthService {
         eq(schema.subscriptions.status, 'active'),
       ),
       with: { plan: true },
-      orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+      orderBy: [desc(schema.subscriptions.updatedAt)],
     });
 
     const perms = await this.getPermissions(user.id, user.role);
@@ -832,7 +832,7 @@ export class AuthService {
           eq(schema.subscriptions.status, 'active')
         ),
         with: { plan: true },
-        orderBy: (subscriptions, { desc }) => [desc(subscriptions.updatedAt)],
+        orderBy: [desc(schema.subscriptions.updatedAt)],
       });
     } catch (err) {
       console.error('[ERROR Auth] Failed to fetch active subscription for user:', user.id, err);

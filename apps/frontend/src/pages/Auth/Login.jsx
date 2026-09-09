@@ -74,8 +74,9 @@ export default function Login() {
       trackEvent('login', { method: 'email' })
       navigate('/dashboard')
     } catch (err) {
-      const data = err?.response?.data
-      if (data?.requiresVerification) {
+      const data = err?.response?.data || err
+      if (data?.requiresVerification || err?.errorCode === 'EMAIL_NOT_VERIFIED') {
+        const email = data?.email || formData.email
         window.dispatchEvent(
           new CustomEvent('app-toast', {
             detail: {
@@ -84,7 +85,7 @@ export default function Login() {
             },
           })
         )
-        navigate(`/verify-email?email=${encodeURIComponent(data.email)}`)
+        navigate(`/verify-email?email=${encodeURIComponent(email)}`)
         return
       }
       setApiError(err)
@@ -97,7 +98,7 @@ export default function Login() {
     <div className="w-full space-y-8">
       {/* Form Header */}
       <div className="text-left space-y-2">
-        <h2 className="font-['Plus_Jakarta_Sans'] text-3xl font-bold text-[#111111] tracking-tight">Sign In</h2>
+        <h2 className="font-heading text-3xl font-bold text-[#111111] tracking-tight">Sign In</h2>
         <p className="text-sm text-[#666666]">Welcome back. Please enter your details.</p>
       </div>
 

@@ -29,6 +29,8 @@ export * from './designer-payments.schema';
 export * from './designer-notifications.schema';
 export * from './image-to-code.schema';
 export * from './designer-invitations.schema';
+export * from './notifications.schema';
+export * from './scheduled-notifications.schema';
 export * from './relations';
 
 

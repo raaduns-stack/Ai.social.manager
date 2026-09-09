@@ -50,7 +50,7 @@ export default function Features() {
         <span className="bg-[#FFEBE0] text-[#FF6600] font-bold text-xs uppercase tracking-widest px-4 py-1.5 rounded-full">
           Product Details
         </span>
-        <h1 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#111111] tracking-tight mt-6 mb-4">
+        <h1 className="text-4xl md:text-5xl font-extrabold font-heading text-[#111111] tracking-tight mt-6 mb-4">
           What can RaaSocial do for me?
         </h1>
         <p className="text-lg text-[#666666] max-w-2xl mx-auto leading-relaxed">
@@ -70,7 +70,7 @@ export default function Features() {
                 <div className="p-3 bg-[#FFEBE0] rounded-control w-fit mb-6">
                   {feat.icon}
                 </div>
-                <h3 className="text-xl font-bold text-[#111111] font-['Plus_Jakarta_Sans'] mb-3">
+                <h3 className="text-xl font-bold text-[#111111] font-heading mb-3">
                   {feat.title}
                 </h3>
                 <p className="text-sm text-[#666666] leading-relaxed">
@@ -85,7 +85,7 @@ export default function Features() {
       {/* Feature Highlight banner */}
       <section className="py-20 bg-gray-50 border-t border-b border-gray-100 px-6">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-2xl md:text-3xl font-bold text-[#111111] font-['Plus_Jakarta_Sans'] mb-4">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#111111] font-heading mb-4">
             Designed for business owners, not agencies.
           </h2>
           <p className="text-sm md:text-base text-[#666666] leading-relaxed max-w-2xl mx-auto">

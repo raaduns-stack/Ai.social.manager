@@ -35,6 +35,7 @@ export class ContentSuggestionsService {
       where: eq(schema.contentSuggestions.userId, userId),
       orderBy: desc(schema.contentSuggestions.createdAt),
       with: {
+        post: true,
         feedback: {
           where: eq(schema.contentFeedback.userId, userId),
           orderBy: desc(schema.contentFeedback.createdAt),
@@ -521,7 +522,11 @@ export class ContentSuggestionsService {
    * Approve a specific variation, resolve parent post metadata, check social connection,
    * and schedule the post.
    */
-  async approveVariation(variationId: string, dto: ApproveVariationDto) {
+  async approveVariation(
+    variationId: string,
+    dto: ApproveVariationDto,
+    approvalSource: 'MANUAL' | 'SYSTEM' = 'MANUAL',
+  ) {
     // 1. Look up the variation
     const variation = await this.db.query.contentSuggestions.findFirst({
       where: eq(schema.contentSuggestions.id, variationId),
@@ -549,6 +554,21 @@ export class ContentSuggestionsService {
     });
     if (!post) {
       throw new NotFoundException(`Parent calendar post ${variation.postId} not found.`);
+    }
+
+    // Check if another variation for this parent calendar post was already approved / scheduled
+    if (post.approvalStatus === 'APPROVED' && post.selectedSuggestionId && post.selectedSuggestionId !== variationId) {
+      throw new BadRequestException('Another variation for this calendar post has already been approved.');
+    }
+
+    const existingScheduledForPost = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.calendarPostId, variation.postId),
+    });
+    if (existingScheduledForPost) {
+      if (existingScheduledForPost.variationId === variationId) {
+        return existingScheduledForPost;
+      }
+      throw new BadRequestException('Another variation for this calendar post has already been scheduled.');
     }
 
     // 3. Resolve scheduled date/time
@@ -588,7 +608,7 @@ export class ContentSuggestionsService {
         })
         .returning();
       scheduledPost = inserted;
-    } catch (err) {
+    } catch (err: any) {
       // Check for unique key constraint conflict (Postgres code 23505)
       if (err.code === '23505') {
         const existingScheduled = await this.db.query.scheduledPosts.findFirst({
@@ -609,6 +629,21 @@ export class ContentSuggestionsService {
       .update(schema.contentSuggestions)
       .set({ approvalStatus: 'APPROVED' })
       .where(eq(schema.contentSuggestions.id, variation.id));
+
+    // 7. Update parent content_calendar post status & approval source
+    await this.db
+      .update(schema.contentCalendar)
+      .set({
+        approvalStatus: 'APPROVED',
+        approvalSource: approvalSource,
+        status: 'SCHEDULED',
+        selectedSuggestionId: variation.id,
+        ...(approvalSource === 'SYSTEM'
+          ? { adminNotes: post.adminNotes ? `${post.adminNotes} (Auto-approved by system)` : 'Auto-approved by system grace window job' }
+          : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentCalendar.id, variation.postId));
 
     return scheduledPost;
   }

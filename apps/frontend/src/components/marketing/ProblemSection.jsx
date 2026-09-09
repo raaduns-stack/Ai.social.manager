@@ -32,7 +32,7 @@ export default function ProblemSection() {
     <section className="py-24 bg-[#111111] text-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-6">
         <div className="text-center max-w-3xl mx-auto mb-16">
-          <h2 className="text-4xl md:text-5xl font-extrabold font-['Plus_Jakarta_Sans'] leading-tight tracking-tight mb-6">
+          <h2 className="text-4xl md:text-5xl font-extrabold font-heading leading-tight tracking-tight mb-6">
             Running a business is already a full-time job.<br className="hidden sm:block" />
             <span className="text-[#FF6600]">Your social media shouldn't be.</span>
           </h2>
@@ -50,7 +50,7 @@ export default function ProblemSection() {
               <div className="w-8 h-8 rounded-full bg-[#FF6600]/10 border border-[#FF6600]/20 flex items-center justify-center mb-6 text-[#FF6600] font-bold text-sm">
                 0{idx + 1}
               </div>
-              <h3 className="text-xl font-bold text-white mb-3 font-['Plus_Jakarta_Sans'] group-hover:text-[#FF6600] transition-colors duration-200">
+              <h3 className="text-xl font-bold text-white mb-3 font-heading group-hover:text-[#FF6600] transition-colors duration-200">
                 {prob.title}
               </h3>
               <p className="text-sm text-[#999999] leading-relaxed">

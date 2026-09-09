@@ -1016,8 +1016,8 @@ export default function ContentCalendar() {
   const [genLoading, setGenLoading] = useState(false)
   const [genMessage, setGenMessage] = useState(null)   // { type: 'success'|'error', text: string }
   const [genJobId, setGenJobId] = useState(null)
-  // Selected platforms for generation (defaults to all five)
-  const ALL_PLATFORMS = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook']
+  // Selected platforms for generation (defaults to all seven)
+  const ALL_PLATFORMS = ['Instagram', 'LinkedIn', 'X / Twitter', 'TikTok', 'Facebook', 'Tumblr', 'Discord']
   const [genPlatforms, setGenPlatforms] = useState([])
   const [connectedPlatforms, setConnectedPlatforms] = useState([])
 
@@ -1037,17 +1037,17 @@ export default function ContentCalendar() {
         getCalendarPosts(userId),
         getUpcomingPosts(userId),
         getPublishedPosts(userId),
-        getMyKyc(),
-        apiClient.get('/social-accounts'),
-        getCalendarUsage(userId, targetMonth),
+        getMyKyc().catch(() => null),
+        apiClient.get('/social-accounts').catch(() => ({ data: [] })),
+        getCalendarUsage(userId, targetMonth).catch(() => null),
       ])
-      setAllPosts(all)
-      setUpcomingPosts(upcoming)
-      setPublishedPosts(published)
+      setAllPosts(all || [])
+      setUpcomingPosts(upcoming || [])
+      setPublishedPosts(published || [])
       setKycRecord(kyc)
       setUsageInfo(usage)
 
-      if (Array.isArray(socialAccountsRes.data)) {
+      if (Array.isArray(socialAccountsRes?.data)) {
         const connected = socialAccountsRes.data
           .filter(acc => acc.status === 'connected')
           .map(acc => formatPlatformName(acc.platform))

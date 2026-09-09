@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AutoCloseTicketsJob } from './auto-close-tickets.job';
 import { DATABASE_CONNECTION } from '../../database/database.module';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 describe('AutoCloseTicketsJob', () => {
   let job: AutoCloseTicketsJob;
@@ -16,6 +17,10 @@ describe('AutoCloseTicketsJob', () => {
     where: jest.fn().mockResolvedValue([]),
   };
 
+  const mockNotificationsService = {
+    triggerTicketClosed: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -23,6 +28,10 @@ describe('AutoCloseTicketsJob', () => {
         {
           provide: DATABASE_CONNECTION,
           useValue: mockDb,
+        },
+        {
+          provide: NotificationsService,
+          useValue: mockNotificationsService,
         },
       ],
     }).compile();
