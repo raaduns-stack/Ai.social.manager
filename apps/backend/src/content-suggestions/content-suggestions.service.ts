@@ -35,6 +35,7 @@ export class ContentSuggestionsService {
       where: eq(schema.contentSuggestions.userId, userId),
       orderBy: desc(schema.contentSuggestions.createdAt),
       with: {
+        post: true,
         feedback: {
           where: eq(schema.contentFeedback.userId, userId),
           orderBy: desc(schema.contentFeedback.createdAt),
@@ -553,6 +554,21 @@ export class ContentSuggestionsService {
     });
     if (!post) {
       throw new NotFoundException(`Parent calendar post ${variation.postId} not found.`);
+    }
+
+    // Check if another variation for this parent calendar post was already approved / scheduled
+    if (post.approvalStatus === 'APPROVED' && post.selectedSuggestionId && post.selectedSuggestionId !== variationId) {
+      throw new BadRequestException('Another variation for this calendar post has already been approved.');
+    }
+
+    const existingScheduledForPost = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.calendarPostId, variation.postId),
+    });
+    if (existingScheduledForPost) {
+      if (existingScheduledForPost.variationId === variationId) {
+        return existingScheduledForPost;
+      }
+      throw new BadRequestException('Another variation for this calendar post has already been scheduled.');
     }
 
     // 3. Resolve scheduled date/time
