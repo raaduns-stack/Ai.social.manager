@@ -137,60 +137,7 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
-function NotificationPreviewCard({ title, message, type, recipientMode, selectedClient, attachments }) {
-  const typeLabel = TYPE_LABEL_FROM_DB[ANNOUNCEMENT_TYPE_TO_DB[type]] || type || 'Announcement'
-  const toneVal = TYPE_TONE[typeLabel] || 'primary'
-  const displayTitle = cleanTitle(title) || (type === 'Task Notification' || type === 'Submission Notification' ? 'Approval' : typeLabel)
 
-  const recipientLabel = useMemo(() => {
-    if (recipientMode === 'all') return 'All Clients'
-    if (recipientMode === 'staff') return 'Staff & Graphic Designers'
-    if (recipientMode === 'all_users') return 'All Platform Users'
-    if (selectedClient) return `${selectedClient.fullName} (${selectedClient.email})`
-    return 'Target Recipient'
-  }, [recipientMode, selectedClient])
-
-  return (
-    <div className="w-full rounded-control border border-primary/30 bg-surface shadow-hover overflow-hidden transition-all mt-4">
-      <div className="p-3.5 border-b border-border bg-canvas/40 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <Badge tone={toneVal}>{typeLabel}</Badge>
-          <span className="text-xs font-semibold text-primary">Live Recipient View Preview</span>
-        </div>
-        <div className="flex items-center gap-2 text-xs text-ink-muted">
-          <span>Target: <strong className="text-ink">{recipientLabel}</strong></span>
-        </div>
-      </div>
-
-      <div className="p-4 space-y-3">
-        <div className="flex items-center justify-between">
-          <h4 className="text-base font-bold text-ink">
-            {displayTitle}
-          </h4>
-          <span className="text-xs text-ink-muted">Just now</span>
-        </div>
-
-        {stripHtml(message) || attachments.length > 0 ? (
-          <div
-            className="prose prose-sm max-w-none text-ink text-sm leading-relaxed [&_img]:max-h-60 [&_img]:rounded-control [&_img]:object-cover"
-            dangerouslySetInnerHTML={{ __html: message }}
-          />
-        ) : (
-          <p className="text-sm text-ink-muted italic py-2">
-            Dynamic live preview will display here as you compose your notification...
-          </p>
-        )}
-      </div>
-
-      {attachments.length > 0 && (
-        <div className="px-4 py-2.5 border-t border-border bg-canvas/20 text-xs text-ink-muted flex items-center gap-2">
-          <Paperclip size={14} className="text-primary" />
-          <span>{attachments.length} attachment(s) included</span>
-        </div>
-      )}
-    </div>
-  )
-}
 
 function RichTextEditor({ value, onChange, onImageSelect, onFileSelect }) {
   const [showEmoji, setShowEmoji] = useState(false)
@@ -1060,15 +1007,6 @@ export default function Notifications() {
           </div>
 
           <AttachmentPreview attachments={attachments} onRemove={handleRemoveAttachment} />
-
-          <NotificationPreviewCard
-            title={formState.title}
-            message={buildFinalMessage()}
-            type={formState.type}
-            recipientMode={recipientMode}
-            selectedClient={clients.find((c) => c.id === selectedClientId)}
-            attachments={attachments}
-          />
 
           <div className="flex items-center justify-between pt-2">
             <div className="text-xs text-ink-muted">
