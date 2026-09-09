@@ -48,18 +48,6 @@ export class AdminNotificationsController {
       metadata: dto.metadata,
     }, user.userId);
 
-    // Mirror the announcement into each admin/staff user's own feed so
-    // the admin navbar bell surfaces it without re-broadcasting to clients.
-    await this.notificationsService.broadcastToStaffRole({
-      type: 'SYSTEM_ANNOUNCEMENT',
-      title: `[Admin copy] ${dto.title}`,
-      message: dto.message,
-      priority: 'NORMAL',
-      metadata: { ...(dto.metadata || {}), mirrorOf: 'system-announcement' },
-      actionUrl: dto.actionUrl,
-      senderId: user.userId,
-    });
-
     return result;
   }
 

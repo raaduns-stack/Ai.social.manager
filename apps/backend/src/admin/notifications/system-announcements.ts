@@ -10,6 +10,7 @@ export interface AnnouncementRequest {
   targetUserIds?: string[];
   channel: 'EMAIL' | 'IN_APP' | 'BOTH';
   actionUrl?: string;
+  senderFirstName?: string;
   metadata?: Record<string, any>;
 }
 
@@ -36,9 +37,10 @@ export async function sendSystemAnnouncement(
   request: AnnouncementRequest,
   providers: NotificationProviders
 ) {
-  const { title, message, targetUserIds, channel, actionUrl, metadata } = request;
+  const { title, message, targetUserIds, channel, actionUrl, senderFirstName, metadata } = request;
   const users = await providers.getCustomers(targetUserIds);
   const notificationRecords: NotificationRecord[] = [];
+  const notifType = metadata?.announcementType || 'SYSTEM_ANNOUNCEMENT';
 
   for (const user of users) {
     let status: 'SENT' | 'FAILED' = 'SENT';
@@ -48,27 +50,27 @@ export async function sendSystemAnnouncement(
       if ((channel === 'EMAIL' || channel === 'BOTH') && providers.sendEmail) {
         await providers.sendEmail(
           user.email,
-          `[System Announcement] ${title}`,
-          `<p>Dear ${user.name},</p><p>${message}</p>`
+          title,
+          `<p>Dear ${user.name},</p><p>${message}</p>${senderFirstName ? `<p>Best regards,<br/>${senderFirstName}</p>` : ''}`
         );
       }
 
-    if ((channel === 'IN_APP' || channel === 'BOTH') && providers.sendInApp) {
-      await providers.sendInApp(user.id, {
-        type: 'SYSTEM_ANNOUNCEMENT',
-        title,
-        message,
-        timestamp: new Date(),
-      });
-    }
+      if ((channel === 'IN_APP' || channel === 'BOTH') && providers.sendInApp) {
+        await providers.sendInApp(user.id, {
+          type: notifType,
+          title,
+          message,
+          timestamp: new Date(),
+        });
+      }
     } catch (err: any) {
       status = 'FAILED';
-      error = err?.message || 'Failed to dispatch system announcement';
+      error = err?.message || 'Failed to dispatch notification';
     }
 
     notificationRecords.push({
       userId: user.id,
-      type: 'SYSTEM_ANNOUNCEMENT',
+      type: notifType,
       title,
       message,
       channel,
@@ -84,4 +86,4 @@ export async function sendSystemAnnouncement(
   }
 
   return { totalTargeted: users.length, records: notificationRecords };
-}
+}

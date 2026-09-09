@@ -48,8 +48,8 @@ export class NotificationsService {
       },
       allowedSchemes: ['http', 'https', 'mailto', 'data'],
       allowedSchemesByTag: {
-        a: ['href', 'xlink:href'],
-        img: ['src'],
+        a: ['http', 'https', 'mailto', 'data'],
+        img: ['http', 'https', 'data'],
       },
       transformTags: {
         'a': (tagName: string, attribs: { [key: string]: string }) => {
@@ -228,13 +228,10 @@ export class NotificationsService {
       columns: { id: true, role: true },
     });
 
-    const validCustomerIds = new Set(
-      users.filter((u) => u.role === UserRole.USER).map((u) => u.id),
-    );
+    const validUserIds = new Set(users.map((u) => u.id));
+    const invalid = userIds.filter((id) => !validUserIds.has(id));
 
-    const invalid = userIds.filter((id) => !validCustomerIds.has(id));
-
-    return { valid: Array.from(validCustomerIds), invalid };
+    return { valid: Array.from(validUserIds), invalid };
   }
 
   async markAsRead(userId: string, notificationId: string) {
@@ -325,15 +322,30 @@ export class NotificationsService {
     }
   }
 
-  private getProvidersForType(notificationType: string, senderId?: string) {
+  private getProvidersForType(notificationType: string, senderId?: string, options?: { targetAudience?: string }) {
     return {
       getCustomers: async (userIds?: string[]) => {
-        const queryBuilder = {
-          where: userIds && userIds.length > 0
-            ? inArray(schema.users.id, userIds)
-            : eq(schema.users.role, UserRole.USER),
-        };
-        const list = await this.db.query.users.findMany(queryBuilder);
+        let whereCondition: any;
+        if (userIds && userIds.length > 0) {
+          whereCondition = inArray(schema.users.id, userIds);
+        } else if (options?.targetAudience === 'STAFF_DESIGNERS') {
+          whereCondition = and(
+            eq(schema.users.isActive, true),
+            inArray(schema.users.role, [
+              UserRole.SUPER_ADMIN,
+              UserRole.ACCOUNT_MANAGER,
+              UserRole.REVIEWER,
+              UserRole.SUPPORT_STAFF,
+              UserRole.DESIGNER,
+            ]),
+          );
+        } else if (options?.targetAudience === 'ALL') {
+          whereCondition = eq(schema.users.isActive, true);
+        } else {
+          whereCondition = eq(schema.users.role, UserRole.USER);
+        }
+
+        const list = await this.db.query.users.findMany({ where: whereCondition });
         return list.map((u) => ({
           id: u.id,
           email: u.email,
@@ -374,19 +386,6 @@ export class NotificationsService {
           this.logger.log(`Skipping in-app notification to user ${userId} (User disabled ${notificationType})`);
           return;
         }
-
-        await this.db.insert(schema.notifications).values({
-          userId,
-          senderId,
-          type: (data.type || notificationType.toUpperCase()) as any,
-          title: data.title,
-          message: data.message,
-          channel: 'IN_APP' as any,
-          status: 'SENT' as any,
-          isRead: false,
-          priority: (data.priority || 'NORMAL') as any,
-          metadata: data,
-        });
       },
 
       saveNotificationLog: async (recordOrRecords: any) => {
@@ -465,13 +464,19 @@ export class NotificationsService {
   // ---------------------------------------------------------------------------
 
   async dispatchSystemAnnouncement(request: AnnouncementRequest, senderId?: string) {
-    const providers = this.getProvidersForType('announcement', senderId);
-    const result = await sendSystemAnnouncement(request, providers);
-    if (senderId && result.records) {
-      await this.createBulkNotifications(
-        result.records.map((r) => ({ ...r, senderId, error: r.error ?? undefined })),
-      );
+    let senderFirstName: string | undefined;
+    if (senderId) {
+      const sender = await this.db.query.users.findFirst({
+        where: eq(schema.users.id, senderId),
+        columns: { fullName: true },
+      });
+      if (sender?.fullName) {
+        senderFirstName = sender.fullName.trim().split(' ')[0];
+      }
     }
+    const targetAudience = request.metadata?.targetAudience;
+    const providers = this.getProvidersForType('announcement', senderId, { targetAudience });
+    const result = await sendSystemAnnouncement({ ...request, senderFirstName }, providers);
     return result;
   }
 

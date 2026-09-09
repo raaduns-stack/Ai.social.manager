@@ -5,6 +5,7 @@ import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import TextAlign from '@tiptap/extension-text-align'
 import Underline from '@tiptap/extension-underline'
+import ImageExtension from '@tiptap/extension-image'
 import EmojiPicker, { EmojiStyle, Theme } from 'emoji-picker-react'
 import {
   Send,
@@ -52,46 +53,49 @@ import {
 
 const ANNOUNCEMENT_TYPE_TO_DB = {
   'System Announcement': 'SYSTEM_ANNOUNCEMENT',
+  'Task Notification': 'TICKET_ASSIGNED',
+  'Submission Notification': 'CONTENT_APPROVAL',
+  'Payment Notification': 'SUBSCRIPTION_PAYMENT_SUCCESS',
   'Subscription Reminder': 'SUBSCRIPTION_RENEWAL_REMINDER',
-  'Content Approval': 'CONTENT_APPROVAL',
   Publishing: 'CONTENT_PUBLISHED',
   Maintenance: 'MAINTENANCE',
 }
 
 const TYPE_LABEL_FROM_DB = {
-  SYSTEM_ANNOUNCEMENT: 'Announcement',
+  SYSTEM_ANNOUNCEMENT: 'System',
   MAINTENANCE: 'Maintenance',
-  CONTENT_APPROVAL: 'Approval',
+  CONTENT_APPROVAL: 'Submission',
   CONTENT_PUBLISHED: 'Publishing',
   CONTENT_PUBLISH_FAILED: 'Publishing',
   SUBSCRIPTION_RENEWAL_REMINDER: 'Reminder',
   SUBSCRIPTION_EXPIRED: 'Reminder',
-  SUBSCRIPTION_PAYMENT_SUCCESS: 'Reminder',
-  SUBSCRIPTION_PAYMENT_FAILED: 'Reminder',
-  SUBSCRIPTION_INVOICE_AVAILABLE: 'Reminder',
+  SUBSCRIPTION_PAYMENT_SUCCESS: 'Payment',
+  SUBSCRIPTION_PAYMENT_FAILED: 'Payment',
+  SUBSCRIPTION_PAYMENT_PENDING: 'Payment',
+  SUBSCRIPTION_INVOICE_AVAILABLE: 'Payment',
   ACCOUNT_CONNECTION_DISCONNECTED: 'Account',
   ACCOUNT_CONNECTION_REAUTHORIZATION_REQUIRED: 'Account',
   ACCOUNT_CONNECTION_RECONNECTED: 'Account',
-  CALENDAR_UPLOADED: 'Calendar',
-  TICKET_RECEIVED: 'Support',
-  TICKET_ASSIGNED: 'Support',
-  TICKET_RESPONDED: 'Support',
-  TICKET_RESOLVED: 'Support',
-  TICKET_CLOSED: 'Support',
+  CALENDAR_UPLOADED: 'Submission',
+  TICKET_RECEIVED: 'Submission',
+  TICKET_ASSIGNED: 'Task',
+  TICKET_RESPONDED: 'Task',
+  TICKET_RESOLVED: 'Task',
+  TICKET_CLOSED: 'Task',
   SECURITY_NOTICE: 'Security',
   FEATURE_UPDATE: 'Feature Update',
   SERVICE_UPDATE: 'Service Update',
 }
 
 const TYPE_TONE = {
-  Announcement: 'primary',
+  System: 'primary',
   Reminder: 'warning',
-  Approval: 'success',
+  Submission: 'success',
+  Task: 'primary',
+  Payment: 'success',
   Publishing: 'primary',
   Maintenance: 'danger',
   Account: 'warning',
-  Calendar: 'primary',
-  Support: 'primary',
   Security: 'danger',
   'Feature Update': 'success',
   'Service Update': 'warning',
@@ -125,6 +129,7 @@ function RichTextEditor({ value, onChange, onImageSelect, onFileSelect }) {
     extensions: [
       StarterKit.configure({ heading: { levels: [1, 2, 3] } }),
       Underline,
+      ImageExtension,
       Link.configure({
         openOnClick: false,
         HTMLAttributes: { rel: 'noopener noreferrer', target: '_blank' },
@@ -468,6 +473,17 @@ function ClientSelector({
 
   const selectedClient = clients.find((c) => c.id === selectedClientId)
 
+  const formatRoleLabel = (role) => {
+    if (!role) return 'Client'
+    const r = role.toLowerCase()
+    if (r === 'designer') return 'Graphic Designer'
+    if (r === 'support_staff') return 'Support Staff'
+    if (r === 'account_manager') return 'Account Manager'
+    if (r === 'reviewer') return 'Reviewer'
+    if (r === 'super_admin') return 'Super Admin'
+    return 'Client'
+  }
+
   return (
     <div className="flex flex-col gap-1.5">
       <label className="text-sm font-medium text-ink flex items-center gap-2">
@@ -475,11 +491,11 @@ function ClientSelector({
         Recipients
       </label>
 
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <button
           type="button"
           onClick={() => onModeChange('all')}
-          className={`h-10 px-3 rounded-control border text-sm font-medium transition-colors ${
+          className={`h-10 px-3 rounded-control border text-xs sm:text-sm font-medium transition-colors ${
             selectedMode === 'all'
               ? 'bg-primary text-white border-primary'
               : 'bg-surface text-ink border-border hover:bg-canvas'
@@ -489,14 +505,36 @@ function ClientSelector({
         </button>
         <button
           type="button"
+          onClick={() => onModeChange('staff')}
+          className={`h-10 px-3 rounded-control border text-xs sm:text-sm font-medium transition-colors ${
+            selectedMode === 'staff'
+              ? 'bg-primary text-white border-primary'
+              : 'bg-surface text-ink border-border hover:bg-canvas'
+          }`}
+        >
+          Staff & Designers
+        </button>
+        <button
+          type="button"
+          onClick={() => onModeChange('all_users')}
+          className={`h-10 px-3 rounded-control border text-xs sm:text-sm font-medium transition-colors ${
+            selectedMode === 'all_users'
+              ? 'bg-primary text-white border-primary'
+              : 'bg-surface text-ink border-border hover:bg-canvas'
+          }`}
+        >
+          All Users
+        </button>
+        <button
+          type="button"
           onClick={() => onModeChange('specific')}
-          className={`h-10 px-3 rounded-control border text-sm font-medium transition-colors ${
+          className={`h-10 px-3 rounded-control border text-xs sm:text-sm font-medium transition-colors ${
             selectedMode === 'specific'
               ? 'bg-primary text-white border-primary'
               : 'bg-surface text-ink border-border hover:bg-canvas'
           }`}
         >
-          Specific Client
+          Specific Recipient
         </button>
       </div>
 
@@ -507,10 +545,10 @@ function ClientSelector({
             onClick={() => setOpen((prev) => !prev)}
             className="w-full h-10 px-3 rounded-control border border-border bg-surface text-sm text-ink flex items-center justify-between focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <span className={selectedClient ? 'text-ink' : 'text-ink-muted'}>
+            <span className={selectedClient ? 'text-ink font-medium' : 'text-ink-muted'}>
               {selectedClient
-                ? `${selectedClient.fullName} — ${selectedClient.email}`
-                : 'Select a client...'}
+                ? `${selectedClient.fullName} (${selectedClient.email}) — ${formatRoleLabel(selectedClient.role)}`
+                : 'Select a recipient...'}
             </span>
             <ChevronDown size={16} className="text-ink-muted" />
           </button>
@@ -527,7 +565,7 @@ function ClientSelector({
                     type="text"
                     value={searchQuery}
                     onChange={(e) => onSearch(e.target.value)}
-                    placeholder="Search by name, email, business..."
+                    placeholder="Search by name, email, role..."
                     className="w-full h-8 pl-8 pr-3 rounded-control border border-border bg-surface text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:ring-2 focus:ring-primary"
                     autoFocus
                   />
@@ -536,14 +574,14 @@ function ClientSelector({
               <div className="max-h-64 overflow-y-auto">
                 {loading && (
                   <div className="px-3 py-3 text-xs text-ink-muted flex items-center gap-2">
-                    <Loader2 size={12} className="animate-spin" /> Loading clients...
+                    <Loader2 size={12} className="animate-spin" /> Loading recipients...
                   </div>
                 )}
                 {error && !loading && (
                   <div className="px-3 py-3 text-xs text-danger">{error}</div>
                 )}
                 {!loading && !error && clients.length === 0 && (
-                  <div className="px-3 py-3 text-xs text-ink-muted">No clients found.</div>
+                  <div className="px-3 py-3 text-xs text-ink-muted">No recipients found.</div>
                 )}
                 {clients.map((c) => (
                   <button
@@ -553,15 +591,17 @@ function ClientSelector({
                       onClientChange(c.id)
                       setOpen(false)
                     }}
-                    className={`w-full text-left px-3 py-2 hover:bg-canvas transition-colors ${
+                    className={`w-full text-left px-3 py-2 hover:bg-canvas transition-colors flex items-center justify-between ${
                       c.id === selectedClientId ? 'bg-primary/5' : ''
                     }`}
                   >
-                    <div className="text-sm font-medium text-ink">{c.fullName}</div>
-                    <div className="text-xs text-ink-muted">{c.email}</div>
-                    <div className="text-[10px] text-ink-muted mt-0.5">
-                      {c.businessName !== '—' ? c.businessName : 'No business'} · {c.plan}
+                    <div>
+                      <div className="text-sm font-medium text-ink">{c.fullName}</div>
+                      <div className="text-xs text-ink-muted">{c.email}</div>
                     </div>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-primary/10 text-primary">
+                      {formatRoleLabel(c.role)}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -571,10 +611,13 @@ function ClientSelector({
       )}
 
       {selectedMode === 'specific' && selectedClient && (
-        <div className="mt-1 px-2 py-1.5 rounded-control bg-canvas border border-border text-xs text-ink-muted">
-          Sending to:{' '}
-          <span className="font-semibold text-ink">{selectedClient.fullName}</span> (
-          {selectedClient.email})
+        <div className="mt-1 px-2.5 py-1.5 rounded-control bg-canvas border border-border text-xs text-ink-muted flex items-center justify-between">
+          <span>
+            Sending to:{' '}
+            <span className="font-semibold text-ink">{selectedClient.fullName}</span> (
+            {selectedClient.email})
+          </span>
+          <span className="font-semibold text-primary">{formatRoleLabel(selectedClient.role)}</span>
         </div>
       )}
     </div>
@@ -690,13 +733,11 @@ export default function Notifications() {
       const list = await getAdminUsers({ search: search || undefined, tab: 'active' })
       setClients(
         list.filter(
-          (u) =>
-            (u.role === 'USER' || u.role === 'CUSTOMER') &&
-            (u.accountStatus === 'ACTIVE' || u.accountStatus === 'active'),
+          (u) => u.accountStatus === 'ACTIVE' || u.accountStatus === 'active' || u.isActive,
         ),
       )
     } catch (err) {
-      setClientsError(err?.message || 'Failed to load clients')
+      setClientsError(err?.message || 'Failed to load recipients')
       setClients([])
     } finally {
       setClientsLoading(false)
@@ -793,7 +834,7 @@ export default function Notifications() {
     if (!plainMessage || sendButtonState === 'sending') return
 
     if (recipientMode === 'specific' && !selectedClientId) {
-      setSendError({ message: 'Please select a specific client.' })
+      setSendError({ message: 'Please select a specific recipient.' })
       return
     }
 
@@ -802,6 +843,9 @@ export default function Notifications() {
 
     try {
       const finalMessage = buildFinalMessage()
+      let targetAudience = 'CLIENTS'
+      if (recipientMode === 'staff') targetAudience = 'STAFF_DESIGNERS'
+      if (recipientMode === 'all_users') targetAudience = 'ALL'
 
       await sendSystemAnnouncement({
         title: formState.title || ANNOUNCEMENT_TYPE_TO_DB[formState.type] || 'Notification',
@@ -812,6 +856,7 @@ export default function Notifications() {
           recipientMode === 'specific' && selectedClientId ? [selectedClientId] : undefined,
         metadata: {
           announcementType: ANNOUNCEMENT_TYPE_TO_DB[formState.type] || 'SYSTEM_ANNOUNCEMENT',
+          targetAudience: recipientMode === 'specific' ? undefined : targetAudience,
           attachmentsCount: attachments.length,
         },
       })
@@ -876,8 +921,10 @@ export default function Notifications() {
                 className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
               >
                 <option value="System Announcement">System Announcement</option>
+                <option value="Task Notification">Task Notification</option>
+                <option value="Submission Notification">Submission Notification</option>
+                <option value="Payment Notification">Payment Notification</option>
                 <option value="Subscription Reminder">Subscription Reminder</option>
-                <option value="Content Approval">Content Approval</option>
                 <option value="Publishing">Publishing</option>
                 <option value="Maintenance">Maintenance</option>
               </select>
@@ -900,7 +947,7 @@ export default function Notifications() {
             selectedMode={recipientMode}
             onModeChange={(m) => {
               setRecipientMode(m)
-              if (m === 'all') setSelectedClientId('')
+              if (m !== 'specific') setSelectedClientId('')
             }}
             selectedClientId={selectedClientId}
             onClientChange={setSelectedClientId}
@@ -1009,12 +1056,13 @@ export default function Notifications() {
                 className="appearance-none bg-surface border border-border rounded-control py-1.5 pl-3 pr-8 text-xs font-semibold text-ink focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer"
               >
                 <option value="All Types">All Types</option>
-                <option value="Announcement">Announcement</option>
+                <option value="System">System</option>
+                <option value="Task">Task</option>
+                <option value="Submission">Submission</option>
+                <option value="Payment">Payment</option>
                 <option value="Reminder">Reminder</option>
-                <option value="Approval">Approval</option>
                 <option value="Publishing">Publishing</option>
                 <option value="Maintenance">Maintenance</option>
-                <option value="Support">Support</option>
                 <option value="Account">Account</option>
               </select>
             </div>
