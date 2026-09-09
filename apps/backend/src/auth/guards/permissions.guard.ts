@@ -10,7 +10,7 @@ import { REQUIRE_PERMISSION_KEY } from '../decorators/require-permission.decorat
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as schema from '../../database/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { UserRole } from '../../common/enums/roles.enum';
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
 
@@ -61,11 +61,16 @@ export class PermissionsGuard implements CanActivate {
 
     const { module, action } = requiredPermission;
 
+    const targetModules = [module];
+    if (module === 'billing' || module === 'money_management') {
+      targetModules.push('billing', 'money_management');
+    }
+
     // Query DB for this role's module permission
     const permission = await this.db.query.rolePermissions.findFirst({
       where: and(
         eq(schema.rolePermissions.role, user.role as any),
-        eq(schema.rolePermissions.module, module),
+        inArray(schema.rolePermissions.module, targetModules),
       ),
     });
 

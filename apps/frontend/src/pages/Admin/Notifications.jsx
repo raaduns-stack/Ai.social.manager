@@ -117,6 +117,67 @@ function formatBytes(bytes) {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
+function NotificationPreviewCard({ title, message, type, recipientMode, selectedClient, attachments, onEditClick }) {
+  const typeLabel = TYPE_LABEL_FROM_DB[ANNOUNCEMENT_TYPE_TO_DB[type]] || type || 'Announcement'
+  const toneVal = TYPE_TONE[typeLabel] || 'primary'
+
+  const recipientLabel = useMemo(() => {
+    if (recipientMode === 'all') return 'All Clients'
+    if (recipientMode === 'staff') return 'Staff & Graphic Designers'
+    if (recipientMode === 'all_users') return 'All Platform Users'
+    if (selectedClient) return `${selectedClient.fullName} (${selectedClient.email})`
+    return 'Target Recipient'
+  }, [recipientMode, selectedClient])
+
+  return (
+    <div className="w-full rounded-control border border-primary/30 bg-surface shadow-hover overflow-hidden transition-all">
+      <div className="p-4 border-b border-border bg-canvas/40 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Badge tone={toneVal}>{typeLabel}</Badge>
+          <span className="text-xs text-ink-muted">Recipient View Preview</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-ink-muted">
+          <span>Target: <strong className="text-ink">{recipientLabel}</strong></span>
+          <button
+            type="button"
+            onClick={onEditClick}
+            className="ml-2 px-2.5 py-1 text-xs font-semibold rounded-control bg-primary text-white hover:bg-primary/90 transition-colors"
+          >
+            Edit Content
+          </button>
+        </div>
+      </div>
+
+      <div className="p-5 space-y-3 cursor-pointer hover:bg-canvas/10 transition-colors" onClick={onEditClick}>
+        <div className="flex items-center justify-between">
+          <h4 className="text-base font-bold text-ink">
+            {title || 'Untitled Notification'}
+          </h4>
+          <span className="text-xs text-ink-muted">Just now</span>
+        </div>
+
+        {stripHtml(message) || attachments.length > 0 ? (
+          <div
+            className="prose prose-sm max-w-none text-ink text-sm leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: message }}
+          />
+        ) : (
+          <p className="text-sm text-ink-muted italic py-4">
+            Nothing to preview yet. Click to write your notification content.
+          </p>
+        )}
+      </div>
+
+      {attachments.length > 0 && (
+        <div className="px-5 py-3 border-t border-border bg-canvas/20 text-xs text-ink-muted flex items-center gap-2">
+          <Paperclip size={14} className="text-primary" />
+          <span>{attachments.length} attachment(s) included</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RichTextEditor({ value, onChange, onImageSelect, onFileSelect }) {
   const [showEmoji, setShowEmoji] = useState(false)
   const [showLinkInput, setShowLinkInput] = useState(false)
@@ -189,13 +250,29 @@ function RichTextEditor({ value, onChange, onImageSelect, onFileSelect }) {
     setShowLinkInput(false)
   }
 
-  const handleEmoji = (emojiData) => {
-    editor.chain().focus().insertContent(emojiData.emoji).run()
+  const handleEmoji = (emojiData, event) => {
+    if (event && typeof event.stopPropagation === 'function') {
+      event.stopPropagation()
+    }
+    const emojiChar = emojiData?.emoji || emojiData?.native
+    if (emojiChar && editor) {
+      editor.chain().focus().insertContent(emojiChar).run()
+    }
   }
 
   const handleImageChange = (e) => {
     const file = e.target.files?.[0]
-    if (file) onImageSelect(file)
+    if (file) {
+      const reader = new FileReader()
+      reader.onload = (evt) => {
+        const dataUrl = evt.target?.result
+        if (dataUrl && editor) {
+          editor.chain().focus().setImage({ src: dataUrl }).run()
+        }
+        onImageSelect(file)
+      }
+      reader.readAsDataURL(file)
+    }
     e.target.value = ''
   }
 
@@ -349,11 +426,10 @@ function RichTextEditor({ value, onChange, onImageSelect, onFileSelect }) {
               <EmojiPicker
                 onEmojiClick={handleEmoji}
                 theme={Theme.LIGHT}
-                emojiStyle={EmojiStyle.NATIVE}
-                lazyLoadEmojis
+                lazyLoadEmojis={false}
                 searchPlaceholder="Search emoji..."
                 width={320}
-                height={400}
+                height={380}
               />
             </div>
           )}
@@ -979,18 +1055,15 @@ export default function Notifications() {
             </div>
 
             {showPreview ? (
-              <div className="w-full p-4 rounded-control border border-border bg-surface min-h-[160px]">
-                {formState.message || attachments.length > 0 ? (
-                  <div
-                    className="prose prose-sm max-w-none text-ink"
-                    dangerouslySetInnerHTML={{ __html: buildFinalMessage() }}
-                  />
-                ) : (
-                  <p className="text-sm text-ink-muted italic">
-                    Nothing to preview yet. Write some content first.
-                  </p>
-                )}
-              </div>
+              <NotificationPreviewCard
+                title={formState.title}
+                message={buildFinalMessage()}
+                type={formState.type}
+                recipientMode={recipientMode}
+                selectedClient={clients.find((c) => c.id === selectedClientId)}
+                attachments={attachments}
+                onEditClick={() => setShowPreview(false)}
+              />
             ) : (
               <RichTextEditor
                 value={formState.message}
