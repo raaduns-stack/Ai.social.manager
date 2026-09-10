@@ -31,6 +31,8 @@ apiClient.interceptors.request.use(
     const isPublicAuthRoute =
       url.includes('/auth/login') ||
       url.includes('/auth/register') ||
+      url.includes('/auth/designer/register') ||
+      url.includes('/auth/designer/activate') ||
       url.includes('/auth/verify-email') ||
       url.includes('/auth/resend-verification') ||
       url.includes('/auth/forgot-password') ||
@@ -98,24 +100,20 @@ apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError<any>) => {
     const originalRequest = error.config;
+    const url = originalRequest?.url || '';
 
-    if (originalRequest) {
-      const url = originalRequest.url || '';
-
-      // 2. PREVENT REDIRECT LOOPS
-      if (
-        url.includes('/auth/login') ||
-        url.includes('/auth/register') ||
-        url.includes('/auth/refresh') ||
-        url.includes('/admin/login') ||
-        url.includes('/designer/login')
-      ) {
-        throw error;
-      }
-    }
+    const isAuthRoute =
+      url.includes('/auth/login') ||
+      url.includes('/auth/register') ||
+      url.includes('/auth/designer/register') ||
+      url.includes('/auth/designer/activate') ||
+      url.includes('/auth/refresh') ||
+      url.includes('/admin/login') ||
+      url.includes('/designer/login');
 
     // 1. On a 401, attempt to refresh tokens once (if we have a refresh token and haven't retried yet)
     if (
+      !isAuthRoute &&
       error.response?.status === 401 &&
       originalRequest &&
       !(originalRequest as any)._retry

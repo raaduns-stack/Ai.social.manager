@@ -37,9 +37,18 @@ export function DesignerAuthProvider({ children }) {
   const login = async (email, password) => {
     try {
       const response = await apiClient.post("/auth/login", { email, password });
+
+      if (response.data?.requiresVerification) {
+        return {
+          success: false,
+          requiresVerification: true,
+          email: response.data.email || email,
+        };
+      }
+
       const { user, accessToken, refreshToken } = response.data;
 
-      if (user.role !== "designer") {
+      if (!user || user.role !== "designer") {
         return {
           success: false,
           error: "Access denied. This portal is for graphic designers only.",
@@ -61,10 +70,13 @@ export function DesignerAuthProvider({ children }) {
       setDesigner(session);
       return { success: true };
     } catch (err) {
-      // EMAIL_NOT_VERIFIED is handled by api-client redirect (403 → /designer/verify-email).
-      // Re-throw so caller can avoid showing an error banner and the pending-promise halt can trigger redirect.
-      const isNotVerified = err?.statusCode === 403 && (err?.message?.toLowerCase?.().includes("not verified") || err?.errorCode === "EMAIL_NOT_VERIFIED" || err?.message?.includes?.("verify"));
-      if (isNotVerified) throw err;
+      if (err?.requiresVerification || err?.errorCode === "EMAIL_NOT_VERIFIED") {
+        return {
+          success: false,
+          requiresVerification: true,
+          email: err?.email || email,
+        };
+      }
       const msg = err?.message || err?.error || "Invalid email or password.";
       return { success: false, error: msg };
     }
@@ -72,20 +84,7 @@ export function DesignerAuthProvider({ children }) {
 
   const register = async (email, password, fullName) => {
     const response = await apiClient.post("/auth/designer/register", { email, password, fullName });
-    const { user, accessToken, refreshToken } = response.data;
-    const session = {
-      id: user.id,
-      email: user.email,
-      name: user.fullName || user.name || user.email,
-      role: user.role,
-      avatar: user.avatar || null,
-      accessToken,
-      refreshToken,
-      rawUser: user,
-    };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-    setDesigner(session);
-    return user;
+    return response.data;
   };
 
   const logout = () => {

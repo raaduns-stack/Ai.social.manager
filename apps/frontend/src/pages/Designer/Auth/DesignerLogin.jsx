@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useNavigate, Link, useLocation } from "react-router-dom";
+import { useNavigate, Link, useLocation, useSearchParams } from "react-router-dom";
 import { Eye, EyeOff, Mail, Lock, Palette } from "lucide-react";
 import Button from "../../../components/ui/Button";
 import { useDesignerAuth } from "../../../context/useDesignerAuth";
@@ -9,9 +9,11 @@ export default function DesignerLogin() {
   const { login } = useDesignerAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const from = location.state?.from?.pathname || "/designer";
 
-  const [formData, setFormData] = useState({ email: "", password: "", rememberMe: false });
+  const prefilledEmail = searchParams.get("email") || "";
+  const [formData, setFormData] = useState({ email: prefilledEmail, password: "", rememberMe: false });
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -35,18 +37,30 @@ export default function DesignerLogin() {
     setApiError(null);
     try {
       const result = await login(formData.email, formData.password);
+      if (result.requiresVerification) {
+        window.dispatchEvent(
+          new CustomEvent("app-toast", {
+            detail: {
+              message: "Please enter your verification code to continue.",
+              type: "warning",
+            },
+          })
+        );
+        navigate(`/designer/verify-email?email=${encodeURIComponent(result.email || formData.email)}`);
+        return;
+      }
+
       if (result.success) {
         navigate(from, { replace: true });
       } else {
         setApiError({ message: result.error });
       }
     } catch (err) {
-      // EMAIL_NOT_VERIFIED is redirected by api-client (403 → /designer/verify-email)
-      // This catch prevents an unhandled rejection when that pending redirect fires
-      // For any other throw, surface it
-      if (err?.statusCode !== 403 || !err?.message?.toLowerCase?.().includes("not verified")) {
-        setApiError({ message: err?.message || "Invalid email or password." });
+      if (err?.requiresVerification || err?.errorCode === "EMAIL_NOT_VERIFIED") {
+        navigate(`/designer/verify-email?email=${encodeURIComponent(err.email || formData.email)}`);
+        return;
       }
+      setApiError({ message: err?.message || "Invalid email or password." });
     } finally {
       setLoading(false);
     }

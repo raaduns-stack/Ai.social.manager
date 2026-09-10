@@ -66,28 +66,16 @@ export default function DesignerVerifyEmail() {
     setLoading(true);
     setError("");
     try {
-      const res = await apiClient.post("/auth/verify-email", { email, code: fullCode });
-      const { user, accessToken, refreshToken } = res.data;
-      if (user?.role && user.role !== "designer") {
-        setError("This verification is for designer accounts only.");
-        return;
-      }
-      // Persist via localStorage and force reload of DesignerAuthContext (provider reads on mount)
-      const session = {
-        id: user.id,
-        email: user.email,
-        name: user.fullName || user.name || user.email,
-        role: user.role,
-        accessToken,
-        refreshToken,
-        rawUser: user,
-      };
-      localStorage.setItem("designer_session", JSON.stringify(session));
-      // Trigger context sync by dispatching storage event + reloading — context will pick up on next render via useEffect
-      window.dispatchEvent(new Event("storage"));
-      window.dispatchEvent(new CustomEvent("app-toast", { detail: { message: "Email verified — welcome!", type: "success" } }));
-      // Small delay so toast shows before navigation
-      setTimeout(() => navigate("/designer", { replace: true }), 300);
+      await apiClient.post("/auth/verify-email", { email, code: fullCode });
+      window.dispatchEvent(
+        new CustomEvent("app-toast", {
+          detail: {
+            message: "Email verified successfully! Please log in to access the Designer Portal.",
+            type: "success",
+          },
+        })
+      );
+      navigate(`/designer/login?email=${encodeURIComponent(email)}`, { replace: true });
     } catch (err) {
       setError(err?.message || "Verification failed. Check the code and try again.");
     } finally {
