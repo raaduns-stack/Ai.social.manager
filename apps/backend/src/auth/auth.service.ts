@@ -13,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcrypt';
 import { randomBytes, createHash } from 'node:crypto';
-import { eq, and, isNull } from 'drizzle-orm';
+import { eq, and, desc, isNull } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { Request } from 'express';
 import { DATABASE_CONNECTION } from '../database/database.module';
@@ -931,6 +931,7 @@ export class AuthService {
       case 'DELETED':
         updateData.accountStatus = 'DELETED';
         updateData.isActive = false;
+        updateData.deletedAt = now;
         break;
 
       default:

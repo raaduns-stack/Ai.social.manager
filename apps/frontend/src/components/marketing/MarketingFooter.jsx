@@ -22,56 +22,56 @@ export default function MarketingFooter() {
           {/* Link Sections — 3 columns side by side */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
 
-          {/* Product */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Product</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <Link to="/features" className="text-[#999999] hover:text-white transition-colors">Features</Link>
-              </li>
-              <li>
-                <Link to="/pricing" className="text-[#999999] hover:text-white transition-colors">Pricing</Link>
-              </li>
-              <li>
-                <Link to="/signup" className="text-[#999999] hover:text-white transition-colors">Get Started</Link>
-              </li>
-              <li>
-                <Link to="/terms-of-service" className="text-[#999999] hover:text-white transition-colors">Terms of Service</Link>
-              </li>
-            </ul>
-          </div>
+            {/* Product */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Product</h4>
+              <ul className="space-y-2.5 text-sm">
+                <li>
+                  <Link to="/features" className="text-[#999999] hover:text-white transition-colors">Features</Link>
+                </li>
+                <li>
+                  <Link to="/pricing" className="text-[#999999] hover:text-white transition-colors">Pricing</Link>
+                </li>
+                <li>
+                  <Link to="/signup" className="text-[#999999] hover:text-white transition-colors">Get Started</Link>
+                </li>
+                <li>
+                  <Link to="/terms-of-service" className="text-[#999999] hover:text-white transition-colors">Terms of Service</Link>
+                </li>
+              </ul>
+            </div>
 
-          {/* Career */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Career</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <Link to="/designer/register" className="text-[#999999] hover:text-white transition-colors">Designer Portal</Link>
-              </li>
-              <li>
-                <Link to="/contact" className="text-[#999999] hover:text-white transition-colors">Contact</Link>
-              </li>
-              <li>
-                <Link to="/privacy-policy" className="text-[#999999] hover:text-white transition-colors">Privacy Policy</Link>
-              </li>
-            </ul>
-          </div>
+            {/* Career */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Career</h4>
+              <ul className="space-y-2.5 text-sm">
+                <li>
+                  <Link to="/designer/register" className="text-[#999999] hover:text-white transition-colors">Designer Portal</Link>
+                </li>
+                <li>
+                  <Link to="/contact" className="text-[#999999] hover:text-white transition-colors">Contact</Link>
+                </li>
+                <li>
+                  <Link to="/privacy-policy" className="text-[#999999] hover:text-white transition-colors">Privacy Policy</Link>
+                </li>
+              </ul>
+            </div>
 
-          {/* Connect */}
-          <div className="space-y-4">
-            <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Connect</h4>
-            <ul className="space-y-2.5 text-sm">
-              <li>
-                <a href="https://www.linkedin.com/company/raaduns-software-solutions" target="_blank" rel="noopener noreferrer" className="text-[#999999] hover:text-white transition-colors">LinkedIn</a>
-              </li>
-              <li>
-                <a href="https://www.facebook.com/raadunssoftware" target="_blank" rel="noopener noreferrer" className="text-[#999999] hover:text-white transition-colors">Facebook</a>
-              </li>
-              <li>
-                <a href="https://www.instagram.com/raadunssolutions/" target="_blank" rel="noopener noreferrer" className="text-[#999999] hover:text-white transition-colors">Instagram</a>
-              </li>
-            </ul>
-          </div>
+            {/* Connect */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Connect</h4>
+              <ul className="space-y-2.5 text-sm">
+                <li>
+                  <a href="https://www.linkedin.com/company/raaduns-software-solutions" target="_blank" rel="noopener noreferrer" className="text-[#999999] hover:text-white transition-colors">LinkedIn</a>
+                </li>
+                <li>
+                  <a href="https://www.facebook.com/raadunssoftware" target="_blank" rel="noopener noreferrer" className="text-[#999999] hover:text-white transition-colors">Facebook</a>
+                </li>
+                <li>
+                  <a href="https://www.instagram.com/raadunssolutions/" target="_blank" rel="noopener noreferrer" className="text-[#999999] hover:text-white transition-colors">Instagram</a>
+                </li>
+              </ul>
+            </div>
 
           </div>
 
@@ -80,7 +80,11 @@ export default function MarketingFooter() {
         {/* Bottom bar */}
         <div className="pt-8 border-t border-[#333333] flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-[#666666]">
           <p>&copy; {new Date().getFullYear()} RaaSocial. All rights reserved.</p>
-          <span className="cursor-default">Powered by Kleos</span>
+          <div className="flex gap-6">
+            <Link to="/privacy-policy" className="hover:text-white transition-colors">Privacy Policy</Link>
+            <Link to="/terms-of-service" className="hover:text-white transition-colors">Terms of Service</Link>
+            <span className="cursor-default">Powered by Kleos</span>
+          </div>
         </div>
 
       </div>
