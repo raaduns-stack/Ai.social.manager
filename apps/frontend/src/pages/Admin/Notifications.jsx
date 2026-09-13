@@ -53,6 +53,7 @@ import {
 
 const ANNOUNCEMENT_TYPE_TO_DB = {
   'System Announcement': 'SYSTEM_ANNOUNCEMENT',
+  'Policy & Announcements': 'SECURITY_NOTICE',
   'Task Notification': 'TICKET_ASSIGNED',
   'Submission Notification': 'CONTENT_APPROVAL',
   'Payment Notification': 'SUBSCRIPTION_PAYMENT_SUCCESS',
@@ -82,13 +83,14 @@ const TYPE_LABEL_FROM_DB = {
   TICKET_RESPONDED: 'Task',
   TICKET_RESOLVED: 'Task',
   TICKET_CLOSED: 'Task',
-  SECURITY_NOTICE: 'Security',
+  SECURITY_NOTICE: 'Policy',
   FEATURE_UPDATE: 'Feature Update',
   SERVICE_UPDATE: 'Service Update',
 }
 
 const TYPE_TONE = {
   System: 'primary',
+  Policy: 'warning',
   Reminder: 'warning',
   Submission: 'success',
   Task: 'primary',
@@ -959,6 +961,7 @@ export default function Notifications() {
                 className="h-10 rounded-control border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary cursor-pointer"
               >
                 <option value="System Announcement">System Announcement</option>
+                <option value="Policy & Announcements">Policy & Announcements</option>
                 <option value="Task Notification">Task Notification</option>
                 <option value="Submission Notification">Submission Notification</option>
                 <option value="Payment Notification">Payment Notification</option>
@@ -1062,6 +1065,7 @@ export default function Notifications() {
               >
                 <option value="All Types">All Types</option>
                 <option value="System">System</option>
+                <option value="Policy">Policy</option>
                 <option value="Task">Task</option>
                 <option value="Submission">Submission</option>
                 <option value="Payment">Payment</option>

@@ -4,6 +4,7 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  forwardRef,
 } from '@nestjs/common';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -18,12 +19,17 @@ import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
 import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 import { UpdateImageToCodeDto } from './dto/update-image-to-code.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class DesignerService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
+  constructor(
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
+    @Inject(forwardRef(() => NotificationsService))
+    private readonly notificationsService: NotificationsService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // DASHBOARD
@@ -330,6 +336,20 @@ export class DesignerService {
       .where(eq(schema.tasks.id, taskId))
       .returning();
 
+    // Trigger notification
+    try {
+      const eventType = dto.status === 'done' ? 'completed' : 'updated';
+      await this.notificationsService.triggerTaskEvent({
+        taskId: task.id,
+        designerId,
+        taskTitle: task.title,
+        eventType,
+        details: `Task status changed to ${dto.status.toUpperCase()}`,
+      });
+    } catch (err) {
+      console.warn('Failed to trigger task status update notification:', err);
+    }
+
     return updated;
   }
 
@@ -463,6 +483,18 @@ export class DesignerService {
       title: newStatus === 'resubmitted' ? 'Resubmitted for review' : 'Submitted for review',
       userId: designerId,
     });
+
+    // Trigger notification
+    try {
+      await this.notificationsService.triggerSubmissionEvent({
+        submissionId: sub.id,
+        designerId,
+        title: sub.title,
+        eventType: 'submitted',
+      });
+    } catch (err) {
+      console.warn('Failed to trigger submission notification:', err);
+    }
 
     return updated;
   }

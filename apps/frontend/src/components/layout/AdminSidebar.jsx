@@ -29,6 +29,10 @@ import {
   X,
   LogOut,
   Bolt,
+  Banknote,
+  TrendingUp,
+  CheckSquare,
+  FileCheck,
 } from "lucide-react";
 import { useState } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
@@ -60,6 +64,15 @@ const NAV_SECTIONS = [
     ],
   },
   {
+    label: "Design",
+    items: [
+      { label: "Tasks & Assignments", to: "/admin/design-tasks", icon: CheckSquare },
+      { label: "Submissions & Reviews", to: "/admin/design-submissions", icon: FileCheck },
+      { label: "Designer Payments", to: "/admin/designer-payments", icon: Banknote },
+      { label: "Design Reports", to: "/admin/design-reports", icon: TrendingUp },
+    ],
+  },
+  {
     label: "Platform",
     items: [
       { label: "AI Configuration", to: "/admin/ai-config", icon: Cog },
@@ -84,6 +97,10 @@ const ROUTE_MODULE_MAP = {
   "/admin/calendar": "content_calendar",
   "/admin/ai-content": "content_creation",
   "/admin/billing": "billing",
+  "/admin/design-tasks": "content_creation",
+  "/admin/design-submissions": "content_creation",
+  "/admin/designer-payments": "money_management",
+  "/admin/design-reports": "analytics",
   "/admin/social-accounts": "social_accounts",
   "/admin/money-management": "money_management",
   "/admin/uploads": "upload_management",

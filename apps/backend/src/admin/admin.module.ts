@@ -14,6 +14,13 @@ import { LoginHistoryModule } from '../login-history/login-history.module';
 import { AdminActivityLogsController } from './activity-logs/admin-activity-logs.controller';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { AuthModule } from '../auth/auth.module';
+import { DesignerPaymentsController } from './designer-payments/designer-payments.controller';
+import { DesignerPaymentsService } from './designer-payments/designer-payments.service';
+import { DesignReportsController } from './design-reports/design-reports.controller';
+import { DesignReportsService } from './design-reports/design-reports.service';
+import { DesignManagementController } from './design-management/design-management.controller';
+import { DesignManagementService } from './design-management/design-management.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -24,6 +31,7 @@ import { AuthModule } from '../auth/auth.module';
     LoginHistoryModule,
     ActivityLogsModule,
     AuthModule,
+    NotificationsModule,
   ],
   controllers: [
     AdminController,
@@ -32,14 +40,23 @@ import { AuthModule } from '../auth/auth.module';
     AdminUploadsController,
     AdminLoginHistoryController,
     AdminActivityLogsController,
+    DesignerPaymentsController,
+    DesignReportsController,
+    DesignManagementController,
   ],
   providers: [
     AdminService,
     DashboardService,
+    DesignerPaymentsService,
+    DesignReportsService,
+    DesignManagementService,
   ],
   exports: [
     AdminService,
     DashboardService,
+    DesignerPaymentsService,
+    DesignReportsService,
+    DesignManagementService,
   ],
 })
-export class AdminModule { }
+export class AdminModule { }

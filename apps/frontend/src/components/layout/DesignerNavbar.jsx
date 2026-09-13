@@ -6,21 +6,36 @@ import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Bell, Command, ChevronDown, LogOut, Menu, UploadCloud, Sparkles, Settings2, User } from "lucide-react";
 import { useDesignerAuth } from "../../context/useDesignerAuth";
-
-const mockNotifs = [
-  { id: 1, title: "Revision required on SUB-040 — Pricing Section", time: "5h ago", tone: "danger" },
-  { id: 2, title: "New task: Hospitality — Ramadan Campaign", time: "2h ago", tone: "primary" },
-  { id: 3, title: "SUB-041 approved — ₦6k credited", time: "1d ago", tone: "success" },
-];
+import { getDesignerNotifications, markAllNotificationsRead } from "../../features/designer/designer-api";
 
 export default function DesignerNavbar({ onMenuClick }) {
   const { designer, logout } = useDesignerAuth();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [hasUnread, setHasUnread] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [loadingNotifs, setLoadingNotifs] = useState(false);
   const notifRef = useRef(null);
   const profileRef = useRef(null);
+
+  const loadNotifications = async () => {
+    try {
+      setLoadingNotifs(true);
+      const res = await getDesignerNotifications();
+      setNotifications(Array.isArray(res) ? res : []);
+    } catch {
+      // ignore
+    } finally {
+      setLoadingNotifs(false);
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+  }, []);
+
+  const unreadList = notifications.filter((n) => !n.isRead);
+  const hasUnread = unreadList.length > 0;
 
   useEffect(() => {
     const h = (e) => {
@@ -55,7 +70,7 @@ export default function DesignerNavbar({ onMenuClick }) {
           <span className="w-2 h-2 rounded-full bg-success dp-pulse" />
           <span className="font-medium">Available for work</span>
           <span className="text-border">•</span>
-          <span className="hidden xl:inline">Next payout Tue • ₦42k pending</span>
+          <span className="hidden xl:inline text-ink font-medium">Verified Designer</span>
         </div>
       </div>
 
@@ -76,7 +91,7 @@ export default function DesignerNavbar({ onMenuClick }) {
           <button
             onClick={() => setNotifOpen((o) => !o)}
             className="relative w-9 h-9 rounded-xl flex items-center justify-center bg-white border border-border text-ink-muted hover:border-primary-100 hover:bg-primary-50 hover:text-ink transition-colors"
-            aria-label={hasUnread ? "Notifications — 3 unread" : "Notifications"}
+            aria-label={hasUnread ? `Notifications — ${unreadList.length} unread` : "Notifications"}
           >
             <Bell size={16} />
             {hasUnread && <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-primary rounded-full border-2 border-white" />}
@@ -85,24 +100,35 @@ export default function DesignerNavbar({ onMenuClick }) {
             <div className="absolute right-0 mt-2 w-80 rounded-2xl border border-border bg-white shadow-premium z-50 overflow-hidden">
               <div className="px-4 py-3 flex items-center justify-between border-b border-border">
                 <p className="text-sm font-bold text-ink">Notifications</p>
-                <button
-                  onClick={() => { setHasUnread(false); setNotifOpen(false); window.dispatchEvent(new CustomEvent("app-toast", { detail: { message: "All notifications marked read", type: "success" } })); }}
-                  className="text-xs font-semibold text-primary hover:text-primary-700"
-                >
-                  Mark all read
-                </button>
+                {hasUnread && (
+                  <button
+                    onClick={async () => {
+                      await markAllNotificationsRead().catch(() => {});
+                      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+                      window.dispatchEvent(new CustomEvent("app-toast", { detail: { message: "All notifications marked read", type: "success" } }));
+                    }}
+                    className="text-xs font-semibold text-primary hover:text-primary-700"
+                  >
+                    Mark all read
+                  </button>
+                )}
               </div>
               <div className="p-2 space-y-1 max-h-80 overflow-y-auto dp-scroll">
-                <p className="px-2 pt-1 dp-mono text-ink-muted">Today</p>
-                {mockNotifs.map((n) => (
-                  <div key={n.id} className="flex gap-2.5 p-2.5 rounded-xl hover:bg-canvas border border-transparent hover:border-border transition-colors">
-                    <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${n.tone === "success" ? "bg-success" : n.tone === "danger" ? "bg-danger" : "bg-primary"}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium text-ink leading-snug line-clamp-2">{n.title}</p>
-                      <p className="text-[11px] text-ink-muted mt-1">{n.time}</p>
+                {loadingNotifs ? (
+                  <p className="p-4 text-center text-xs text-ink-muted">Loading notifications...</p>
+                ) : notifications.length === 0 ? (
+                  <p className="p-4 text-center text-xs text-ink-muted">No notifications yet.</p>
+                ) : (
+                  notifications.slice(0, 5).map((n) => (
+                    <div key={n.id} className="flex gap-2.5 p-2.5 rounded-xl hover:bg-canvas border border-transparent hover:border-border transition-colors">
+                      <span className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${!n.isRead ? "bg-primary" : "bg-border"}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-medium text-ink leading-snug line-clamp-2">{n.title || n.message}</p>
+                        <p className="text-[11px] text-ink-muted mt-1">{new Date(n.createdAt).toLocaleDateString()}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                )}
                 <Link
                   to="/designer/notifications"
                   onClick={() => setNotifOpen(false)}

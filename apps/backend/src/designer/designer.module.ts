@@ -18,6 +18,7 @@ import { BadRequestException } from '@nestjs/common';
 
 import { DesignerController } from './designer.controller';
 import { DesignerService } from './designer.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 const ALLOWED_MIME_TYPES = [
   'image/jpeg',
@@ -30,6 +31,7 @@ const ALLOWED_MIME_TYPES = [
 
 @Module({
   imports: [
+    NotificationsModule,
     MulterModule.register({
       storage: diskStorage({
         destination: (_req, _file, callback) => {
