@@ -42,6 +42,11 @@ export default function MarketingFooter() {
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Company</h4>
           <ul className="space-y-2.5 text-sm">
             <li>
+              <Link to="/designer/register" className="text-[#999999] hover:text-white transition-colors">
+                Designer Portal
+              </Link>
+            </li>
+            <li>
               <Link to="/contact" className="text-[#999999] hover:text-white transition-colors">
                 Contact
               </Link>
@@ -54,30 +59,30 @@ export default function MarketingFooter() {
           <h4 className="text-xs font-bold uppercase tracking-wider text-[#FF6600]">Social</h4>
           <ul className="space-y-2.5 text-sm">
             <li>
-              <a 
-                href="https://www.linkedin.com/company/raaduns-software-solutions" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.linkedin.com/company/raaduns-software-solutions"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-[#999999] hover:text-white transition-colors"
               >
                 LinkedIn
               </a>
             </li>
             <li>
-              <a 
-                href="https://www.facebook.com/raadunssoftware" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.facebook.com/raadunssoftware"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-[#999999] hover:text-white transition-colors"
               >
                 Facebook
               </a>
             </li>
             <li>
-              <a 
-                href="https://www.instagram.com/raadunssolutions/" 
-                target="_blank" 
-                rel="noopener noreferrer" 
+              <a
+                href="https://www.instagram.com/raadunssolutions/"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="text-[#999999] hover:text-white transition-colors"
               >
                 Instagram

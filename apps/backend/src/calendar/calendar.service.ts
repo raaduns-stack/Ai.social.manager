@@ -616,6 +616,24 @@ export class CalendarService {
     });
     if (!existing) throw new NotFoundException(`Post ${id} not found`);
 
+    if (dto.adminNotes) {
+      await this.db
+        .update(schema.contentCalendar)
+        .set({
+          adminNotes: dto.adminNotes,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contentCalendar.id, id));
+    }
+
+    if (dto.approvalStatus === 'APPROVED') {
+      await this.contentSuggestionsService.scheduleApprovedPost(
+        id,
+        existing.selectedSuggestionId || undefined,
+      );
+      return this.findOneById(id);
+    }
+
     const [updated] = await this.db
       .update(schema.contentCalendar)
       .set({
@@ -648,11 +666,13 @@ export class CalendarService {
     }
     const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
     const normalizedRequestedPlatforms = dto.platforms.map(p => normalizePlatformName(p));
-    for (const p of normalizedRequestedPlatforms) {
-      const isConn = connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase());
-      if (!isConn) {
-        throw new BadRequestException(`Platform ${p} is not currently connected.`);
-      }
+    const missingPlatforms = normalizedRequestedPlatforms.filter(
+      p => !connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase())
+    );
+    if (missingPlatforms.length > 0) {
+      throw new BadRequestException(
+        `No connected social account found for platform(s): ${missingPlatforms.join(', ')}.`
+      );
     }
 
     // Enforce Free plan platform limits
