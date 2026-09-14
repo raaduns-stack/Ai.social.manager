@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
-import { and, asc, eq, lte, notInArray } from 'drizzle-orm';
+import { and, asc, eq, gte, lte, notInArray } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
@@ -35,10 +35,12 @@ export class AutoApprovePostsJob {
       // 2. Compute grace window cutoff time
       const windowCutoff = new Date(Date.now() + windowHours * 60 * 60 * 1000);
 
-      // 3. Find candidate pending calendar posts within the grace window
+      // 3. Find candidate pending calendar posts within the grace window (from now - 15m to windowCutoff)
+      const nowBuffer = new Date(Date.now() - 15 * 60 * 1000);
       const pendingPosts = await this.db.query.contentCalendar.findMany({
         where: and(
           eq(schema.contentCalendar.approvalStatus, 'PENDING'),
+          gte(schema.contentCalendar.scheduledAt, nowBuffer),
           lte(schema.contentCalendar.scheduledAt, windowCutoff),
         ),
       });
