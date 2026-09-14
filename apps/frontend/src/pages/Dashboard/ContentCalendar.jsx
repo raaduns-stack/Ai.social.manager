@@ -656,7 +656,10 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
       let scheduledAt = null
       if (editDate) {
         const timePart = editTime || '12:00'
-        scheduledAt = `${editDate}T${timePart}:00.000Z`
+        const localDate = new Date(`${editDate}T${timePart}:00`)
+        scheduledAt = !isNaN(localDate.getTime())
+          ? localDate.toISOString()
+          : `${editDate}T${timePart}:00.000Z`
       }
       const updated = await updateCalendarPost(post.id, {
         title: editTitle,
