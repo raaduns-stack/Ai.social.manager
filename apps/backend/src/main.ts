@@ -51,8 +51,9 @@ async function bootstrap() {
   const jwtAccessSecret = config.get<string>('auth.accessSecret') || 'tumblr_cookie_secret_fallback';
   app.use(cookieParser(jwtAccessSecret));
 
+  const corsOrigin = config.get<string>('CORS_ORIGIN', 'http://localhost:5173');
   app.enableCors({
-    origin: ['http://localhost:5173', 'http://localhost:5174'],
+    origin: [corsOrigin, 'http://localhost:5174'],
     credentials: true,
   });
 

@@ -1,10 +1,10 @@
 import { cn } from '../../utils/cn'
 
 const tones = {
-  neutral: 'bg-gray-100 text-ink-muted',
-  success: 'bg-accent-50 text-accent-600',
-  warning: 'bg-amber-50 text-warning',
-  danger: 'bg-red-50 text-danger',
+  neutral: 'bg-gray-100 text-gray-700',
+  success: 'bg-emerald-100 text-emerald-700',
+  warning: 'bg-amber-100 text-amber-700',
+  danger: 'bg-red-100 text-red-700',
   primary: 'bg-primary-50 text-primary-700',
 }
 
