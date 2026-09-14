@@ -79,26 +79,16 @@ export class AutoApprovePostsJob {
             orderBy: asc(schema.contentSuggestions.createdAt),
           });
 
-          if (suggestions.length === 0) {
-            this.logger.warn(
-              `[AutoApprove] Skipping post ID=${post.id} ("${post.title}"): no pending AI suggestions found.`
-            );
-            skippedCount++;
-            continue;
-          }
+          const targetVariationId = suggestions.length > 0 ? suggestions[0].id : undefined;
 
-          const targetSuggestion = suggestions[0];
-
-          // Re-use approval flow tagged with approvalSource = 'SYSTEM'
-          await this.contentSuggestionsService.approveVariation(
-            targetSuggestion.id,
-            { scheduledFor: post.scheduledAt?.toISOString() },
-            'SYSTEM',
+          await this.contentSuggestionsService.scheduleApprovedPost(
+            post.id,
+            targetVariationId,
           );
 
           approvedCount++;
           this.logger.log(
-            `[AutoApprove] Successfully auto-approved post ID=${post.id} using suggestion ID=${targetSuggestion.id}`
+            `[AutoApprove] Successfully auto-approved post ID=${post.id}${targetVariationId ? ` using suggestion ID=${targetVariationId}` : ' using calendar post content'}`
           );
         } catch (postErr: any) {
           this.logger.error(
@@ -109,7 +99,7 @@ export class AutoApprovePostsJob {
       }
 
       this.logger.log(
-        `[AutoApprove] Finished job run. Approved: ${approvedCount}, Skipped (no suggestions): ${skippedCount}.`
+        `[AutoApprove] Finished job run. Approved: ${approvedCount}.`
       );
     } catch (err: any) {
       this.logger.error('[AutoApprove] Unhandled error during auto-approve job execution', err.stack);
