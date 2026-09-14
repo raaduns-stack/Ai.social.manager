@@ -461,8 +461,8 @@ export class CalendarService {
       }
     }
 
-    // Topic change regeneration detection: if title is updated, delete suggestions
-    if (dto.title && dto.title !== post.title) {
+    // Topic change regeneration detection: if title is updated (and not selecting a suggestion), delete suggestions
+    if (dto.title && dto.title !== post.title && !dto.selectedSuggestionId) {
       await this.db
         .delete(schema.contentSuggestions)
         .where(eq(schema.contentSuggestions.postId, id));
@@ -496,6 +496,14 @@ export class CalendarService {
       })
       .where(eq(schema.contentCalendar.id, id))
       .returning();
+
+    // If selecting a suggestion, trigger unified approval & scheduling
+    if (dto.selectedSuggestionId) {
+      await this.contentSuggestionsService.scheduleApprovedPost(
+        id,
+        dto.selectedSuggestionId,
+      );
+    }
 
     // Re-fetch to return fully-populated relations
     return this.findOneForUser(updated.id, userId);
