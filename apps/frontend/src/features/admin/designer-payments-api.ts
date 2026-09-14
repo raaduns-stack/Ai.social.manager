@@ -149,3 +149,8 @@ export async function updateDesignerPaymentSettings(payload: {
   const response = await api.put<DesignerPaymentSettings>('/admin/designer-payments/settings', payload);
   return response.data;
 }
+
+export async function deleteDesignerPaymentRecord(id: string): Promise<{ success: boolean; message: string }> {
+  const response = await api.delete<{ success: boolean; message: string }>(`/admin/designer-payments/records/${id}`);
+  return response.data;
+}

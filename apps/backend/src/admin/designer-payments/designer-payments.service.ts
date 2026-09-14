@@ -203,7 +203,7 @@ export class DesignerPaymentsService {
       let pendingImagesCount = 0;
 
       for (const s of designerSubs) {
-        const fileCount = fileCountMap[s.id] || 1; // At least 1 image per submission
+        const fileCount = fileCountMap[s.id] ?? 0;
         if (['approved', 'completed'].includes(s.status)) {
           approvedImagesCount += fileCount;
         } else if (['submitted', 'received', 'under_review', 'resubmitted'].includes(s.status)) {
@@ -546,5 +546,18 @@ export class DesignerPaymentsService {
     }
 
     return updated;
+  }
+
+  async deletePaymentRecord(id: string) {
+    const payment = await this.db.query.designerPayments.findFirst({
+      where: eq(schema.designerPayments.id, id),
+    });
+
+    if (!payment) {
+      throw new NotFoundException(`Designer payment record with ID "${id}" not found`);
+    }
+
+    await this.db.delete(schema.designerPayments).where(eq(schema.designerPayments.id, id));
+    return { success: true, message: 'Payment record deleted successfully' };
   }
 }

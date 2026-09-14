@@ -4,6 +4,7 @@ import {
   Post,
   Put,
   Patch,
+  Delete,
   Param,
   Body,
   Query,
@@ -64,6 +65,12 @@ export class DesignerPaymentsController {
     @Request() req: any,
   ) {
     return this.designerPaymentsService.updatePaymentStatus(id, dto, req.user?.userId || req.user?.id);
+  }
+
+  @Delete('records/:id')
+  @ApiOperation({ summary: 'Delete a designer payment record' })
+  async deletePaymentRecord(@Param('id') id: string) {
+    return this.designerPaymentsService.deletePaymentRecord(id);
   }
 
   @Get('settings')

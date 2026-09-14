@@ -28,6 +28,7 @@ import {
   ArrowRight,
   Info,
   ExternalLink,
+  Trash2,
 } from 'lucide-react';
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
@@ -41,6 +42,7 @@ import {
   getDesignerPaymentRecords,
   createDesignerPayout,
   updateDesignerPaymentStatus,
+  deleteDesignerPaymentRecord,
   getDesignerPaymentSettings,
   updateDesignerPaymentSettings,
 } from '../../features/admin/designer-payments-api';
@@ -269,7 +271,10 @@ export default function DesignerPayments() {
       amountNaira: outstandingNaira > 0 ? String(outstandingNaira) : '',
       payoutType: 'manual',
       period: `Payout ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-      relatedWork: `${designer.approvedImagesCount} approved graphics, ${designer.acceptedImageToCodeCount} image-to-code`,
+      relatedWork:
+        (designer.approvedImagesCount > 0 || designer.acceptedImageToCodeCount > 0)
+          ? `${designer.approvedImagesCount} approved graphics, ${designer.acceptedImageToCodeCount} image-to-code`
+          : '',
       notes: '',
     });
     setPayoutModalError(null);
@@ -412,6 +417,41 @@ export default function DesignerPayments() {
         })
       );
       setActionModal((prev) => ({ ...prev, submitting: false }));
+    }
+  };
+
+  const handleDeleteRecord = async (record) => {
+    if (!window.confirm(`Are you sure you want to delete payment record "${record.reference}"?`)) {
+      return;
+    }
+    try {
+      await deleteDesignerPaymentRecord(record.id);
+      const [refreshedRecords, refreshedStats, refreshedEarnings] = await Promise.all([
+        getDesignerPaymentRecords(),
+        getDesignerPaymentDashboard(),
+        getDesignerEarnings(),
+      ]);
+      setRecords(refreshedRecords);
+      setStats(refreshedStats);
+      setEarnings(refreshedEarnings);
+      window.dispatchEvent(
+        new CustomEvent('app-toast', {
+          detail: {
+            message: `Payment record ${record.reference} deleted successfully.`,
+            type: 'success',
+          },
+        })
+      );
+    } catch (err) {
+      console.error(err);
+      window.dispatchEvent(
+        new CustomEvent('app-toast', {
+          detail: {
+            message: err?.response?.data?.message || 'Failed to delete payment record.',
+            type: 'error',
+          },
+        })
+      );
     }
   };
 
@@ -678,7 +718,7 @@ export default function DesignerPayments() {
                             {record.fee > 0 ? (
                               <span className="font-semibold text-amber-700">
                                 -{formatNaira(record.fee)}{' '}
-                                <span className="text-[10px] text-amber-600 block">(2% early fee)</span>
+                                <span className="text-[10px] text-amber-600 block">({settings?.manualPayoutFeePercent ?? 2}% early fee)</span>
                               </span>
                             ) : (
                               <span className="text-xs text-ink-muted">₦0 (Free)</span>
@@ -826,6 +866,16 @@ export default function DesignerPayments() {
                                   Re-open
                                 </Button>
                               )}
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleDeleteRecord(record)}
+                                className="text-red-500 hover:bg-red-50 hover:text-red-700 border-border hover:border-red-200 text-xs px-2 py-1"
+                                title="Delete payment record"
+                              >
+                                <Trash2 size={13} />
+                              </Button>
                             </div>
                           </td>
                         </tr>

@@ -46,9 +46,47 @@ function shortId(id) {
 
 const csvEscape = (value) => `"${String(value ?? "").replace(/"/g, '""')}"`;
 
+const NIGERIAN_BANKS = [
+  "Access Bank",
+  "Citibank Nigeria",
+  "Ecobank Nigeria",
+  "Fidelity Bank",
+  "First Bank of Nigeria",
+  "First City Monument Bank (FCMB)",
+  "Globus Bank",
+  "Guaranty Trust Bank (GTBank)",
+  "Heritage Bank",
+  "Jaiz Bank",
+  "Keystone Bank",
+  "Kuda Bank",
+  "Lotus Bank",
+  "Moniepoint MFB",
+  "OPay",
+  "Optimus Bank",
+  "Palmpay",
+  "Parallex Bank",
+  "Polaris Bank",
+  "PremiumTrust Bank",
+  "Providus Bank",
+  "Rubies Bank",
+  "Signature Bank",
+  "Stanbic IBTC Bank",
+  "Standard Chartered Bank",
+  "Sterling Bank",
+  "SunTrust Bank",
+  "TAJBank",
+  "Titan Trust Bank",
+  "Union Bank of Nigeria",
+  "United Bank for Africa (UBA)",
+  "Unity Bank",
+  "VFD Microfinance Bank",
+  "Wema Bank",
+  "Zenith Bank",
+];
+
 export default function DesignerPayments() {
   const [payouts, setPayouts] = useState([]);
-  const [method, setMethod] = useState({ accountName: "", accountNumber: "", bankName: "GTBank" });
+  const [method, setMethod] = useState({ accountName: "", accountNumber: "", bankName: "" });
   const [hasMethod, setHasMethod] = useState(false);
   const [editing, setEditing] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -61,16 +99,17 @@ export default function DesignerPayments() {
     setError(null);
     try {
       const [list, savedMethod] = await Promise.all([getDesignerPayments(), getPaymentMethod()]);
-      setPayouts(list);
-      if (savedMethod) {
+      setPayouts(list || []);
+      if (savedMethod && savedMethod.bankName && savedMethod.accountNumber) {
         setMethod({
-          accountName: savedMethod.accountName,
-          accountNumber: savedMethod.accountNumber,
-          bankName: savedMethod.bankName,
+          accountName: savedMethod.accountName || "",
+          accountNumber: savedMethod.accountNumber || "",
+          bankName: savedMethod.bankName || "",
         });
         setHasMethod(true);
         setEditing(false);
       } else {
+        setMethod({ accountName: "", accountNumber: "", bankName: "" });
         setHasMethod(false);
         setEditing(true);
       }
@@ -177,7 +216,7 @@ export default function DesignerPayments() {
     { key: "id", label: "Payment ID", render: (r) => <span className="font-mono text-xs tracking-wide text-ink-muted">{shortId(r.id)}</span> },
     { key: "period", label: "Period / Earnings", render: (r) => <span className="text-sm text-ink">{r.period || "—"}</span> },
     { key: "amount", label: "Amount", render: (r) => <span className="font-bold text-ink tabular-nums">{naira(r.amount)}</span> },
-    { key: "method", label: "Method", render: (r) => <span className="text-xs text-ink-muted border border-border bg-white px-2 py-1 rounded-full">Bank Transfer</span> },
+    { key: "method", label: "Method", render: (r) => <span className="text-xs text-ink-muted border border-border bg-white px-2 py-1 rounded-full">{r.bankName ? `Bank Transfer (${r.bankName})` : "Bank Transfer"}</span> },
     { key: "date", label: "Date", render: (r) => <span className="text-xs text-ink-muted flex items-center gap-1"><Clock size={12} />{timeAgo(r.paidAt || r.createdAt)}</span> },
     { key: "status", label: "Status", render: (r) => <Badge tone={statusTone[r.status]} className="capitalize text-xs">{r.status}</Badge> },
   ];
@@ -188,7 +227,7 @@ export default function DesignerPayments() {
         variant="premium"
         eyebrow="Account — Payments"
         title="Payments"
-        description="Track earnings, manage payout method and download statements. Payouts run every Tuesday."
+        description="Track earnings, manage payout method and download statements."
         action={<Button variant="outline" onClick={downloadStatement} className="rounded-lg gap-2 text-xs font-semibold"><Download size={14} /> Statement</Button>}
       />
 
@@ -219,14 +258,14 @@ export default function DesignerPayments() {
             <p className="text-xs text-ink-muted">{pending.length} pending payout{pending.length === 1 ? "" : "s"}</p>
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            <Clock size={14} /> {pending.length > 0 ? `${pending[0].period || "Current period"} • in queue` : "Nothing pending — payouts run Tuesdays"}
+            <Clock size={14} /> {pending.length > 0 ? `${pending[0].period || "Current period"} • in queue` : "No pending payouts in queue"}
           </div>
         </PremiumCard>
         <PremiumCard className="p-5 flex flex-col justify-between bg-ink border-ink text-white overflow-hidden">
           <div>
             <p className="dp-mono text-white/60">Last paid</p>
             <p className="text-[26px] font-extrabold leading-none mt-1">{lastPaid ? naira(lastPaid.amount) : "—"}</p>
-            <p className="text-xs text-white/60">{lastPaid ? `${lastPaid.period || ""} — paid ${timeAgo(lastPaid.paidAt || lastPaid.createdAt)} via Bank Transfer` : "No payouts yet"}</p>
+            <p className="text-xs text-white/60">{lastPaid ? `${lastPaid.period || ""} — paid ${timeAgo(lastPaid.paidAt || lastPaid.createdAt)}${lastPaid.bankName ? ` via Bank Transfer (${lastPaid.bankName})` : " via Bank Transfer"}` : "No payouts yet"}</p>
           </div>
           <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
             <div className="h-full bg-success rounded-full" style={{ width: payouts.length > 0 ? `${Math.round((paid.length / payouts.length) * 100)}%` : "0%" }} />
@@ -252,53 +291,52 @@ export default function DesignerPayments() {
         </div>
         {!hasMethod && (
           <div className="flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            <AlertCircle size={14} className="shrink-0" /> No payout method yet — add your bank details so earnings can be paid out.
+            <AlertCircle size={14} className="shrink-0" /> No payout method saved yet — please add your bank details to receive payouts.
           </div>
         )}
         {!editing ? (
           <div className="grid sm:grid-cols-3 gap-4 text-sm">
             <div className="p-3 rounded-xl bg-canvas border border-border">
               <p className="dp-mono text-ink-muted !text-[11px]">Account name</p>
-              <p className="font-semibold text-ink mt-1">{method.accountName}</p>
+              <p className="font-semibold text-ink mt-1">{method.accountName || "—"}</p>
             </div>
             <div className="p-3 rounded-xl bg-canvas border border-border">
               <p className="dp-mono text-ink-muted !text-[11px]">Account number</p>
-              <p className="font-semibold text-ink mt-1 font-mono tracking-wide">{method.accountNumber}</p>
+              <p className="font-semibold text-ink mt-1 font-mono tracking-wide">{method.accountNumber || "—"}</p>
             </div>
             <div className="p-3 rounded-xl bg-canvas border border-border">
               <p className="dp-mono text-ink-muted !text-[11px]">Bank</p>
-              <p className="font-semibold text-ink mt-1">{method.bankName}</p>
+              <p className="font-semibold text-ink mt-1">{method.bankName || "—"}</p>
             </div>
             <div className="sm:col-span-3 flex items-center gap-2 text-xs text-success bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
-              <ShieldCheck size={14} /> Securely connected. Payouts are processed to your bank account via our partner gateway (Flutterwave). Keep details up to date to avoid delays.
+              <ShieldCheck size={14} /> Payout details securely saved. Payouts will be processed directly to your registered bank account.
             </div>
           </div>
         ) : (
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="space-y-1.5">
               <label className="dp-mono text-ink-muted">Account name *</label>
-              <input value={method.accountName} onChange={(e) => setMethod({ ...method, accountName: e.target.value })} placeholder="Alex Designer" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
+              <input value={method.accountName} onChange={(e) => setMethod({ ...method, accountName: e.target.value })} placeholder="Account holder full name" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
             </div>
             <div className="space-y-1.5">
               <label className="dp-mono text-ink-muted">Account number *</label>
-              <input value={method.accountNumber} onChange={(e) => setMethod({ ...method, accountNumber: e.target.value })} placeholder="0123456789" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white font-mono" />
+              <input value={method.accountNumber} onChange={(e) => setMethod({ ...method, accountNumber: e.target.value })} placeholder="10-digit account number" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white font-mono" />
             </div>
             <div className="space-y-1.5">
               <label className="dp-mono text-ink-muted">Bank *</label>
               <select value={method.bankName} onChange={(e) => setMethod({ ...method, bankName: e.target.value })} className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white">
-                <option>GTBank</option>
-                <option>Access Bank</option>
-                <option>First Bank</option>
-                <option>Zenith</option>
-                <option>Kuda</option>
+                <option value="" disabled>Select your bank</option>
+                {NIGERIAN_BANKS.map((b) => (
+                  <option key={b} value={b}>{b}</option>
+                ))}
               </select>
             </div>
-            <div className="sm:col-span-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              <AlertCircle size={14} className="shrink-0" /> Verification: we'll send ₦100 micro-deposit to confirm account before next payout.
+            <div className="sm:col-span-3 flex items-center gap-2 text-xs text-ink-muted bg-canvas border border-border rounded-xl px-3 py-2">
+              <AlertCircle size={14} className="shrink-0 text-primary" /> Please ensure your account name and bank details match your official banking records.
             </div>
           </div>
         )}
-        <p className="text-xs text-ink-muted flex gap-1.5"><CreditCard size={12} className="mt-0.5 shrink-0" /> Integration: Flutterwave processes payouts to your bank account. Contact admin to change payout currency or add a domiciliary account.</p>
+        <p className="text-xs text-ink-muted flex gap-1.5"><CreditCard size={12} className="mt-0.5 shrink-0" /> Payouts are transferred directly to your designated bank account. Contact admin for any account updates.</p>
       </PremiumCard>
 
       {/* History */}
@@ -314,7 +352,7 @@ export default function DesignerPayments() {
 
       <div className="flex gap-2 p-3 rounded-xl bg-canvas border border-dashed border-border text-xs text-ink-muted">
         <AlertCircle size={14} className="shrink-0 mt-0.5" />
-        <span>Statuses: <span className="font-semibold text-ink">pending</span> → <span className="font-semibold text-ink">processing</span> → <span className="font-semibold text-ink">paid</span>. Contact support if a payment is delayed beyond Tuesday.</span>
+        <span>Statuses: <span className="font-semibold text-ink">pending</span> → <span className="font-semibold text-ink">processing</span> → <span className="font-semibold text-ink">paid</span>. Contact support if you need assistance with any payment record.</span>
       </div>
     </div>
   );
