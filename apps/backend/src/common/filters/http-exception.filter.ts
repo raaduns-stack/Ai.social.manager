@@ -57,7 +57,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     } else {
       errorCode = ErrorCode.BAD_REQUEST; // For internal errors, default to general bad request or handle below
       if (status === 500) {
-        message = 'Internal server error';
+        message = (exception as Error)?.message || 'Internal server error';
+        console.error('SERVER EXCEPTION:', exception);
         this.logger.error(`${request.method} ${request.url}`, (exception as Error)?.stack);
       }
     }

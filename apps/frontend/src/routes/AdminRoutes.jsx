@@ -37,9 +37,13 @@ import ActivityLogs from "../pages/Admin/staff/ActivityLogs";
 // --- Treasure's pages ---
 import AdminBilling from "../pages/Admin/Billing";
 import AdminMoneyManagement from "../pages/Dashboard/MoneyManagement";
+import AdminDesignerPayments from "../pages/Admin/DesignerPayments";
+import AdminDesignTasks from "../pages/Admin/DesignTasks";
+import AdminDesignSubmissions from "../pages/Admin/DesignSubmissions";
 import AdminSocialAccounts from "../pages/Admin/SocialAccounts";
 import AdminUploads from "../pages/Admin/Uploads";
 import AdminAnalytics from "../pages/Admin/Analytics";
+import AdminDesignReports from "../pages/Admin/DesignReports";
 import AdminAIConfig from "../pages/Admin/AIConfiguration";
 import AdminSupport from "../pages/Admin/Support";
 import AdminFaqs from "../pages/Admin/Faqs";
@@ -124,9 +128,15 @@ export default function AdminRoutes() {
 
           {/* Money Management (Treasure) */}
           <Route path="money-management" element={<RequirePermissionGuard module="money_management"><AdminMoneyManagement /></RequirePermissionGuard>} />
+          <Route path="designer-payments" element={<RequirePermissionGuard module="money_management"><AdminDesignerPayments /></RequirePermissionGuard>} />
+
+          {/* Design Management */}
+          <Route path="design-tasks" element={<RequirePermissionGuard module="content_creation"><AdminDesignTasks /></RequirePermissionGuard>} />
+          <Route path="design-submissions" element={<RequirePermissionGuard module="content_creation"><AdminDesignSubmissions /></RequirePermissionGuard>} />
 
           {/* Analytics + AI Config (Treasure) */}
           <Route path="analytics" element={<RequirePermissionGuard module="analytics"><AdminAnalytics /></RequirePermissionGuard>} />
+          <Route path="design-reports" element={<RequirePermissionGuard module="analytics"><AdminDesignReports /></RequirePermissionGuard>} />
           <Route path="ai-config" element={<RequirePermissionGuard module="ai_config"><AdminAIConfig /></RequirePermissionGuard>} />
 
           {/* Support + Settings (Treasure) */}

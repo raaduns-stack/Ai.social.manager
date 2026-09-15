@@ -33,6 +33,8 @@ import {
   Inbox,
   Code2,
   ChevronDown,
+  Banknote,
+  TrendingUp,
   Palette,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
@@ -73,6 +75,8 @@ const NAV_SECTIONS = [
       { label: "Design Tasks", to: "/admin/tasks", icon: ClipboardList },
       { label: "Submissions", to: "/admin/submissions", icon: Inbox },
       { label: "Image-to-Code", to: "/admin/image-to-code", icon: Code2 },
+      { label: "Designer Payments", to: "/admin/designer-payments", icon: Banknote },
+      { label: "Design Reports", to: "/admin/design-reports", icon: TrendingUp },
     ],
   },
   {
@@ -100,6 +104,10 @@ const ROUTE_MODULE_MAP = {
   "/admin/calendar": "content_calendar",
   "/admin/ai-content": "content_creation",
   "/admin/billing": "billing",
+  "/admin/design-tasks": "content_creation",
+  "/admin/design-submissions": "content_creation",
+  "/admin/designer-payments": "money_management",
+  "/admin/design-reports": "analytics",
   "/admin/social-accounts": "social_accounts",
   "/admin/money-management": "money_management",
   "/admin/uploads": "upload_management",

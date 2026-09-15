@@ -16,6 +16,7 @@ import {
   ChevronDown,
   Search,
   Loader2,
+  CheckCircle2,
 } from 'lucide-react'
 import PageHeader from '../../components/layout/PageHeader'
 import Card from '../../components/ui/Card'
@@ -23,7 +24,7 @@ import Badge from '../../components/ui/Badge'
 import Button from '../../components/ui/Button'
 import Modal from '../../components/ui/Modal'
 import ErrorBanner from '../../components/error-banner'
-import { getAdminBillingStats, getAdminSubscriptions, getAdminPayments } from '../../features/admin/admin-api'
+import { getAdminBillingStats, getAdminSubscriptions, getAdminPayments, downloadPaymentReceipt } from '../../features/admin/admin-api'
 
 // Helper function to format cents to NGN currency
 const formatPrice = (cents) => {
@@ -58,8 +59,41 @@ export default function MoneyManagement() {
   const [methodFilter, setMethodFilter] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
   const [selectedTransaction, setSelectedTransaction] = useState(null)
+  const [selectedReceiptForDownload, setSelectedReceiptForDownload] = useState(null)
+  const [isDownloadingReceipt, setIsDownloadingReceipt] = useState(false)
+  const [receiptToast, setReceiptToast] = useState(null)
   const [reportType, setReportType] = useState('Quarterly Report')
   const [isGenerating, setIsGenerating] = useState(false)
+  const [generatedReport, setGeneratedReport] = useState(null)
+  const [reportModalOpen, setReportModalOpen] = useState(false)
+
+  const handleConfirmReceiptDownload = async () => {
+    if (!selectedReceiptForDownload) return
+    setIsDownloadingReceipt(true)
+    try {
+      await downloadPaymentReceipt(
+        selectedReceiptForDownload.id,
+        selectedReceiptForDownload.id
+      )
+      setSelectedReceiptForDownload(null)
+      setReceiptToast({
+        show: true,
+        message: `Receipt for transaction ${selectedReceiptForDownload.id} downloaded successfully!`,
+        type: 'success',
+      })
+      setTimeout(() => setReceiptToast(null), 4000)
+    } catch (err) {
+      console.error('Failed to download receipt:', err)
+      setReceiptToast({
+        show: true,
+        message: err?.response?.data?.message || err.message || 'Failed to download receipt PDF.',
+        type: 'error',
+      })
+      setTimeout(() => setReceiptToast(null), 4000)
+    } finally {
+      setIsDownloadingReceipt(false)
+    }
+  }
 
   // API Data States
   const [stats, setStats] = useState({ totalRevenue: 0, activeSubscriptions: 0, pendingPayments: 0 })
@@ -292,9 +326,9 @@ export default function MoneyManagement() {
       {
         id: 'pending',
         label: 'Pending',
-        count: pendingCount.toLocaleString(),
-        amount: formatPrice(pendingAmount),
-        change: totalCount > 0 ? `${Math.round((pendingCount / totalCount) * 100)}%` : '0%',
+        count: '0',
+        amount: formatPrice(0),
+        change: '0%',
         isPositive: true,
         borderClass: 'border-l-warning',
         tone: 'warning',
@@ -312,6 +346,10 @@ export default function MoneyManagement() {
     ]
   }, [payments])
 
+  const activeSubscriptions = useMemo(() => {
+    return subscriptions.filter(sub => !sub.status || sub.status.toLowerCase() === 'active')
+  }, [subscriptions])
+
   // Calculate Subscription tier breakdown
   const subscriptionBreakdown = useMemo(() => {
     let freeCount = 0
@@ -319,7 +357,7 @@ export default function MoneyManagement() {
     let growthCount = 0
     let enterpriseCount = 0
 
-    subscriptions.forEach(sub => {
+    activeSubscriptions.forEach(sub => {
       const p = sub.plan?.toLowerCase() || ''
       if (p.includes('free')) {
         freeCount++
@@ -332,7 +370,7 @@ export default function MoneyManagement() {
       }
     })
 
-    const totalCount = subscriptions.length || 1
+    const totalCount = activeSubscriptions.length || 1
 
     return [
       { label: 'Free Plan', amount: freeCount.toString(), share: `${Math.round((freeCount / totalCount) * 100)}% Share`, color: 'bg-primary-300' },
@@ -340,17 +378,17 @@ export default function MoneyManagement() {
       { label: 'Growth Tier', amount: growthCount.toString(), share: `${Math.round((growthCount / totalCount) * 100)}% Share`, color: 'bg-accent' },
       { label: 'Enterprise Tier', amount: enterpriseCount.toString(), share: `${Math.round((enterpriseCount / totalCount) * 100)}% Share`, color: 'bg-warning' },
     ]
-  }, [subscriptions])
+  }, [activeSubscriptions])
 
   // Dynamic values for donut diagram
   const subscriptionPercentages = useMemo(() => {
-    const total = subscriptions.length || 1
+    const total = activeSubscriptions.length || 1
     let free = 0
     let starter = 0
     let growth = 0
     let enterprise = 0
 
-    subscriptions.forEach(sub => {
+    activeSubscriptions.forEach(sub => {
       const p = sub.plan?.toLowerCase() || ''
       if (p.includes('free')) free++
       else if (p.includes('starter')) starter++
@@ -364,7 +402,7 @@ export default function MoneyManagement() {
       growth: Math.round((growth / total) * 100),
       enterprise: Math.round((enterprise / total) * 100),
     }
-  }, [subscriptions])
+  }, [activeSubscriptions])
 
   // Dynamic Payment Methods percentage
   const paymentMethodsPercentages = useMemo(() => {
@@ -410,6 +448,8 @@ export default function MoneyManagement() {
   // Filter transactions dynamically
   const filteredTransactions = useMemo(() => {
     return payments.filter((trx) => {
+      if (trx.status?.toLowerCase() === 'pending') return false
+
       const matchesStatus =
         statusFilter === 'All' || trx.status?.toLowerCase() === statusFilter.toLowerCase()
 
@@ -431,15 +471,79 @@ export default function MoneyManagement() {
     })
   }, [payments, statusFilter, methodFilter, searchQuery])
 
-  // Client-side report generation helper
+  // Client-side report generation helper using current live payment records
   const handleGenerateReport = () => {
     setIsGenerating(true)
     setTimeout(() => {
       setIsGenerating(false)
-      // Display native alert or confirm
       const totalAmount = filteredTransactions.reduce((sum, tx) => sum + tx.amount, 0)
-      alert(`Report generated successfully!\nType: ${reportType}\nTransactions analyzed: ${filteredTransactions.length}\nTotal Volume: ${formatPrice(totalAmount)}`)
-    }, 1500)
+      const nowStr = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+
+      const headers = ['Transaction ID', 'Customer Name', 'Plan', 'Amount (NGN)', 'Gateway', 'Status', 'Date']
+      const rows = filteredTransactions.map((tx) => [
+        `"${tx.id}"`,
+        `"${tx.customerName || ''}"`,
+        `"${tx.plan || ''}"`,
+        `"${((tx.amount || 0) / 100).toFixed(2)}"`,
+        `"${tx.method || ''}"`,
+        `"${tx.status || ''}"`,
+        `"${formatDate(tx.date)}"`
+      ].join(','))
+
+      const csvContent = [
+        `"Financial Report Summary — ${reportType}"`,
+        `"Generated At: ${nowStr}"`,
+        `"Total Transactions Analyzed: ${filteredTransactions.length}"`,
+        `"Total Volume: NGN ${((totalAmount || 0) / 100).toFixed(2)}"`,
+        '',
+        headers.join(','),
+        ...rows
+      ].join('\n')
+
+      const filename = `Financial_Report_${reportType.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`
+
+      setGeneratedReport({
+        reportType,
+        generatedAt: nowStr,
+        transactionCount: filteredTransactions.length,
+        totalVolume: formatPrice(totalAmount),
+        csvContent,
+        filename
+      })
+      setReportModalOpen(true)
+    }, 1000)
+  }
+
+  // Reliable file download handler
+  const handleDownloadGeneratedReport = () => {
+    if (!generatedReport) return
+    try {
+      const blob = new Blob([generatedReport.csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', generatedReport.filename)
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      setReportModalOpen(false)
+      setReceiptToast({
+        show: true,
+        message: `${generatedReport.reportType} downloaded successfully!`,
+        type: 'success'
+      })
+      setTimeout(() => setReceiptToast(null), 4000)
+    } catch (err) {
+      console.error('Failed to download report file:', err)
+      setReceiptToast({
+        show: true,
+        message: 'Failed to initiate report download.',
+        type: 'error'
+      })
+      setTimeout(() => setReceiptToast(null), 4000)
+    }
   }
 
   // Get color code for status badges
@@ -818,7 +922,6 @@ export default function MoneyManagement() {
               >
                 <option value="All">Status: All</option>
                 <option value="successful">Successful</option>
-                <option value="pending">Pending</option>
                 <option value="failed">Failed</option>
               </select>
             </div>
@@ -984,9 +1087,12 @@ export default function MoneyManagement() {
               <Button variant="outline" size="sm" onClick={() => setSelectedTransaction(null)}>
                 Close
               </Button>
-              <Button variant="primary" size="sm" className="gap-1.5" onClick={() => {
-                alert(`Receipt downloaded for transaction ${selectedTransaction.id}`)
-              }}>
+              <Button
+                variant="primary"
+                size="sm"
+                className="gap-1.5 cursor-pointer"
+                onClick={() => setSelectedReceiptForDownload(selectedTransaction)}
+              >
                 <Download size={14} /> Download Receipt
               </Button>
             </div>
@@ -1008,7 +1114,10 @@ export default function MoneyManagement() {
               <div className="relative">
                 <select
                   value={reportType}
-                  onChange={(e) => setReportType(e.target.value)}
+                  onChange={(e) => {
+                    setReportType(e.target.value)
+                    setReportModalOpen(false)
+                  }}
                   aria-label="Select report type"
                   className="appearance-none bg-surface border border-border pl-3 pr-8 py-2 rounded-control text-xs font-medium text-ink cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary-500 min-w-[160px]"
                 >
@@ -1084,6 +1193,147 @@ export default function MoneyManagement() {
           </div>
         </Card>
       </section>
+
+      {/* Report Generator Success Modal */}
+      <Modal
+        open={reportModalOpen}
+        onClose={() => setReportModalOpen(false)}
+        title="Financial Report Ready"
+      >
+        {generatedReport && (
+          <div className="space-y-5 text-left pt-1">
+            <div className="flex items-center gap-3.5 p-4 bg-primary-50/70 rounded-card border border-primary-100">
+              <div className="p-2.5 bg-primary text-white rounded-full shadow-soft shrink-0">
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-ink">
+                  {generatedReport.reportType} Generated Successfully
+                </h4>
+                <p className="text-xs text-ink-muted mt-0.5">
+                  Generated on {generatedReport.generatedAt}
+                </p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3.5 bg-canvas rounded-card border border-border">
+                <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Total Volume</span>
+                <p className="text-lg font-bold text-ink mt-1">{generatedReport.totalVolume}</p>
+              </div>
+              <div className="p-3.5 bg-canvas rounded-card border border-border">
+                <span className="text-[11px] font-semibold text-ink-muted uppercase tracking-wider">Analyzed Records</span>
+                <p className="text-lg font-bold text-ink mt-1">{generatedReport.transactionCount} transactions</p>
+              </div>
+            </div>
+
+            <div className="p-3 bg-surface border border-border rounded-control text-xs text-ink-muted flex items-center justify-between">
+              <span>File format: <strong>CSV (.csv)</strong></span>
+              <span className="truncate max-w-[200px] font-mono text-[11px] text-ink">{generatedReport.filename}</span>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setReportModalOpen(false)}
+              >
+                Close
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleDownloadGeneratedReport}
+                className="gap-2 cursor-pointer font-bold shadow-soft"
+              >
+                <Download size={16} />
+                Download Report CSV
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Receipt Download Confirmation Modal */}
+      <Modal
+        open={Boolean(selectedReceiptForDownload)}
+        onClose={() => !isDownloadingReceipt && setSelectedReceiptForDownload(null)}
+        title="Download Transaction Receipt"
+      >
+        {selectedReceiptForDownload && (
+          <div className="space-y-4 text-left">
+            <div className="p-4 bg-canvas rounded-card border border-border space-y-2.5">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Customer Name:</span>
+                <span className="font-bold text-ink">{selectedReceiptForDownload.customerName}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Email:</span>
+                <span className="text-ink">{selectedReceiptForDownload.email || '—'}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Subscription Plan:</span>
+                <span className="font-semibold text-ink">{selectedReceiptForDownload.plan}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Amount Paid:</span>
+                <span className="font-bold text-ink">{formatPrice(selectedReceiptForDownload.amount)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Payment Gateway:</span>
+                <span className="text-ink capitalize font-medium">{selectedReceiptForDownload.method}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Transaction Date:</span>
+                <span className="text-ink">{formatDate(selectedReceiptForDownload.date)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Status:</span>
+                <Badge tone={selectedReceiptForDownload.status?.toLowerCase() === 'successful' || selectedReceiptForDownload.status?.toLowerCase() === 'success' ? 'success' : 'neutral'}>
+                  {selectedReceiptForDownload.status}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Confirm to generate and download the official payment receipt for this transaction.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelectedReceiptForDownload(null)}
+                disabled={isDownloadingReceipt}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleConfirmReceiptDownload}
+                disabled={isDownloadingReceipt}
+                className="gap-2 cursor-pointer font-bold shadow-soft"
+              >
+                <Download size={16} />
+                {isDownloadingReceipt ? 'Downloading...' : 'Download Receipt PDF'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modern In-App Receipt Toast Notification */}
+      {receiptToast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-card shadow-hover border text-sm font-medium flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 ${
+            receiptToast.type === 'success'
+              ? 'bg-surface text-ink border-green-500/40 shadow-soft'
+              : 'bg-surface text-danger border-danger/40 shadow-soft'
+          }`}
+        >
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+          <span>{receiptToast.message}</span>
+        </div>
+      )}
     </div>
   )
 }

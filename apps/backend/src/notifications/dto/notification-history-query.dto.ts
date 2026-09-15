@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsIn, IsDateString, IsInt, IsBooleanString, Min, Max } from 'class-validator';
+import { Type } from 'class-transformer';
 import { NotificationType, NotificationChannel, DeliveryStatus, NotificationPriority, NOTIFICATION_TYPE_VALUES, NOTIFICATION_CHANNEL_VALUES, DELIVERY_STATUS_VALUES, NOTIFICATION_PRIORITY_VALUES } from '../../common/enums';
 
 export class NotificationHistoryQueryDto {
@@ -51,13 +52,16 @@ export class NotificationHistoryQueryDto {
   sortOrder?: 'asc' | 'desc';
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   page?: number;
 
   @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
   limit?: number;
 }
+

@@ -7,11 +7,13 @@ import {
   Param,
   Body,
   Query,
+  Res,
   UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -189,6 +191,19 @@ export class AdminController {
   @ApiOperation({ summary: 'Get system-wide payment history' })
   getPayments() {
     return this.adminService.getPayments();
+  }
+
+  @Get('billing/payments/:id/receipt')
+  @RequirePermission('billing', 'view')
+  @ApiOperation({ summary: 'Download transaction receipt PDF stream' })
+  async downloadPaymentReceipt(
+    @Param('id') id: string,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.adminService.generatePaymentReceiptPdf(id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="Receipt-${id}.pdf"`);
+    res.send(pdfBuffer);
   }
 
   @Post('plans/seed')

@@ -18,6 +18,13 @@ import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 import { AdminGraphicsController } from './graphics/graphics.controller';
 import { AdminGraphicsService } from './graphics/graphics.service';
 import { AuthModule } from '../auth/auth.module';
+import { DesignerPaymentsController } from './designer-payments/designer-payments.controller';
+import { DesignerPaymentsService } from './designer-payments/designer-payments.service';
+import { DesignReportsController } from './design-reports/design-reports.controller';
+import { DesignReportsService } from './design-reports/design-reports.service';
+import { DesignManagementController } from './design-management/design-management.controller';
+import { DesignManagementService } from './design-management/design-management.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -28,6 +35,7 @@ import { AuthModule } from '../auth/auth.module';
     LoginHistoryModule,
     ActivityLogsModule,
     AuthModule,
+    NotificationsModule,
   ],
   controllers: [
     AdminController,
@@ -38,18 +46,27 @@ import { AuthModule } from '../auth/auth.module';
     AdminActivityLogsController,
     AdminGraphicsController,
     AdminDesignerManagementController,
+    DesignerPaymentsController,
+    DesignReportsController,
+    DesignManagementController,
   ],
   providers: [
     AdminService,
     DashboardService,
     AdminGraphicsService,
     AdminDesignerManagementService,
+    DesignerPaymentsService,
+    DesignReportsService,
+    DesignManagementService,
   ],
   exports: [
     AdminService,
     DashboardService,
     AdminGraphicsService,
     AdminDesignerManagementService,
+    DesignerPaymentsService,
+    DesignReportsService,
+    DesignManagementService,
   ],
 })
 export class AdminModule { }

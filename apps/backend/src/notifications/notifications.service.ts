@@ -5,6 +5,16 @@ import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { MailerService } from '../mailer/mailer.service';
 import { UserRole } from '../common/enums/roles.enum';
+import {
+  NotificationType,
+  NOTIFICATION_TYPE_VALUES,
+  DeliveryStatus,
+  DELIVERY_STATUS_VALUES,
+  NotificationChannel,
+  NOTIFICATION_CHANNEL_VALUES,
+  NotificationPriority,
+  NOTIFICATION_PRIORITY_VALUES,
+} from '../common/enums';
 import sanitizeHtml from 'sanitize-html';
 
 // Import the existing admin notification pure functions
@@ -16,6 +26,8 @@ import { sendSubscriptionReminder, SubscriptionReminderRequest } from '../admin/
 import { HistoryQueryFilters } from '../admin/notifications/history';
 
 type Database = PostgresJsDatabase<typeof schema>;
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 @Injectable()
 export class NotificationsService {
@@ -31,10 +43,11 @@ export class NotificationsService {
       allowedTags: [
         'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li',
         'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'blockquote',
-        'code', 'pre', 'hr', 'sub', 'sup',
+        'code', 'pre', 'hr', 'sub', 'sup', 'img',
       ],
       allowedAttributes: {
         a: ['href', 'title', 'target', 'rel'],
+        img: ['src', 'alt', 'width', 'height', 'style'],
         span: ['style'],
         div: ['style'],
         p: ['style'],
@@ -45,9 +58,10 @@ export class NotificationsService {
         h5: ['style'],
         h6: ['style'],
       },
-      allowedSchemes: ['http', 'https', 'mailto'],
+      allowedSchemes: ['http', 'https', 'mailto', 'data'],
       allowedSchemesByTag: {
-        a: ['href', 'xlink:href'],
+        a: ['http', 'https', 'mailto', 'data'],
+        img: ['http', 'https', 'data'],
       },
       transformTags: {
         'a': (tagName: string, attribs: { [key: string]: string }) => {
@@ -83,25 +97,62 @@ export class NotificationsService {
     actionUrl?: string | null;
     metadata?: Record<string, any>;
   }) {
+    let validSenderId: string | null = null;
+    if (data.senderId && UUID_REGEX.test(data.senderId)) {
+      const sender = await this.db.query.users.findFirst({
+        where: eq(schema.users.id, data.senderId),
+        columns: { id: true },
+      });
+      if (sender) validSenderId = sender.id;
+    }
+
+    const validRelatedEntityId =
+      data.relatedEntityId && UUID_REGEX.test(data.relatedEntityId)
+        ? data.relatedEntityId
+        : null;
+
+    const mergedMetadata = {
+      ...(data.metadata || {}),
+      ...(data.relatedEntityId && !validRelatedEntityId
+        ? { rawRelatedEntityId: data.relatedEntityId }
+        : {}),
+    };
+
+    const safeType = NOTIFICATION_TYPE_VALUES.includes(data.type as any)
+      ? data.type
+      : 'SYSTEM_ANNOUNCEMENT';
+    const safeChannel = NOTIFICATION_CHANNEL_VALUES.includes(data.channel as any)
+      ? data.channel
+      : 'IN_APP';
+    const safeStatus = DELIVERY_STATUS_VALUES.includes(data.status as any)
+      ? data.status
+      : 'SENT';
+    const safePriority = NOTIFICATION_PRIORITY_VALUES.includes(data.priority as any)
+      ? data.priority
+      : 'NORMAL';
+
     const sanitizedMessage = this.sanitizeHtml(data.message);
-    const [record] = await this.db.insert(schema.notifications).values({
-      userId: data.userId,
-      senderId: data.senderId,
-      type: data.type as any,
-      channel: data.channel as any,
-      status: (data.status || 'SENT') as any,
-      priority: (data.priority || 'NORMAL') as any,
-      title: data.title,
-      message: sanitizedMessage,
-      error: data.error,
-      readAt: data.readAt,
-      sentAt: data.sentAt || new Date(),
-      scheduledFor: data.scheduledFor,
-      relatedEntityType: data.relatedEntityType,
-      relatedEntityId: data.relatedEntityId,
-      actionUrl: data.actionUrl,
-      metadata: data.metadata,
-    }).returning();
+    const [record] = await this.db
+      .insert(schema.notifications)
+      .values({
+        userId: data.userId,
+        senderId: validSenderId,
+        type: safeType as any,
+        channel: safeChannel as any,
+        status: safeStatus as any,
+        priority: safePriority as any,
+        title: data.title,
+        message: sanitizedMessage,
+        error: data.error,
+        readAt: data.readAt,
+        sentAt: data.sentAt || new Date(),
+        scheduledFor: data.scheduledFor,
+        relatedEntityType: data.relatedEntityType,
+        relatedEntityId: validRelatedEntityId,
+        actionUrl: data.actionUrl,
+        metadata: mergedMetadata,
+      })
+      .returning();
     return record;
   }
 
@@ -123,23 +174,64 @@ export class NotificationsService {
   }>) {
     if (records.length === 0) return [];
 
-    const values = records.map((r) => ({
-      userId: r.userId,
-      senderId: r.senderId,
-      type: r.type as any,
-      channel: r.channel as any,
-      status: (r.status || 'SENT') as any,
-      priority: (r.priority || 'NORMAL') as any,
-      title: r.title,
-      message: this.sanitizeHtml(r.message),
-      error: r.error,
-      sentAt: new Date(),
-      scheduledFor: r.scheduledFor,
-      relatedEntityType: r.relatedEntityType,
-      relatedEntityId: r.relatedEntityId,
-      actionUrl: r.actionUrl,
-      metadata: r.metadata,
-    }));
+    const senderIds = Array.from(
+      new Set(
+        records
+          .map((r) => r.senderId)
+          .filter((id): id is string => !!id && UUID_REGEX.test(id)),
+      ),
+    );
+    let validSenderIdSet = new Set<string>();
+    if (senderIds.length > 0) {
+      const validSenders = await this.db.query.users.findMany({
+        where: inArray(schema.users.id, senderIds),
+        columns: { id: true },
+      });
+      validSenderIdSet = new Set(validSenders.map((s) => s.id));
+    }
+
+    const values = records.map((r) => {
+      const validSenderId = r.senderId && validSenderIdSet.has(r.senderId) ? r.senderId : null;
+      const validRelatedEntityId =
+        r.relatedEntityId && UUID_REGEX.test(r.relatedEntityId) ? r.relatedEntityId : null;
+      const mergedMetadata = {
+        ...(r.metadata || {}),
+        ...(r.relatedEntityId && !validRelatedEntityId
+          ? { rawRelatedEntityId: r.relatedEntityId }
+          : {}),
+      };
+
+      const safeType = NOTIFICATION_TYPE_VALUES.includes(r.type as any)
+        ? r.type
+        : 'SYSTEM_ANNOUNCEMENT';
+      const safeChannel = NOTIFICATION_CHANNEL_VALUES.includes(r.channel as any)
+        ? r.channel
+        : 'IN_APP';
+      const safeStatus = DELIVERY_STATUS_VALUES.includes(r.status as any)
+        ? r.status
+        : 'SENT';
+      const safePriority = NOTIFICATION_PRIORITY_VALUES.includes(r.priority as any)
+        ? r.priority
+        : 'NORMAL';
+
+      return {
+        userId: r.userId,
+        senderId: validSenderId,
+        type: safeType as any,
+        channel: safeChannel as any,
+        status: safeStatus as any,
+        priority: safePriority as any,
+        title: r.title,
+        message: this.sanitizeHtml(r.message),
+        error: r.error,
+        sentAt: new Date(),
+        scheduledFor: r.scheduledFor,
+        relatedEntityType: r.relatedEntityType,
+        relatedEntityId: validRelatedEntityId,
+        actionUrl: r.actionUrl,
+        metadata: mergedMetadata,
+      };
+    });
 
     return this.db.insert(schema.notifications).values(values).returning();
   }
@@ -221,18 +313,25 @@ export class NotificationsService {
   }
 
   async validateCustomerUserIds(userIds: string[]) {
-    const users = await this.db.query.users.findMany({
-      where: inArray(schema.users.id, userIds),
-      columns: { id: true, role: true },
-    });
+    if (!userIds || userIds.length === 0) {
+      return { valid: [], invalid: [] };
+    }
 
-    const validCustomerIds = new Set(
-      users.filter((u) => u.role === UserRole.USER).map((u) => u.id),
-    );
+    const validUuidList = userIds.filter((id) => typeof id === 'string' && UUID_REGEX.test(id));
+    const nonUuidList = userIds.filter((id) => !validUuidList.includes(id));
 
-    const invalid = userIds.filter((id) => !validCustomerIds.has(id));
+    let foundUsers: Array<{ id: string }> = [];
+    if (validUuidList.length > 0) {
+      foundUsers = await this.db.query.users.findMany({
+        where: inArray(schema.users.id, validUuidList),
+        columns: { id: true, role: true },
+      });
+    }
 
-    return { valid: Array.from(validCustomerIds), invalid };
+    const validUserIds = new Set(foundUsers.map((u) => u.id));
+    const invalid = [...nonUuidList, ...validUuidList.filter((id) => !validUserIds.has(id))];
+
+    return { valid: Array.from(validUserIds), invalid };
   }
 
   async markAsRead(userId: string, notificationId: string) {
@@ -323,15 +422,33 @@ export class NotificationsService {
     }
   }
 
-  private getProvidersForType(notificationType: string, senderId?: string) {
+  private getProvidersForType(notificationType: string, senderId?: string, options?: { targetAudience?: string }) {
     return {
       getCustomers: async (userIds?: string[]) => {
-        const queryBuilder = {
-          where: userIds && userIds.length > 0
-            ? inArray(schema.users.id, userIds)
-            : eq(schema.users.role, UserRole.USER),
-        };
-        const list = await this.db.query.users.findMany(queryBuilder);
+        let whereCondition: any;
+        if (userIds && userIds.length > 0) {
+          whereCondition = inArray(schema.users.id, userIds);
+        } else if (options?.targetAudience === 'STAFF_DESIGNERS') {
+          whereCondition = and(
+            eq(schema.users.isActive, true),
+            inArray(schema.users.role, [
+              UserRole.SUPER_ADMIN,
+              UserRole.ACCOUNT_MANAGER,
+              UserRole.REVIEWER,
+              UserRole.SUPPORT_STAFF,
+              UserRole.DESIGNER,
+            ]),
+          );
+        } else if (options?.targetAudience === 'ALL') {
+          whereCondition = eq(schema.users.isActive, true);
+        } else {
+          whereCondition = eq(schema.users.role, UserRole.USER);
+        }
+
+        let list = await this.db.query.users.findMany({ where: whereCondition });
+        if (senderId && options?.targetAudience !== 'STAFF_DESIGNERS' && options?.targetAudience !== 'ALL') {
+          list = list.filter((u) => u.id !== senderId);
+        }
         return list.map((u) => ({
           id: u.id,
           email: u.email,
@@ -372,43 +489,102 @@ export class NotificationsService {
           this.logger.log(`Skipping in-app notification to user ${userId} (User disabled ${notificationType})`);
           return;
         }
-
-        await this.db.insert(schema.notifications).values({
-          userId,
-          senderId,
-          type: (data.type || notificationType.toUpperCase()) as any,
-          title: data.title,
-          message: data.message,
-          channel: 'IN_APP' as any,
-          status: 'SENT' as any,
-          isRead: false,
-          priority: (data.priority || 'NORMAL') as any,
-          metadata: data,
-        });
       },
 
       saveNotificationLog: async (recordOrRecords: any) => {
         const records = Array.isArray(recordOrRecords) ? recordOrRecords : [recordOrRecords];
         if (records.length === 0) return;
 
-        const dbRecords = records.map((r) => ({
-          userId: r.userId,
-          senderId,
-          type: r.type,
-          title: r.title,
-          message: r.message,
-          channel: r.channel,
-          status: r.status,
-          error: r.error,
-          priority: r.priority || 'NORMAL',
-          scheduledFor: r.scheduledFor,
-          relatedEntityType: r.relatedEntityType,
-          relatedEntityId: r.relatedEntityId,
-          actionUrl: r.actionUrl,
-          metadata: r.metadata,
-        }));
+        let validSenderId: string | null = null;
+        if (senderId && UUID_REGEX.test(senderId)) {
+          const s = await this.db.query.users.findFirst({
+            where: eq(schema.users.id, senderId),
+            columns: { id: true },
+          });
+          if (s) validSenderId = s.id;
+        }
+
+        const dbRecords = records.map((r) => {
+          const validRelatedEntityId =
+            r.relatedEntityId && UUID_REGEX.test(r.relatedEntityId)
+              ? r.relatedEntityId
+              : null;
+          const mergedMetadata = {
+            ...(r.metadata || {}),
+            ...(r.relatedEntityId && !validRelatedEntityId
+              ? { rawRelatedEntityId: r.relatedEntityId }
+              : {}),
+          };
+
+          const safeType = NOTIFICATION_TYPE_VALUES.includes(r.type as any)
+            ? r.type
+            : 'SYSTEM_ANNOUNCEMENT';
+          const safeChannel = NOTIFICATION_CHANNEL_VALUES.includes(r.channel as any)
+            ? r.channel
+            : 'IN_APP';
+          const safeStatus = DELIVERY_STATUS_VALUES.includes(r.status as any)
+            ? r.status
+            : 'SENT';
+          const safePriority = NOTIFICATION_PRIORITY_VALUES.includes(r.priority as any)
+            ? r.priority
+            : 'NORMAL';
+
+          return {
+            userId: r.userId,
+            senderId: validSenderId,
+            type: safeType as any,
+            title: r.title,
+            message: r.message,
+            channel: safeChannel as any,
+            status: safeStatus as any,
+            error: r.error,
+            priority: safePriority as any,
+            scheduledFor: r.scheduledFor,
+            relatedEntityType: r.relatedEntityType,
+            relatedEntityId: validRelatedEntityId,
+            actionUrl: r.actionUrl,
+            metadata: mergedMetadata,
+          };
+        });
 
         await this.db.insert(schema.notifications).values(dbRecords as any);
+
+        // Mirror to designer_notifications for any designer recipients
+        try {
+          const recipientIds = Array.from(new Set(records.map((r) => r.userId)));
+          const designers = await this.db.query.users.findMany({
+            where: and(
+              inArray(schema.users.id, recipientIds),
+              eq(schema.users.role, UserRole.DESIGNER),
+            ),
+            columns: { id: true },
+          });
+          const designerIdSet = new Set(designers.map((d) => d.id));
+
+          const designerNotifEntries = records
+            .filter((r) => designerIdSet.has(r.userId))
+            .map((r) => {
+              let dType: 'system' | 'task' | 'revision' | 'approved' | 'payment' = 'system';
+              const rawType = (r.type || '').toUpperCase();
+              if (rawType.includes('TASK') || rawType.includes('TICKET')) dType = 'task';
+              else if (rawType.includes('PAYMENT') || rawType.includes('INVOICE') || rawType.includes('PAYOUT')) dType = 'payment';
+              else if (rawType.includes('APPROVAL') || rawType.includes('APPROVED')) dType = 'approved';
+              else if (rawType.includes('REVISION')) dType = 'revision';
+
+              return {
+                designerId: r.userId,
+                type: dType as any,
+                title: r.title,
+                message: r.message ? r.message.replace(/<[^>]*>?/gm, '').trim() : '',
+              };
+            });
+
+          if (designerNotifEntries.length > 0) {
+            await this.db.insert(schema.designerNotifications).values(designerNotifEntries);
+          }
+        } catch (mirrorErr) {
+          this.logger.warn(`Failed to mirror notifications to designerNotifications: ${mirrorErr?.message}`);
+        }
       },
     };
   }
@@ -463,81 +639,44 @@ export class NotificationsService {
   // ---------------------------------------------------------------------------
 
   async dispatchSystemAnnouncement(request: AnnouncementRequest, senderId?: string) {
-    const providers = this.getProvidersForType('announcement', senderId);
-    const result = await sendSystemAnnouncement(request, providers);
-    if (senderId && result.records) {
-      await this.createBulkNotifications(
-        result.records.map((r) => ({ ...r, senderId, error: r.error ?? undefined })),
-      );
+    let senderFirstName: string | undefined;
+    if (senderId) {
+      const sender = await this.db.query.users.findFirst({
+        where: eq(schema.users.id, senderId),
+        columns: { fullName: true },
+      });
+      if (sender?.fullName) {
+        senderFirstName = sender.fullName.trim().split(' ')[0];
+      }
     }
+    const cleanTitle = (request.title || '').replace(/\[\s*admin\s*copy\s*\]/gi, '').trim();
+    const targetAudience = request.metadata?.targetAudience;
+    const providers = this.getProvidersForType('announcement', senderId, { targetAudience });
+    const result = await sendSystemAnnouncement({ ...request, title: cleanTitle || 'Notification', senderFirstName }, providers);
     return result;
   }
 
   async dispatchMaintenance(request: MaintenanceNotificationRequest, senderId?: string) {
     const providers = this.getProvidersForType('maintenance', senderId);
     const result = await sendMaintenanceNotification(request, providers);
-    if (senderId && result.records) {
-      await this.createBulkNotifications(
-        result.records.map((r) => ({ ...(r as any), senderId, error: r.error ?? undefined })),
-      );
-    }
     return result;
   }
 
   async dispatchContentApproval(request: ContentApprovalRequest, senderId?: string) {
     const providers = this.getProvidersForType('approval', senderId);
     const result = await sendContentApprovalNotification(request, providers);
-    if (senderId && result.userId) {
-      await this.createNotification({
-        userId: result.userId,
-        senderId,
-        type: result.type,
-        channel: result.channel,
-        status: result.status,
-        title: result.title,
-        message: result.message,
-        error: result.error ?? undefined,
-        metadata: result.metadata,
-      });
-    }
     return result;
   }
 
   async dispatchPublishing(request: PublishingNotificationRequest, senderId?: string) {
     const providers = this.getProvidersForType('publishing', senderId);
     const result = await sendPublishingNotification(request, providers);
-    if (senderId && result.userId) {
-      await this.createNotification({
-        userId: result.userId,
-        senderId,
-        type: result.type,
-        channel: result.channel,
-        status: result.status,
-        title: result.title,
-        message: result.message,
-        error: result.error ?? undefined,
-        metadata: result.metadata,
-      });
-    }
     return result;
   }
 
   async dispatchSubscriptionReminder(request: SubscriptionReminderRequest, senderId?: string) {
     const providers = this.getProvidersForType('subscription', senderId);
     const result = await sendSubscriptionReminder(request, providers);
-    if (senderId && result.userId) {
-      await this.createNotification({
-        userId: result.userId,
-        senderId,
-        type: result.type,
-        channel: result.channel,
-        status: result.status,
-        title: result.title,
-        message: result.message,
-        error: result.error ?? undefined,
-        metadata: result.metadata,
-      });
-    }
     return result;
   }
 
@@ -545,23 +684,40 @@ export class NotificationsService {
     const buildConditions = (f: HistoryQueryFilters) => {
       const conditions = [];
 
-      if (f.userId) conditions.push(eq(schema.notifications.userId, f.userId));
-      if (f.type) conditions.push(eq(schema.notifications.type, f.type as any));
-      if (f.status) conditions.push(eq(schema.notifications.status, f.status as any));
-      if (f.channel) conditions.push(eq(schema.notifications.channel, f.channel as any));
-      if (f.priority) conditions.push(eq(schema.notifications.priority, f.priority as any));
-      if (f.senderId) conditions.push(eq(schema.notifications.senderId, f.senderId));
-      if (f.startDate) conditions.push(gte(schema.notifications.createdAt, new Date(f.startDate)));
-      if (f.endDate) conditions.push(lte(schema.notifications.createdAt, new Date(f.endDate)));
-      if (f.isRead !== undefined) {
+      if (f.userId && UUID_REGEX.test(f.userId)) {
+        conditions.push(eq(schema.notifications.userId, f.userId));
+      }
+      if (f.senderId && UUID_REGEX.test(f.senderId)) {
+        conditions.push(eq(schema.notifications.senderId, f.senderId));
+      }
+      if (f.type && f.type !== 'all' && NOTIFICATION_TYPE_VALUES.includes(f.type as any)) {
+        conditions.push(eq(schema.notifications.type, f.type as any));
+      }
+      if (f.status && f.status !== 'all' && DELIVERY_STATUS_VALUES.includes(f.status as any)) {
+        conditions.push(eq(schema.notifications.status, f.status as any));
+      }
+      if (f.channel && f.channel !== 'all' && NOTIFICATION_CHANNEL_VALUES.includes(f.channel as any)) {
+        conditions.push(eq(schema.notifications.channel, f.channel as any));
+      }
+      if (f.priority && f.priority !== 'all' && NOTIFICATION_PRIORITY_VALUES.includes(f.priority as any)) {
+        conditions.push(eq(schema.notifications.priority, f.priority as any));
+      }
+      if (f.startDate && !isNaN(new Date(f.startDate).getTime())) {
+        conditions.push(gte(schema.notifications.createdAt, new Date(f.startDate)));
+      }
+      if (f.endDate && !isNaN(new Date(f.endDate).getTime())) {
+        conditions.push(lte(schema.notifications.createdAt, new Date(f.endDate)));
+      }
+      if (f.isRead !== undefined && f.isRead !== '' && (f.isRead as any) !== 'all') {
         const isReadBool = f.isRead === true || f.isRead === 'true';
         conditions.push(eq(schema.notifications.isRead, isReadBool));
       }
-      if (f.search) {
+      if (f.search && f.search.trim()) {
+        const q = f.search.trim();
         conditions.push(
           or(
-            like(schema.notifications.title, `%${f.search}%`),
-            like(schema.notifications.message, `%${f.search}%`),
+            like(schema.notifications.title, `%${q}%`),
+            like(schema.notifications.message, `%${q}%`),
           )
         );
       }
@@ -575,12 +731,12 @@ export class NotificationsService {
     const limit = Math.max(1, Math.min(100, filters.limit || 20));
     const skip = (page - 1) * limit;
 
-    const sortBy = filters.sortBy || 'createdAt';
+    const validSortColumns = ['createdAt', 'readAt', 'sentAt', 'updatedAt', 'title', 'type', 'status', 'priority'];
+    const sortBy = validSortColumns.includes(filters.sortBy || '') ? filters.sortBy : 'createdAt';
     const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
 
-    const orderByClause = sortOrder === 'asc'
-      ? [schema.notifications[sortBy]]
-      : [desc(schema.notifications[sortBy])];
+    const sortCol = schema.notifications[sortBy as keyof typeof schema.notifications] || schema.notifications.createdAt;
+    const orderByClause = sortOrder === 'asc' ? [sortCol] : [desc(sortCol)];
 
     const [result, countResult] = await Promise.all([
       this.db.query.notifications.findMany({
@@ -1135,4 +1291,247 @@ export class NotificationsService {
 
     return { totalTargeted: targets.length, records };
   }
+
+  // ---------------------------------------------------------------------------
+  // TASK, SUBMISSION & DESIGNER PAYMENT EVENT TRIGGERS
+  // ---------------------------------------------------------------------------
+
+  async triggerTaskEvent(payload: {
+    taskId: string;
+    designerId: string;
+    taskTitle: string;
+    eventType: 'assigned' | 'updated' | 'approaching_deadline' | 'overdue' | 'completed';
+    senderId?: string;
+    details?: string;
+  }) {
+    let notifType = 'TICKET_ASSIGNED';
+    let title = `Task: ${payload.taskTitle}`;
+    let message = `Task "${payload.taskTitle}" status has been updated.`;
+    let priority: 'NORMAL' | 'HIGH' | 'URGENT' = 'NORMAL';
+
+    switch (payload.eventType) {
+      case 'assigned':
+        notifType = 'TICKET_ASSIGNED';
+        title = `New Task Assigned: ${payload.taskTitle}`;
+        message = `You have been assigned a new design task: "${payload.taskTitle}".${payload.details ? ` Details: ${payload.details}` : ''}`;
+        break;
+      case 'updated':
+        notifType = 'TICKET_RESPONDED';
+        title = `Task Updated: ${payload.taskTitle}`;
+        message = `Task "${payload.taskTitle}" has been updated.${payload.details ? ` Notes: ${payload.details}` : ''}`;
+        break;
+      case 'approaching_deadline':
+        notifType = 'TICKET_ASSIGNED';
+        priority = 'HIGH';
+        title = `Approaching Deadline: ${payload.taskTitle}`;
+        message = `Upcoming deadline alert for task "${payload.taskTitle}".${payload.details ? ` ${payload.details}` : ''}`;
+        break;
+      case 'overdue':
+        notifType = 'TICKET_ASSIGNED';
+        priority = 'URGENT';
+        title = `Task Overdue: ${payload.taskTitle}`;
+        message = `Task "${payload.taskTitle}" is past its due date. Please complete and submit your work as soon as possible.`;
+        break;
+      case 'completed':
+        notifType = 'TICKET_RESOLVED';
+        title = `Task Completed: ${payload.taskTitle}`;
+        message = `Task "${payload.taskTitle}" has been marked as complete. Thank you!`;
+        break;
+    }
+
+    const created = await this.createNotification({
+      userId: payload.designerId,
+      senderId: payload.senderId,
+      type: notifType,
+      channel: 'BOTH',
+      priority,
+      title,
+      message,
+      relatedEntityType: 'task',
+      relatedEntityId: payload.taskId,
+      metadata: {
+        taskId: payload.taskId,
+        taskTitle: payload.taskTitle,
+        eventType: payload.eventType,
+      },
+    });
+
+    // Mirror to designer_notifications
+    try {
+      await this.db.insert(schema.designerNotifications).values({
+        designerId: payload.designerId,
+        type: 'task',
+        title,
+        message,
+      });
+    } catch (err) {
+      this.logger.warn(`Could not mirror task notification to designer_notifications: ${err?.message}`);
+    }
+
+    return created;
+  }
+
+  async triggerSubmissionEvent(payload: {
+    submissionId: string;
+    designerId: string;
+    title: string;
+    eventType: 'submitted' | 'reviewed' | 'revision_required' | 'rejected' | 'approved';
+    senderId?: string;
+    notes?: string;
+  }) {
+    let notifType = 'CONTENT_APPROVAL';
+    let title = `Submission: ${payload.title}`;
+    let message = `Your submission "${payload.title}" has been updated.`;
+    let priority: 'NORMAL' | 'HIGH' = 'NORMAL';
+    let designerType: 'approved' | 'revision' | 'system' = 'system';
+
+    switch (payload.eventType) {
+      case 'submitted':
+        notifType = 'CONTENT_APPROVAL';
+        title = `Design Submitted: ${payload.title}`;
+        message = `Your design submission "${payload.title}" has been received and queued for review.`;
+        designerType = 'system';
+        break;
+      case 'reviewed':
+        notifType = 'CONTENT_APPROVAL';
+        title = `Design Under Review: ${payload.title}`;
+        message = `Your submission "${payload.title}" is currently under review by our design team.`;
+        designerType = 'system';
+        break;
+      case 'revision_required':
+        notifType = 'CONTENT_APPROVAL';
+        priority = 'HIGH';
+        title = `Revision Required: ${payload.title}`;
+        message = `Revisions have been requested for "${payload.title}".${payload.notes ? ` Feedback: ${payload.notes}` : ''}`;
+        designerType = 'revision';
+        break;
+      case 'rejected':
+        notifType = 'CONTENT_PUBLISH_FAILED';
+        priority = 'HIGH';
+        title = `Submission Rejected: ${payload.title}`;
+        message = `Your submission "${payload.title}" was rejected.${payload.notes ? ` Reason: ${payload.notes}` : ''}`;
+        designerType = 'revision';
+        break;
+      case 'approved':
+        notifType = 'CONTENT_APPROVAL';
+        title = `Submission Approved! ${payload.title}`;
+        message = `Congratulations! Your design submission "${payload.title}" has been approved.`;
+        designerType = 'approved';
+        break;
+    }
+
+    const created = await this.createNotification({
+      userId: payload.designerId,
+      senderId: payload.senderId,
+      type: notifType,
+      channel: 'BOTH',
+      priority,
+      title,
+      message,
+      relatedEntityType: 'submission',
+      relatedEntityId: payload.submissionId,
+      metadata: {
+        submissionId: payload.submissionId,
+        submissionTitle: payload.title,
+        eventType: payload.eventType,
+        notes: payload.notes,
+      },
+    });
+
+    try {
+      await this.db.insert(schema.designerNotifications).values({
+        designerId: payload.designerId,
+        type: designerType,
+        title,
+        message,
+      });
+    } catch (err) {
+      this.logger.warn(`Could not mirror submission notification to designer_notifications: ${err?.message}`);
+    }
+
+    return created;
+  }
+
+  async triggerDesignerPaymentEvent(payload: {
+    paymentId: string;
+    designerId: string;
+    amount: number;
+    reference: string;
+    status: 'pending' | 'approved' | 'processing' | 'successful' | 'failed' | 'declined';
+    senderId?: string;
+    notes?: string;
+  }) {
+    let notifType = 'SUBSCRIPTION_PAYMENT_SUCCESS';
+    let title = `Payout: ${payload.reference}`;
+    let message = `Your payout of ₦${(payload.amount / 100).toLocaleString()} status is now ${payload.status.toUpperCase()}.`;
+    let priority: 'NORMAL' | 'HIGH' = 'NORMAL';
+
+    switch (payload.status) {
+      case 'pending':
+        notifType = 'SUBSCRIPTION_PAYMENT_PENDING';
+        title = `Payout Queued: ${payload.reference}`;
+        message = `A payout request of ₦${(payload.amount / 100).toLocaleString()} (Ref: ${payload.reference}) is pending review.`;
+        break;
+      case 'approved':
+        notifType = 'SUBSCRIPTION_PAYMENT_PENDING';
+        title = `Payout Approved: ${payload.reference}`;
+        message = `Your payout of ₦${(payload.amount / 100).toLocaleString()} (Ref: ${payload.reference}) has been approved and queued for processing.`;
+        break;
+      case 'processing':
+        notifType = 'SUBSCRIPTION_PAYMENT_PENDING';
+        title = `Payout Processing: ${payload.reference}`;
+        message = `Your payout of ₦${(payload.amount / 100).toLocaleString()} (Ref: ${payload.reference}) is currently being processed with the bank.`;
+        break;
+      case 'successful':
+        notifType = 'SUBSCRIPTION_PAYMENT_SUCCESS';
+        title = `Payout Successful: ${payload.reference}`;
+        message = `Your payout of ₦${(payload.amount / 100).toLocaleString()} (Ref: ${payload.reference}) has been successfully credited to your bank account!`;
+        break;
+      case 'failed':
+        notifType = 'SUBSCRIPTION_PAYMENT_FAILED';
+        priority = 'HIGH';
+        title = `Payout Failed: ${payload.reference}`;
+        message = `Your payout of ₦${(payload.amount / 100).toLocaleString()} (Ref: ${payload.reference}) failed to process.${payload.notes ? ` Reason: ${payload.notes}` : ' Please verify your bank details.'}`;
+        break;
+      case 'declined':
+        notifType = 'SUBSCRIPTION_PAYMENT_FAILED';
+        priority = 'HIGH';
+        title = `Payout Declined: ${payload.reference}`;
+        message = `Your payout of ₦${(payload.amount / 100).toLocaleString()} (Ref: ${payload.reference}) was declined.${payload.notes ? ` Reason: ${payload.notes}` : ''}`;
+        break;
+    }
+
+    const created = await this.createNotification({
+      userId: payload.designerId,
+      senderId: payload.senderId,
+      type: notifType,
+      channel: 'BOTH',
+      priority,
+      title,
+      message,
+      relatedEntityType: 'designer_payment',
+      relatedEntityId: payload.paymentId,
+      metadata: {
+        paymentId: payload.paymentId,
+        reference: payload.reference,
+        status: payload.status,
+        amount: payload.amount,
+        notes: payload.notes,
+      },
+    });
+
+    try {
+      await this.db.insert(schema.designerNotifications).values({
+        designerId: payload.designerId,
+        type: 'payment',
+        title,
+        message,
+      });
+    } catch (err) {
+      this.logger.warn(`Could not mirror payment notification to designer_notifications: ${err?.message}`);
+    }
+
+    return created;
+  }
 }
+

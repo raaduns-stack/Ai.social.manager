@@ -34,6 +34,16 @@ function stripHtml(html) {
   return (div.textContent || div.innerText || "").trim();
 }
 
+function cleanTitle(title) {
+  if (!title) return "";
+  const cleaned = title
+    .replace(/\[\s*admin\s*copy\s*\]/gi, "")
+    .replace(/\s*-\s*admin\s*copy/gi, "")
+    .replace(/admin\s*copy/gi, "")
+    .trim();
+  return cleaned || "Approval";
+}
+
 export default function AdminNavbar({ onMenuClick }) {
   const { admin, logout } = useAdminAuth();
   const navigate = useNavigate();
@@ -189,7 +199,7 @@ export default function AdminNavbar({ onMenuClick }) {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <p className="text-xs font-semibold text-on-surface truncate flex-1">
-                          {n.title}
+                          {cleanTitle(n.title)}
                         </p>
                         <span className="text-[10px] text-on-surface-variant shrink-0">
                           {relativeTime(n.sentAt || n.createdAt)}

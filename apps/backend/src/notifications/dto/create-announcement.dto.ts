@@ -24,7 +24,7 @@ export class CreateSystemAnnouncementDto {
   priority?: NotificationPriority;
 
   @IsOptional()
-  @IsUrl()
+  @IsString()
   actionUrl?: string;
 
   @IsOptional()

@@ -70,3 +70,37 @@ export async function getNotificationHistory(params?: {
   })
   return response.data
 }
+
+export async function sendTaskNotification(data: {
+  taskId?: string
+  designerId: string
+  taskTitle: string
+  eventType: 'assigned' | 'updated' | 'approaching_deadline' | 'overdue' | 'completed'
+  details?: string
+}): Promise<any> {
+  const response = await api.post<any>('/admin/notifications/task-event', data)
+  return response.data
+}
+
+export async function sendSubmissionNotification(data: {
+  submissionId?: string
+  designerId: string
+  title: string
+  eventType: 'submitted' | 'reviewed' | 'revision_required' | 'rejected' | 'approved'
+  notes?: string
+}): Promise<any> {
+  const response = await api.post<any>('/admin/notifications/submission-event', data)
+  return response.data
+}
+
+export async function sendDesignerPaymentNotification(data: {
+  paymentId?: string
+  designerId: string
+  amount: number
+  reference?: string
+  status: 'pending' | 'approved' | 'processing' | 'successful' | 'failed' | 'declined'
+  notes?: string
+}): Promise<any> {
+  const response = await api.post<any>('/admin/notifications/designer-payment-event', data)
+  return response.data
+}

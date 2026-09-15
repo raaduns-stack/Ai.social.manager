@@ -48,18 +48,6 @@ export class AdminNotificationsController {
       metadata: dto.metadata,
     }, user.userId);
 
-    // Mirror the announcement into each admin/staff user's own feed so
-    // the admin navbar bell surfaces it without re-broadcasting to clients.
-    await this.notificationsService.broadcastToStaffRole({
-      type: 'SYSTEM_ANNOUNCEMENT',
-      title: `[Admin copy] ${dto.title}`,
-      message: dto.message,
-      priority: 'NORMAL',
-      metadata: { ...(dto.metadata || {}), mirrorOf: 'system-announcement' },
-      actionUrl: dto.actionUrl,
-      senderId: user.userId,
-    });
-
     return result;
   }
 
@@ -146,6 +134,95 @@ export class AdminNotificationsController {
       daysToExpiry: 0,
       expiryDate: new Date(),
     }, user.userId);
+  }
+
+  @Post('task-event')
+  @RequirePermission('notification_management', 'edit')
+  @ApiOperation({ summary: 'Send a task lifecycle notification to a designer' })
+  async sendTaskEvent(
+    @Body()
+    body: {
+      taskId?: string;
+      designerId: string;
+      taskTitle: string;
+      eventType: 'assigned' | 'updated' | 'approaching_deadline' | 'overdue' | 'completed';
+      details?: string;
+    },
+    @CurrentUser() user: { userId: string },
+  ) {
+    const designer = await this.notificationsService.validateCustomerUserIds([body.designerId]);
+    if (designer.invalid.length > 0) {
+      throw new BadRequestException({ message: 'Invalid designer ID', invalidUserIds: designer.invalid });
+    }
+
+    return this.notificationsService.triggerTaskEvent({
+      taskId: body.taskId || '00000000-0000-0000-0000-000000000000',
+      designerId: body.designerId,
+      taskTitle: body.taskTitle,
+      eventType: body.eventType,
+      senderId: user.userId,
+      details: body.details,
+    });
+  }
+
+  @Post('submission-event')
+  @RequirePermission('notification_management', 'edit')
+  @ApiOperation({ summary: 'Send a submission review/revision notification to a designer' })
+  async sendSubmissionEvent(
+    @Body()
+    body: {
+      submissionId?: string;
+      designerId: string;
+      title: string;
+      eventType: 'submitted' | 'reviewed' | 'revision_required' | 'rejected' | 'approved';
+      notes?: string;
+    },
+    @CurrentUser() user: { userId: string },
+  ) {
+    const designer = await this.notificationsService.validateCustomerUserIds([body.designerId]);
+    if (designer.invalid.length > 0) {
+      throw new BadRequestException({ message: 'Invalid designer ID', invalidUserIds: designer.invalid });
+    }
+
+    return this.notificationsService.triggerSubmissionEvent({
+      submissionId: body.submissionId || '00000000-0000-0000-0000-000000000000',
+      designerId: body.designerId,
+      title: body.title,
+      eventType: body.eventType,
+      senderId: user.userId,
+      notes: body.notes,
+    });
+  }
+
+  @Post('designer-payment-event')
+  @RequirePermission('notification_management', 'edit')
+  @ApiOperation({ summary: 'Send a designer payout status notification' })
+  async sendDesignerPaymentEvent(
+    @Body()
+    body: {
+      paymentId?: string;
+      designerId: string;
+      amount: number;
+      reference?: string;
+      status: 'pending' | 'approved' | 'processing' | 'successful' | 'failed' | 'declined';
+      notes?: string;
+    },
+    @CurrentUser() user: { userId: string },
+  ) {
+    const designer = await this.notificationsService.validateCustomerUserIds([body.designerId]);
+    if (designer.invalid.length > 0) {
+      throw new BadRequestException({ message: 'Invalid designer ID', invalidUserIds: designer.invalid });
+    }
+
+    return this.notificationsService.triggerDesignerPaymentEvent({
+      paymentId: body.paymentId || '00000000-0000-0000-0000-000000000000',
+      designerId: body.designerId,
+      amount: body.amount,
+      reference: body.reference || 'PAY-REF',
+      status: body.status,
+      senderId: user.userId,
+      notes: body.notes,
+    });
   }
 
   @Post('scheduled')

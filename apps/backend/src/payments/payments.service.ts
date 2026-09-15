@@ -397,27 +397,37 @@ export class PaymentsService {
       });
     }
 
-    // Automatically create an invoice record
-    const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-    const [invoice] = await this.db.insert(schema.invoices).values({
-      userId: payment.userId,
-      paymentId: payment.id,
-      subscriptionId: payment.subscriptionId,
-      invoiceNumber,
-      amount: payment.amount,
-      currency: payment.currency,
-      status: 'paid',
-      pdfUrl: null,
-    }).returning();
-
-    void this.notificationsService.triggerInvoiceAvailable({
-      userId: payment.userId,
-      subscriptionId: payment.subscriptionId || '',
-      invoiceId: invoice.id,
-      invoiceNumber,
-      amount: payment.amount,
-      currency: payment.currency,
+    // Automatically create an invoice record if one doesn't exist yet for this payment
+    const existingInvoice = await this.db.query.invoices.findFirst({
+      where: eq(schema.invoices.paymentId, payment.id),
     });
+
+    let invoice = existingInvoice;
+    let invoiceNumber = existingInvoice?.invoiceNumber;
+
+    if (!existingInvoice) {
+      invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+      const [inserted] = await this.db.insert(schema.invoices).values({
+        userId: payment.userId,
+        paymentId: payment.id,
+        subscriptionId: payment.subscriptionId,
+        invoiceNumber,
+        amount: payment.amount,
+        currency: payment.currency,
+        status: 'paid',
+        pdfUrl: null,
+      }).returning();
+      invoice = inserted;
+
+      void this.notificationsService.triggerInvoiceAvailable({
+        userId: payment.userId,
+        subscriptionId: payment.subscriptionId || '',
+        invoiceId: invoice.id,
+        invoiceNumber: invoiceNumber!,
+        amount: payment.amount,
+        currency: payment.currency,
+      });
+    }
 
     return {
       status: 'successful',

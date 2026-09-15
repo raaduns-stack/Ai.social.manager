@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { getMySubscription, cancelSubscription } from '../../features/subscriptions/subscriptions-api'
 import { getPlans } from '../../features/plans/plans-api'
-import { getInvoices } from '../../features/invoices/invoices-api'
+import { getInvoices, downloadInvoicePdf } from '../../features/invoices/invoices-api'
 import ErrorBanner from '../../components/error-banner'
 import CheckoutButton from '../../features/payments/checkout-button'
 import { PLAN_DETAILS } from '../../utils/constants'
@@ -56,6 +56,9 @@ export default function Billing() {
   const [isSupportModalOpen, setIsSupportModalOpen] = useState(false)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [isManagePlanModalOpen, setIsManagePlanModalOpen] = useState(false)
+  const [selectedInvoiceForDownload, setSelectedInvoiceForDownload] = useState(null)
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false)
+  const [downloadToast, setDownloadToast] = useState(null)
 
   // Edit payment card form state
   const [cardholderName, setCardholderName] = useState(paymentMethod.cardholder)
@@ -68,6 +71,34 @@ export default function Billing() {
   const [supportSubject, setSupportSubject] = useState('')
   const [supportMessage, setSupportMessage] = useState('')
   const [supportSubmitted, setSupportSubmitted] = useState(false)
+
+  const handleConfirmInvoiceDownload = async () => {
+    if (!selectedInvoiceForDownload) return
+    setIsDownloadingInvoice(true)
+    try {
+      await downloadInvoicePdf(
+        selectedInvoiceForDownload.id,
+        selectedInvoiceForDownload.invoiceNumber
+      )
+      setSelectedInvoiceForDownload(null)
+      setDownloadToast({
+        show: true,
+        message: `Invoice ${selectedInvoiceForDownload.invoiceNumber} downloaded successfully!`,
+        type: 'success',
+      })
+      setTimeout(() => setDownloadToast(null), 4000)
+    } catch (err) {
+      console.error('Failed to download invoice:', err)
+      setDownloadToast({
+        show: true,
+        message: err?.response?.data?.message || err.message || 'Failed to download invoice PDF.',
+        type: 'error',
+      })
+      setTimeout(() => setDownloadToast(null), 4000)
+    } finally {
+      setIsDownloadingInvoice(false)
+    }
+  }
 
   // Fetch subscription, plans and invoices on mount
   useEffect(() => {
@@ -435,7 +466,18 @@ export default function Billing() {
                 variant="outline"
                 size="sm"
                 className="cursor-pointer"
-                onClick={() => alert('Exporting all invoice data as CSV...')}
+                onClick={() => {
+                  if (invoices.length > 0) {
+                    setSelectedInvoiceForDownload(invoices[0])
+                  } else {
+                    setDownloadToast({
+                      show: true,
+                      message: 'No invoices available to export.',
+                      type: 'error',
+                    })
+                    setTimeout(() => setDownloadToast(null), 3000)
+                  }
+                }}
               >
                 Export Invoices
               </Button>
@@ -473,7 +515,7 @@ export default function Billing() {
                           </td>
                           <td className="px-6 py-4 text-right">
                             <button
-                              onClick={() => alert(`Downloading invoice ${invoice.invoiceNumber}`)}
+                              onClick={() => setSelectedInvoiceForDownload(invoice)}
                               className="text-ink-muted hover:text-primary transition-colors cursor-pointer"
                               title="Download Invoice"
                             >
@@ -662,6 +704,81 @@ export default function Billing() {
           </div>
         </div>
       </Modal>
+
+      {/* Download Invoice Confirmation Modal */}
+      <Modal
+        open={Boolean(selectedInvoiceForDownload)}
+        onClose={() => !isDownloadingInvoice && setSelectedInvoiceForDownload(null)}
+        title="Download Invoice PDF"
+      >
+        {selectedInvoiceForDownload && (
+          <div className="space-y-4 text-left">
+            <div className="p-4 bg-canvas rounded-card border border-border space-y-2.5">
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Invoice ID:</span>
+                <span className="font-bold text-ink">{selectedInvoiceForDownload.invoiceNumber}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Issued Date:</span>
+                <span className="text-ink">
+                  {new Date(selectedInvoiceForDownload.issuedAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                  })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Total Amount:</span>
+                <span className="font-bold text-ink">{formatPrice(selectedInvoiceForDownload.amount)}</span>
+              </div>
+              <div className="flex justify-between items-center text-sm">
+                <span className="text-ink-muted font-medium">Status:</span>
+                <Badge tone={selectedInvoiceForDownload.status === 'paid' ? 'success' : 'neutral'}>
+                  {selectedInvoiceForDownload.status === 'paid' ? 'Paid' : 'Failed'}
+                </Badge>
+              </div>
+            </div>
+            <p className="text-xs text-ink-muted leading-relaxed">
+              Confirm to generate and download the official PDF receipt for your records.
+            </p>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSelectedInvoiceForDownload(null)}
+                disabled={isDownloadingInvoice}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleConfirmInvoiceDownload}
+                disabled={isDownloadingInvoice}
+                className="gap-2 cursor-pointer font-bold shadow-soft"
+              >
+                <Download size={16} />
+                {isDownloadingInvoice ? 'Downloading...' : 'Download PDF'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modern In-App Toast Notification */}
+      {downloadToast && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 p-4 rounded-card shadow-hover border text-sm font-medium flex items-center gap-3 transition-all animate-in fade-in slide-in-from-bottom-5 ${
+            downloadToast.type === 'success'
+              ? 'bg-surface text-ink border-green-500/40 shadow-soft'
+              : 'bg-surface text-danger border-danger/40 shadow-soft'
+          }`}
+        >
+          <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
+          <span>{downloadToast.message}</span>
+        </div>
+      )}
     </div>
   )
 }
