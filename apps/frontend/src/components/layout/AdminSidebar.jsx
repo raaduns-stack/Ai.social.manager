@@ -33,6 +33,7 @@ import {
   Inbox,
   Code2,
   ChevronDown,
+  Palette,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
@@ -42,7 +43,10 @@ import { cn } from "../../utils/cn";
 const NAV_SECTIONS = [
   {
     label: "Overview",
-    items: [{ label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard }],
+    items: [
+      { label: "Dashboard", to: "/admin/dashboard", icon: LayoutDashboard },
+      { label: "Designer Portal", to: "/designer/login", icon: Palette },
+    ],
   },
   {
     label: "Customers",
