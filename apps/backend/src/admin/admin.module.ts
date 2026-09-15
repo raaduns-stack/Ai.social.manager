@@ -49,6 +49,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     DesignerPaymentsController,
     DesignReportsController,
     DesignManagementController,
+    AdminDesignerManagementController,
   ],
   providers: [
     AdminService,
@@ -58,6 +59,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
+    AdminDesignerManagementService,
   ],
   exports: [
     AdminService,
@@ -67,6 +69,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
+    AdminDesignerManagementService,
   ],
 })
 export class AdminModule { }
