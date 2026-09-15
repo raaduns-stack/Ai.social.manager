@@ -131,9 +131,13 @@ export class TikTokService {
    * @param res    Express response — used to perform the browser redirect.
    */
   async handleCallback(code: string, state: string, res: Response): Promise<void> {
-    const frontendUrl = this.configService.get<string>('frontendUrl');
-    const successUrl = `${frontendUrl}/settings?tab=channels&tiktok=connected`;
-    const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
+    const frontendUrl =
+      this.configService.get<string>('frontendUrl') ||
+      process.env.FRONTEND_URL ||
+      process.env.CORS_ORIGIN ||
+      'http://localhost:5173';
+    const successUrl = `${frontendUrl}/dashboard/channels?tiktok=connected`;
+    const errorBase = `${frontendUrl}/dashboard/channels?tiktok=error`;
 
     // 1. Validate state JWT
     let userId: string;

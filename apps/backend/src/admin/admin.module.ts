@@ -45,28 +45,37 @@ import { NotificationsModule } from '../notifications/notifications.module';
     AdminLoginHistoryController,
     AdminActivityLogsController,
     AdminGraphicsController,
+<<<<<<< HEAD
     DesignerPaymentsController,
     DesignReportsController,
     DesignManagementController,
     AdminDesignerManagementController,
+=======
+>>>>>>> 3b72894 (commit)
   ],
   providers: [
     AdminService,
     DashboardService,
     AdminGraphicsService,
+<<<<<<< HEAD
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
     AdminDesignerManagementService,
+=======
+>>>>>>> 3b72894 (commit)
   ],
   exports: [
     AdminService,
     DashboardService,
     AdminGraphicsService,
+<<<<<<< HEAD
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
     AdminDesignerManagementService,
+=======
+>>>>>>> 3b72894 (commit)
   ],
 })
 export class AdminModule {}

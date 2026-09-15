@@ -10,7 +10,9 @@ import {
   Logger,
   HttpCode,
   HttpStatus,
+  InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { TikTokService } from './tiktok.service';
@@ -23,7 +25,10 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 export class TikTokController {
   private readonly logger = new Logger(TikTokController.name);
 
-  constructor(private readonly tiktokService: TikTokService) {}
+  constructor(
+    private readonly tiktokService: TikTokService,
+    private readonly configService: ConfigService,
+  ) {}
 
   // ---------------------------------------------------------------------------
   // GET /api/channels/tiktok/connect
@@ -44,15 +49,34 @@ export class TikTokController {
       'TikTok account with the correct RaaSocial user without server-side sessions.',
   })
   async connect(@CurrentUser() user: { userId: string }) {
+    const rawClientKey =
+      this.configService.get<string>('tiktok.clientKey') || process.env.TIKTOK_CLIENT_KEY || '';
+    const clientKey = rawClientKey.trim().replace(/^["']|["']$/g, '');
+
+    if (!clientKey) {
+      this.logger.error(
+        `TikTok connect failed for user ${user.userId}: TIKTOK_CLIENT_KEY is not configured on this server.`,
+      );
+      throw new InternalServerErrorException(
+        'TikTok OAuth is not configured on this server. Missing TIKTOK_CLIENT_KEY.',
+      );
+    }
+
     const stateJwt = await this.tiktokService.generateStateJwt(user.userId);
+
+    const rawRedirectUri =
+      this.configService.get<string>('tiktok.redirectUri') ||
+      process.env.TIKTOK_REDIRECT_URI ||
+      'http://localhost:4000/api/channels/tiktok/callback';
+    const redirectUri = rawRedirectUri.trim().replace(/^["']|["']$/g, '');
 
     // Build the TikTok authorization URL.
     // Scopes granted in the TikTok Developer Portal: user.info.basic, video.upload
     const params = new URLSearchParams({
-      client_key: process.env.TIKTOK_CLIENT_KEY ?? '',
+      client_key: clientKey,
       scope: 'user.info.basic,video.upload',
       response_type: 'code',
-      redirect_uri: process.env.TIKTOK_REDIRECT_URI ?? '',
+      redirect_uri: redirectUri,
       state: stateJwt,
     });
 
@@ -84,8 +108,12 @@ export class TikTokController {
   @ApiQuery({ name: 'error', required: false })
   @ApiQuery({ name: 'error_description', required: false })
   async callback(@Query() query: TikTokCallbackQueryDto, @Res() res: Response): Promise<void> {
-    const frontendUrl = process.env.FRONTEND_URL ?? 'https://raasocial.io';
-    const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
+    const frontendUrl =
+      this.configService.get<string>('frontendUrl') ||
+      process.env.FRONTEND_URL ||
+      process.env.CORS_ORIGIN ||
+      'http://localhost:5173';
+    const errorBase = `${frontendUrl}/dashboard/channels?tiktok=error`;
 
     // Handle user-denied / TikTok-level errors
     if (query.error) {

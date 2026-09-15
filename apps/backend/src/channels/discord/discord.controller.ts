@@ -9,6 +9,7 @@ import {
   Res,
   UseGuards,
   Logger,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
@@ -41,7 +42,7 @@ export class DiscordController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({
-    summary: 'Begin Discord OAuth flow — returns the Discord authorization URL',
+    summary: 'Begin Discord OAuth2 flow — returns the Discord authorization URL',
     description:
       'The frontend should redirect the user to the returned `authUrl`. ' +
       'The `state` parameter embedded in the URL is a short-lived signed JWT ' +
@@ -49,14 +50,26 @@ export class DiscordController {
       'Discord account with the correct RaaSocial user without server-side sessions.',
   })
   async connect(@CurrentUser() user: { userId: string }) {
+    const rawClientId =
+      this.configService.get<string>('discord.clientId') || process.env.DISCORD_CLIENT_ID || '';
+    const clientId = rawClientId.trim().replace(/^["']|["']$/g, '');
+
+    if (!clientId) {
+      this.logger.error(
+        `Discord connect failed for user ${user.userId}: DISCORD_CLIENT_ID is not configured on this server.`,
+      );
+      throw new InternalServerErrorException(
+        'Discord OAuth is not configured on this server. Missing DISCORD_CLIENT_ID.',
+      );
+    }
+
     const stateJwt = await this.discordService.generateStateJwt(user.userId);
 
-    const clientId =
-      this.configService.get<string>('discord.clientId') || process.env.DISCORD_CLIENT_ID || '';
-    const redirectUri =
+    const rawRedirectUri =
       this.configService.get<string>('discord.redirectUri') ||
       process.env.DISCORD_REDIRECT_URI ||
-      '';
+      'http://localhost:4000/api/channels/discord/callback';
+    const redirectUri = rawRedirectUri.trim().replace(/^["']|["']$/g, '');
 
     // Request identify (user profile), guilds, bot, and applications.commands scopes
     const scope = 'identify guilds bot applications.commands';
@@ -64,7 +77,7 @@ export class DiscordController {
     const permissions = '2048';
 
     this.logger.log(
-      `Discord connect initiated for user ${user.userId}. Client ID configured: ${!!clientId}, Redirect URI: ${redirectUri}`,
+      `Discord connect initiated for user ${user.userId}. Client ID configured: true, Redirect URI: ${redirectUri}`,
     );
 
     const params = new URLSearchParams({

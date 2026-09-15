@@ -33,9 +33,12 @@ import {
   Inbox,
   Code2,
   ChevronDown,
+<<<<<<< HEAD
   Banknote,
   TrendingUp,
   Palette,
+=======
+>>>>>>> 3b72894 (commit)
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
@@ -75,8 +78,11 @@ const NAV_SECTIONS = [
       { label: "Design Tasks", to: "/admin/tasks", icon: ClipboardList },
       { label: "Submissions", to: "/admin/submissions", icon: Inbox },
       { label: "Image-to-Code", to: "/admin/image-to-code", icon: Code2 },
+<<<<<<< HEAD
       { label: "Designer Payments", to: "/admin/designer-payments", icon: Banknote },
       { label: "Design Reports", to: "/admin/design-reports", icon: TrendingUp },
+=======
+>>>>>>> 3b72894 (commit)
     ],
   },
   {

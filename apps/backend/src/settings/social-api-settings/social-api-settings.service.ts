@@ -11,11 +11,13 @@ type Database = PostgresJsDatabase<typeof schema>;
 const VALID_PLATFORMS = [
   'facebook',
   'instagram',
-  'twitter',
+  'x',
   'linkedin',
   'tiktok',
   'discord',
   'snapchat',
+  'youtube',
+  'tumblr',
 ];
 
 @Injectable()

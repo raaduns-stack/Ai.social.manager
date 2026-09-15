@@ -49,7 +49,7 @@ export class PublishingService {
 
     // Look up social account details to resolve userId if not explicitly provided
     let userId = body.userId;
-    const targetChannelId = '';
+    let targetChannelId = '';
     let targetBlogName = '';
 
     if (body.socialAccountId) {
@@ -59,6 +59,8 @@ export class PublishingService {
       if (socialAccount) {
         userId = socialAccount.userId;
         targetBlogName = socialAccount.accountHandle || '';
+        const metadata = (socialAccount.metadata as Record<string, any>) || {};
+        targetChannelId = metadata.channelId || '';
       }
     }
 
