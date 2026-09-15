@@ -19,7 +19,6 @@ export class SocialAccountsService {
     private readonly kycService: KycService,
     private readonly subscriptionsService: SubscriptionsService,
     private readonly notificationsService: NotificationsService,
-    private readonly configService: ConfigService,
   ) {}
 
   /**

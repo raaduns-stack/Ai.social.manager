@@ -95,6 +95,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^sanitize-html$": "<rootDir>/__mocks__/sanitize-html.ts",
+      "^@/(.*)$": "<rootDir>/$1"
+    }
   }
 }

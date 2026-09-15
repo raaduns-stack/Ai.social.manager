@@ -70,7 +70,7 @@ function request(method, path, headers = {}, body = null) {
     }
 
     // Force verified and active status in DB
-    await sql`UPDATE users SET is_email_verified = true, is_active = true WHERE id = ${userId}`;
+    await sql`UPDATE users SET is_email_verified = true, is_active = true, account_status = 'ACTIVE' WHERE id = ${userId}`;
     console.log('User verified & active.');
 
     // Ensure company profile exists
@@ -79,6 +79,16 @@ function request(method, path, headers = {}, body = null) {
       await sql`INSERT INTO customer_company_profile (user_id, business_name, business_description, industry) 
                 VALUES (${userId}, 'Test Business', 'Description of test business', 'Marketing')`;
       console.log('Created company profile.');
+    }
+
+    // Ensure connected social accounts exist for Instagram and Facebook
+    const socialAccounts = await sql`SELECT * FROM social_accounts WHERE user_id = ${userId}`;
+    if (socialAccounts.length === 0) {
+      await sql`INSERT INTO social_accounts (user_id, platform, account_handle, status)
+        VALUES 
+          (${userId}, 'instagram', 'test_insta', 'connected'),
+          (${userId}, 'facebook', 'test_fb', 'connected')`;
+      console.log('Created test social accounts.');
     }
 
     // Login to get customer JWT
