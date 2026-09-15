@@ -156,12 +156,16 @@ apiClient.interceptors.response.use(
             return apiClient(originalRequest);
           } catch (refreshError) {
             localStorage.removeItem('designer_session');
-            window.location.href = '/designer/login';
+            if (window.location.pathname !== '/designer/login') {
+              window.location.href = '/designer/login';
+            }
             return Promise.reject(refreshError);
           }
         } else {
           localStorage.removeItem('designer_session');
-          window.location.href = '/designer/login';
+          if (window.location.pathname !== '/designer/login') {
+            window.location.href = '/designer/login';
+          }
         }
       } else if (isAdminRequest) {
         let adminRefreshToken: string | null = null;
