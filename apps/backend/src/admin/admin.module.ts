@@ -4,6 +4,8 @@ import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
 import { AdminDashboardController } from './dashboard.controller';
 import { DashboardService } from './dashboard.service';
+import { AdminDesignerManagementController } from './designer-management.controller';
+import { AdminDesignerManagementService } from './designer-management.service';
 import { AdminSupportController } from './support/admin-support.controller';
 import { SupportModule } from '../support/support.module';
 import { AdminUploadsController } from './uploads/admin-uploads.controller';
@@ -46,6 +48,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     DesignerPaymentsController,
     DesignReportsController,
     DesignManagementController,
+    AdminDesignerManagementController,
   ],
   providers: [
     AdminService,
@@ -54,6 +57,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
+    AdminDesignerManagementService,
   ],
   exports: [
     AdminService,
@@ -62,6 +66,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
+    AdminDesignerManagementService,
   ],
 })
 export class AdminModule { }
