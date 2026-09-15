@@ -1,16 +1,18 @@
 import { useState, useMemo, useEffect } from "react";
-import { UploadCloud, Eye, Search, LayoutGrid, Table2, Clock, FileImage, AlertCircle, FileText } from "lucide-react";
+import { UploadCloud, Eye, LayoutGrid, Table2, Clock, FileImage, AlertCircle, FileText } from "lucide-react";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
 import DataTable from "../../components/ui/DataTable";
 import Modal from "../../components/ui/Modal";
 import PageHeader from "../../components/layout/PageHeader";
 import DesignerUploadModal from "../../components/designer/DesignerUploadModal";
+import SubmissionSearch from "../../components/designer/SubmissionSearch";
 import PremiumCard from "../../components/designer/premium/PremiumCard";
 import CoverImage from "../../components/designer/premium/CoverImage";
 import StatusDot from "../../components/designer/premium/StatusDot";
 import SegmentedControl from "../../components/designer/premium/SegmentedControl";
 import TimelineStepper from "../../components/designer/premium/TimelineStepper";
+import { useSearchParams } from "react-router-dom";
 import {
   getDesignerSubmissions,
   getDesignerSubmission,
@@ -52,8 +54,13 @@ const activityPeriods = [
 ];
 
 export default function DesignerSubmissions() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const taskIdParam = searchParams.get("taskId");
   const [detail, setDetail] = useState(null);
   const [detailFiles, setDetailFiles] = useState([]);
+  const [detailFilesLoading, setDetailFilesLoading] = useState(false);
+  const [detailFilesError, setDetailFilesError] = useState(false);
+  const [previewId, setPreviewId] = useState(null);
   const [detailActivity, setDetailActivity] = useState([]);
   const [showUpload, setShowUpload] = useState(false);
   const [submissions, setSubmissions] = useState([]);
@@ -100,14 +107,27 @@ export default function DesignerSubmissions() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!loading && taskIdParam && !showUpload) {
+      setShowUpload(true);
+    }
+  }, [loading, taskIdParam, showUpload]);
+
   const openDetail = async (row) => {
     setDetail(row);
     setDetailFiles([]);
+    setDetailFilesError(false);
+    setDetailFilesLoading(true);
+    setPreviewId(null);
     setDetailActivity(activities.filter((a) => a.submissionId === row.id));
     try {
       const full = await getDesignerSubmission(row.id);
       setDetailFiles(full.files || []);
-    } catch {}
+    } catch {
+      setDetailFilesError(true);
+    } finally {
+      setDetailFilesLoading(false);
+    }
   };
 
   const handleSubmitForReview = async (id) => {
@@ -142,14 +162,27 @@ export default function DesignerSubmissions() {
     });
   }, [submissions, query, activityPeriod, activityMatchedIds]);
 
-  const filteredActivity = useMemo(() => activities.filter((a) => withinPeriod(a.createdAt, activityPeriod)), [activities, activityPeriod]);
-  const activityCountByType = useMemo(() => {
+  const filteredActivity = useMemo(() => activities.filter((a) => withinPeriod(a.createdAt, activityPeriod)), [activities, activityPeriod]);  const activityCountByType = useMemo(() => {
     const c = {};
     filteredActivity.forEach((a) => {
       c[a.type] = (c[a.type] || 0) + 1;
     });
     return c;
   }, [filteredActivity]);
+
+  const imageFiles = useMemo(
+    () => detailFiles.filter((f) => f.mimeType?.startsWith("image/")),
+    [detailFiles]
+  );
+  const previewFile = useMemo(
+    () => imageFiles.find((f) => f.id === previewId) || imageFiles[0] || null,
+    [imageFiles, previewId]
+  );
+
+  const handleSearchSelect = (s) => {
+    setQuery(s.title);
+    openDetail(s);
+  };
 
   const columns = [
     { key: "id", label: "ID", render: (r) => <span className="font-mono text-xs text-ink-muted">{shortId(r.id)}</span> },
@@ -158,7 +191,7 @@ export default function DesignerSubmissions() {
       label: "Design",
       render: (r) => (
         <div className="flex gap-3 items-center min-w-[260px]">
-          <CoverImage id={r.id} alt={r.title} className="w-14 h-10 shrink-0" ratio="14/10" />
+          <CoverImage src={resolveFileUrl(r.coverFileUrl)} id={r.id} alt={r.title} className="w-14 h-10 shrink-0" ratio="14/10" />
           <div className="min-w-0">
             <p className="font-semibold text-ink text-sm leading-tight truncate">{r.title}</p>
             <p className="text-xs text-ink-muted">{r.category} • {r.files} file(s)</p>
@@ -218,10 +251,12 @@ export default function DesignerSubmissions() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-3">
           <SegmentedControl options={activityPeriods} value={activityPeriod} onChange={setActivityPeriod} size="sm" />
           <div className="flex items-center gap-2 lg:ml-auto">
-            <div className="relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-ink-muted" />
-              <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search title, ID…" className="h-8 pl-8 pr-3 w-44 sm:w-56 rounded-full border border-border bg-white text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
-            </div>
+            <SubmissionSearch
+              submissions={submissions}
+              query={query}
+              onQueryChange={setQuery}
+              onSelect={handleSearchSelect}
+            />
             <div className="flex rounded-full border border-border p-1 bg-canvas">
               <button onClick={() => setViewPersist("grid")} className={`w-7 h-7 rounded-full flex items-center justify-center ${view === "grid" ? "bg-ink text-white" : "text-ink-muted hover:text-ink"}`}><LayoutGrid size={14} /></button>
               <button onClick={() => setViewPersist("table")} className={`w-7 h-7 rounded-full flex items-center justify-center ${view === "table" ? "bg-ink text-white" : "text-ink-muted hover:text-ink"}`}><Table2 size={14} /></button>
@@ -252,7 +287,7 @@ export default function DesignerSubmissions() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((s) => (
             <PremiumCard key={s.id} hover className="overflow-hidden p-0 flex flex-col group cursor-pointer" onClick={() => openDetail(s)}>
-              <CoverImage id={s.id} alt={s.title} className="rounded-b-none border-0 border-b" ratio="16/10">
+              <CoverImage src={resolveFileUrl(s.coverFileUrl)} id={s.id} alt={s.title} className="rounded-b-none border-0 border-b" ratio="16/10">
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full border border-border shadow-sm">
                   <StatusDot status={s.status} pulse={s.status === "under_review"} />
                   <span className="text-[11px] font-bold capitalize text-ink">{s.status.replaceAll("_", " ")}</span>
@@ -286,13 +321,65 @@ export default function DesignerSubmissions() {
               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-border text-xs font-bold capitalize"><StatusDot status={detail.status} /> {detail.status.replaceAll("_", " ")}</span>
               <span className="text-xs text-ink-muted font-mono">{detail.category} • {shortId(detail.id)} • {timeAgo(detail.updatedAt)}</span>
             </div>
-            <CoverImage
-              src={detailFiles.length > 0 ? resolveFileUrl(detailFiles[0].fileUrl) : null}
-              id={detail.id}
-              alt={detail.title}
-              className="rounded-xl"
-              ratio="16/9"
-            />
+            {detailFilesLoading ? (
+              <div className="rounded-xl h-48 bg-canvas animate-pulse border border-border" />
+            ) : detailFilesError ? (
+              <div className="rounded-xl border border-dashed border-border p-6 text-center space-y-2">
+                <p className="text-sm font-semibold text-ink">Could not load design files</p>
+                <p className="text-xs text-ink-muted">Check your connection and try again.</p>
+                <Button size="sm" variant="outline" className="rounded-lg" onClick={() => detail && openDetail(detail)}>Retry</Button>
+              </div>
+            ) : previewFile ? (
+              <div className="space-y-2">
+                <CoverImage
+                  key={previewFile.id}
+                  src={resolveFileUrl(previewFile.fileUrl)}
+                  id={detail.id}
+                  alt={previewFile.originalName || detail.title}
+                  className="rounded-xl"
+                  ratio="16/9"
+                />
+                {imageFiles.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto dp-scroll pb-1">
+                    {imageFiles.map((f) => (
+                      <button
+                        key={f.id}
+                        onClick={() => setPreviewId(f.id)}
+                        aria-label={`Preview ${f.originalName}`}
+                        className={`shrink-0 rounded-lg overflow-hidden border-2 transition-colors ${previewFile.id === f.id ? "border-primary" : "border-transparent hover:border-border"}`}
+                      >
+                        <img
+                          src={resolveFileUrl(f.fileUrl)}
+                          alt=""
+                          loading="lazy"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                          className="h-14 w-20 object-cover bg-canvas"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : detailFiles.length > 0 ? (
+              <div className="rounded-xl border border-border bg-canvas p-4 flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center text-ink-muted shrink-0">
+                  <FileText size={18} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-ink truncate">{detailFiles[0].originalName}</p>
+                  <p className="text-xs text-ink-muted mt-0.5">PDF preview isn&apos;t inline — open the file to view the design.</p>
+                </div>
+                <a href={resolveFileUrl(detailFiles[0].fileUrl)} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline" className="rounded-lg shrink-0">Open</Button>
+                </a>
+              </div>
+            ) : (
+              <div className="rounded-xl border border-dashed border-border p-6 text-center">
+                <p className="text-xs text-ink-muted">No files attached to this submission yet.</p>
+              </div>
+            )}
             {detail.description && (
               <p className="text-sm text-ink-muted leading-relaxed">{detail.description}</p>
             )}
@@ -348,7 +435,7 @@ export default function DesignerSubmissions() {
             <div className="flex justify-between pt-2">
               <Button variant="ghost" onClick={() => setDetail(null)} className="rounded-lg">Close</Button>
               {detailFiles.length > 0 ? (
-                <a href={resolveFileUrl(detailFiles[0].fileUrl)} target="_blank" rel="noreferrer">
+                <a href={resolveFileUrl((previewFile || detailFiles[0]).fileUrl)} target="_blank" rel="noreferrer">
                   <Button variant="outline" className="rounded-lg">Open files</Button>
                 </a>
               ) : (
@@ -358,7 +445,27 @@ export default function DesignerSubmissions() {
           </div>
         )}
       </Modal>
-      <DesignerUploadModal open={showUpload} onClose={() => setShowUpload(false)} onSuccess={() => { setShowUpload(false); load(); }} />
+      <DesignerUploadModal
+        open={showUpload}
+        taskId={taskIdParam}
+        onClose={() => {
+          setShowUpload(false);
+          if (taskIdParam) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("taskId");
+            setSearchParams(next, { replace: true });
+          }
+        }}
+        onSuccess={() => {
+          setShowUpload(false);
+          if (taskIdParam) {
+            const next = new URLSearchParams(searchParams);
+            next.delete("taskId");
+            setSearchParams(next, { replace: true });
+          }
+          load();
+        }}
+      />
     </div>
   );
 }

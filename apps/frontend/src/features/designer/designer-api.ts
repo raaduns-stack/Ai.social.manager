@@ -32,6 +32,24 @@ export async function updateDesignerProfile(payload: UpdateProfilePayload): Prom
   return response.data
 }
 
+export async function uploadDesignerAvatar(file: File): Promise<DesignerProfile> {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  const response = await api.post<DesignerProfile>('/designer/profile/avatar', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
+export async function uploadDesignerCover(file: File): Promise<DesignerProfile> {
+  const formData = new FormData()
+  formData.append('cover', file)
+  const response = await api.post<DesignerProfile>('/designer/profile/cover', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  })
+  return response.data
+}
+
 export async function getDesignerTasks(): Promise<DesignerTask[]> {
   const response = await api.get<DesignerTask[]>('/designer/tasks')
   return response.data

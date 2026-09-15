@@ -166,7 +166,7 @@ export default function CategoryCombobox({
           <div ref={listboxRef} role="listbox" id={listId} aria-label="Categories" className="max-h-60 overflow-y-auto py-1">
             {showEmpty ? (
               <p role="option" aria-disabled="true" className="px-3 py-3 text-xs text-center text-ink-muted">
-                No matches — type to create "{query.trim()}"
+                No matches — type to suggest "{query.trim()}"
               </p>
             ) : (
               items.map((item, i) => {
@@ -192,7 +192,7 @@ export default function CategoryCombobox({
                         <span className="w-6 h-6 rounded-lg flex items-center justify-center shrink-0 bg-primary text-white">
                           <Plus size={12} strokeWidth={3} />
                         </span>
-                        <span className="truncate font-semibold text-primary">Create "{item.name}"</span>
+                        <span className="truncate font-semibold text-primary">Suggest "{item.name}"</span>
                       </>
                     ) : (
                       <>

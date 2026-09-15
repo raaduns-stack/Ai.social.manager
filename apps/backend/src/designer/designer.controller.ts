@@ -8,9 +8,10 @@ import {
   Body,
   UseGuards,
   UseInterceptors,
+  UploadedFile,
   UploadedFiles,
 } from '@nestjs/common';
-import { FilesInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -59,6 +60,46 @@ export class DesignerController {
   @ApiOperation({ summary: 'Update designer profile' })
   updateProfile(@CurrentUser() user: { userId: string }, @Body() dto: UpdateProfileDto) {
     return this.designerService.updateProfile(user.userId, dto);
+  }
+
+  @Post('profile/avatar')
+  @ApiOperation({ summary: 'Upload designer avatar image (JPG/PNG/WEBP, max 5 MB)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        avatar: { type: 'string', format: 'binary' },
+      },
+      required: ['avatar'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('avatar'))
+  uploadAvatar(
+    @CurrentUser() user: { userId: string },
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.designerService.uploadAvatar(user.userId, file);
+  }
+
+  @Post('profile/cover')
+  @ApiOperation({ summary: 'Upload designer cover banner (JPG/PNG/WEBP, max 5 MB)' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        cover: { type: 'string', format: 'binary' },
+      },
+      required: ['cover'],
+    },
+  })
+  @UseInterceptors(FileInterceptor('cover'))
+  uploadCover(
+    @CurrentUser() user: { userId: string },
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.designerService.uploadCover(user.userId, file);
   }
 
   // ---------------------------------------------------------------------------

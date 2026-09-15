@@ -9,7 +9,7 @@
  */
 import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { Bell, Search, ChevronDown, LogOut, Menu, HelpCircle, Settings2, Loader2, CheckCheck } from "lucide-react";
+import { Bell, Search, ChevronDown, LogOut, Menu, HelpCircle, Settings2, Loader2 } from "lucide-react";
 import { useAdminAuth } from "../../context/useAdminAuth";
 import {
   getCustomerNotifications,

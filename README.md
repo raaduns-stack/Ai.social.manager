@@ -3,6 +3,8 @@ RaaSocial — AI-Driven Social Media Management Portal
 An AI-driven social media management platform designed for business clients. RaaSocial enables automated content calendar generation, social channel scheduling, custom content suggestion generation, compliance Know-Your-Customer (KYC) verification, and billing management using the Flutterwave subscription checkout flow. It is built to facilitate seamless content planning and publishing with custom n8n automations.
 
 ---
+<!-- to be deleted only only by me through manually  -->
+design portal test login: designer login (designer.demo@example.com / DesignerDemo123!)
 
 ## 1. Tech Stack
 

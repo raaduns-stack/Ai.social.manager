@@ -44,6 +44,7 @@ export interface DesignerProfile {
   businessName: string | null
   phone: string | null
   avatar: string | null
+  cover: string | null
   bio: string | null
   portfolioUrl: string | null
   specialties: string[]
@@ -54,6 +55,7 @@ export interface UpdateProfilePayload {
   businessName?: string
   phone?: string
   avatar?: string
+  cover?: string
   bio?: string
   portfolioUrl?: string
   specialties?: string[]
@@ -94,6 +96,7 @@ export interface DesignerSubmission {
   createdAt: string
   updatedAt: string
   files: number
+  coverFileUrl?: string | null
 }
 
 export interface DesignerSubmissionDetail extends Omit<DesignerSubmission, 'files'> {
@@ -179,6 +182,7 @@ export interface ImageToCodeConversion {
   submissionId: string
   submissionTitle: string
   submissionCategory: string
+  coverFileUrl?: string | null
 }
 
 export interface UpdateImageToCodePayload {

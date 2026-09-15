@@ -9,6 +9,7 @@ import {
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as bcrypt from 'bcrypt';
+import { unlinkSync } from 'fs';
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -259,6 +260,7 @@ export class DesignerService {
       businessName: user.businessName,
       phone: user.phoneNumber,
       avatar: user.profileImage,
+      cover: profile.coverImage ?? null,
       bio: profile.bio,
       portfolioUrl: profile.portfolioUrl,
       specialties: profile.specialties ?? [],
@@ -296,19 +298,89 @@ export class DesignerService {
       profile = created;
     }
 
-    if (dto.bio !== undefined || dto.portfolioUrl !== undefined || dto.specialties) {
+    if (
+      dto.bio !== undefined ||
+      dto.portfolioUrl !== undefined ||
+      dto.specialties ||
+      dto.cover !== undefined
+    ) {
       await this.db
         .update(schema.designerProfiles)
         .set({
           ...(dto.bio !== undefined && { bio: dto.bio }),
           ...(dto.portfolioUrl !== undefined && { portfolioUrl: dto.portfolioUrl }),
           ...(dto.specialties && { specialties: dto.specialties }),
+          ...(dto.cover !== undefined && { coverImage: dto.cover || null }),
           updatedAt: new Date(),
         })
         .where(eq(schema.designerProfiles.userId, designerId));
     }
 
     return this.getProfile(designerId);
+  }
+
+  async uploadAvatar(designerId: string, file?: Express.Multer.File) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, designerId),
+    });
+    if (!user) {
+      this.discardUpload(file);
+      throw new NotFoundException('Designer not found');
+    }
+    const fileUrl = this.validateDesignerImage(file);
+    await this.db
+      .update(schema.users)
+      .set({ profileImage: fileUrl, updatedAt: new Date() })
+      .where(eq(schema.users.id, designerId));
+    return this.getProfile(designerId);
+  }
+
+  async uploadCover(designerId: string, file?: Express.Multer.File) {
+    const user = await this.db.query.users.findFirst({
+      where: eq(schema.users.id, designerId),
+    });
+    if (!user) {
+      this.discardUpload(file);
+      throw new NotFoundException('Designer not found');
+    }
+    const fileUrl = this.validateDesignerImage(file);
+    let profile = await this.db.query.designerProfiles.findFirst({
+      where: eq(schema.designerProfiles.userId, designerId),
+    });
+    if (!profile) {
+      const [created] = await this.db
+        .insert(schema.designerProfiles)
+        .values({ userId: designerId })
+        .returning();
+      profile = created;
+    }
+    await this.db
+      .update(schema.designerProfiles)
+      .set({ coverImage: fileUrl, updatedAt: new Date() })
+      .where(eq(schema.designerProfiles.userId, designerId));
+    return this.getProfile(designerId);
+  }
+
+  private discardUpload(file?: Express.Multer.File) {
+    if (!file) return;
+    try {
+      unlinkSync(file.path);
+    } catch {
+      // Ignore cleanup failures.
+    }
+  }
+
+  private validateDesignerImage(file?: Express.Multer.File): string {
+    if (!file) throw new BadRequestException('No file uploaded');
+    if (!file.mimetype?.startsWith('image/')) {
+      this.discardUpload(file);
+      throw new BadRequestException('Only image files (JPG, PNG, WEBP) are allowed.');
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      this.discardUpload(file);
+      throw new BadRequestException('Image must be smaller than 5 MB.');
+    }
+    return `/uploads/${file.filename}`;
   }
 
   // ---------------------------------------------------------------------------
@@ -378,9 +450,26 @@ export class DesignerService {
 
     const fileCountMap = new Map(fileCounts.map((f) => [f.submissionId, f.count]));
 
+    const coverRows = await this.db
+      .select({
+        submissionId: schema.submissionFiles.submissionId,
+        fileUrl: schema.submissionFiles.fileUrl,
+        mimeType: schema.submissionFiles.mimeType,
+      })
+      .from(schema.submissionFiles)
+      .where(inArray(schema.submissionFiles.submissionId, submissionIds))
+      .orderBy(schema.submissionFiles.createdAt);
+    const coverMap = new Map<string, string>();
+    for (const cr of coverRows) {
+      if (!coverMap.has(cr.submissionId) && cr.mimeType?.startsWith('image/')) {
+        coverMap.set(cr.submissionId, cr.fileUrl);
+      }
+    }
+
     return rows.map((r) => ({
       ...r,
       files: fileCountMap.get(r.id) ?? 0,
+      coverFileUrl: coverMap.get(r.id) ?? null,
     }));
   }
 
@@ -666,6 +755,33 @@ export class DesignerService {
   // ---------------------------------------------------------------------------
 
   async getImageToCodeConversions(designerId: string) {
+    // Idempotent mint: ensure every approved/completed submission has a conversion row.
+    // Covers historical approvals that predate auto-creation on review.
+    const approvedSubs = await this.db
+      .select({ id: schema.submissions.id })
+      .from(schema.submissions)
+      .where(
+        and(
+          eq(schema.submissions.designerId, designerId),
+          inArray(schema.submissions.status, ['approved', 'completed'] as any),
+        ),
+      );
+
+    if (approvedSubs.length > 0) {
+      const existing = await this.db
+        .select({ submissionId: schema.imageToCode.submissionId })
+        .from(schema.imageToCode)
+        .where(eq(schema.imageToCode.designerId, designerId));
+      const have = new Set(existing.map((r) => r.submissionId));
+      const missing = approvedSubs.filter((s) => !have.has(s.id));
+      for (const s of missing) {
+        await this.db
+          .insert(schema.imageToCode)
+          .values({ designerId, submissionId: s.id, status: 'not_started' as any })
+          .onConflictDoNothing({ target: schema.imageToCode.submissionId });
+      }
+    }
+
     const rows = await this.db
       .select({
         id: schema.imageToCode.id,
@@ -684,7 +800,30 @@ export class DesignerService {
       .where(eq(schema.imageToCode.designerId, designerId))
       .orderBy(desc(schema.imageToCode.updatedAt));
 
-    return rows;
+    if (rows.length > 0) {
+      const submissionIds = rows.map((r) => r.submissionId);
+      const coverRows = await this.db
+        .select({
+          submissionId: schema.submissionFiles.submissionId,
+          fileUrl: schema.submissionFiles.fileUrl,
+          mimeType: schema.submissionFiles.mimeType,
+        })
+        .from(schema.submissionFiles)
+        .where(inArray(schema.submissionFiles.submissionId, submissionIds))
+        .orderBy(schema.submissionFiles.createdAt);
+      const coverMap = new Map<string, string>();
+      for (const cr of coverRows) {
+        if (!coverMap.has(cr.submissionId) && cr.mimeType?.startsWith('image/')) {
+          coverMap.set(cr.submissionId, cr.fileUrl);
+        }
+      }
+      return rows.map((r) => ({
+        ...r,
+        coverFileUrl: coverMap.get(r.submissionId) ?? null,
+      }));
+    }
+
+    return rows.map((r) => ({ ...r, coverFileUrl: null }));
   }
 
   async updateImageToCode(designerId: string, conversionId: string, dto: UpdateImageToCodeDto) {

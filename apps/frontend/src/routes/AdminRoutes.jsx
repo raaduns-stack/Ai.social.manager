@@ -51,6 +51,11 @@ import AdminSettings from "../pages/Admin/Settings";
 import AdminKyc from "../pages/Admin/Kyc";
 import AccessRestricted from "../pages/Admin/AccessRestricted";
 
+// --- Graphics module (admin side: tasks, submissions, image-to-code) ---
+import AdminGraphicsTasks from "../pages/Admin/graphics/Tasks";
+import AdminGraphicsSubmissions from "../pages/Admin/graphics/Submissions";
+import AdminGraphicsImageToCode from "../pages/Admin/graphics/ImageToCode";
+
 // --- Auth (shared) ---
 import AdminLogin from "../pages/Admin/AdminLogin";
 import AdminForgotPassword from "../pages/Admin/AdminForgotPassword";
@@ -115,6 +120,11 @@ export default function AdminRoutes() {
           <Route path="social-accounts" element={<RequirePermissionGuard module="social_accounts"><AdminSocialAccounts /></RequirePermissionGuard>} />
           <Route path="uploads" element={<RequirePermissionGuard module="upload_management"><AdminUploads /></RequirePermissionGuard>} />
           <Route path="kyc" element={<RequirePermissionGuard module="user_management"><AdminKyc /></RequirePermissionGuard>} />
+
+          {/* Graphics module (design tasks, submissions, image-to-code) */}
+          <Route path="tasks" element={<RequirePermissionGuard module="graphics_management"><AdminGraphicsTasks /></RequirePermissionGuard>} />
+          <Route path="submissions" element={<RequirePermissionGuard module="graphics_management"><AdminGraphicsSubmissions /></RequirePermissionGuard>} />
+          <Route path="image-to-code" element={<RequirePermissionGuard module="graphics_management"><AdminGraphicsImageToCode /></RequirePermissionGuard>} />
 
           {/* Money Management (Treasure) */}
           <Route path="money-management" element={<RequirePermissionGuard module="money_management"><AdminMoneyManagement /></RequirePermissionGuard>} />

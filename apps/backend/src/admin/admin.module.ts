@@ -13,6 +13,8 @@ import { AdminLoginHistoryController } from './login-history/admin-login-history
 import { LoginHistoryModule } from '../login-history/login-history.module';
 import { AdminActivityLogsController } from './activity-logs/admin-activity-logs.controller';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { AdminGraphicsController } from './graphics/graphics.controller';
+import { AdminGraphicsService } from './graphics/graphics.service';
 import { AuthModule } from '../auth/auth.module';
 import { DesignerPaymentsController } from './designer-payments/designer-payments.controller';
 import { DesignerPaymentsService } from './designer-payments/designer-payments.service';
@@ -40,6 +42,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     AdminUploadsController,
     AdminLoginHistoryController,
     AdminActivityLogsController,
+    AdminGraphicsController,
     DesignerPaymentsController,
     DesignReportsController,
     DesignManagementController,
@@ -47,6 +50,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers: [
     AdminService,
     DashboardService,
+    AdminGraphicsService,
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
@@ -54,9 +58,10 @@ import { NotificationsModule } from '../notifications/notifications.module';
   exports: [
     AdminService,
     DashboardService,
+    AdminGraphicsService,
     DesignerPaymentsService,
     DesignReportsService,
     DesignManagementService,
   ],
 })
-export class AdminModule { }
+export class AdminModule { }

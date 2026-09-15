@@ -42,6 +42,7 @@ const MODULES = [
   'audit_logs',
   'staff_management',
   'money_management',
+  'graphics_management',
 ]
 
 const MODULE_DISPLAY_MAP = {
@@ -60,6 +61,7 @@ const MODULE_DISPLAY_MAP = {
   audit_logs: 'Audit Logs',
   staff_management: 'Staff Management',
   money_management: 'Money Management',
+  graphics_management: 'Graphics Management',
 }
 
 const ACTIONS = [

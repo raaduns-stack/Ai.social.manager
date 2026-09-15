@@ -7,10 +7,13 @@ import { useDesignerAuth } from "../../context/useDesignerAuth";
 import {
   getDesignerProfile,
   updateDesignerProfile,
+  uploadDesignerAvatar,
+  uploadDesignerCover,
   getNotificationPrefs,
   updateNotificationPrefs,
   changeDesignerPassword,
 } from "../../features/designer/designer-api";
+import { resolveFileUrl } from "../../features/designer/format";
 
 const tabs = [
   { id: "profile", label: "Designer Profile", desc: "Name, bio, portfolio", icon: User },
@@ -21,10 +24,22 @@ const tabs = [
 
 const specialtyOptions = ["General Graphics", "Hospitality", "Branding", "Print & Signage", "Social Media", "Image-to-Code"];
 
-const emptyProfile = { fullName: "", email: "", businessName: "", phone: "", bio: "", portfolioUrl: "", avatar: "", specialties: [] };
+const emptyProfile = { fullName: "", email: "", businessName: "", phone: "", bio: "", portfolioUrl: "", avatar: "", cover: "", specialties: [] };
+
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+function validateImageFile(file) {
+  if (!file.type.startsWith("image/")) return "Only image files (JPG, PNG, WEBP) are allowed.";
+  if (file.size > IMAGE_MAX_BYTES) return "Image must be smaller than 5 MB.";
+  return null;
+}
+
+function toast(message, type = "info") {
+  window.dispatchEvent(new CustomEvent("app-toast", { detail: { message, type } }));
+}
 
 export default function DesignerSettings() {
-  const { designer } = useDesignerAuth();
+  const { designer, patchSession } = useDesignerAuth();
   const [active, setActive] = useState("profile");
   const [profile, setProfile] = useState(emptyProfile);
   const [notif, setNotif] = useState({ tasks: true, submissions: true, revisions: true, payments: true, email: true, digest: "instant" });
@@ -36,26 +51,31 @@ export default function DesignerSettings() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [changingPwd, setChangingPwd] = useState(false);
-  const [avatarPreview, setAvatarPreview] = useState("");
-  const [coverPreview, setCoverPreview] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef(null);
   const avatarInputRef = useRef(null);
+
+  const applyProfile = (p) => {
+    setProfile({
+      fullName: p.fullName || "",
+      email: p.email || "",
+      businessName: p.businessName || "",
+      phone: p.phone || "",
+      bio: p.bio || "",
+      portfolioUrl: p.portfolioUrl || "",
+      avatar: p.avatar || "",
+      cover: p.cover || "",
+      specialties: p.specialties || [],
+    });
+  };
 
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
       const [p, prefs] = await Promise.all([getDesignerProfile(), getNotificationPrefs()]);
-      setProfile({
-        fullName: p.fullName || "",
-        email: p.email || "",
-        businessName: p.businessName || "",
-        phone: p.phone || "",
-        bio: p.bio || "",
-        portfolioUrl: p.portfolioUrl || "",
-        avatar: p.avatar || "",
-        specialties: p.specialties || [],
-      });
+      applyProfile(p);
       setNotif({
         tasks: prefs.tasks,
         submissions: prefs.submissions,
@@ -75,27 +95,66 @@ export default function DesignerSettings() {
     load();
   }, []);
 
-  useEffect(() => () => {
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-  }, [coverPreview, avatarPreview]);
-
-  const handleCoverUpload = (e) => {
+  const handleCoverUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (coverPreview) URL.revokeObjectURL(coverPreview);
-    setCoverPreview(URL.createObjectURL(file));
     e.target.value = "";
-    window.dispatchEvent(new CustomEvent("app-toast", { detail: { message: "Cover preview updated for this session.", type: "info" } }));
+    if (!file) return;
+    const invalid = validateImageFile(file);
+    if (invalid) {
+      toast(invalid, "error");
+      return;
+    }
+    setUploadingCover(true);
+    try {
+      applyProfile(await uploadDesignerCover(file));
+      toast("Cover image updated", "success");
+    } catch (err) {
+      toast(err?.response?.data?.message || err?.message || "Could not upload cover image.", "error");
+    } finally {
+      setUploadingCover(false);
+    }
   };
 
-  const handleAvatarUpload = (e) => {
+  const handleRemoveCover = async () => {
+    try {
+      applyProfile(await updateDesignerProfile({ cover: "" }));
+      toast("Cover image removed", "success");
+    } catch (err) {
+      toast(err?.response?.data?.message || err?.message || "Could not remove cover image.", "error");
+    }
+  };
+
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files?.[0];
-    if (!file) return;
-    if (avatarPreview) URL.revokeObjectURL(avatarPreview);
-    setAvatarPreview(URL.createObjectURL(file));
     e.target.value = "";
-    window.dispatchEvent(new CustomEvent("app-toast", { detail: { message: "Avatar preview updated — paste an image URL below to save it permanently.", type: "info" } }));
+    if (!file) return;
+    const invalid = validateImageFile(file);
+    if (invalid) {
+      toast(invalid, "error");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const updated = await uploadDesignerAvatar(file);
+      applyProfile(updated);
+      patchSession({ avatar: updated.avatar || null });
+      toast("Avatar updated", "success");
+    } catch (err) {
+      toast(err?.response?.data?.message || err?.message || "Could not upload avatar.", "error");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
+
+  const handleRemoveAvatar = async () => {
+    try {
+      const updated = await updateDesignerProfile({ avatar: "" });
+      applyProfile(updated);
+      patchSession({ avatar: null });
+      toast("Avatar removed", "success");
+    } catch (err) {
+      toast(err?.response?.data?.message || err?.message || "Could not remove avatar.", "error");
+    }
   };
 
   const handleProfileSave = async () => {
@@ -107,19 +166,10 @@ export default function DesignerSettings() {
         phone: profile.phone.trim(),
         bio: profile.bio,
         portfolioUrl: profile.portfolioUrl.trim(),
-        avatar: profile.avatar.trim(),
         specialties: profile.specialties,
       });
-      setProfile({
-        fullName: updated.fullName || "",
-        email: updated.email || "",
-        businessName: updated.businessName || "",
-        phone: updated.phone || "",
-        bio: updated.bio || "",
-        portfolioUrl: updated.portfolioUrl || "",
-        avatar: updated.avatar || "",
-        specialties: updated.specialties || [],
-      });
+      applyProfile(updated);
+      patchSession({ name: updated.fullName, avatar: updated.avatar || null });
       setSaved("Profile");
       setTimeout(() => setSaved(""), 2000);
       window.dispatchEvent(new CustomEvent("app-toast", { detail: { message: "Profile saved", type: "success" } }));
@@ -193,8 +243,23 @@ export default function DesignerSettings() {
     }));
   };
 
-  const avatarSrc = avatarPreview || profile.avatar || null;
+  const avatarSrc = resolveFileUrl(profile.avatar);
+  const coverSrc = resolveFileUrl(profile.cover);
   const initials = (profile.fullName || "AD").split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase();
+
+  const completenessFields = [
+    { label: "your name", done: !!profile.fullName.trim() },
+    { label: "a bio", done: !!(profile.bio || "").trim() },
+    { label: "a portfolio link", done: !!profile.portfolioUrl.trim() },
+    { label: "an avatar", done: !!profile.avatar },
+    { label: "a cover image", done: !!profile.cover },
+    { label: "specialties", done: profile.specialties.length > 0 },
+    { label: "a studio name", done: !!profile.businessName.trim() },
+    { label: "a phone number", done: !!profile.phone.trim() },
+  ];
+  const completenessDone = completenessFields.filter((f) => f.done).length;
+  const completenessPct = Math.round((completenessDone / completenessFields.length) * 100);
+  const firstMissing = completenessFields.find((f) => !f.done);
 
   if (loading) {
     return (
@@ -254,7 +319,7 @@ export default function DesignerSettings() {
             <div className="pt-4 mt-4 border-t border-border">
               <div className="p-3 rounded-xl bg-primary-50 border border-primary-100 flex gap-2.5">
                 <Sparkles size={14} className="text-primary shrink-0 mt-0.5" />
-                <p className="text-xs leading-relaxed text-primary-700"><span className="font-bold">Tip:</span> Complete profile 80% — add cover image to get prioritized for Hospitality briefs.</p>
+                <p className="text-xs leading-relaxed text-primary-700"><span className="font-bold">Tip:</span> {completenessPct === 100 ? "Profile complete — looking sharp." : `Profile ${completenessPct}% complete — add ${firstMissing.label} to finish it.`}</p>
               </div>
             </div>
           </div>
@@ -277,14 +342,25 @@ export default function DesignerSettings() {
           {active === "profile" && (
             <PremiumCard className="overflow-hidden">
               {/* Cover + avatar */}
-              <div className="h-24 bg-gradient-to-br from-ink via-charcoal to-primary/20 relative bg-cover bg-center" style={coverPreview ? { backgroundImage: `url(${coverPreview})` } : undefined}>
+              <div className="h-24 bg-gradient-to-br from-ink via-charcoal to-primary/20 relative bg-cover bg-center" style={coverSrc ? { backgroundImage: `url(${coverSrc})` } : undefined}>
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,102,0,0.15),transparent_50%)]" />
-                <button
-                  onClick={() => coverInputRef.current?.click()}
-                  className="absolute right-3 bottom-3 h-7 px-3 rounded-full bg-white/90 backdrop-blur border border-white/20 text-xs font-semibold text-ink flex items-center gap-1.5"
-                >
-                  <Upload size={12} /> Change cover
-                </button>
+                <div className="absolute right-3 bottom-3 flex items-center gap-2">
+                  {profile.cover && !uploadingCover && (
+                    <button
+                      onClick={handleRemoveCover}
+                      className="h-7 px-3 rounded-full bg-black/40 backdrop-blur border border-white/20 text-xs font-semibold text-white"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <button
+                    onClick={() => coverInputRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="h-7 px-3 rounded-full bg-white/90 backdrop-blur border border-white/20 text-xs font-semibold text-ink flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    <Upload size={12} /> {uploadingCover ? "Uploading…" : profile.cover ? "Change cover" : "Add cover"}
+                  </button>
+                </div>
                 <input ref={coverInputRef} type="file" accept=".png,.jpg,.jpeg,.webp" className="hidden" onChange={handleCoverUpload} />
               </div>
               <div className="px-6 pb-6">
@@ -298,11 +374,17 @@ export default function DesignerSettings() {
                   </div>
                   <button
                     onClick={() => avatarInputRef.current?.click()}
-                    className="mt-8 h-8 px-3 rounded-full bg-ink text-white text-xs font-semibold flex items-center gap-1.5"
+                    disabled={uploadingAvatar}
+                    className="mt-8 h-8 px-3 rounded-full bg-ink text-white text-xs font-semibold flex items-center gap-1.5 disabled:opacity-60"
                   >
-                    <Upload size={12} /> Preview avatar
+                    <Upload size={12} /> {uploadingAvatar ? "Uploading…" : profile.avatar ? "Change avatar" : "Upload avatar"}
                   </button>
                   <input ref={avatarInputRef} type="file" accept=".png,.jpg,.jpeg,.webp" className="hidden" onChange={handleAvatarUpload} />
+                  {profile.avatar && !uploadingAvatar && (
+                    <button onClick={handleRemoveAvatar} className="mt-8 h-8 px-2 rounded-full text-xs font-semibold text-ink-muted hover:text-danger transition-colors">
+                      Remove
+                    </button>
+                  )}
                   <span className="hidden sm:flex items-center gap-1.5 mt-8 ml-auto text-xs text-ink-muted"><span className="w-2 h-2 rounded-full bg-success" /> {profile.email || "—"}</span>
                 </div>
 
@@ -334,18 +416,13 @@ export default function DesignerSettings() {
                   </div>
                   <div className="space-y-1.5">
                     <label className="dp-mono text-ink-muted">Bio</label>
-                    <textarea value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} rows={3} className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
+                    <textarea value={profile.bio} onChange={(e) => setProfile({ ...profile, bio: e.target.value })} rows={3} maxLength={160} className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
                     <p className="text-xs text-ink-muted">{(profile.bio || "").length}/160 • Shown on reviewer handoff</p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="dp-mono text-ink-muted flex items-center gap-1.5"><LinkIcon size={12} /> Portfolio URL</label>
                     <input value={profile.portfolioUrl} onChange={(e) => setProfile({ ...profile, portfolioUrl: e.target.value })} placeholder="https://" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
                     {profile.portfolioUrl && <div className="rounded-xl border border-dashed border-border bg-canvas p-3 text-xs text-ink-muted">Preview: <a href={profile.portfolioUrl} target="_blank" rel="noreferrer" className="font-semibold text-primary hover:underline">{profile.portfolioUrl}</a></div>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="dp-mono text-ink-muted">Avatar image URL</label>
-                    <input value={profile.avatar} onChange={(e) => setProfile({ ...profile, avatar: e.target.value })} placeholder="https://…" className="w-full px-3 py-2.5 border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary bg-white" />
-                    <p className="text-xs text-ink-muted">Saved to your profile. The file picker above is preview-only.</p>
                   </div>
                   <div className="space-y-1.5">
                     <label className="dp-mono text-ink-muted">Specialties</label>
@@ -394,7 +471,7 @@ export default function DesignerSettings() {
             <PremiumCard className="p-6 space-y-5">
               <div>
                 <h3 className="text-sm font-bold text-ink">Notification preferences</h3>
-                <p className="text-sm text-ink-muted mt-1">Control how and when you receive updates. Changes apply instantly.</p>
+                <p className="text-sm text-ink-muted mt-1">Control how and when you receive updates. Press Save preferences to apply them.</p>
               </div>
               <div className="space-y-3">
                 {[
@@ -464,7 +541,7 @@ export default function DesignerSettings() {
               <div className="flex justify-end">
                 <Button onClick={handlePasswordChange} disabled={changingPwd} className="rounded-lg gap-2 bg-ink hover:bg-black font-semibold"><Lock size={16} /> {changingPwd ? "Updating…" : "Update password"} {saved === "Password" && "✓"}</Button>
               </div>
-              <p className="text-xs text-ink-muted bg-canvas border border-border rounded-xl p-3">Use a strong unique password. Your designs and payout info are protected by this credential. We'll email you on change.</p>
+              <p className="text-xs text-ink-muted bg-canvas border border-border rounded-xl p-3">Use a strong unique password. Your designs and payout info are protected by this credential.</p>
             </PremiumCard>
           )}
         </div>
