@@ -270,7 +270,7 @@ export default function DesignerPayments() {
               <p className="font-semibold text-ink mt-1">{method.bankName}</p>
             </div>
             <div className="sm:col-span-3 flex items-center gap-2 text-xs text-success bg-emerald-50 border border-emerald-200 rounded-xl px-3 py-2.5">
-              <ShieldCheck size={14} /> Securely connected. Payouts are processed to your bank account via our partner gateway (Flutterwave). Keep details up to date to avoid delays.
+              <ShieldCheck size={14} /> Securely connected. Payouts are processed to this bank account. Keep details up to date to avoid delays.
             </div>
           </div>
         ) : (
@@ -294,11 +294,11 @@ export default function DesignerPayments() {
               </select>
             </div>
             <div className="sm:col-span-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-              <AlertCircle size={14} className="shrink-0" /> Verification: we'll send ₦100 micro-deposit to confirm account before next payout.
+              <AlertCircle size={14} className="shrink-0" /> Double-check these details — payouts go to this account once saved.
             </div>
           </div>
         )}
-        <p className="text-xs text-ink-muted flex gap-1.5"><CreditCard size={12} className="mt-0.5 shrink-0" /> Integration: Flutterwave processes payouts to your bank account. Contact admin to change payout currency or add a domiciliary account.</p>
+        <p className="text-xs text-ink-muted flex gap-1.5"><CreditCard size={12} className="mt-0.5 shrink-0" /> Payouts go to the bank account above. Contact admin to change payout currency or add a domiciliary account.</p>
       </PremiumCard>
 
       {/* History */}
@@ -314,7 +314,7 @@ export default function DesignerPayments() {
 
       <div className="flex gap-2 p-3 rounded-xl bg-canvas border border-dashed border-border text-xs text-ink-muted">
         <AlertCircle size={14} className="shrink-0 mt-0.5" />
-        <span>Statuses: <span className="font-semibold text-ink">pending</span> → <span className="font-semibold text-ink">processing</span> → <span className="font-semibold text-ink">paid</span>. Contact support if a payment is delayed beyond Tuesday.</span>
+        <span>Statuses: <span className="font-semibold text-ink">pending</span> → <span className="font-semibold text-ink">processing</span> → <span className="font-semibold text-ink">paid</span>. Contact support if a payment stays in processing longer than expected.</span>
       </div>
     </div>
   );

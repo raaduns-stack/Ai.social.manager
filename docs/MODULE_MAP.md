@@ -55,6 +55,7 @@ part of "done" for any PR that adds a new module: update this table, not just th
 | Looking for... | Go to |
 |---|---|
 | Admin-wide KPIs (revenue, customer counts) | `apps/backend/src/admin/dashboard.controller.ts` *(consider renaming to `admin-dashboard.controller.ts` — see folder cleanup notes)* |
+| Admin graphics workspace (tasks, submissions, image-to-code review) | `apps/backend/src/admin/graphics/graphics.controller.ts`, `graphics.service.ts`, DTOs in `graphics/dto/` — permission key `graphics_management` |
 | Customer's own dashboard summary | `apps/backend/src/dashboard/dashboard.controller.ts` |
 | Staff account management | `apps/backend/src/admin/admin.controller.ts`, `admin.service.ts` |
 | Global HTTP error formatting | `apps/backend/src/common/filters/http-exception.filter.ts` |
@@ -77,6 +78,7 @@ part of "done" for any PR that adds a new module: update this table, not just th
 |---|---|
 | Customer-facing pages (dashboard, billing, support, uploads) | `apps/frontend/src/pages/Dashboard/` |
 | Admin/staff pages (KPIs, staff management, audit logs) | `apps/frontend/src/pages/Admin/` |
+| Admin graphics pages (tasks, submissions, image-to-code) | `apps/frontend/src/pages/Admin/graphics/` — routes in `AdminRoutes.jsx` (`/admin/tasks`, `/admin/submissions`, `/admin/image-to-code`), nav in `AdminSidebar.jsx`, client in `features/admin/graphics-api.ts` |
 | Staff role/permission management UI | `apps/frontend/src/pages/Admin/staff/RolesPermissions.jsx` |
 | Staff activity/login history | `apps/frontend/src/pages/Admin/staff/ActivityLogs.jsx`, `LoginHistory.jsx` |
 | Onboarding flow (signup → plan → payment → connect accounts) | `apps/frontend/src/pages/Onboarding/` |

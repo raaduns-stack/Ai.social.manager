@@ -11,7 +11,7 @@ import SegmentedControl from "../../components/designer/premium/SegmentedControl
 import ImageToCodeModal from "../../components/designer/ImageToCodeModal";
 import { Link } from "react-router-dom";
 import { getImageToCodeConversions } from "../../features/designer/designer-api";
-import { timeAgo } from "../../features/designer/format";
+import { timeAgo, resolveFileUrl } from "../../features/designer/format";
 
 const conversionTone = {
   not_started: "neutral",
@@ -48,6 +48,7 @@ function toItem(row) {
     submittedAt: row.submittedAt,
     reviewerNote: row.reviewerNote,
     updatedAt: row.updatedAt,
+    coverFileUrl: row.coverFileUrl || null,
   };
 }
 
@@ -123,7 +124,7 @@ export default function DesignerImageToCode() {
       label: "Design",
       render: (r) => (
         <div className="flex gap-3 items-center min-w-[260px]">
-          <CoverImage id={r.id} alt={r.title} className="w-14 h-10 shrink-0" ratio="14/10" />
+          <CoverImage src={resolveFileUrl(r.coverFileUrl)} id={r.id} alt={r.title} className="w-14 h-10 shrink-0" ratio="14/10" />
           <div className="min-w-0">
             <p className="font-semibold text-ink text-sm leading-tight truncate">{r.title}</p>
             <p className="text-xs text-ink-muted">{r.category}</p>
@@ -256,7 +257,7 @@ export default function DesignerImageToCode() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filtered.map((r) => (
             <PremiumCard key={r.conversionId} hover className="overflow-hidden p-0 flex flex-col group cursor-pointer" onClick={() => setActive(r)}>
-              <CoverImage id={r.id} alt={r.title} className="rounded-b-none border-0 border-b" ratio="16/10">
+              <CoverImage src={resolveFileUrl(r.coverFileUrl)} id={r.id} alt={r.title} className="rounded-b-none border-0 border-b" ratio="16/10">
                 <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-white/90 backdrop-blur px-2 py-1 rounded-full border border-border shadow-sm">
                   <StatusDot status={r.conversionStatus} pulse={r.conversionStatus === "revision_required"} />
                   <span className="text-[11px] font-bold capitalize text-ink">{r.conversionStatus.replaceAll("_", " ")}</span>

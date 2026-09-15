@@ -243,6 +243,7 @@ export async function seedRolePermissions(db: Database) {
       audit_logs: 'full',
       staff_management: 'full',
       money_management: 'full',
+      graphics_management: 'full',
     },
     account_manager: {
       dashboard: 'view',
@@ -260,6 +261,7 @@ export async function seedRolePermissions(db: Database) {
       audit_logs: 'none',
       staff_management: 'none',
       money_management: 'none',
+      graphics_management: 'manage',
     },
     reviewer: {
       dashboard: 'view',
@@ -277,6 +279,7 @@ export async function seedRolePermissions(db: Database) {
       audit_logs: 'none',
       staff_management: 'none',
       money_management: 'none',
+      graphics_management: 'view',
     },
     support_staff: {
       dashboard: 'view',
@@ -294,6 +297,7 @@ export async function seedRolePermissions(db: Database) {
       audit_logs: 'none',
       staff_management: 'none',
       money_management: 'none',
+      graphics_management: 'none',
     },
     designer: {
       dashboard: 'none',
@@ -303,6 +307,7 @@ export async function seedRolePermissions(db: Database) {
       content_calendar: 'own_only',
       content_creation: 'view',
       upload_management: 'manage',
+      graphics_management: 'none',
       analytics: 'none',
       ai_config: 'none',
       support: 'none',

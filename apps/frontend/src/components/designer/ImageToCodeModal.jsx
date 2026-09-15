@@ -7,6 +7,7 @@ import CoverImage from "./premium/CoverImage";
 import SegmentedControl from "./premium/SegmentedControl";
 import StatusDot from "./premium/StatusDot";
 import { updateImageToCode, submitImageToCode } from "../../features/designer/designer-api";
+import { resolveFileUrl } from "../../features/designer/format";
 
 function formatDate(iso) {
   if (!iso) return "";
@@ -125,12 +126,12 @@ export default function ImageToCodeModal({ open, item, onClose, onUpdate }) {
       open={open}
       onClose={onClose}
       title={isAccepted ? "Accepted code version" : isSubmitted ? "Submitted code version" : "Add code version"}
-      className="max-w-4xl rounded-2xl bg-white p-0 overflow-hidden"
+      className="w-[80vw] max-w-[1400px] h-[80vh] rounded-2xl bg-white p-0 overflow-hidden"
     >
       <div className="p-5 space-y-4">
         {/* Meta header */}
         <div className="flex items-center gap-3">
-          <CoverImage id={item.id} alt={item.title} className="w-20 h-14 shrink-0" ratio="16/10" />
+          <CoverImage src={resolveFileUrl(item.coverFileUrl)} id={item.id} alt={item.title} className="w-20 h-14 shrink-0" ratio="16/10" />
           <div className="min-w-0 flex-1">
             <p className="text-[11px] font-mono text-ink-muted">
               #{String(item.id).slice(0, 8).toUpperCase()} • {item.category}
@@ -190,6 +191,7 @@ export default function ImageToCodeModal({ open, item, onClose, onUpdate }) {
             <div className="flex items-center justify-between">
               <p className="text-xs font-semibold uppercase tracking-wide text-ink-muted flex items-center gap-1.5">
                 <Code2 size={14} /> Code version
+                <span className="normal-case font-mono font-medium text-[11px] px-1.5 py-0.5 rounded-md bg-canvas border border-border">markup</span>
               </p>
               <div className="flex items-center gap-1">
                 {!locked && (
@@ -216,7 +218,7 @@ export default function ImageToCodeModal({ open, item, onClose, onUpdate }) {
               readOnly={locked}
               spellCheck={false}
               placeholder={`<section class="hero">\n  <!-- paste your markup here -->\n</section>`}
-              className={`w-full min-h-[200px] h-[min(44vh,320px)] resize-y rounded-xl border border-border bg-canvas p-3 font-mono text-xs leading-relaxed text-ink focus:outline-none focus:ring-2 focus:ring-primary/30 ${locked ? "cursor-not-allowed opacity-80" : ""}`}
+              className={`w-full min-h-[300px] h-[36vh] resize-y rounded-xl border border-ink bg-ink p-4 font-mono text-xs leading-relaxed text-white/90 placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary caret-primary ${locked ? "cursor-not-allowed opacity-80" : ""}`}
             />
           </div>
 
@@ -230,11 +232,11 @@ export default function ImageToCodeModal({ open, item, onClose, onUpdate }) {
             </div>
             {previewTab === "design" ? (
               <div className="space-y-1.5">
-                <CoverImage id={item.id} alt={item.title} className="h-[min(44vh,320px)] w-full" />
+                <CoverImage src={resolveFileUrl(item.coverFileUrl)} id={item.id} alt={item.title} className="h-[36vh] min-h-[300px] w-full" />
                 <p className="text-[11px] text-ink-muted">The approved source design this code should match.</p>
               </div>
             ) : !code.trim() ? (
-              <div className="flex flex-col items-center justify-center text-center rounded-xl border-2 border-dashed border-border bg-canvas h-[min(44vh,320px)] gap-2">
+              <div className="flex flex-col items-center justify-center text-center rounded-xl border-2 border-dashed border-border bg-canvas h-[36vh] min-h-[300px] gap-2">
                 <span className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center text-ink-muted">
                   <FileCode2 size={18} />
                 </span>
@@ -242,12 +244,17 @@ export default function ImageToCodeModal({ open, item, onClose, onUpdate }) {
                 <p className="text-xs text-ink-muted px-6">Write your markup on the left to see a live preview here.</p>
               </div>
             ) : looksLikeHtml ? (
-              <div className="rounded-xl border border-border overflow-hidden">
-                <div className="flex items-center justify-between bg-canvas border-b border-border px-3 py-2">
-                  <span className="text-[11px] font-mono text-ink-muted">sandboxed render</span>
+              <div className="rounded-xl border border-border overflow-hidden shadow-sm">
+                <div className="flex items-center gap-2 bg-canvas border-b border-border px-3 py-2">
+                  <span className="flex gap-1.5 shrink-0" aria-hidden>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
+                  </span>
+                  <span className="flex-1 text-center text-[11px] font-mono text-ink-muted truncate">sandboxed render</span>
                   <button
                     onClick={() => setFrameKey((k) => k + 1)}
-                    className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink hover:bg-white transition-colors"
+                    className="w-7 h-7 rounded-lg flex items-center justify-center text-ink-muted hover:text-ink hover:bg-white transition-colors shrink-0"
                     title="Re-render preview"
                   >
                     <RefreshCw size={13} />
@@ -258,11 +265,11 @@ export default function ImageToCodeModal({ open, item, onClose, onUpdate }) {
                   title="Code preview"
                   srcDoc={code}
                   sandbox=""
-                  className="w-full h-[min(44vh,320px)] bg-white dp-scroll"
+                  className="w-full h-[36vh] min-h-[300px] bg-white dp-scroll"
                 />
               </div>
             ) : (
-              <pre className="w-full h-[min(44vh,320px)] overflow-auto rounded-xl border border-border bg-canvas p-3 text-xs leading-relaxed text-ink dp-scroll">
+              <pre className="w-full h-[36vh] min-h-[300px] overflow-auto rounded-xl border border-border bg-canvas p-4 text-xs leading-relaxed text-ink dp-scroll">
                 {code}
               </pre>
             )}

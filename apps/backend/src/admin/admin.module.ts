@@ -13,6 +13,8 @@ import { AdminLoginHistoryController } from './login-history/admin-login-history
 import { LoginHistoryModule } from '../login-history/login-history.module';
 import { AdminActivityLogsController } from './activity-logs/admin-activity-logs.controller';
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
+import { AdminGraphicsController } from './graphics/graphics.controller';
+import { AdminGraphicsService } from './graphics/graphics.service';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
@@ -32,14 +34,17 @@ import { AuthModule } from '../auth/auth.module';
     AdminUploadsController,
     AdminLoginHistoryController,
     AdminActivityLogsController,
+    AdminGraphicsController,
   ],
   providers: [
     AdminService,
     DashboardService,
+    AdminGraphicsService,
   ],
   exports: [
     AdminService,
     DashboardService,
+    AdminGraphicsService,
   ],
 })
 export class AdminModule { }

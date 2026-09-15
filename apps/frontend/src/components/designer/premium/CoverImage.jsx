@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Image as ImageIcon } from "lucide-react";
 
 const gradients = [
@@ -14,14 +15,20 @@ function hash(str) {
 }
 
 export default function CoverImage({ src, alt, id = "", className = "", ratio = "16/10", children }) {
+  const [failed, setFailed] = useState(false);
   const g = gradients[hash(id || alt || "x") % gradients.length];
+
+  useEffect(() => {
+    setFailed(false);
+  }, [src]);
+
   return (
     <div
       className={`relative overflow-hidden rounded-xl border border-border bg-white ${className}`}
       style={{ aspectRatio: ratio }}
     >
-      {src ? (
-        <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" />
+      {src && !failed ? (
+        <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" onError={() => setFailed(true)} />
       ) : (
         <div className={`h-full w-full bg-gradient-to-br ${g} flex items-center justify-center`}>
           <span className="w-10 h-10 rounded-xl bg-white border border-border flex items-center justify-center text-ink-muted shadow-sm">

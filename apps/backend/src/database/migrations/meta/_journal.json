@@ -176,6 +176,13 @@
       "when": 1788910936466,
       "tag": "0024_demonic_alice",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1788950000000,
+      "tag": "0025_designer_cover_image",
+      "breakpoints": true
     }
   ]
 }

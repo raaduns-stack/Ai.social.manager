@@ -93,6 +93,19 @@ export function DesignerAuthProvider({ children }) {
     setDesigner(null);
   };
 
+  const patchSession = (patch) => {
+    setDesigner((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Storage full/blocked — in-memory session still updates.
+      }
+      return next;
+    });
+  };
+
   const activate = async ({ token, fullName, password }) => {
     try {
       const response = await apiClient.post("/auth/designer/activate", { token, fullName, password });
@@ -116,7 +129,7 @@ export function DesignerAuthProvider({ children }) {
 
   return (
     <DesignerAuthContext.Provider
-      value={{ designer, isAuthenticated: !!designer, loading, login, register, logout, activate }}
+      value={{ designer, isAuthenticated: !!designer, loading, login, register, logout, activate, patchSession }}
     >
       {children}
     </DesignerAuthContext.Provider>

@@ -50,7 +50,8 @@ export default function DesignerDashboard() {
   const [summary, setSummary] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const firstName = designer?.name?.split(" ")[0] || "Alex";
+  const firstName = designer?.name?.split(" ")[0] || "there";
+  const dayPart = new Date().getHours() < 12 ? "morning" : new Date().getHours() < 17 ? "afternoon" : "evening";
 
   const load = async () => {
     setLoading(true);
@@ -123,7 +124,7 @@ export default function DesignerDashboard() {
       <PageHeader
         variant="premium"
         eyebrow="Workspace — Graphic Designer"
-        title={`Good morning, ${firstName}`}
+        title={`Good ${dayPart}, ${firstName}`}
         description={`${upcoming.length} open tasks • ${inReview} in review • ${nairaShort(summary.pendingEarnings)} pending. ${attention.length} submission${attention.length === 1 ? "" : "s"} need your attention.`}
         action={
           <Button onClick={() => setShowUpload(true)} className="h-9 rounded-lg gap-2 font-semibold bg-primary hover:bg-primary-700 shadow-sm">

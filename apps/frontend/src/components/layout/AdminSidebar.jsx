@@ -29,8 +29,12 @@ import {
   X,
   LogOut,
   Bolt,
+  ClipboardList,
+  Inbox,
+  Code2,
+  ChevronDown,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAdminAuth } from "../../context/useAdminAuth";
 import LogoImage from "../../assets/logo.png";
 import { cn } from "../../utils/cn";
@@ -57,6 +61,14 @@ const NAV_SECTIONS = [
       { label: "Money Management", to: "/admin/money-management", icon: Wallet },
       { label: "Uploads", to: "/admin/uploads", icon: UploadCloud },
       { label: "Analytics", to: "/admin/analytics", icon: BarChart3 },
+    ],
+  },
+  {
+    label: "Graphics",
+    items: [
+      { label: "Design Tasks", to: "/admin/tasks", icon: ClipboardList },
+      { label: "Submissions", to: "/admin/submissions", icon: Inbox },
+      { label: "Image-to-Code", to: "/admin/image-to-code", icon: Code2 },
     ],
   },
   {
@@ -87,6 +99,9 @@ const ROUTE_MODULE_MAP = {
   "/admin/social-accounts": "social_accounts",
   "/admin/money-management": "money_management",
   "/admin/uploads": "upload_management",
+  "/admin/tasks": "graphics_management",
+  "/admin/submissions": "graphics_management",
+  "/admin/image-to-code": "graphics_management",
   "/admin/analytics": "analytics",
   "/admin/ai-config": "ai_config",
   "/admin/support": "support",
@@ -100,8 +115,23 @@ const ROUTE_MODULE_MAP = {
   "/admin/logs": "audit_logs",
 };
 
+const STORAGE_KEY = "admin_sidebar_sections";
+
+function loadOpenSections() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return new Set(parsed);
+    }
+  } catch {}
+  // Default: all sections expanded
+  return new Set(["Overview", "Customers", "Operations", "Graphics", "Platform"]);
+}
+
 export default function AdminSidebar({ className, onClose }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [openSections, setOpenSections] = useState(loadOpenSections);
   const { admin, permissions, logout } = useAdminAuth();
   const navigate = useNavigate();
 
@@ -110,6 +140,21 @@ export default function AdminSidebar({ className, onClose }) {
     navigate("/admin/login", { replace: true });
     if (onClose) onClose();
   };
+
+  const toggleSection = useCallback((label) => {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify([...openSections]));
+    } catch {}
+  }, [openSections]);
 
   const filteredSections = NAV_SECTIONS.map((section) => {
     const visibleItems = section.items.filter((item) => {
@@ -182,37 +227,49 @@ export default function AdminSidebar({ className, onClose }) {
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-1 overflow-y-auto no-scrollbar px-2">
-        {filteredSections.map((section) => (
-          <div key={section.label} className="mb-4">
-            {!collapsed && (
-              <p className="px-4 mb-2 text-xs font-semibold uppercase tracking-wider text-on-surface-variant">
-                {section.label}
-              </p>
-            )}
-            <div className="flex flex-col gap-0.5">
-              {section.items.map(({ label, to, icon: Icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  onClick={onClose}
-                  title={collapsed ? label : undefined}
-                  className={({ isActive }) =>
-                    cn(
-                      "flex items-center px-4 py-2 rounded-lg transition-all cursor-pointer active:opacity-80 group font-label-bold text-label-bold",
-                      isActive
-                        ? "bg-primary text-on-primary shadow-sm"
-                        : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface",
-                      collapsed ? "justify-center" : ""
-                    )
-                  }
+        {filteredSections.map((section) => {
+          const isOpen = openSections.has(section.label);
+          return (
+            <div key={section.label} className="mb-3">
+              {!collapsed ? (
+                <button
+                  onClick={() => toggleSection(section.label)}
+                  aria-expanded={isOpen}
+                  aria-controls={`section-${section.label}`}
+                  className="w-full flex items-center justify-between px-4 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider text-on-surface-variant hover:text-on-surface hover:bg-surface-variant/40 transition-colors"
                 >
-                  <Icon size={18} className={cn("shrink-0", collapsed ? "" : "mr-3")} />
-                  {!collapsed && <span>{label}</span>}
-                </NavLink>
-              ))}
+                  <span>{section.label}</span>
+                  <ChevronDown size={14} className={`shrink-0 transition-transform duration-200 ${isOpen ? "" : "-rotate-90"}`} />
+                </button>
+              ) : null}
+              <div
+                id={`section-${section.label}`}
+                className={`flex flex-col gap-0.5 mt-1 ${!collapsed && !isOpen ? "hidden" : "flex"}`}
+              >
+                {section.items.map(({ label, to, icon: Icon }) => (
+                  <NavLink
+                    key={to}
+                    to={to}
+                    onClick={onClose}
+                    title={collapsed ? label : undefined}
+                    className={({ isActive }) =>
+                      cn(
+                        "flex items-center px-4 py-2 rounded-lg transition-all cursor-pointer active:opacity-80 group font-label-bold text-label-bold",
+                        isActive
+                          ? "bg-primary text-on-primary shadow-sm"
+                          : "text-on-surface-variant hover:bg-surface-variant hover:text-on-surface",
+                        collapsed ? "justify-center" : ""
+                      )
+                    }
+                  >
+                    <Icon size={18} className={cn("shrink-0", collapsed ? "" : "mr-3")} />
+                    {!collapsed && <span>{label}</span>}
+                  </NavLink>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Footer */}

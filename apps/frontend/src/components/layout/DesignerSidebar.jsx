@@ -21,6 +21,7 @@ import { useState } from "react";
 import { useDesignerAuth } from "../../context/useDesignerAuth";
 import LogoImage from "../../assets/logo.png";
 import { cn } from "../../utils/cn";
+import { nairaShort, resolveFileUrl } from "../../features/designer/format";
 
 const NAV_SECTIONS = [
   {
@@ -45,10 +46,14 @@ const NAV_SECTIONS = [
   },
 ];
 
-export default function DesignerSidebar({ className, onClose }) {
+export default function DesignerSidebar({ className, onClose, summary }) {
   const [collapsed, setCollapsed] = useState(false);
   const { designer, logout } = useDesignerAuth();
   const navigate = useNavigate();
+  const avatarUrl = resolveFileUrl(designer?.avatar);
+  const approvedCount = summary
+    ? (summary.statusCounts?.approved ?? 0) + (summary.statusCounts?.completed ?? 0)
+    : null;
 
   const handleLogout = () => {
     logout();
@@ -106,9 +111,13 @@ export default function DesignerSidebar({ className, onClose }) {
           <p className="dp-mono text-ink-muted mt-1">Graphic Workspace</p>
           {designer?.name && (
             <div className="mt-3 flex items-center gap-2.5 p-2.5 rounded-xl bg-canvas border border-border">
-              <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shrink-0">
-                {designer.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
-              </span>
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
+              ) : (
+                <span className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shrink-0">
+                  {designer.name.split(" ").map((p) => p[0]).join("").slice(0, 2).toUpperCase()}
+                </span>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-xs font-semibold text-ink truncate leading-none">{designer.name}</p>
                 <p className="text-[11px] text-ink-muted truncate flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-success dp-pulse" /> Available for work</p>
@@ -169,14 +178,14 @@ export default function DesignerSidebar({ className, onClose }) {
 
       {/* Footer */}
       <div className="px-2.5 mt-auto pt-4 flex flex-col gap-3 shrink-0">
-        {!collapsed && (
+        {!collapsed && summary && (
           <div className="rounded-xl bg-ink p-3 flex items-center gap-2.5 text-white">
             <span className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
               <Sparkles size={14} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold leading-none">₦248k earned</p>
-              <p className="text-[11px] text-white/60">31 approved • 66% rate</p>
+              <p className="text-xs font-semibold leading-none">{nairaShort(summary.totalEarned)} earned</p>
+              <p className="text-[11px] text-white/60">{approvedCount} approved • {summary.approvalRate}% rate</p>
             </div>
           </div>
         )}

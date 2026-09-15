@@ -28,6 +28,12 @@ export class UpdateProfileDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(500)
+  @ApiPropertyOptional()
+  cover?: string;
+
+  @IsOptional()
+  @IsString()
   @ApiPropertyOptional()
   bio?: string;
 

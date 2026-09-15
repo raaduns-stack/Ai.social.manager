@@ -13,6 +13,7 @@ export const designerProfiles = pgTable('designer_profiles', {
   bio: text('bio'),
   portfolioUrl: varchar('portfolio_url', { length: 500 }),
   specialties: text('specialties').array().default([]),
+  coverImage: varchar('cover_image', { length: 500 }),
 
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),

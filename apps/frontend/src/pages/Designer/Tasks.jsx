@@ -7,8 +7,8 @@ import PageHeader from "../../components/layout/PageHeader";
 import PremiumCard from "../../components/designer/premium/PremiumCard";
 import SegmentedControl from "../../components/designer/premium/SegmentedControl";
 import StatusDot from "../../components/designer/premium/StatusDot";
-import { Link } from "react-router-dom";
-import { getDesignerTasks } from "../../features/designer/designer-api";
+import { useNavigate } from "react-router-dom";
+import { getDesignerTasks, updateTaskStatus } from "../../features/designer/designer-api";
 import { formatDue } from "../../features/designer/format";
 
 const priorityTone = { high: "danger", medium: "warning", low: "neutral" };
@@ -27,12 +27,24 @@ function dueTone(dateStr) {
 }
 
 export default function DesignerTasks() {
+  const navigate = useNavigate();
   const [filter, setFilter] = useState("all");
   const [prio, setPrio] = useState("all");
   const [view, setView] = useState("table");
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleStartSubmission = async (task) => {
+    try {
+      if (task.status === "open") {
+        const updated = await updateTaskStatus(task.id, "in_progress").catch(() => null);
+        if (updated) setTasks((prev) => prev.map((t) => (t.id === task.id ? { ...t, status: "in_progress" } : t)));
+      }
+    } finally {
+      navigate(`/designer/submissions?taskId=${task.id}`);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -122,7 +134,7 @@ export default function DesignerTasks() {
         </span>
       ),
     },
-    { key: "action", label: "", render: () => <Button as={Link} to="/designer/submissions" variant="outline" size="sm" className="rounded-lg text-xs">Start Submission</Button> },
+    { key: "action", label: "", render: (r) => <Button variant="outline" size="sm" onClick={() => handleStartSubmission(r)} className="rounded-lg text-xs">Start Submission</Button> },
   ];
 
   const boardGroups = [
@@ -218,7 +230,7 @@ export default function DesignerTasks() {
                           <span className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full border ${dueTone(t.dueDate)}`}>
                             <Timer size={11} /> {formatDue(t.dueDate)}
                           </span>
-                          <Link to="/designer/submissions" className="text-xs font-bold text-primary hover:text-primary-700">Start →</Link>
+                          <button onClick={() => handleStartSubmission(t)} className="text-xs font-bold text-primary hover:text-primary-700">Start →</button>
                         </div>
                       </div>
                     ))

@@ -28,7 +28,7 @@ function loadCustomCategories() {
   return [];
 }
 
-export default function DesignerUploadModal({ open, onClose, onSuccess }) {
+export default function DesignerUploadModal({ open, onClose, onSuccess, taskId }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("General Graphics");
   const [title, setTitle] = useState("");
@@ -97,6 +97,7 @@ export default function DesignerUploadModal({ open, onClose, onSuccess }) {
       formData.append("title", title.trim());
       formData.append("category", category);
       if (details.trim()) formData.append("description", details.trim());
+      if (taskId) formData.append("taskId", taskId);
       files.forEach((f) => formData.append("files", f));
       const created = await createSubmission(formData);
       if (onSuccess) onSuccess(created);
@@ -158,6 +159,13 @@ export default function DesignerUploadModal({ open, onClose, onSuccess }) {
       </div>
 
       <div className="px-6 py-5 space-y-4">
+        {taskId && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-primary-50 border border-primary-100 text-xs">
+            <span className="w-6 h-6 rounded-lg bg-primary text-white flex items-center justify-center shrink-0"><LayoutGrid size={12} /></span>
+            <span className="font-semibold text-primary">Linked to task #{String(taskId).slice(0, 8).toUpperCase()}</span>
+            <span className="text-primary-700/70">• submission will be attached to this task</span>
+          </div>
+        )}
         {step === 1 && (
           <div className="space-y-4">
             <h3 className="dp-display text-[16px] text-ink flex items-center gap-2"><span className="w-8 h-8 rounded-xl bg-primary-50 border border-primary-100 text-primary flex items-center justify-center"><FileImage size={16} /></span> Upload completed graphics</h3>
