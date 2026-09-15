@@ -53,7 +53,13 @@ async function bootstrap() {
 
   const corsOrigin = config.get<string>('CORS_ORIGIN', 'http://localhost:5173');
   app.enableCors({
-    origin: [corsOrigin, 'http://localhost:5174'],
+    origin: [
+      corsOrigin,
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://127.0.0.1:5173',
+      'http://127.0.0.1:5174',
+    ],
     credentials: true,
   });
 
@@ -110,7 +116,7 @@ async function bootstrap() {
 
   const port = config.get<number>('PORT', 4000);
 
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 
   // eslint-disable-next-line no-console
   console.log(
