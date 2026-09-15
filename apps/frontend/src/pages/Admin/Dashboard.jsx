@@ -10,10 +10,12 @@ import {
   Sparkles,
   Link2,
   UserCheck,
+  Briefcase,
 } from 'lucide-react'
 import Button from '../../components/ui/Button'
 import { getAdminDashboardSummary } from '../../features/admin/dashboard-api'
 import { cn } from '../../utils/cn'
+import DesignerManagement from './DesignerManagement'
 
 function formatGrowth(percent) {
   if (percent === null || percent === undefined) return '0%'
@@ -104,6 +106,7 @@ function UserGroupTable({ title, count, users, emptyLabel, viewAllTo }) {
 }
 
 export default function Dashboard() {
+  const [managementTab, setManagementTab] = useState('customer')
   const [period, setPeriod] = useState('weekly')
   const [summaryData, setSummaryData] = useState(null)
   const [isLoading, setIsLoading] = useState(true)
@@ -212,7 +215,38 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="flex items-center gap-4 border-b border-surface-variant pb-4 pt-2">
+        <button
+          onClick={() => setManagementTab('customer')}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+            managementTab === 'customer'
+              ? 'bg-primary text-white shadow-md'
+              : 'text-on-surface-variant hover:bg-surface-variant'
+          )}
+        >
+          <Users className="w-4 h-4" />
+          Customer Management
+        </button>
+        <button
+          onClick={() => setManagementTab('designer')}
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all",
+            managementTab === 'designer'
+              ? 'bg-primary text-white shadow-md'
+              : 'text-on-surface-variant hover:bg-surface-variant'
+          )}
+        >
+          <Briefcase className="w-4 h-4" />
+          Designer Management
+        </button>
+      </div>
+
+      {managementTab === 'designer' ? (
+        <DesignerManagement />
+      ) : (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         <div className="bg-surface-container-lowest border border-surface-variant rounded-xl p-6 flex flex-col gap-2 hover:border-outline transition-colors">
           <div className="flex items-center justify-between">
             <span className="font-label-bold text-label-bold text-on-surface-variant uppercase tracking-wider text-xs">Registered Users</span>
@@ -536,6 +570,8 @@ export default function Dashboard() {
           </Link>
         </div>
       </div>
+        </div>
+      )}
     </div>
   )
 }
