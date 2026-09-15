@@ -408,12 +408,18 @@ export class CalendarService {
         const timePart = dto.scheduledTime !== undefined && dto.scheduledTime
           ? dto.scheduledTime
           : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[1]?.substring(0, 5) : '12:00');
-        targetScheduledAt = `${datePart}T${timePart}:00.000Z`;
+        const localDateObj = new Date(`${datePart}T${timePart}:00`);
+        targetScheduledAt = !isNaN(localDateObj.getTime())
+          ? localDateObj.toISOString()
+          : `${datePart}T${timePart}:00.000Z`;
       } else {
         targetScheduledAt = null;
       }
     } else if (targetScheduledAt) {
-      targetScheduledAt = targetScheduledAt.includes('Z') ? targetScheduledAt : `${targetScheduledAt}.000Z`;
+      const parsed = new Date(targetScheduledAt);
+      targetScheduledAt = !isNaN(parsed.getTime())
+        ? parsed.toISOString()
+        : (targetScheduledAt.includes('Z') ? targetScheduledAt : `${targetScheduledAt}.000Z`);
     }
 
     // Validate scheduled date/time format if updated (editing existing post does NOT consume post creation limit)
@@ -461,8 +467,8 @@ export class CalendarService {
       }
     }
 
-    // Topic change regeneration detection: if title is updated, delete suggestions
-    if (dto.title && dto.title !== post.title) {
+    // Topic change regeneration detection: if title is updated (and not selecting a suggestion), delete suggestions
+    if (dto.title && dto.title !== post.title && !dto.selectedSuggestionId) {
       await this.db
         .delete(schema.contentSuggestions)
         .where(eq(schema.contentSuggestions.postId, id));
@@ -496,6 +502,14 @@ export class CalendarService {
       })
       .where(eq(schema.contentCalendar.id, id))
       .returning();
+
+    // If selecting a suggestion, trigger unified approval & scheduling
+    if (dto.selectedSuggestionId) {
+      await this.contentSuggestionsService.scheduleApprovedPost(
+        id,
+        dto.selectedSuggestionId,
+      );
+    }
 
     // Re-fetch to return fully-populated relations
     return this.findOneForUser(updated.id, userId);
@@ -616,6 +630,24 @@ export class CalendarService {
     });
     if (!existing) throw new NotFoundException(`Post ${id} not found`);
 
+    if (dto.adminNotes) {
+      await this.db
+        .update(schema.contentCalendar)
+        .set({
+          adminNotes: dto.adminNotes,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contentCalendar.id, id));
+    }
+
+    if (dto.approvalStatus === 'APPROVED') {
+      await this.contentSuggestionsService.scheduleApprovedPost(
+        id,
+        existing.selectedSuggestionId || undefined,
+      );
+      return this.findOneById(id);
+    }
+
     const [updated] = await this.db
       .update(schema.contentCalendar)
       .set({
@@ -648,11 +680,13 @@ export class CalendarService {
     }
     const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
     const normalizedRequestedPlatforms = dto.platforms.map(p => normalizePlatformName(p));
-    for (const p of normalizedRequestedPlatforms) {
-      const isConn = connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase());
-      if (!isConn) {
-        throw new BadRequestException(`Platform ${p} is not currently connected.`);
-      }
+    const missingPlatforms = normalizedRequestedPlatforms.filter(
+      p => !connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase())
+    );
+    if (missingPlatforms.length > 0) {
+      throw new BadRequestException(
+        `No connected social account found for platform(s): ${missingPlatforms.join(', ')}.`
+      );
     }
 
     // Enforce Free plan platform limits

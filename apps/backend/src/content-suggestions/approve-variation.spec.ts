@@ -201,4 +201,41 @@ describe('ContentSuggestionsController (e2e) - Approve Variation', () => {
     expect(response.body.message).toContain('No connected social account found');
     expect(scheduledPostsStore.length).toBe(0);
   });
+
+  it('4. Concurrent race condition: DB 23505 unique violation on insert is caught and returns existing row', async () => {
+    const existingRecord = {
+      scheduledPostId: 'scheduled-post-existing',
+      calendarPostId: mockCalendarPostFixture.id,
+      variationId: mockVariationFixture.id,
+      socialAccountId: mockSocialAccountFixture.id,
+      platform: 'instagram',
+      content: mockVariationFixture.content,
+      scheduledAt: mockCalendarPostFixture.scheduledAt,
+      status: 'SCHEDULED',
+    };
+
+    // Override insert to throw 23505
+    (app.get(DATABASE_CONNECTION).insert as jest.Mock).mockImplementationOnce(() => ({
+      values: () => ({
+        returning: () => {
+          const err: any = new Error('duplicate key value violates unique constraint "scheduled_posts_calendar_post_id_unique"');
+          err.code = '23505';
+          return Promise.reject(err);
+        },
+      }),
+    }));
+
+    // Override query.scheduledPosts.findFirst to simulate finding existing row during catch block
+    (app.get(DATABASE_CONNECTION).query.scheduledPosts.findFirst as jest.Mock)
+      .mockImplementationOnce(() => Promise.resolve(null)) // initial check returns null (simulating concurrent race)
+      .mockImplementationOnce(() => Promise.resolve(existingRecord)); // catch block finds existing
+
+    const response = await request(app.getHttpServer())
+      .post(`/content-suggestions/${mockVariationFixture.id}/approve`)
+      .send({ scheduledFor: '2026-08-30T10:00:00.000Z' })
+      .expect(201);
+
+    expect(response.body).toBeDefined();
+    expect(response.body.scheduledPostId).toBe('scheduled-post-existing');
+  });
 });

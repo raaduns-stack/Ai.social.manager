@@ -26,6 +26,7 @@ describe('AutoApprovePostsJob', () => {
     };
 
     mockContentSuggestionsService = {
+      scheduleApprovedPost: jest.fn().mockResolvedValue({ id: 'scheduled-1' }),
       approveVariation: jest.fn().mockResolvedValue({ id: 'scheduled-1' }),
     };
 
@@ -55,10 +56,10 @@ describe('AutoApprovePostsJob', () => {
     await job.handleCron();
 
     expect(mockDb.query.contentCalendar.findMany).not.toHaveBeenCalled();
-    expect(mockContentSuggestionsService.approveVariation).not.toHaveBeenCalled();
+    expect(mockContentSuggestionsService.scheduleApprovedPost).not.toHaveBeenCalled();
   });
 
-  it('should auto-approve candidate post within window using earliest suggestion and SYSTEM source', async () => {
+  it('should auto-approve candidate post within window using earliest suggestion', async () => {
     const scheduledDate = new Date(Date.now() + 2 * 60 * 60 * 1000); // 2h from now
     mockDb.query.systemSettings.findFirst.mockResolvedValue({
       autoApproveEnabled: true,
@@ -95,14 +96,13 @@ describe('AutoApprovePostsJob', () => {
 
     await job.handleCron();
 
-    expect(mockContentSuggestionsService.approveVariation).toHaveBeenCalledWith(
+    expect(mockContentSuggestionsService.scheduleApprovedPost).toHaveBeenCalledWith(
+      'cal-post-1',
       'sug-1',
-      { scheduledFor: scheduledDate.toISOString() },
-      'SYSTEM',
     );
   });
 
-  it('should skip post and log warning if post has no pending AI suggestions', async () => {
+  it('should auto-approve post with no suggestions using calendar content directly', async () => {
     mockDb.query.systemSettings.findFirst.mockResolvedValue({
       autoApproveEnabled: true,
       autoApproveWindowHours: 24,
@@ -122,7 +122,10 @@ describe('AutoApprovePostsJob', () => {
 
     await job.handleCron();
 
-    expect(mockContentSuggestionsService.approveVariation).not.toHaveBeenCalled();
+    expect(mockContentSuggestionsService.scheduleApprovedPost).toHaveBeenCalledWith(
+      'cal-post-no-sug',
+      undefined,
+    );
   });
 
   it('should skip post if it already exists in scheduled_posts to prevent double processing', async () => {
@@ -147,6 +150,6 @@ describe('AutoApprovePostsJob', () => {
     await job.handleCron();
 
     expect(mockDb.query.contentSuggestions.findMany).not.toHaveBeenCalled();
-    expect(mockContentSuggestionsService.approveVariation).not.toHaveBeenCalled();
+    expect(mockContentSuggestionsService.scheduleApprovedPost).not.toHaveBeenCalled();
   });
 });

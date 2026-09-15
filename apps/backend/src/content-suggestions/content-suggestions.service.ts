@@ -6,8 +6,8 @@ import {
   Logger,
 } from '@nestjs/common';
 import { desc, eq, and, ne } from 'drizzle-orm';
-import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
+import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
 import { DATABASE_CONNECTION } from '../database/database.module';
 import * as schema from '../database/schema';
@@ -370,12 +370,10 @@ export class ContentSuggestionsService {
       );
     }
 
-    // Delete existing suggestions for this post before inserting new ones (unless this is a revision variation)
-    if (!dto.parentVariationId) {
-      await this.db
-        .delete(schema.contentSuggestions)
-        .where(eq(schema.contentSuggestions.postId, dto.postId));
-    }
+    // Delete existing suggestions for this post before inserting new ones
+    await this.db
+      .delete(schema.contentSuggestions)
+      .where(eq(schema.contentSuggestions.postId, dto.postId));
 
     const saved = [];
     for (const v of dto.variations) {
@@ -385,10 +383,9 @@ export class ContentSuggestionsService {
           userId: dto.userId,
           postId: dto.postId,
           title: v.title || post.title,
-          type: (v.type || 'caption') as any,
-          content: v.caption || v.content || '',
+          type: 'caption',
+          content: v.caption,
           hashtags: v.hashtags || [],
-          approvalStatus: 'PENDING_APPROVAL',
         })
         .returning();
 
@@ -399,143 +396,6 @@ export class ContentSuggestionsService {
     }
 
     return saved;
-  }
-
-  /**
-   * Alias for webhook responses from n8n.
-   */
-  async handleN8nResponse(dto: N8nResponseDto) {
-    return this.saveN8nSuggestions(dto);
-  }
-
-  /**
-   * Approve a specific variation, resolve parent post metadata, check social connection,
-   * and schedule the post.
-   */
-  async approveVariation(
-    variationId: string,
-    dto: ApproveVariationDto,
-    approvalSource: 'MANUAL' | 'SYSTEM' = 'MANUAL',
-  ) {
-    // 1. Look up the variation
-    const variation = await this.db.query.contentSuggestions.findFirst({
-      where: eq(schema.contentSuggestions.id, variationId),
-    });
-    if (!variation) {
-      throw new NotFoundException(`Variation ${variationId} not found.`);
-    }
-
-    // Idempotent re-approve check
-    if (variation.approvalStatus === 'APPROVED') {
-      const existingScheduled = await this.db.query.scheduledPosts.findFirst({
-        where: eq(schema.scheduledPosts.variationId, variationId),
-      });
-      if (existingScheduled) {
-        return existingScheduled;
-      }
-    }
-
-    // 2. Fetch the parent calendar post
-    if (!variation.postId) {
-      throw new BadRequestException('Variation does not belong to a calendar post.');
-    }
-    const post = await this.db.query.contentCalendar.findFirst({
-      where: eq(schema.contentCalendar.id, variation.postId),
-    });
-    if (!post) {
-      throw new NotFoundException(`Parent calendar post ${variation.postId} not found.`);
-    }
-
-    // Check if another variation for this parent calendar post was already approved / scheduled
-    if (post.approvalStatus === 'APPROVED' && post.selectedSuggestionId && post.selectedSuggestionId !== variationId) {
-      throw new BadRequestException('Another variation for this calendar post has already been approved.');
-    }
-
-    const existingScheduledForPost = await this.db.query.scheduledPosts.findFirst({
-      where: eq(schema.scheduledPosts.calendarPostId, variation.postId),
-    });
-    if (existingScheduledForPost) {
-      if (existingScheduledForPost.variationId === variationId) {
-        return existingScheduledForPost;
-      }
-      throw new BadRequestException('Another variation for this calendar post has already been scheduled.');
-    }
-
-    // 3. Resolve scheduled date/time
-    const scheduledForStr = dto.scheduledFor || post.scheduledAt?.toISOString();
-    if (!scheduledForStr) {
-      throw new BadRequestException('No scheduled date/time available for this post.');
-    }
-    const scheduledFor = new Date(scheduledForStr);
-
-    // 4. Resolve socialAccountId
-    const normalizedPlatform = post.platform.toLowerCase();
-    const socialAccount = await this.db.query.social_accounts.findFirst({
-      where: and(
-        eq(schema.social_accounts.userId, post.userId),
-        eq(schema.social_accounts.platform, normalizedPlatform as any),
-      ),
-    });
-    if (!socialAccount) {
-      throw new BadRequestException(
-        `No connected social account found for customer ID ${post.userId} on platform "${post.platform}".`,
-      );
-    }
-
-    // 5. Insert new scheduled_posts row
-    let scheduledPost;
-    try {
-      const [inserted] = await this.db
-        .insert(schema.scheduledPosts)
-        .values({
-          variationId: variation.id,
-          calendarPostId: variation.postId,
-          platform: normalizedPlatform,
-          content: variation.content,
-          socialAccountId: socialAccount.id,
-          scheduledAt: scheduledFor,
-          status: 'SCHEDULED',
-        })
-        .returning();
-      scheduledPost = inserted;
-    } catch (err: any) {
-      // Check for unique key constraint conflict (Postgres code 23505)
-      if (err.code === '23505') {
-        const existingScheduled = await this.db.query.scheduledPosts.findFirst({
-          where: eq(schema.scheduledPosts.variationId, variation.id),
-        });
-        if (existingScheduled) {
-          scheduledPost = existingScheduled;
-        } else {
-          throw err;
-        }
-      } else {
-        throw err;
-      }
-    }
-
-    // 6. Update the content_suggestions status to APPROVED
-    await this.db
-      .update(schema.contentSuggestions)
-      .set({ approvalStatus: 'APPROVED' })
-      .where(eq(schema.contentSuggestions.id, variation.id));
-
-    // 7. Update parent content_calendar post status & approval source
-    await this.db
-      .update(schema.contentCalendar)
-      .set({
-        approvalStatus: 'APPROVED',
-        approvalSource: approvalSource,
-        status: 'SCHEDULED',
-        selectedSuggestionId: variation.id,
-        ...(approvalSource === 'SYSTEM'
-          ? { adminNotes: post.adminNotes ? `${post.adminNotes} (Auto-approved by system)` : 'Auto-approved by system grace window job' }
-          : {}),
-        updatedAt: new Date(),
-      })
-      .where(eq(schema.contentCalendar.id, variation.postId));
-
-    return scheduledPost;
   }
 
   /**
@@ -568,8 +428,8 @@ export class ContentSuggestionsService {
       .where(
         and(
           eq(schema.contentSuggestions.postId, suggestion.postId),
-          ne(schema.contentSuggestions.id, id),
-        ),
+          ne(schema.contentSuggestions.id, id)
+        )
       );
 
     return { success: true };
@@ -600,13 +460,10 @@ export class ContentSuggestionsService {
       })
       .where(eq(schema.contentSuggestions.id, id));
 
-    const webhookUrl =
-      this.configService.get<string>('ai.n8nRevisionWebhookUrl') ||
-      this.configService.get<string>('AI_SUGGESTIONS_N8N_REVISION_WEBHOOK_URL') ||
-      process.env.AI_SUGGESTIONS_N8N_REVISION_WEBHOOK_URL;
+    const webhookUrl = this.configService.get<string>('ai.n8nRevisionWebhookUrl');
 
     if (webhookUrl) {
-      // Use the agreed revision payload structure
+      // Use the previously agreed revision payload structure
       const payload = {
         action: 'revise',
         postId: suggestion.postId,
@@ -620,16 +477,216 @@ export class ContentSuggestionsService {
       };
 
       try {
-        await global.fetch(webhookUrl, {
+        await fetch(webhookUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         });
-      } catch (error: any) {
-        this.logger.error(`Failed to trigger n8n revision webhook: ${error.message}`);
+      } catch (error) {
+        console.error('Failed to trigger n8n revision webhook:', error);
       }
     }
 
     return { success: true };
+  }
+
+  /**
+   * Handle the webhook response from n8n
+   */
+  async handleN8nResponse(dto: N8nResponseDto) {
+    if (!dto.variations || dto.variations.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const toInsert = dto.variations.map((v: any) => ({
+      userId: dto.userId,
+      postId: dto.postId,
+      type: 'caption' as const,
+      title: v.title || 'Suggested Post',
+      content: v.caption || v.content || '',
+      hashtags: v.hashtags || [],
+      approvalStatus: 'PENDING_APPROVAL' as const,
+    }));
+
+    // If parentVariationId exists, it denotes a revision response. 
+    // Since we don't have a parentVariationId field in the schema, 
+    // we just store the new variations normally. They will be linked to the same post via postId.
+    // The original variation remains in 'REVISION_REQUESTED' state.
+
+    await this.db.insert(schema.contentSuggestions).values(toInsert);
+
+    return { success: true };
+  }
+
+  /**
+   * Unified method — single code path in the entire application allowed to:
+   * 1. Set content_calendar.approval_status = 'APPROVED'
+   * 2. Set content_calendar.status = 'SCHEDULED'
+   * 3. Set content_suggestions.approval_status = 'APPROVED' (if variationId passed or created fallback variation)
+   * 4. Insert row into scheduled_posts (or return existing row if already scheduled)
+   */
+  async scheduleApprovedPost(postId: string, variationId?: string) {
+    // 1. Fetch parent calendar post
+    const post = await this.db.query.contentCalendar.findFirst({
+      where: eq(schema.contentCalendar.id, postId),
+    });
+    if (!post) {
+      throw new NotFoundException(`Calendar post ${postId} not found.`);
+    }
+
+    // 2. Idempotency guard: check if scheduled_posts already has a row for this calendarPostId
+    const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.calendarPostId, postId),
+    });
+    if (existingScheduled) {
+      return existingScheduled;
+    }
+
+    // 3. Determine content & resolvedVariationId
+    let contentToPublish = post.caption;
+    let resolvedVariationId = variationId || post.selectedSuggestionId || undefined;
+
+    if (variationId) {
+      const variation = await this.db.query.contentSuggestions.findFirst({
+        where: eq(schema.contentSuggestions.id, variationId),
+      });
+      if (!variation) {
+        throw new NotFoundException(`Variation ${variationId} not found.`);
+      }
+      if (variation.postId && variation.postId !== postId) {
+        throw new BadRequestException(`Variation ${variationId} does not belong to post ${postId}.`);
+      }
+      contentToPublish = variation.content;
+      resolvedVariationId = variation.id;
+    } else if (post.selectedSuggestionId) {
+      const selectedVar = await this.db.query.contentSuggestions.findFirst({
+        where: eq(schema.contentSuggestions.id, post.selectedSuggestionId),
+      });
+      if (selectedVar) {
+        contentToPublish = selectedVar.content;
+        resolvedVariationId = selectedVar.id;
+      }
+    }
+
+    // 4. Verify connected social account exists for post.platform on this user
+    const normalizedPlatform = post.platform.toLowerCase();
+    const socialAccount = await this.db.query.social_accounts.findFirst({
+      where: and(
+        eq(schema.social_accounts.userId, post.userId),
+        eq(schema.social_accounts.platform, normalizedPlatform as any),
+        eq(schema.social_accounts.status, 'connected'),
+      ),
+    });
+
+    if (!socialAccount) {
+      throw new BadRequestException(
+        `No connected social account found for customer ID ${post.userId} on platform "${post.platform}".`,
+      );
+    }
+
+    const scheduledAt = post.scheduledAt || new Date();
+
+    // 5. Execute everything inside a single DB transaction (with fallback for mock DBs in tests)
+    const runTx = this.db.transaction
+      ? (cb: (tx: Database) => Promise<any>) => this.db.transaction(cb)
+      : (cb: (tx: Database) => Promise<any>) => cb(this.db);
+
+    return await runTx(async (tx) => {
+      // If no variationId exists yet, create a real content_suggestions row copying calendar post content verbatim
+      if (!resolvedVariationId) {
+        const safeTitle = post.title ? post.title.substring(0, 255) : 'Scheduled Post';
+        const safeContent = (contentToPublish || post.title).substring(0, 1000);
+
+        const [fallbackSuggestion] = await tx
+          .insert(schema.contentSuggestions)
+          .values({
+            userId: post.userId,
+            postId: post.id,
+            title: safeTitle,
+            type: 'caption',
+            content: safeContent,
+            hashtags: post.hashtags || [],
+            approvalStatus: 'APPROVED',
+          })
+          .returning();
+        resolvedVariationId = fallbackSuggestion.id;
+      }
+
+      // Try inserting into scheduled_posts
+      let scheduledPost;
+      try {
+        const [inserted] = await tx
+          .insert(schema.scheduledPosts)
+          .values({
+            calendarPostId: post.id,
+            variationId: resolvedVariationId,
+            socialAccountId: socialAccount.id,
+            platform: normalizedPlatform,
+            content: contentToPublish || post.title,
+            mediaUrl: post.mediaUrl || null,
+            scheduledAt,
+            status: 'SCHEDULED',
+          })
+          .returning();
+        scheduledPost = inserted;
+      } catch (err: any) {
+        // Catch unique constraint violation (code 23505) for race conditions
+        if (err.code === '23505') {
+          const existing = await tx.query.scheduledPosts.findFirst({
+            where: eq(schema.scheduledPosts.calendarPostId, post.id),
+          });
+          if (existing) {
+            scheduledPost = existing;
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+
+      // Update content_calendar status
+      await tx
+        .update(schema.contentCalendar)
+        .set({
+          approvalStatus: 'APPROVED',
+          status: 'SCHEDULED',
+          selectedSuggestionId: resolvedVariationId,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contentCalendar.id, post.id));
+
+      // Update content_suggestions status
+      if (resolvedVariationId) {
+        await tx
+          .update(schema.contentSuggestions)
+          .set({ approvalStatus: 'APPROVED' })
+          .where(eq(schema.contentSuggestions.id, resolvedVariationId));
+      }
+
+      return scheduledPost;
+    });
+  }
+
+  /**
+   * Approve a specific variation — delegates directly to scheduleApprovedPost.
+   */
+  async approveVariation(
+    variationId: string,
+    dto?: ApproveVariationDto,
+    approvalSource: 'MANUAL' | 'SYSTEM' = 'MANUAL',
+  ) {
+    const variation = await this.db.query.contentSuggestions.findFirst({
+      where: eq(schema.contentSuggestions.id, variationId),
+    });
+    if (!variation) {
+      throw new NotFoundException(`Variation ${variationId} not found.`);
+    }
+
+    if (!variation.postId) {
+      throw new BadRequestException('Variation does not belong to a calendar post.');
+    }
+
+    return this.scheduleApprovedPost(variation.postId, variationId);
   }
 }
