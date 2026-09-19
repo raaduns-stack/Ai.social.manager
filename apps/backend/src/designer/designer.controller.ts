@@ -96,10 +96,7 @@ export class DesignerController {
     },
   })
   @UseInterceptors(FileInterceptor('cover'))
-  uploadCover(
-    @CurrentUser() user: { userId: string },
-    @UploadedFile() file?: Express.Multer.File,
-  ) {
+  uploadCover(@CurrentUser() user: { userId: string }, @UploadedFile() file?: Express.Multer.File) {
     return this.designerService.uploadCover(user.userId, file);
   }
 

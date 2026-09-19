@@ -94,6 +94,7 @@ export default () => ({
     callbackUrl:
       process.env.TUMBLR_CALLBACK_URL ??
       `${defaultBackendUrl}/${defaultApiPrefix}/auth/tumblr/callback`,
+<<<<<<< HEAD
   },
 
   snapchat: {
@@ -107,6 +108,8 @@ export default () => ({
     tokenUrl:
       process.env.SNAPCHAT_TOKEN_URL ?? 'https://accounts.snapchat.com/login/oauth2/access_token',
     scope: process.env.SNAPCHAT_SCOPES ?? 'snapchat-profile-api',
+=======
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
   },
 
   snapchat: {
@@ -116,11 +119,9 @@ export default () => ({
       process.env.SNAPCHAT_REDIRECT_URI ??
       'http://localhost:4000/api/social-accounts/snapchat/callback',
     authUrl:
-      process.env.SNAPCHAT_AUTH_URL ??
-      'https://accounts.snapchat.com/login/oauth2/authorize',
+      process.env.SNAPCHAT_AUTH_URL ?? 'https://accounts.snapchat.com/login/oauth2/authorize',
     tokenUrl:
-      process.env.SNAPCHAT_TOKEN_URL ??
-      'https://accounts.snapchat.com/login/oauth2/access_token',
+      process.env.SNAPCHAT_TOKEN_URL ?? 'https://accounts.snapchat.com/login/oauth2/access_token',
     scope: process.env.SNAPCHAT_SCOPES ?? 'snapchat-profile-api',
   },
 });

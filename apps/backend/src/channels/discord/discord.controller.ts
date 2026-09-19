@@ -65,7 +65,13 @@ export class DiscordController {
 
     const stateJwt = await this.discordService.generateStateJwt(user.userId);
 
+<<<<<<< HEAD
     const rawRedirectUri =
+=======
+    const clientId =
+      this.configService.get<string>('discord.clientId') || process.env.DISCORD_CLIENT_ID || '';
+    const redirectUri =
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
       this.configService.get<string>('discord.redirectUri') ||
       process.env.DISCORD_REDIRECT_URI ||
       'http://localhost:4000/api/channels/discord/callback';

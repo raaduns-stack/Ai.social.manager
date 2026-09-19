@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { desc, eq, and, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
@@ -478,6 +472,37 @@ export class ContentSuggestionsService {
   }
 
   /**
+<<<<<<< HEAD
+=======
+   * Handle the webhook response from n8n
+   */
+  async handleN8nResponse(dto: N8nResponseDto) {
+    if (!dto.variations || dto.variations.length === 0) {
+      return { success: true, count: 0 };
+    }
+
+    const toInsert = dto.variations.map((v: any) => ({
+      userId: dto.userId,
+      postId: dto.postId,
+      type: 'caption' as const,
+      title: v.title || 'Suggested Post',
+      content: v.caption || v.content || '',
+      hashtags: v.hashtags || [],
+      approvalStatus: 'PENDING_APPROVAL' as const,
+    }));
+
+    // If parentVariationId exists, it denotes a revision response.
+    // Since we don't have a parentVariationId field in the schema,
+    // we just store the new variations normally. They will be linked to the same post via postId.
+    // The original variation remains in 'REVISION_REQUESTED' state.
+
+    await this.db.insert(schema.contentSuggestions).values(toInsert);
+
+    return { success: true };
+  }
+
+  /**
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
    * Unified method — single code path in the entire application allowed to:
    * 1. Set content_calendar.approval_status = 'APPROVED'
    * 2. Set content_calendar.status = 'SCHEDULED'

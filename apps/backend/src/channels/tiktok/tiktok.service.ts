@@ -131,6 +131,7 @@ export class TikTokService {
    * @param res    Express response — used to perform the browser redirect.
    */
   async handleCallback(code: string, state: string, res: Response): Promise<void> {
+<<<<<<< HEAD
     const frontendUrl =
       this.configService.get<string>('frontendUrl') ||
       process.env.FRONTEND_URL ||
@@ -138,6 +139,11 @@ export class TikTokService {
       'http://localhost:5173';
     const successUrl = `${frontendUrl}/dashboard/channels?tiktok=connected`;
     const errorBase = `${frontendUrl}/dashboard/channels?tiktok=error`;
+=======
+    const frontendUrl = this.configService.get<string>('frontendUrl');
+    const successUrl = `${frontendUrl}/settings?tab=channels&tiktok=connected`;
+    const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
 
     // 1. Validate state JWT
     let userId: string;

@@ -8,7 +8,19 @@ import { encryptSecret, maskSecret } from '../../common/utils/encryption.util';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
+<<<<<<< HEAD
 const VALID_PLATFORMS = ['facebook', 'instagram', 'twitter', 'linkedin', 'tiktok', 'discord'];
+=======
+const VALID_PLATFORMS = [
+  'facebook',
+  'instagram',
+  'twitter',
+  'linkedin',
+  'tiktok',
+  'discord',
+  'snapchat',
+];
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
 
 @Injectable()
 export class SocialApiSettingsService {
@@ -16,12 +28,10 @@ export class SocialApiSettingsService {
 
   async getSocialApiSettings() {
     const settings = await this.db.query.socialApiSettings.findMany();
-    
-    const settingsMap = new Map(
-      settings.map(s => [s.platform, s])
-    );
 
-    return VALID_PLATFORMS.map(platform => {
+    const settingsMap = new Map(settings.map((s) => [s.platform, s]));
+
+    return VALID_PLATFORMS.map((platform) => {
       const existing = settingsMap.get(platform);
       if (existing) {
         const { clientSecretEncrypted, ...rest } = existing;
@@ -46,7 +56,9 @@ export class SocialApiSettingsService {
 
   async updateSocialApiSetting(platform: string, dto: UpdateSocialApiSettingDto) {
     if (!VALID_PLATFORMS.includes(platform)) {
-      throw new BadRequestException(`Invalid platform. Must be one of: ${VALID_PLATFORMS.join(', ')}`);
+      throw new BadRequestException(
+        `Invalid platform. Must be one of: ${VALID_PLATFORMS.join(', ')}`,
+      );
     }
 
     const existing = await this.db.query.socialApiSettings.findFirst({
@@ -65,7 +77,7 @@ export class SocialApiSettingsService {
 
     // Clean up undefined values so we don't accidentally override with nulls
     Object.keys(updateData).forEach(
-      key => updateData[key] === undefined && delete updateData[key]
+      (key) => updateData[key] === undefined && delete updateData[key],
     );
 
     let result;

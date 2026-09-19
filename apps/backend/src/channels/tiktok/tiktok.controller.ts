@@ -12,7 +12,10 @@ import {
   HttpStatus,
   InternalServerErrorException,
 } from '@nestjs/common';
+<<<<<<< HEAD
 import { ConfigService } from '@nestjs/config';
+=======
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { TikTokService } from './tiktok.service';
@@ -108,12 +111,17 @@ export class TikTokController {
   @ApiQuery({ name: 'error', required: false })
   @ApiQuery({ name: 'error_description', required: false })
   async callback(@Query() query: TikTokCallbackQueryDto, @Res() res: Response): Promise<void> {
+<<<<<<< HEAD
     const frontendUrl =
       this.configService.get<string>('frontendUrl') ||
       process.env.FRONTEND_URL ||
       process.env.CORS_ORIGIN ||
       'http://localhost:5173';
     const errorBase = `${frontendUrl}/dashboard/channels?tiktok=error`;
+=======
+    const frontendUrl = process.env.FRONTEND_URL ?? 'https://raasocial.io';
+    const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
+>>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
 
     // Handle user-denied / TikTok-level errors
     if (query.error) {
