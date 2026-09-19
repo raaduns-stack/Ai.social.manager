@@ -1,5 +1,10 @@
 import { IsString, IsNotEmpty, IsDateString, IsOptional, IsIn } from 'class-validator';
-import { NotificationType, NotificationChannel, NOTIFICATION_TYPE_VALUES, NOTIFICATION_CHANNEL_VALUES } from '../../common/enums';
+import {
+  NotificationType,
+  NotificationChannel,
+  NOTIFICATION_TYPE_VALUES,
+  NOTIFICATION_CHANNEL_VALUES,
+} from '../../common/enums';
 
 export class CreateScheduledNotificationDto {
   @IsString()

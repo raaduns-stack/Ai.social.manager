@@ -15,7 +15,7 @@ export class DashboardController {
   constructor(
     private readonly subscriptionsService: SubscriptionsService,
     private readonly socialAccountsService: SocialAccountsService,
-  ) { }
+  ) {}
 
   @Get('my-summary')
   @ApiOperation({ summary: "Get the logged-in user's customer dashboard summary" })
@@ -61,7 +61,7 @@ export class DashboardController {
   @Get('premium-feature')
   @UseGuards(PlanTierGuard)
   @RequirePlanTiers('growth', 'enterprise')
-  @ApiOperation({ summary: "A premium feature restricted to Growth or Enterprise plan tiers" })
+  @ApiOperation({ summary: 'A premium feature restricted to Growth or Enterprise plan tiers' })
   getPremiumFeature() {
     return {
       message: 'Welcome to the premium feature!',

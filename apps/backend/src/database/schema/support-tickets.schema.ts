@@ -8,19 +8,16 @@ export const ticketStatusEnum = pgEnum('ticket_status', [
   'closed',
 ]);
 
-export const ticketPriorityEnum = pgEnum('ticket_priority', [
-  'low',
-  'medium',
-  'high',
-]);
+export const ticketPriorityEnum = pgEnum('ticket_priority', ['low', 'medium', 'high']);
 
 export const supportTickets = pgTable('support_tickets', {
   id: uuid('id').primaryKey().defaultRandom(),
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  assignedToStaffId: uuid('assigned_to_staff_id')
-    .references(() => users.id, { onDelete: 'set null' }),
+  assignedToStaffId: uuid('assigned_to_staff_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
   subject: varchar('subject', { length: 255 }).notNull(),
   category: varchar('category', { length: 255 }).notNull(),
   status: ticketStatusEnum('status').notNull().default('open'),

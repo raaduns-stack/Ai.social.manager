@@ -20,9 +20,7 @@ export class PromptManagementService {
   // This returns every prompt stored in the database.
   // ==================================================
   async getAllPrompts() {
-    return await this.db
-      .select()
-      .from(schema.aiPromptTemplates);
+    return await this.db.select().from(schema.aiPromptTemplates);
   }
 
   // ==================================================
@@ -112,22 +110,17 @@ export class PromptManagementService {
   // Computes aggregate feedback stats for admin view.
   // ==================================================
   async getFeedbackAnalytics() {
-    const allFeedback = await this.db
-      .select()
-      .from(schema.contentFeedback);
+    const allFeedback = await this.db.select().from(schema.contentFeedback);
 
     const totalFeedback = allFeedback.length;
     const upReactions = allFeedback.filter((f) => f.reaction === 'up').length;
     const downReactions = allFeedback.filter((f) => f.reaction === 'down').length;
 
-    const approvalRate = totalFeedback > 0 
-      ? Number(((upReactions / totalFeedback) * 100).toFixed(1)) 
-      : 0;
+    const approvalRate =
+      totalFeedback > 0 ? Number(((upReactions / totalFeedback) * 100).toFixed(1)) : 0;
 
     const totalRatingSum = allFeedback.reduce((sum, f) => sum + f.rating, 0);
-    const avgRating = totalFeedback > 0 
-      ? Number((totalRatingSum / totalFeedback).toFixed(1)) 
-      : 0;
+    const avgRating = totalFeedback > 0 ? Number((totalRatingSum / totalFeedback).toFixed(1)) : 0;
 
     const ratingCounts: Record<number, number> = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
     allFeedback.forEach((f) => {
@@ -138,9 +131,7 @@ export class PromptManagementService {
 
     const ratingDistribution = [5, 4, 3, 2, 1].map((stars) => {
       const cnt = ratingCounts[stars] || 0;
-      const percentage = totalFeedback > 0 
-        ? Math.round((cnt / totalFeedback) * 100) 
-        : 0;
+      const percentage = totalFeedback > 0 ? Math.round((cnt / totalFeedback) * 100) : 0;
       return { stars, count: cnt.toLocaleString(), percentage };
     });
 
@@ -241,7 +232,7 @@ export class PromptManagementService {
       .from(schema.contentFeedback)
       .leftJoin(
         schema.contentSuggestions,
-        eq(schema.contentFeedback.suggestionId, schema.contentSuggestions.id)
+        eq(schema.contentFeedback.suggestionId, schema.contentSuggestions.id),
       )
       .where(inArray(schema.contentFeedback.userId, paginatedUserIds));
 
@@ -261,9 +252,10 @@ export class PromptManagementService {
       const totalRatings = userFeedbacks.length;
 
       const ratings = userFeedbacks.map((f) => f.rating);
-      const avgRating = totalRatings > 0
-        ? Number((ratings.reduce((sum, r) => sum + r, 0) / totalRatings).toFixed(1))
-        : 0;
+      const avgRating =
+        totalRatings > 0
+          ? Number((ratings.reduce((sum, r) => sum + r, 0) / totalRatings).toFixed(1))
+          : 0;
 
       const likes = userFeedbacks.filter((f) => f.reaction === 'up').length;
       const dislikes = userFeedbacks.filter((f) => f.reaction === 'down').length;
@@ -274,14 +266,14 @@ export class PromptManagementService {
         .filter((value, index, self) => self.indexOf(value) === index)
         .slice(0, 3);
 
-      const preferredTopics = preferredTopicsList.length > 0
-        ? preferredTopicsList.join(', ')
-        : 'None';
+      const preferredTopics =
+        preferredTopicsList.length > 0 ? preferredTopicsList.join(', ') : 'None';
 
       const perfRatio = totalRatings > 0 ? Math.round((likes / totalRatings) * 100) : 0;
-      const suggestionPerformance = totalRatings > 0
-        ? `${perfRatio}% positive (${likes}/${totalRatings} rated)`
-        : 'No ratings yet';
+      const suggestionPerformance =
+        totalRatings > 0
+          ? `${perfRatio}% positive (${likes}/${totalRatings} rated)`
+          : 'No ratings yet';
 
       analytics.push({
         userId: u.id,

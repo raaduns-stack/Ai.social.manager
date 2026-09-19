@@ -1,4 +1,13 @@
-import { IsOptional, IsEnum, IsUUID, IsDateString, IsInt, IsString, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsEnum,
+  IsUUID,
+  IsDateString,
+  IsInt,
+  IsString,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { LoginStatus } from '../../common/enums/login-status.enum';
@@ -22,12 +31,16 @@ export class QueryLoginHistoryDto {
   @IsString()
   email?: string;
 
-  @ApiPropertyOptional({ description: 'Filter records on or after this ISO date (e.g. 2024-01-01)' })
+  @ApiPropertyOptional({
+    description: 'Filter records on or after this ISO date (e.g. 2024-01-01)',
+  })
   @IsOptional()
   @IsDateString()
   from?: string;
 
-  @ApiPropertyOptional({ description: 'Filter records on or before this ISO date (e.g. 2024-12-31)' })
+  @ApiPropertyOptional({
+    description: 'Filter records on or before this ISO date (e.g. 2024-12-31)',
+  })
   @IsOptional()
   @IsDateString()
   to?: string;

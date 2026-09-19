@@ -6,7 +6,6 @@ import { ContactDto } from './common/dto/contact.dto';
 
 // Groups this controller under the "root" section in Swagger
 @ApiTags('root')
-
 // Defines the root route ("/")
 @Controller()
 export class AppController {
@@ -14,7 +13,7 @@ export class AppController {
   constructor(
     private readonly appService: AppService,
     private readonly mailerService: MailerService,
-  ) { }
+  ) {}
 
   // Handles GET requests to the root endpoint
   @Get()
@@ -26,7 +25,12 @@ export class AppController {
   @Post('contact')
   @ApiOperation({ summary: 'Submit the contact form and send email to support' })
   async submitContactForm(@Body() dto: ContactDto) {
-    await this.mailerService.sendContactFormEmail(dto.name, dto.email, dto.company || '', dto.message);
+    await this.mailerService.sendContactFormEmail(
+      dto.name,
+      dto.email,
+      dto.company || '',
+      dto.message,
+    );
     return { success: true, message: 'Message sent successfully.' };
   }
 }

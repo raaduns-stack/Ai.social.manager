@@ -1,4 +1,18 @@
-import { Body, Controller, Get, Post, Patch, UseGuards, Req, Res, UnauthorizedException, UseInterceptors, UploadedFile, BadRequestException, Logger } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  UseGuards,
+  Req,
+  Res,
+  UnauthorizedException,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  Logger,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname, join } from 'path';
@@ -53,7 +67,10 @@ export class AuthController {
 
   @Post('designer/register')
   @ApiOperation({ summary: 'Create a designer account (role=designer, isolated flow)' })
-  async designerRegister(@Body() dto: DesignerRegisterDto, @Res({ passthrough: true }) res: Response) {
+  async designerRegister(
+    @Body() dto: DesignerRegisterDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const data = await this.authService.designerRegister(dto);
     if (data.refreshToken) {
       res.cookie('refreshToken', data.refreshToken, {
@@ -67,8 +84,13 @@ export class AuthController {
   }
 
   @Post('designer/activate')
-  @ApiOperation({ summary: 'Activate an invited designer account (consumes invitation, sets password)' })
-  async designerActivate(@Body() dto: DesignerActivateDto, @Res({ passthrough: true }) res: Response) {
+  @ApiOperation({
+    summary: 'Activate an invited designer account (consumes invitation, sets password)',
+  })
+  async designerActivate(
+    @Body() dto: DesignerActivateDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const data = await this.authService.designerActivate(dto);
     if (data.refreshToken) {
       res.cookie('refreshToken', data.refreshToken, {
@@ -94,7 +116,9 @@ export class AuthController {
   }
 
   @Post('forgot-password')
-  @ApiOperation({ summary: 'Request a password-reset link (neutral response, no account enumeration)' })
+  @ApiOperation({
+    summary: 'Request a password-reset link (neutral response, no account enumeration)',
+  })
   forgotPassword(@Body() dto: ForgotPasswordDto) {
     return this.authService.forgotPassword(dto);
   }
@@ -107,7 +131,11 @@ export class AuthController {
 
   @Post('login')
   @ApiOperation({ summary: 'Log in with email and password' })
-  async login(@Req() req: Request, @Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(
+    @Req() req: Request,
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const data = await this.authService.login(dto, req);
     if ('refreshToken' in data) {
       res.cookie('refreshToken', data.refreshToken, {
@@ -154,16 +182,16 @@ export class AuthController {
         if (allowedTypes.includes(file.mimetype)) {
           callback(null, true);
         } else {
-          callback(new BadRequestException('Only JPG, JPEG, PNG, and WebP images are allowed'), false);
+          callback(
+            new BadRequestException('Only JPG, JPEG, PNG, and WebP images are allowed'),
+            false,
+          );
         }
       },
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  uploadProfileImage(
-    @CurrentUser() user: { userId: string },
-    @UploadedFile() file: any,
-  ) {
+  uploadProfileImage(@CurrentUser() user: { userId: string }, @UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No image file uploaded');
     return this.authService.updateProfileImage(user.userId, file.filename);
   }
@@ -184,10 +212,7 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Change current user password' })
-  changePassword(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: ChangePasswordDto,
-  ) {
+  changePassword(@CurrentUser() user: { userId: string }, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(user.userId, dto);
   }
 
@@ -195,7 +220,7 @@ export class AuthController {
   @ApiOperation({ summary: 'Exchange a valid HTTP-Only refresh token for a fresh access token' })
   async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refreshToken;
-    
+
     if (!refreshToken) {
       throw new UnauthorizedException('No refresh token provided');
     }
@@ -224,10 +249,7 @@ export class AuthController {
   @Get('tumblr')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Initiate Tumblr OAuth flow' })
-  async tumblrAuth(
-    @CurrentUser() user: { userId: string },
-    @Res() res: Response,
-  ) {
+  async tumblrAuth(@CurrentUser() user: { userId: string }, @Res() res: Response) {
     try {
       const { oauth_token, oauth_token_secret } = await this.tumblrService.getRequestToken();
 
@@ -251,23 +273,26 @@ export class AuthController {
       res.redirect(`https://www.tumblr.com/oauth/authorize?oauth_token=${oauth_token}`);
     } catch (err: any) {
       this.logger.error(`Tumblr auth initiation failed: ${err.message}`, err.stack);
-      const frontendUrl = this.configService.get<string>('frontendUrl') || process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      const frontendUrl =
+        this.configService.get<string>('frontendUrl') ||
+        process.env.FRONTEND_URL ||
+        process.env.CORS_ORIGIN ||
+        'http://localhost:5173';
       res.redirect(`${frontendUrl}/settings/accounts?tumblr=error`);
     }
   }
 
   @Get('tumblr/callback')
   @ApiOperation({ summary: 'Handle Tumblr OAuth callback' })
-  async tumblrAuthCallback(
-    @Req() req: Request,
-    @Res() res: Response,
-  ) {
+  async tumblrAuthCallback(@Req() req: Request, @Res() res: Response) {
     try {
       const oauthToken = req.query.oauth_token as string;
       const oauthVerifier = req.query.oauth_verifier as string;
 
       if (!oauthToken || !oauthVerifier) {
-        throw new BadRequestException('Callback query params oauth_token or oauth_verifier are missing.');
+        throw new BadRequestException(
+          'Callback query params oauth_token or oauth_verifier are missing.',
+        );
       }
 
       const cookieDataStr = req.signedCookies?.tumblr_oauth_cookie;
@@ -286,14 +311,21 @@ export class AuthController {
       await this.tumblrService.connectAccount(userId, token, tokenSecret, blogName);
 
       res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
-      const frontendUrl = this.configService.get<string>('frontendUrl') || process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      const frontendUrl =
+        this.configService.get<string>('frontendUrl') ||
+        process.env.FRONTEND_URL ||
+        process.env.CORS_ORIGIN ||
+        'http://localhost:5173';
       res.redirect(`${frontendUrl}/settings/accounts?tumblr=success`);
     } catch (err: any) {
       this.logger.error(`Tumblr callback handshake failed: ${err.message}`, err.stack);
       res.clearCookie('tumblr_oauth_cookie', { path: '/', signed: true });
-      const frontendUrl = this.configService.get<string>('frontendUrl') || process.env.FRONTEND_URL || process.env.CORS_ORIGIN || 'http://localhost:5173';
+      const frontendUrl =
+        this.configService.get<string>('frontendUrl') ||
+        process.env.FRONTEND_URL ||
+        process.env.CORS_ORIGIN ||
+        'http://localhost:5173';
       res.redirect(`${frontendUrl}/settings/accounts?tumblr=error`);
     }
   }
 }
-

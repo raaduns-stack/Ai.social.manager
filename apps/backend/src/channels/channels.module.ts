@@ -34,15 +34,9 @@ import { SocialAccountsModule } from '../social-accounts/social-accounts.module'
  *   POST   /api/channels/tumblr/send-post   — Send post to Tumblr blog
  */
 @Module({
-  imports: [
-    JwtModule.register({}),
-    KycModule,
-    SocialAccountsModule,
-  ],
+  imports: [JwtModule.register({}), KycModule, SocialAccountsModule],
   controllers: [TikTokController, DiscordController, TumblrController],
   providers: [TikTokService, DiscordService, TumblrService],
   exports: [TikTokService, DiscordService, TumblrService],
 })
 export class ChannelsModule {}
-
-

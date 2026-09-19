@@ -17,9 +17,7 @@ export interface CreateActivityLogPayload {
 
 @Injectable()
 export class ActivityLogsService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /**
    * Records a single activity log entry.
@@ -49,9 +47,9 @@ export class ActivityLogsService {
     const { module, page = 1, limit = 20 } = query;
     const offset = (page - 1) * limit;
 
-    const conditions = [
-      module ? eq(schema.activityLogs.module, module) : undefined,
-    ].filter((c): c is NonNullable<typeof c> => c !== undefined);
+    const conditions = [module ? eq(schema.activityLogs.module, module) : undefined].filter(
+      (c): c is NonNullable<typeof c> => c !== undefined,
+    );
 
     const whereClause = conditions.length ? and(...conditions) : undefined;
 
@@ -75,10 +73,7 @@ export class ActivityLogsService {
         .limit(limit)
         .offset(offset),
 
-      this.db
-        .select({ total: count() })
-        .from(schema.activityLogs)
-        .where(whereClause),
+      this.db.select({ total: count() }).from(schema.activityLogs).where(whereClause),
     ]);
 
     const total = totalResult[0]?.total ?? 0;

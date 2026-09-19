@@ -12,11 +12,18 @@ export class UpdateDesignerPaymentSettingsDto {
   @Min(0)
   perImageToCodeAmount: number;
 
-  @ApiProperty({ description: 'Global payout schedule frequency', example: 'weekly', enum: ['weekly', 'monthly'] })
+  @ApiProperty({
+    description: 'Global payout schedule frequency',
+    example: 'weekly',
+    enum: ['weekly', 'monthly'],
+  })
   @IsIn(['weekly', 'monthly'])
   payoutSchedule: 'weekly' | 'monthly';
 
-  @ApiProperty({ description: 'Day of week for weekly payouts (1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun)', example: 2 })
+  @ApiProperty({
+    description: 'Day of week for weekly payouts (1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Sun)',
+    example: 2,
+  })
   @IsInt()
   @Min(1)
   @Max(7)

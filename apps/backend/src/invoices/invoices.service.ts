@@ -57,7 +57,11 @@ export class InvoicesService {
     }
 
     const amountFormatted = `${invoice.currency || 'NGN'} ${(invoice.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const dateStr = new Date(invoice.issuedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const dateStr = new Date(invoice.issuedAt).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
     const customerName = user?.fullName || 'Valued Customer';
     const customerEmail = user?.email || 'N/A';
     const statusStr = (invoice.status || 'paid').toUpperCase();

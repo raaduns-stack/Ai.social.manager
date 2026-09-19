@@ -42,7 +42,9 @@ describe('AuthService Security - Role Isolation', () => {
           findFirst: jest.fn().mockResolvedValue({ id: 'plan-123', slug: 'free' }),
         },
         subscriptions: {
-          findFirst: jest.fn().mockResolvedValue({ id: 'sub-123', plan: { id: 'plan-123', name: 'Free' } }),
+          findFirst: jest
+            .fn()
+            .mockResolvedValue({ id: 'sub-123', plan: { id: 'plan-123', name: 'Free' } }),
         },
         rolePermissions: {
           findMany: jest.fn().mockResolvedValue([]),

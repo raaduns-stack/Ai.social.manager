@@ -92,9 +92,10 @@ export class PaymentAnalyticsService {
       if (metricsByStatus[status]) {
         metricsByStatus[status].count = res.count;
         metricsByStatus[status].totalVolume = res.totalVolume;
-        metricsByStatus[status].percentageOfTotal = totalTransactionsCount > 0
-          ? Number(((res.count / totalTransactionsCount) * 100).toFixed(2))
-          : 0;
+        metricsByStatus[status].percentageOfTotal =
+          totalTransactionsCount > 0
+            ? Number(((res.count / totalTransactionsCount) * 100).toFixed(2))
+            : 0;
       }
     });
 
@@ -104,9 +105,10 @@ export class PaymentAnalyticsService {
       count: f.count,
     }));
 
-    const successRate = totalTransactionsCount > 0
-      ? Number(((metricsByStatus.successful.count / totalTransactionsCount) * 100).toFixed(2))
-      : 0;
+    const successRate =
+      totalTransactionsCount > 0
+        ? Number(((metricsByStatus.successful.count / totalTransactionsCount) * 100).toFixed(2))
+        : 0;
 
     return {
       totalTransactionsCount,

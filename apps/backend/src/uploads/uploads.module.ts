@@ -27,8 +27,7 @@ import { UploadsService } from './uploads.service';
 
         // Generate a unique filename for every uploaded file
         filename: (req: any, file: any, callback: any) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
 
           // Preserve the original file extension
           const ext = extname(file.originalname);
@@ -49,4 +48,4 @@ import { UploadsService } from './uploads.service';
   // Export the service so it can be used by other modules
   exports: [UploadsService],
 })
-export class UploadsModule { }
+export class UploadsModule {}

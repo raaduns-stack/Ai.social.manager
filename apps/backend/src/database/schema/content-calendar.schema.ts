@@ -17,11 +17,7 @@ import { users } from './users.schema';
  * - SCHEDULED  : approved and queued for future publish
  * - PUBLISHED  : already published on the social platform
  */
-export const postStatusEnum = pgEnum('post_status', [
-  'DRAFT',
-  'SCHEDULED',
-  'PUBLISHED',
-]);
+export const postStatusEnum = pgEnum('post_status', ['DRAFT', 'SCHEDULED', 'PUBLISHED']);
 
 /**
  * Admin approval status of a content calendar post.
@@ -51,14 +47,11 @@ export const postPlatformEnum = pgEnum('post_platform', [
 ]);
 
 /**
-  * Source of approval for a content calendar post.
-  * - MANUAL : approved by a human user or admin
-  * - SYSTEM : auto-approved by system fallback job
-  */
-export const approvalSourceEnum = pgEnum('approval_source', [
-  'MANUAL',
-  'SYSTEM',
-]);
+ * Source of approval for a content calendar post.
+ * - MANUAL : approved by a human user or admin
+ * - SYSTEM : auto-approved by system fallback job
+ */
+export const approvalSourceEnum = pgEnum('approval_source', ['MANUAL', 'SYSTEM']);
 
 /**
  * Main content calendar table.
@@ -90,14 +83,10 @@ export const contentCalendar = pgTable('content_calendar', {
   status: postStatusEnum('status').notNull().default('DRAFT'),
 
   /** Admin approval status — PENDING by default until reviewed. */
-  approvalStatus: postApprovalStatusEnum('approval_status')
-    .notNull()
-    .default('PENDING'),
+  approvalStatus: postApprovalStatusEnum('approval_status').notNull().default('PENDING'),
 
   /** Indicates whether approval was performed manually or by the automated fallback job. */
-  approvalSource: approvalSourceEnum('approval_source')
-    .notNull()
-    .default('MANUAL'),
+  approvalSource: approvalSourceEnum('approval_source').notNull().default('MANUAL'),
 
   /** Optional feedback notes left by the admin (e.g. revision instructions or auto-approval note). */
   adminNotes: text('admin_notes'),
@@ -132,24 +121,20 @@ export const contentCalendar = pgTable('content_calendar', {
  */
 import { contentSuggestions } from './content-suggestions.schema';
 
-export const contentCalendarRelations = relations(
-  contentCalendar,
-  ({ one, many }) => ({
-    user: one(users, {
-      fields: [contentCalendar.userId],
-      references: [users.id],
-    }),
-    selectedSuggestion: one(contentSuggestions, {
-      fields: [contentCalendar.selectedSuggestionId],
-      references: [contentSuggestions.id],
-    }),
-    suggestions: many(contentSuggestions),
+export const contentCalendarRelations = relations(contentCalendar, ({ one, many }) => ({
+  user: one(users, {
+    fields: [contentCalendar.userId],
+    references: [users.id],
   }),
-);
+  selectedSuggestion: one(contentSuggestions, {
+    fields: [contentCalendar.selectedSuggestionId],
+    references: [contentSuggestions.id],
+  }),
+  suggestions: many(contentSuggestions),
+}));
 
 /** TypeScript type for reading a row from content_calendar. */
 export type ContentCalendarPost = typeof contentCalendar.$inferSelect;
 
 /** TypeScript type for inserting a new row into content_calendar. */
 export type NewContentCalendarPost = typeof contentCalendar.$inferInsert;
-

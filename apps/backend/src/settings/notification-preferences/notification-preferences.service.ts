@@ -20,9 +20,7 @@ export class NotificationPreferencesService {
       where: eq(schema.notificationPreferences.userId, userId),
     });
 
-    const preferencesMap = new Map(
-      userPreferences.map((pref) => [pref.notificationType, pref])
-    );
+    const preferencesMap = new Map(userPreferences.map((pref) => [pref.notificationType, pref]));
 
     return globalSettings.map((globalSetting) => {
       const userPref = preferencesMap.get(globalSetting.notificationType);
@@ -69,7 +67,7 @@ export class NotificationPreferencesService {
     const existing = await this.db.query.notificationPreferences.findFirst({
       where: and(
         eq(schema.notificationPreferences.userId, userId),
-        eq(schema.notificationPreferences.notificationType, notificationType)
+        eq(schema.notificationPreferences.notificationType, notificationType),
       ),
     });
 

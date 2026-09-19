@@ -1,5 +1,10 @@
 import { IsString, IsNotEmpty, IsOptional, IsArray, IsIn, IsUrl, IsUUID } from 'class-validator';
-import { NotificationChannel, NotificationPriority, NOTIFICATION_CHANNEL_VALUES, NOTIFICATION_PRIORITY_VALUES } from '../../common/enums';
+import {
+  NotificationChannel,
+  NotificationPriority,
+  NOTIFICATION_CHANNEL_VALUES,
+  NOTIFICATION_PRIORITY_VALUES,
+} from '../../common/enums';
 
 export class CreateSystemAnnouncementDto {
   @IsString()

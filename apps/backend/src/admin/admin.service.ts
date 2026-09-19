@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import { eq, desc, and, or, ilike, sum, count, ne, isNull, inArray } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as bcrypt from 'bcrypt';
@@ -78,7 +84,8 @@ export class AdminService {
       if (kycRecord) {
         if (kycRecord.status === 'approved') kycStatusLabel = 'APPROVED';
         else if (kycRecord.status === 'rejected') kycStatusLabel = 'REJECTED';
-        else if (kycRecord.status === 'resubmission_required') kycStatusLabel = 'RESUBMISSION_REQUIRED';
+        else if (kycRecord.status === 'resubmission_required')
+          kycStatusLabel = 'RESUBMISSION_REQUIRED';
         else if (kycRecord.status === 'pending') kycStatusLabel = 'UNDER_REVIEW';
       }
 
@@ -117,15 +124,16 @@ export class AdminService {
               email: u.accountManager.email,
             }
           : null,
-        status: u.accountStatus === 'SUSPENDED' || !u.isActive
-          ? 'Suspended'
-          : u.accountStatus === 'DELETED'
-          ? 'Deleted'
-          : u.accountStatus === 'EMAIL_VERIFICATION_PENDING' || !u.isEmailVerified
-          ? 'Email Verification'
-          : u.accountStatus === 'REGISTRATION_IN_PROGRESS'
-          ? 'Registration in Progress'
-          : 'Active',
+        status:
+          u.accountStatus === 'SUSPENDED' || !u.isActive
+            ? 'Suspended'
+            : u.accountStatus === 'DELETED'
+              ? 'Deleted'
+              : u.accountStatus === 'EMAIL_VERIFICATION_PENDING' || !u.isEmailVerified
+                ? 'Email Verification'
+                : u.accountStatus === 'REGISTRATION_IN_PROGRESS'
+                  ? 'Registration in Progress'
+                  : 'Active',
       };
 
       // Apply Search filter across name, email, businessName, country
@@ -145,19 +153,29 @@ export class AdminService {
         if (t === 'verified' && !userObj.isEmailVerified) {
           continue;
         }
-        if (t === 'email_pending' && (userObj.isEmailVerified || userObj.accountStatus !== 'EMAIL_VERIFICATION_PENDING')) {
+        if (
+          t === 'email_pending' &&
+          (userObj.isEmailVerified || userObj.accountStatus !== 'EMAIL_VERIFICATION_PENDING')
+        ) {
           continue;
         }
-        if (t === 'registration_in_progress' && userObj.accountStatus !== 'REGISTRATION_IN_PROGRESS') {
+        if (
+          t === 'registration_in_progress' &&
+          userObj.accountStatus !== 'REGISTRATION_IN_PROGRESS'
+        ) {
           continue;
         }
         if (t === 'active' && userObj.accountStatus !== 'ACTIVE') {
           continue;
         }
-        if (t === 'kyc_pending' && (userObj.kycStatus === 'APPROVED')) {
+        if (t === 'kyc_pending' && userObj.kycStatus === 'APPROVED') {
           continue;
         }
-        if (t === 'kyc_under_review' && (userObj.kycStatus !== 'UNDER_REVIEW' && userObj.kycStatus !== 'RESUBMISSION_REQUIRED')) {
+        if (
+          t === 'kyc_under_review' &&
+          userObj.kycStatus !== 'UNDER_REVIEW' &&
+          userObj.kycStatus !== 'RESUBMISSION_REQUIRED'
+        ) {
           continue;
         }
         if (t === 'suspended' && userObj.accountStatus !== 'SUSPENDED') {
@@ -171,8 +189,17 @@ export class AdminService {
       if (query?.status && query.status !== 'all') {
         if (query.status.toLowerCase() === 'active' && userObj.status !== 'Active') continue;
         if (query.status.toLowerCase() === 'suspended' && userObj.status !== 'Suspended') continue;
-        if ((query.status.toLowerCase() === 'email pending' || query.status.toLowerCase() === 'email verification') && userObj.status !== 'Email Verification') continue;
-        if (query.status.toLowerCase() === 'registration in progress' && userObj.status !== 'Registration in Progress') continue;
+        if (
+          (query.status.toLowerCase() === 'email pending' ||
+            query.status.toLowerCase() === 'email verification') &&
+          userObj.status !== 'Email Verification'
+        )
+          continue;
+        if (
+          query.status.toLowerCase() === 'registration in progress' &&
+          userObj.status !== 'Registration in Progress'
+        )
+          continue;
       }
 
       if (query?.plan && query.plan !== 'all') {
@@ -368,7 +395,8 @@ export class AdminService {
     if (kycRecord) {
       if (kycRecord.status === 'approved') kycStatusLabel = 'APPROVED';
       else if (kycRecord.status === 'rejected') kycStatusLabel = 'REJECTED';
-      else if (kycRecord.status === 'resubmission_required') kycStatusLabel = 'RESUBMISSION_REQUIRED';
+      else if (kycRecord.status === 'resubmission_required')
+        kycStatusLabel = 'RESUBMISSION_REQUIRED';
       else if (kycRecord.status === 'pending') kycStatusLabel = 'UNDER_REVIEW';
     }
 
@@ -377,8 +405,10 @@ export class AdminService {
         id: user.id,
         fullName: user.fullName,
         email: user.email,
-        phoneNumber: user.phoneNumber || kycRecord?.businessPhone || companyProfile?.contactPhone || '—',
-        businessName: user.businessName || kycRecord?.businessName || companyProfile?.businessName || '—',
+        phoneNumber:
+          user.phoneNumber || kycRecord?.businessPhone || companyProfile?.contactPhone || '—',
+        businessName:
+          user.businessName || kycRecord?.businessName || companyProfile?.businessName || '—',
         country: user.country || kycRecord?.country || companyProfile?.country || '—',
         profileImage: user.profileImage || null,
         role: user.role,
@@ -394,13 +424,16 @@ export class AdminService {
         updatedAt: user.updatedAt,
       },
       businessInfo: {
-        businessName: user.businessName || kycRecord?.businessName || companyProfile?.businessName || '—',
+        businessName:
+          user.businessName || kycRecord?.businessName || companyProfile?.businessName || '—',
         businessType: kycRecord?.businessType || '—',
         businessAddress: kycRecord?.businessAddress || companyProfile?.addressLine1 || '—',
         website: companyProfile?.website || '—',
         businessEmail: kycRecord?.businessEmail || companyProfile?.contactEmail || user.email,
-        businessPhone: kycRecord?.businessPhone || companyProfile?.contactPhone || user.phoneNumber || '—',
-        businessDescription: kycRecord?.businessDescription || companyProfile?.businessDescription || '—',
+        businessPhone:
+          kycRecord?.businessPhone || companyProfile?.contactPhone || user.phoneNumber || '—',
+        businessDescription:
+          kycRecord?.businessDescription || companyProfile?.businessDescription || '—',
         registrationNumber: kycRecord?.registrationNumber || '—',
         country: kycRecord?.country || user.country || companyProfile?.country || '—',
       },
@@ -521,7 +554,12 @@ export class AdminService {
 
       const targetStatus = dto.accountStatus || 'EMAIL_VERIFICATION_PENDING';
       const isLogin = targetStatus === 'ACTIVE';
-      await this.authService.applyUserStatusTransition(createdUser.id, targetStatus as any, tx, isLogin);
+      await this.authService.applyUserStatusTransition(
+        createdUser.id,
+        targetStatus as any,
+        tx,
+        isLogin,
+      );
 
       // Assign default free plan if none exists
       const freePlan = await tx.query.plans.findFirst({
@@ -576,7 +614,8 @@ export class AdminService {
     if (dto.phoneNumber !== undefined) updatePayload.phoneNumber = dto.phoneNumber;
     if (dto.country !== undefined) updatePayload.country = dto.country;
     if (dto.role !== undefined) updatePayload.role = dto.role;
-    if (dto.accountManagerId !== undefined) updatePayload.accountManagerId = dto.accountManagerId || null;
+    if (dto.accountManagerId !== undefined)
+      updatePayload.accountManagerId = dto.accountManagerId || null;
 
     const [updated] = await this.db
       .update(schema.users)
@@ -619,7 +658,11 @@ export class AdminService {
         : `Admin activated user account: ${user.email}`,
     });
 
-    return { success: true, accountStatus: updatedUser.accountStatus, isActive: updatedUser.isActive };
+    return {
+      success: true,
+      accountStatus: updatedUser.accountStatus,
+      isActive: updatedUser.isActive,
+    };
   }
 
   /**
@@ -788,7 +831,11 @@ export class AdminService {
     }
 
     const amountFormatted = `${payment.currency || 'NGN'} ${(payment.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const dateStr = new Date(payment.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    const dateStr = new Date(payment.createdAt).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    });
     const customerName = payment.user?.fullName || 'Valued Customer';
     const customerEmail = payment.user?.email || 'N/A';
     const planName = payment.plan?.name || 'Subscription Plan';
@@ -883,7 +930,10 @@ startxref
     return this.db.query.rolePermissions.findMany();
   }
 
-  async updateRolePermissions(dto: { role: string; permissions: { module: string; accessLevel: string }[] }) {
+  async updateRolePermissions(dto: {
+    role: string;
+    permissions: { module: string; accessLevel: string }[];
+  }) {
     for (const p of dto.permissions) {
       const existing = await this.db.query.rolePermissions.findFirst({
         where: and(
@@ -1009,9 +1059,14 @@ startxref
         id: row.id,
         name: row.userName || row.email,
         role: row.userRole || '—',
-        device: [row.browser, row.os, row.ipAddress].filter(Boolean).join(' · ') || 'Unknown device',
+        device:
+          [row.browser, row.os, row.ipAddress].filter(Boolean).join(' · ') || 'Unknown device',
         time: row.createdAt,
-        status: row.isSuspicious ? 'Suspicious' : row.status === 'success' ? 'Successful' : 'Failed',
+        status: row.isSuspicious
+          ? 'Suspicious'
+          : row.status === 'success'
+            ? 'Successful'
+            : 'Failed',
       })),
     };
   }
@@ -1037,10 +1092,7 @@ startxref
     if (dto.maxSocialAccounts !== undefined) updateData.maxSocialAccounts = dto.maxSocialAccounts;
     if (dto.isActive !== undefined) updateData.isActive = dto.isActive;
 
-    await this.db
-      .update(schema.plans)
-      .set(updateData)
-      .where(eq(schema.plans.id, id));
+    await this.db.update(schema.plans).set(updateData).where(eq(schema.plans.id, id));
 
     return { success: true };
   }

@@ -14,13 +14,13 @@ export class PaymentGatewaySettingsService {
 
   async getPaymentGatewaySettings() {
     const settings = await this.db.query.paymentGatewaySettings.findFirst();
-    
+
     if (!settings) {
       throw new NotFoundException('Payment gateway settings not found');
     }
 
     const { secretKeyEncrypted, webhookSecretEncrypted, ...rest } = settings;
-    
+
     return {
       ...rest,
       secretKeyMasked: secretKeyEncrypted ? maskSecret(secretKeyEncrypted) : null,
@@ -30,7 +30,7 @@ export class PaymentGatewaySettingsService {
 
   async updatePaymentGatewaySettings(dto: UpdatePaymentGatewaySettingsDto) {
     const existing = await this.db.query.paymentGatewaySettings.findFirst();
-    
+
     if (!existing) {
       throw new NotFoundException('Payment gateway settings not found');
     }
@@ -45,14 +45,14 @@ export class PaymentGatewaySettingsService {
     if (dto.secretKey) {
       updateData.secretKeyEncrypted = encryptSecret(dto.secretKey);
     }
-    
+
     if (dto.webhookSecret) {
       updateData.webhookSecretEncrypted = encryptSecret(dto.webhookSecret);
     }
 
     // Clean up undefined values so we don't accidentally override with nulls
     Object.keys(updateData).forEach(
-      key => updateData[key] === undefined && delete updateData[key]
+      (key) => updateData[key] === undefined && delete updateData[key],
     );
 
     const [updated] = await this.db
@@ -65,7 +65,7 @@ export class PaymentGatewaySettingsService {
       .returning();
 
     const { secretKeyEncrypted, webhookSecretEncrypted, ...rest } = updated;
-    
+
     return {
       ...rest,
       secretKeyMasked: secretKeyEncrypted ? maskSecret(secretKeyEncrypted) : null,

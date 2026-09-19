@@ -143,9 +143,7 @@ describe('AutoApprovePostsJob', () => {
       },
     ]);
 
-    mockDb.select().from.mockResolvedValue([
-      { calendarPostId: 'cal-post-already-scheduled' },
-    ]);
+    mockDb.select().from.mockResolvedValue([{ calendarPostId: 'cal-post-already-scheduled' }]);
 
     await job.handleCron();
 

@@ -14,16 +14,22 @@ export class MailerService {
   private readonly logger = new Logger(MailerService.name);
   constructor(
     private readonly configService: ConfigService,
-    @Inject(DATABASE_CONNECTION) private readonly db: Database
+    @Inject(DATABASE_CONNECTION) private readonly db: Database,
   ) {}
 
-  private async getTransporterAndFrom(): Promise<{ transporter: nodemailer.Transporter | null, from: string }> {
+  private async getTransporterAndFrom(): Promise<{
+    transporter: nodemailer.Transporter | null;
+    from: string;
+  }> {
     try {
       const config = await this.db.query.emailConfig.findFirst();
       const defaultSenderName = this.configService.get<string>('mail.senderName') || 'RaaSocial';
-      const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'noreply@raasocial.io';
+      const defaultSenderEmail =
+        this.configService.get<string>('mail.senderEmail') ||
+        this.configService.get<string>('mail.mailFrom') ||
+        'noreply@raasocial.io';
       let from = `"${defaultSenderName}" <${defaultSenderEmail}>`;
-      
+
       if (config && config.smtpHost && config.smtpUsername && config.smtpPasswordEncrypted) {
         const plainPassword = decryptSecret(config.smtpPasswordEncrypted);
         const transporter = nodemailer.createTransport({
@@ -38,13 +44,13 @@ export class MailerService {
             rejectUnauthorized: false,
           },
         });
-        
+
         if (config.senderName && config.senderEmail) {
           from = `"${config.senderName}" <${config.senderEmail}>`;
         } else if (config.senderEmail) {
           from = config.senderEmail;
         }
-        
+
         return { transporter, from };
       }
     } catch (error) {
@@ -54,9 +60,12 @@ export class MailerService {
     // Fallback to .env config
     const apiKey = this.configService.get<string>('mail.resendApiKey');
     const defaultSenderName = this.configService.get<string>('mail.senderName') || 'RaaSocial';
-    const defaultSenderEmail = this.configService.get<string>('mail.senderEmail') || this.configService.get<string>('mail.mailFrom') || 'noreply@raasocial.io';
+    const defaultSenderEmail =
+      this.configService.get<string>('mail.senderEmail') ||
+      this.configService.get<string>('mail.mailFrom') ||
+      'noreply@raasocial.io';
     const from = `"${defaultSenderName}" <${defaultSenderEmail}>`;
-    
+
     if (apiKey) {
       const transporter = nodemailer.createTransport({
         host: 'smtp.resend.com',
@@ -92,7 +101,7 @@ export class MailerService {
       });
       return { transporter, from };
     }
-    
+
     return { transporter: null, from };
   }
 
@@ -169,7 +178,9 @@ export class MailerService {
         throw error;
       }
     } else {
-      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Reset URL: ${resetUrl}`);
+      this.logger.log(
+        `[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Reset URL: ${resetUrl}`,
+      );
     }
   }
 
@@ -208,11 +219,14 @@ export class MailerService {
         throw error;
       }
     } else {
-      this.logger.log(`[MOCK EMAIL] To: ${email} | Subject: ${subject} | Activate URL: ${activateUrl}`);
+      this.logger.log(
+        `[MOCK EMAIL] To: ${email} | Subject: ${subject} | Activate URL: ${activateUrl}`,
+      );
     }
   }
 
-  async sendWelcomeEmail(user: User): Promise<void> {    const { transporter, from } = await this.getTransporterAndFrom();
+  async sendWelcomeEmail(user: User): Promise<void> {
+    const { transporter, from } = await this.getTransporterAndFrom();
     const subject = 'Welcome to RaaSocial!';
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
@@ -240,11 +254,18 @@ export class MailerService {
         throw error;
       }
     } else {
-      this.logger.log(`[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Welcome to RaaSocial`);
+      this.logger.log(
+        `[MOCK EMAIL] To: ${user.email} | Subject: ${subject} | Welcome to RaaSocial`,
+      );
     }
   }
 
-  async sendContactFormEmail(name: string, email: string, company: string, message: string): Promise<void> {
+  async sendContactFormEmail(
+    name: string,
+    email: string,
+    company: string,
+    message: string,
+  ): Promise<void> {
     const { transporter, from } = await this.getTransporterAndFrom();
     const subject = `New Contact Form Submission from ${name}`;
     const html = `
@@ -273,11 +294,16 @@ export class MailerService {
         });
         this.logger.log(`Contact form message from ${email} sent to support@raaduns.com`);
       } catch (error) {
-        this.logger.error(`Failed to send contact form message from ${email} to support@raaduns.com`, error);
+        this.logger.error(
+          `Failed to send contact form message from ${email} to support@raaduns.com`,
+          error,
+        );
         throw error;
       }
     } else {
-      this.logger.log(`[MOCK EMAIL] To: support@raaduns.com | Reply-To: ${email} | Subject: ${subject} | Message: ${message}`);
+      this.logger.log(
+        `[MOCK EMAIL] To: support@raaduns.com | Reply-To: ${email} | Subject: ${subject} | Message: ${message}`,
+      );
     }
   }
 

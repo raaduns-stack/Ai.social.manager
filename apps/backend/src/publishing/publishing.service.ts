@@ -1,5 +1,10 @@
-
-import { Inject, Injectable, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { eq } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import * as crypto from 'crypto';
@@ -42,13 +47,9 @@ export class PublishingService {
     }
 
 
-    if (platformLower === 'snapchat') {
-      return this.publishToSnapchat(body);
-    }
-
     // Look up social account details to resolve userId if not explicitly provided
     let userId = body.userId;
-    let targetChannelId = '';
+    const targetChannelId = '';
     let targetBlogName = '';
 
     if (body.socialAccountId) {
@@ -77,11 +78,7 @@ export class PublishingService {
 
     if (platformLower === 'discord' && userId) {
       this.logger.log(`Dispatching post to Discord for user ${userId}`);
-      const res = await this.discordService.sendMessage(
-        userId,
-        targetChannelId,
-        body.content,
-      );
+      const res = await this.discordService.sendMessage(userId, targetChannelId, body.content);
       return {
         success: true,
         externalPostId: res.messageId,
@@ -388,14 +385,10 @@ export class PublishingService {
     }
 
     if (status === 429) {
-      throw new BadRequestException(
-        'Snapchat rate limit exceeded. Please try again later.',
-      );
+      throw new BadRequestException('Snapchat rate limit exceeded. Please try again later.');
     }
 
-    throw new BadRequestException(
-      `Snapchat ${step} failed with HTTP ${status}. Please try again.`,
-    );
+    throw new BadRequestException(`Snapchat ${step} failed with HTTP ${status}. Please try again.`);
   }
 
   /**
@@ -410,19 +403,25 @@ export class PublishingService {
     const parts: Buffer[] = [];
 
     // action field
-    parts.push(Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="action"\r\n\r\n${action}\r\n`,
-    ));
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="action"\r\n\r\n${action}\r\n`,
+      ),
+    );
 
     // part_number field
-    parts.push(Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="part_number"\r\n\r\n${partNumber}\r\n`,
-    ));
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="part_number"\r\n\r\n${partNumber}\r\n`,
+      ),
+    );
 
     // file field
-    parts.push(Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="media.enc"\r\nContent-Type: application/octet-stream\r\n\r\n`,
-    ));
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="media.enc"\r\nContent-Type: application/octet-stream\r\n\r\n`,
+      ),
+    );
     parts.push(fileData);
     parts.push(Buffer.from('\r\n'));
 
@@ -438,9 +437,11 @@ export class PublishingService {
   private buildFinalizeBody(boundary: string): Buffer {
     const parts: Buffer[] = [];
 
-    parts.push(Buffer.from(
-      `--${boundary}\r\nContent-Disposition: form-data; name="action"\r\n\r\nFINALIZE\r\n`,
-    ));
+    parts.push(
+      Buffer.from(
+        `--${boundary}\r\nContent-Disposition: form-data; name="action"\r\n\r\nFINALIZE\r\n`,
+      ),
+    );
 
     parts.push(Buffer.from(`--${boundary}--\r\n`));
 

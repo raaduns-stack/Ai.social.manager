@@ -29,9 +29,9 @@ import { users } from './users.schema';
 // KYC status enum
 // ---------------------------------------------------------------------------
 export const kycStatusEnum = pgEnum('kyc_status', [
-  'pending',    // submitted, awaiting admin review
-  'approved',   // admin approved — user may connect social accounts
-  'rejected',   // admin rejected — user must correct and resubmit
+  'pending', // submitted, awaiting admin review
+  'approved', // admin approved — user may connect social accounts
+  'rejected', // admin rejected — user must correct and resubmit
   'resubmission_required', // admin requested resubmission
 ]);
 
@@ -82,7 +82,9 @@ export const kyc = pgTable('kyc', {
   status: kycStatusEnum('status').notNull().default('pending'),
 
   // Individual document verification status and reasons
-  certOfRegistrationStatus: varchar('cert_of_registration_status', { length: 50 }).notNull().default('pending'),
+  certOfRegistrationStatus: varchar('cert_of_registration_status', { length: 50 })
+    .notNull()
+    .default('pending'),
   certOfRegistrationRejectionReason: text('cert_of_registration_rejection_reason'),
 
   utilityBillStatus: varchar('utility_bill_status', { length: 50 }).notNull().default('pending'),

@@ -83,4 +83,3 @@ export class EmailConfigController {
     return this.emailConfigService.sendTestEmail(dto);
   }
 }
-

@@ -4,7 +4,8 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class QueryActivityLogsDto {
   @ApiPropertyOptional({
-    description: 'Filter by module name (exact match). E.g. Users, Billing, AI Management, Staff, Calendar',
+    description:
+      'Filter by module name (exact match). E.g. Users, Billing, AI Management, Staff, Calendar',
     example: 'Billing',
   })
   @IsOptional()

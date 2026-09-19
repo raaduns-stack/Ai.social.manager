@@ -11,9 +11,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 export class ScheduledNotificationsService {
   private readonly logger = new Logger(ScheduledNotificationsService.name);
 
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   async create(data: {
     userId: string;
@@ -29,20 +27,23 @@ export class ScheduledNotificationsService {
     repeatUntil?: Date;
     maxAttempts?: number;
   }) {
-    const [record] = await this.db.insert(schema.scheduledNotifications).values({
-      userId: data.userId,
-      createdById: data.createdById,
-      type: data.type as any,
-      channel: data.channel as any,
-      priority: (data.priority || 'NORMAL') as any,
-      title: data.title,
-      message: data.message,
-      metadata: data.metadata,
-      scheduledFor: data.scheduledFor,
-      repeatInterval: data.repeatInterval,
-      repeatUntil: data.repeatUntil,
-      maxAttempts: data.maxAttempts || 3,
-    } as any).returning();
+    const [record] = await this.db
+      .insert(schema.scheduledNotifications)
+      .values({
+        userId: data.userId,
+        createdById: data.createdById,
+        type: data.type as any,
+        channel: data.channel as any,
+        priority: (data.priority || 'NORMAL') as any,
+        title: data.title,
+        message: data.message,
+        metadata: data.metadata,
+        scheduledFor: data.scheduledFor,
+        repeatInterval: data.repeatInterval,
+        repeatUntil: data.repeatUntil,
+        maxAttempts: data.maxAttempts || 3,
+      } as any)
+      .returning();
 
     return record;
   }
@@ -97,10 +98,13 @@ export class ScheduledNotificationsService {
     });
   }
 
-  async findAll(filters: { userId?: string; status?: string; limit?: number; offset?: number } = {}) {
+  async findAll(
+    filters: { userId?: string; status?: string; limit?: number; offset?: number } = {},
+  ) {
     const conditions = [];
     if (filters.userId) conditions.push(eq(schema.scheduledNotifications.userId, filters.userId));
-    if (filters.status) conditions.push(eq(schema.scheduledNotifications.status, filters.status as any));
+    if (filters.status)
+      conditions.push(eq(schema.scheduledNotifications.status, filters.status as any));
 
     const limit = filters.limit || 50;
     const offset = filters.offset || 0;
@@ -157,7 +161,9 @@ export class ScheduledNotificationsService {
     const [updated] = await this.db
       .update(schema.scheduledNotifications)
       .set({
-        status: (shouldFail ? ScheduledNotificationStatus.FAILED : ScheduledNotificationStatus.PENDING) as any,
+        status: (shouldFail
+          ? ScheduledNotificationStatus.FAILED
+          : ScheduledNotificationStatus.PENDING) as any,
         lastAttemptedAt: new Date(),
         attempts: attempts,
         updatedAt: new Date(),
@@ -184,7 +190,8 @@ export class ScheduledNotificationsService {
   async count(filters: { userId?: string; status?: string } = {}) {
     const conditions = [];
     if (filters.userId) conditions.push(eq(schema.scheduledNotifications.userId, filters.userId));
-    if (filters.status) conditions.push(eq(schema.scheduledNotifications.status, filters.status as any));
+    if (filters.status)
+      conditions.push(eq(schema.scheduledNotifications.status, filters.status as any));
 
     const result = await this.db
       .select({ count: sql<number>`count(*)` })

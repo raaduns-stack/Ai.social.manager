@@ -1,4 +1,11 @@
-import { Injectable, Inject, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+  Logger,
+} from '@nestjs/common';
 import { eq, and, lt, isNotNull } from 'drizzle-orm';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
@@ -37,17 +44,17 @@ export class SocialAccountsService {
    * the frontend displays, so it cannot be bypassed via API.
    */
   async create(userId: string, dto: CreateSocialAccountDto) {
-
     // --- KYC Guard ---
     const kycStatus = await this.kycService.getKycStatus(userId);
     if (kycStatus !== 'approved') {
-      const codeStatus = kycStatus === 'pending'
-        ? 'PENDING_REVIEW'
-        : kycStatus === 'rejected'
-        ? 'REJECTED'
-        : kycStatus === 'resubmission_required'
-        ? 'RESUBMISSION_REQUIRED'
-        : 'NOT_STARTED';
+      const codeStatus =
+        kycStatus === 'pending'
+          ? 'PENDING_REVIEW'
+          : kycStatus === 'rejected'
+            ? 'REJECTED'
+            : kycStatus === 'resubmission_required'
+              ? 'RESUBMISSION_REQUIRED'
+              : 'NOT_STARTED';
       throw new ForbiddenException({
         statusCode: 403,
         error: 'KYC_REQUIRED',
@@ -64,11 +71,13 @@ export class SocialAccountsService {
       const freePlan = await this.db.query.plans.findFirst({
         where: eq(schema.plans.slug, 'free'),
       });
-      activePlan = freePlan || ({
-        name: 'Free',
-        maxSocialAccounts: 2,
-        monthlyPostLimit: 8,
-      } as any);
+      activePlan =
+        freePlan ||
+        ({
+          name: 'Free',
+          maxSocialAccounts: 2,
+          monthlyPostLimit: 8,
+        } as any);
     }
 
     const maxSocialAccounts = activePlan.maxSocialAccounts;
@@ -82,7 +91,7 @@ export class SocialAccountsService {
 
     if (existingConnectedAccounts.length >= maxSocialAccounts) {
       throw new BadRequestException(
-        `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`
+        `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`,
       );
     }
 
@@ -143,7 +152,7 @@ export class SocialAccountsService {
       });
       if (connectedAccounts.length >= activePlan.maxSocialAccounts) {
         throw new BadRequestException(
-          `You have reached the maximum limit of ${activePlan.maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`
+          `You have reached the maximum limit of ${activePlan.maxSocialAccounts} social accounts allowed under your current plan (${activePlan.name}).`,
         );
       }
     }
@@ -170,11 +179,23 @@ export class SocialAccountsService {
       const handle = updated.accountHandle;
 
       if (dto.status === 'disconnected') {
-        void this.notificationsService.triggerAccountDisconnected({ userId, platform, accountHandle: handle });
+        void this.notificationsService.triggerAccountDisconnected({
+          userId,
+          platform,
+          accountHandle: handle,
+        });
       } else if (dto.status === 'action_required') {
-        void this.notificationsService.triggerAccountReauthorizationRequired({ userId, platform, accountHandle: handle });
+        void this.notificationsService.triggerAccountReauthorizationRequired({
+          userId,
+          platform,
+          accountHandle: handle,
+        });
       } else if (dto.status === 'connected' && existing.status !== 'connected') {
-        void this.notificationsService.triggerAccountReconnected({ userId, platform, accountHandle: handle });
+        void this.notificationsService.triggerAccountReconnected({
+          userId,
+          platform,
+          accountHandle: handle,
+        });
       }
     }
 
@@ -198,7 +219,7 @@ export class SocialAccountsService {
     const existing = await this.db.query.social_accounts.findFirst({
       where: and(
         eq(schema.social_accounts.userId, userId),
-        eq(schema.social_accounts.platform, 'tumblr')
+        eq(schema.social_accounts.platform, 'tumblr'),
       ),
     });
 
@@ -221,7 +242,7 @@ export class SocialAccountsService {
       const activeSub = await this.db.query.subscriptions.findFirst({
         where: and(
           eq(schema.subscriptions.userId, userId),
-          eq(schema.subscriptions.status, 'active')
+          eq(schema.subscriptions.status, 'active'),
         ),
         with: {
           plan: true,
@@ -240,7 +261,7 @@ export class SocialAccountsService {
 
       if (existingAccounts.length >= maxSocialAccounts) {
         throw new BadRequestException(
-          `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activeSub.plan.name}).`
+          `You have reached the maximum limit of ${maxSocialAccounts} social accounts allowed under your current plan (${activeSub.plan.name}).`,
         );
       }
 
@@ -320,10 +341,10 @@ export class SocialAccountsService {
         kycStatus === 'pending'
           ? 'PENDING_REVIEW'
           : kycStatus === 'rejected'
-          ? 'REJECTED'
-          : kycStatus === 'resubmission_required'
-          ? 'RESUBMISSION_REQUIRED'
-          : 'NOT_STARTED';
+            ? 'REJECTED'
+            : kycStatus === 'resubmission_required'
+              ? 'RESUBMISSION_REQUIRED'
+              : 'NOT_STARTED';
       throw new ForbiddenException({
         statusCode: 403,
         error: 'KYC_REQUIRED',
@@ -360,8 +381,7 @@ export class SocialAccountsService {
 
     // --- Retrieve Snapchat OAuth Settings ---
     const clientId =
-      this.configService.get<string>('snapchat.clientId') ||
-      process.env.SNAPCHAT_CLIENT_ID;
+      this.configService.get<string>('snapchat.clientId') || process.env.SNAPCHAT_CLIENT_ID;
 
     if (!clientId) {
       throw new BadRequestException(
@@ -446,19 +466,21 @@ export class SocialAccountsService {
     // c) Retrieve public profile/display name from Snapchat API to record accountHandle
     // Sensitive credentials (clientSecret, accessToken, refreshToken) are strictly withheld from response.
 
-    this.logger.log(`Snapchat OAuth authorization code verified for user ${userId}. Ready for token exchange.`);
+    this.logger.log(
+      `Snapchat OAuth authorization code verified for user ${userId}. Ready for token exchange.`,
+    );
 
     const clientSecret =
-      this.configService.get<string>('snapchat.clientSecret') ||
-      process.env.SNAPCHAT_CLIENT_SECRET;
+      this.configService.get<string>('snapchat.clientSecret') || process.env.SNAPCHAT_CLIENT_SECRET;
 
     if (!clientSecret) {
-      throw new BadRequestException('Snapchat Client Secret is not configured on the server. Please set SNAPCHAT_CLIENT_SECRET.');
+      throw new BadRequestException(
+        'Snapchat Client Secret is not configured on the server. Please set SNAPCHAT_CLIENT_SECRET.',
+      );
     }
 
     const clientId =
-      this.configService.get<string>('snapchat.clientId') ||
-      process.env.SNAPCHAT_CLIENT_ID;
+      this.configService.get<string>('snapchat.clientId') || process.env.SNAPCHAT_CLIENT_ID;
 
     const redirectUri =
       this.configService.get<string>('snapchat.redirectUri') ||
@@ -490,17 +512,18 @@ export class SocialAccountsService {
         const errText = await tokenResponse.text();
         this.logger.error(
           `Snapchat token exchange failed: ${tokenResponse.status} - ${errText}\n` +
-          `Headers: ${JSON.stringify(Object.fromEntries(tokenResponse.headers.entries()))}`
+            `Headers: ${JSON.stringify(Object.fromEntries(tokenResponse.headers.entries()))}`,
         );
         throw new BadRequestException('Failed to exchange authorization code with Snapchat.');
       }
 
       tokenData = await tokenResponse.json();
-      
+
       // Log successful token exchange data securely (omitting tokens)
       const { access_token, refresh_token, ...safeTokenData } = tokenData;
-      this.logger.debug(`Token exchange successful. Data (omitting tokens): ${JSON.stringify(safeTokenData)}`);
-
+      this.logger.debug(
+        `Token exchange successful. Data (omitting tokens): ${JSON.stringify(safeTokenData)}`,
+      );
     } catch (err: any) {
       if (err instanceof BadRequestException) throw err;
       this.logger.error(`Error exchanging Snapchat token: ${err.message}`);
@@ -513,7 +536,7 @@ export class SocialAccountsService {
     try {
       const profileUrl = 'https://businessapi.snapchat.com/v1/public_profiles/my_profile';
       this.logger.debug(`Fetching Snapchat profile from ${profileUrl}`);
-      
+
       const profileResponse = await fetch(profileUrl, {
         headers: {
           Authorization: `Bearer ${access_token}`,
@@ -524,7 +547,7 @@ export class SocialAccountsService {
         const errText = await profileResponse.text();
         this.logger.error(
           `Snapchat profile fetch failed: ${profileResponse.status} - ${errText}\n` +
-          `Response Headers: ${JSON.stringify(Object.fromEntries(profileResponse.headers.entries()))}`
+            `Response Headers: ${JSON.stringify(Object.fromEntries(profileResponse.headers.entries()))}`,
         );
         throw new ForbiddenException(
           'Failed to retrieve Snapchat Public Profile. Ensure your app is allowlisted for the snapchat-profile-api scope.',
@@ -541,14 +564,16 @@ export class SocialAccountsService {
 
     // Attempt to extract profile details gracefully based on varying Snapchat API response structures
     const profileInfo = profileData?.public_profile || profileData?.me || profileData || {};
-    const accountHandle = profileInfo.title || profileInfo.display_name || profileInfo.username || 'Snapchat User';
+    const accountHandle =
+      profileInfo.title || profileInfo.display_name || profileInfo.username || 'Snapchat User';
     const externalAccountId = profileInfo.id || profileInfo.organization_id || 'unknown';
-    const profileImageUrl = profileInfo.image_url || profileInfo.avatar_url || profileInfo.logo_url || null;
+    const profileImageUrl =
+      profileInfo.image_url || profileInfo.avatar_url || profileInfo.logo_url || null;
 
     // Encrypt sensitive tokens before saving
     const accessTokenEncrypted = encryptSecret(access_token);
     const refreshTokenEncrypted = refresh_token ? encryptSecret(refresh_token) : undefined;
-    
+
     // Calculate expiration date
     const tokenExpiresAt = expires_in ? new Date(Date.now() + expires_in * 1000) : undefined;
 
@@ -557,12 +582,13 @@ export class SocialAccountsService {
       where: and(
         eq(schema.social_accounts.userId, userId),
         eq(schema.social_accounts.platform, 'snapchat'),
-        eq(schema.social_accounts.externalAccountId, externalAccountId)
-      )
+        eq(schema.social_accounts.externalAccountId, externalAccountId),
+      ),
     });
 
     if (existingAccounts.length > 0) {
-      await this.db.update(schema.social_accounts)
+      await this.db
+        .update(schema.social_accounts)
         .set({
           accountHandle,
           status: 'connected',
@@ -606,14 +632,14 @@ export class SocialAccountsService {
     this.logger.log('Running Snapchat token refresh check...');
     // Find tokens expiring in less than 24 hours
     const expirationThreshold = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    
+
     const accounts = await this.db.query.social_accounts.findMany({
       where: and(
         eq(schema.social_accounts.platform, 'snapchat'),
         eq(schema.social_accounts.status, 'connected'),
         isNotNull(schema.social_accounts.refreshTokenEncrypted),
-        lt(schema.social_accounts.tokenExpiresAt, expirationThreshold)
-      )
+        lt(schema.social_accounts.tokenExpiresAt, expirationThreshold),
+      ),
     });
 
     for (const account of accounts) {
@@ -630,16 +656,21 @@ export class SocialAccountsService {
    */
   async refreshSnapchatToken(accountId: string) {
     const account = await this.db.query.social_accounts.findFirst({
-      where: eq(schema.social_accounts.id, accountId)
+      where: eq(schema.social_accounts.id, accountId),
     });
 
     if (!account || !account.refreshTokenEncrypted) {
       throw new BadRequestException('Account not found or missing refresh token.');
     }
 
-    const clientId = this.configService.get<string>('snapchat.clientId') || process.env.SNAPCHAT_CLIENT_ID;
-    const clientSecret = this.configService.get<string>('snapchat.clientSecret') || process.env.SNAPCHAT_CLIENT_SECRET;
-    const tokenUrl = this.configService.get<string>('snapchat.tokenUrl') || process.env.SNAPCHAT_TOKEN_URL || 'https://accounts.snapchat.com/login/oauth2/access_token';
+    const clientId =
+      this.configService.get<string>('snapchat.clientId') || process.env.SNAPCHAT_CLIENT_ID;
+    const clientSecret =
+      this.configService.get<string>('snapchat.clientSecret') || process.env.SNAPCHAT_CLIENT_SECRET;
+    const tokenUrl =
+      this.configService.get<string>('snapchat.tokenUrl') ||
+      process.env.SNAPCHAT_TOKEN_URL ||
+      'https://accounts.snapchat.com/login/oauth2/access_token';
 
     if (!clientId || !clientSecret) {
       throw new BadRequestException('Snapchat client credentials not configured.');
@@ -665,12 +696,17 @@ export class SocialAccountsService {
       }
 
       const data = await response.json();
-      
-      const newAccessTokenEncrypted = encryptSecret(data.access_token);
-      const newRefreshTokenEncrypted = data.refresh_token ? encryptSecret(data.refresh_token) : account.refreshTokenEncrypted;
-      const newTokenExpiresAt = data.expires_in ? new Date(Date.now() + data.expires_in * 1000) : undefined;
 
-      await this.db.update(schema.social_accounts)
+      const newAccessTokenEncrypted = encryptSecret(data.access_token);
+      const newRefreshTokenEncrypted = data.refresh_token
+        ? encryptSecret(data.refresh_token)
+        : account.refreshTokenEncrypted;
+      const newTokenExpiresAt = data.expires_in
+        ? new Date(Date.now() + data.expires_in * 1000)
+        : undefined;
+
+      await this.db
+        .update(schema.social_accounts)
         .set({
           accessTokenEncrypted: newAccessTokenEncrypted,
           refreshTokenEncrypted: newRefreshTokenEncrypted,
@@ -682,17 +718,19 @@ export class SocialAccountsService {
       this.logger.log(`Successfully refreshed Snapchat token for account ${account.id}.`);
       return true;
     } catch (err: any) {
-      this.logger.error(`Error refreshing Snapchat token for account ${account.id}: ${err.message}`);
-      
-      await this.db.update(schema.social_accounts)
+      this.logger.error(
+        `Error refreshing Snapchat token for account ${account.id}: ${err.message}`,
+      );
+
+      await this.db
+        .update(schema.social_accounts)
         .set({
           status: 'action_required',
           updatedAt: new Date(),
         })
         .where(eq(schema.social_accounts.id, account.id));
-      
-      throw err;
 
+      throw err;
     }
   }
 }

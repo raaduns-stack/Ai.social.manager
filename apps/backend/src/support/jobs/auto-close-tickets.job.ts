@@ -20,7 +20,7 @@ export class AutoCloseTicketsJob {
   @Cron(CronExpression.EVERY_HOUR)
   async handleCron() {
     this.logger.debug('Running auto-close-tickets job...');
-    
+
     // Calculate timestamp for 72 hours ago
     const seventyTwoHoursAgo = new Date();
     seventyTwoHoursAgo.setHours(seventyTwoHoursAgo.getHours() - 72);
@@ -29,7 +29,7 @@ export class AutoCloseTicketsJob {
       const ticketsToClose = await this.db.query.supportTickets.findMany({
         where: and(
           eq(schema.supportTickets.status, 'resolved'),
-          lt(schema.supportTickets.resolvedAt, seventyTwoHoursAgo)
+          lt(schema.supportTickets.resolvedAt, seventyTwoHoursAgo),
         ),
         columns: {
           id: true,
@@ -41,9 +41,11 @@ export class AutoCloseTicketsJob {
         return;
       }
 
-      this.logger.log(`Found ${ticketsToClose.length} resolved ticket(s) older than 72 hours. Closing them...`);
+      this.logger.log(
+        `Found ${ticketsToClose.length} resolved ticket(s) older than 72 hours. Closing them...`,
+      );
 
-      const ids = ticketsToClose.map(t => t.id);
+      const ids = ticketsToClose.map((t) => t.id);
 
       // Fetch tickets with user and subject before closing
       const tickets = await this.db.query.supportTickets.findMany({

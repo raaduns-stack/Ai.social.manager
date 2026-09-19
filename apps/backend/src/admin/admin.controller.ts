@@ -158,16 +158,16 @@ export class AdminController {
         if (allowedTypes.includes(file.mimetype)) {
           callback(null, true);
         } else {
-          callback(new BadRequestException('Only JPG, JPEG, PNG, and WebP images are allowed'), false);
+          callback(
+            new BadRequestException('Only JPG, JPEG, PNG, and WebP images are allowed'),
+            false,
+          );
         }
       },
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  uploadUserProfileImage(
-    @Param('id') id: string,
-    @UploadedFile() file: any,
-  ) {
+  uploadUserProfileImage(@Param('id') id: string, @UploadedFile() file: any) {
     if (!file) throw new BadRequestException('No image file uploaded');
     return this.adminService.updateProfileImage(id, file.filename);
   }
@@ -196,10 +196,7 @@ export class AdminController {
   @Get('billing/payments/:id/receipt')
   @RequirePermission('billing', 'view')
   @ApiOperation({ summary: 'Download transaction receipt PDF stream' })
-  async downloadPaymentReceipt(
-    @Param('id') id: string,
-    @Res() res: Response,
-  ) {
+  async downloadPaymentReceipt(@Param('id') id: string, @Res() res: Response) {
     const pdfBuffer = await this.adminService.generatePaymentReceiptPdf(id);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="Receipt-${id}.pdf"`);

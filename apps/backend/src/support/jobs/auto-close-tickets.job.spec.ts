@@ -5,7 +5,7 @@ import { NotificationsService } from '../../notifications/notifications.service'
 
 describe('AutoCloseTicketsJob', () => {
   let job: AutoCloseTicketsJob;
-  
+
   const mockDb = {
     query: {
       supportTickets: {
@@ -37,7 +37,7 @@ describe('AutoCloseTicketsJob', () => {
     }).compile();
 
     job = module.get<AutoCloseTicketsJob>(AutoCloseTicketsJob);
-    
+
     jest.clearAllMocks();
   });
 
@@ -61,7 +61,7 @@ describe('AutoCloseTicketsJob', () => {
       status: 'closed',
       updatedAt: expect.any(Date),
     });
-    
+
     // Verify where clause was called twice (once for each id)
     expect(mockDb.where).toHaveBeenCalledTimes(2);
   });

@@ -12,10 +12,7 @@ import { users } from './users.schema';
 import { LoginStatus } from '../../common/enums/login-status.enum';
 import { LoginFailureReason } from '../../common/enums/login-failure-reason.enum';
 
-export const loginStatusEnum = pgEnum('login_status', [
-  LoginStatus.SUCCESS,
-  LoginStatus.FAILURE,
-]);
+export const loginStatusEnum = pgEnum('login_status', [LoginStatus.SUCCESS, LoginStatus.FAILURE]);
 
 export const loginFailureReasonEnum = pgEnum('login_failure_reason', [
   LoginFailureReason.INVALID_CREDENTIALS,

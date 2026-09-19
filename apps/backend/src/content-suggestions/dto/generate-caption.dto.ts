@@ -17,4 +17,4 @@ export class GenerateCaptionDto {
   @IsString()
   @IsOptional()
   postId?: string;
-}
+}

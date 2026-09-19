@@ -10,9 +10,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class FaqsService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   // ---------------------------------------------------------------------------
   // Public Operations
@@ -68,10 +66,7 @@ export class FaqsService {
   }
 
   async deleteFaq(id: string) {
-    const [faq] = await this.db
-      .delete(schema.faqs)
-      .where(eq(schema.faqs.id, id))
-      .returning();
+    const [faq] = await this.db.delete(schema.faqs).where(eq(schema.faqs.id, id)).returning();
 
     if (!faq) {
       throw new NotFoundException(`FAQ with ID ${id} not found`);

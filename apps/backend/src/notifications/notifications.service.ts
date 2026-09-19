@@ -18,11 +18,26 @@ import {
 import sanitizeHtml from 'sanitize-html';
 
 // Import the existing admin notification pure functions
-import { sendSystemAnnouncement, AnnouncementRequest } from '../admin/notifications/system-announcements';
-import { sendMaintenanceNotification, MaintenanceNotificationRequest } from '../admin/notifications/maintenence';
-import { sendContentApprovalNotification, ContentApprovalRequest } from '../admin/notifications/content-approval';
-import { sendPublishingNotification, PublishingNotificationRequest } from '../admin/notifications/publishing';
-import { sendSubscriptionReminder, SubscriptionReminderRequest } from '../admin/notifications/subscription-reminder';
+import {
+  sendSystemAnnouncement,
+  AnnouncementRequest,
+} from '../admin/notifications/system-announcements';
+import {
+  sendMaintenanceNotification,
+  MaintenanceNotificationRequest,
+} from '../admin/notifications/maintenence';
+import {
+  sendContentApprovalNotification,
+  ContentApprovalRequest,
+} from '../admin/notifications/content-approval';
+import {
+  sendPublishingNotification,
+  PublishingNotificationRequest,
+} from '../admin/notifications/publishing';
+import {
+  sendSubscriptionReminder,
+  SubscriptionReminderRequest,
+} from '../admin/notifications/subscription-reminder';
 import { HistoryQueryFilters } from '../admin/notifications/history';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -41,9 +56,32 @@ export class NotificationsService {
   private sanitizeHtml(html: string): string {
     return sanitizeHtml(html, {
       allowedTags: [
-        'p', 'br', 'strong', 'b', 'em', 'i', 'u', 'a', 'ul', 'ol', 'li',
-        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div', 'blockquote',
-        'code', 'pre', 'hr', 'sub', 'sup', 'img',
+        'p',
+        'br',
+        'strong',
+        'b',
+        'em',
+        'i',
+        'u',
+        'a',
+        'ul',
+        'ol',
+        'li',
+        'h1',
+        'h2',
+        'h3',
+        'h4',
+        'h5',
+        'h6',
+        'span',
+        'div',
+        'blockquote',
+        'code',
+        'pre',
+        'hr',
+        'sub',
+        'sup',
+        'img',
       ],
       allowedAttributes: {
         a: ['href', 'title', 'target', 'rel'],
@@ -64,7 +102,7 @@ export class NotificationsService {
         img: ['http', 'https', 'data'],
       },
       transformTags: {
-        'a': (tagName: string, attribs: { [key: string]: string }) => {
+        a: (tagName: string, attribs: { [key: string]: string }) => {
           if (attribs.href && !attribs.rel) {
             attribs.rel = 'noopener noreferrer';
             attribs.target = '_blank';
@@ -107,9 +145,7 @@ export class NotificationsService {
     }
 
     const validRelatedEntityId =
-      data.relatedEntityId && UUID_REGEX.test(data.relatedEntityId)
-        ? data.relatedEntityId
-        : null;
+      data.relatedEntityId && UUID_REGEX.test(data.relatedEntityId) ? data.relatedEntityId : null;
 
     const mergedMetadata = {
       ...(data.metadata || {}),
@@ -124,9 +160,7 @@ export class NotificationsService {
     const safeChannel = NOTIFICATION_CHANNEL_VALUES.includes(data.channel as any)
       ? data.channel
       : 'IN_APP';
-    const safeStatus = DELIVERY_STATUS_VALUES.includes(data.status as any)
-      ? data.status
-      : 'SENT';
+    const safeStatus = DELIVERY_STATUS_VALUES.includes(data.status as any) ? data.status : 'SENT';
     const safePriority = NOTIFICATION_PRIORITY_VALUES.includes(data.priority as any)
       ? data.priority
       : 'NORMAL';
@@ -156,29 +190,29 @@ export class NotificationsService {
     return record;
   }
 
-  async createBulkNotifications(records: Array<{
-    userId: string;
-    senderId?: string;
-    type: string;
-    channel: string;
-    status?: string;
-    priority?: string;
-    title: string;
-    message: string;
-    error?: string;
-    scheduledFor?: Date;
-    relatedEntityType?: string;
-    relatedEntityId?: string;
-    actionUrl?: string;
-    metadata?: Record<string, any>;
-  }>) {
+  async createBulkNotifications(
+    records: Array<{
+      userId: string;
+      senderId?: string;
+      type: string;
+      channel: string;
+      status?: string;
+      priority?: string;
+      title: string;
+      message: string;
+      error?: string;
+      scheduledFor?: Date;
+      relatedEntityType?: string;
+      relatedEntityId?: string;
+      actionUrl?: string;
+      metadata?: Record<string, any>;
+    }>,
+  ) {
     if (records.length === 0) return [];
 
     const senderIds = Array.from(
       new Set(
-        records
-          .map((r) => r.senderId)
-          .filter((id): id is string => !!id && UUID_REGEX.test(id)),
+        records.map((r) => r.senderId).filter((id): id is string => !!id && UUID_REGEX.test(id)),
       ),
     );
     let validSenderIdSet = new Set<string>();
@@ -207,9 +241,7 @@ export class NotificationsService {
       const safeChannel = NOTIFICATION_CHANNEL_VALUES.includes(r.channel as any)
         ? r.channel
         : 'IN_APP';
-      const safeStatus = DELIVERY_STATUS_VALUES.includes(r.status as any)
-        ? r.status
-        : 'SENT';
+      const safeStatus = DELIVERY_STATUS_VALUES.includes(r.status as any) ? r.status : 'SENT';
       const safePriority = NOTIFICATION_PRIORITY_VALUES.includes(r.priority as any)
         ? r.priority
         : 'NORMAL';
@@ -236,7 +268,12 @@ export class NotificationsService {
     return this.db.insert(schema.notifications).values(values).returning();
   }
 
-  public async findExistingNotification(userId: string, type: string, relatedEntityType?: string, relatedEntityId?: string) {
+  public async findExistingNotification(
+    userId: string,
+    type: string,
+    relatedEntityType?: string,
+    relatedEntityId?: string,
+  ) {
     if (!relatedEntityType || !relatedEntityId) return null;
 
     return this.db.query.notifications.findFirst({
@@ -274,7 +311,10 @@ export class NotificationsService {
     return record || null;
   }
 
-  async getCustomerNotifications(userId: string, options: { unreadOnly?: boolean; limit?: number; offset?: number } = {}) {
+  async getCustomerNotifications(
+    userId: string,
+    options: { unreadOnly?: boolean; limit?: number; offset?: number } = {},
+  ) {
     const conditions = [eq(schema.notifications.userId, userId)];
     if (options.unreadOnly) {
       conditions.push(eq(schema.notifications.isRead, false));
@@ -304,10 +344,7 @@ export class NotificationsService {
     const result = await this.db
       .select({ count: sql<number>`count(*)` })
       .from(schema.notifications)
-      .where(and(
-        eq(schema.notifications.userId, userId),
-        eq(schema.notifications.isRead, false),
-      ));
+      .where(and(eq(schema.notifications.userId, userId), eq(schema.notifications.isRead, false)));
 
     return Number(result[0]?.count || 0);
   }
@@ -343,10 +380,7 @@ export class NotificationsService {
         updatedAt: new Date(),
       })
       .where(
-        and(
-          eq(schema.notifications.id, notificationId),
-          eq(schema.notifications.userId, userId),
-        ),
+        and(eq(schema.notifications.id, notificationId), eq(schema.notifications.userId, userId)),
       )
       .returning();
 
@@ -361,12 +395,7 @@ export class NotificationsService {
         readAt: new Date(),
         updatedAt: new Date(),
       })
-      .where(
-        and(
-          eq(schema.notifications.userId, userId),
-          eq(schema.notifications.isRead, false),
-        ),
-      )
+      .where(and(eq(schema.notifications.userId, userId), eq(schema.notifications.isRead, false)))
       .returning();
   }
 
@@ -374,10 +403,7 @@ export class NotificationsService {
     const [deleted] = await this.db
       .delete(schema.notifications)
       .where(
-        and(
-          eq(schema.notifications.id, notificationId),
-          eq(schema.notifications.userId, userId),
-        ),
+        and(eq(schema.notifications.id, notificationId), eq(schema.notifications.userId, userId)),
       )
       .returning({ id: schema.notifications.id });
 
@@ -388,7 +414,11 @@ export class NotificationsService {
   // Provider Helpers
   // ---------------------------------------------------------------------------
 
-  private async checkUserPreference(userId: string, type: string, channel: 'email' | 'inApp'): Promise<boolean> {
+  private async checkUserPreference(
+    userId: string,
+    type: string,
+    channel: 'email' | 'inApp',
+  ): Promise<boolean> {
     try {
       const globalSetting = await this.db.query.notificationTypeSettings.findFirst({
         where: eq(schema.notificationTypeSettings.notificationType, type),
@@ -422,7 +452,11 @@ export class NotificationsService {
     }
   }
 
-  private getProvidersForType(notificationType: string, senderId?: string, options?: { targetAudience?: string }) {
+  private getProvidersForType(
+    notificationType: string,
+    senderId?: string,
+    options?: { targetAudience?: string },
+  ) {
     return {
       getCustomers: async (userIds?: string[]) => {
         let whereCondition: any;
@@ -446,7 +480,11 @@ export class NotificationsService {
         }
 
         let list = await this.db.query.users.findMany({ where: whereCondition });
-        if (senderId && options?.targetAudience !== 'STAFF_DESIGNERS' && options?.targetAudience !== 'ALL') {
+        if (
+          senderId &&
+          options?.targetAudience !== 'STAFF_DESIGNERS' &&
+          options?.targetAudience !== 'ALL'
+        ) {
           list = list.filter((u) => u.id !== senderId);
         }
         return list.map((u) => ({
@@ -475,7 +513,9 @@ export class NotificationsService {
         if (user) {
           const isEnabled = await this.checkUserPreference(user.id, notificationType, 'email');
           if (!isEnabled) {
-            this.logger.log(`Skipping email notification to ${to} (User unsubscribed from ${notificationType})`);
+            this.logger.log(
+              `Skipping email notification to ${to} (User unsubscribed from ${notificationType})`,
+            );
             return;
           }
         }
@@ -486,7 +526,9 @@ export class NotificationsService {
       sendInApp: async (userId: string, data: Record<string, any>) => {
         const isEnabled = await this.checkUserPreference(userId, notificationType, 'inApp');
         if (!isEnabled) {
-          this.logger.log(`Skipping in-app notification to user ${userId} (User disabled ${notificationType})`);
+          this.logger.log(
+            `Skipping in-app notification to user ${userId} (User disabled ${notificationType})`,
+          );
           return;
         }
       },
@@ -506,9 +548,7 @@ export class NotificationsService {
 
         const dbRecords = records.map((r) => {
           const validRelatedEntityId =
-            r.relatedEntityId && UUID_REGEX.test(r.relatedEntityId)
-              ? r.relatedEntityId
-              : null;
+            r.relatedEntityId && UUID_REGEX.test(r.relatedEntityId) ? r.relatedEntityId : null;
           const mergedMetadata = {
             ...(r.metadata || {}),
             ...(r.relatedEntityId && !validRelatedEntityId
@@ -522,9 +562,7 @@ export class NotificationsService {
           const safeChannel = NOTIFICATION_CHANNEL_VALUES.includes(r.channel as any)
             ? r.channel
             : 'IN_APP';
-          const safeStatus = DELIVERY_STATUS_VALUES.includes(r.status as any)
-            ? r.status
-            : 'SENT';
+          const safeStatus = DELIVERY_STATUS_VALUES.includes(r.status as any) ? r.status : 'SENT';
           const safePriority = NOTIFICATION_PRIORITY_VALUES.includes(r.priority as any)
             ? r.priority
             : 'NORMAL';
@@ -567,8 +605,14 @@ export class NotificationsService {
               let dType: 'system' | 'task' | 'revision' | 'approved' | 'payment' = 'system';
               const rawType = (r.type || '').toUpperCase();
               if (rawType.includes('TASK') || rawType.includes('TICKET')) dType = 'task';
-              else if (rawType.includes('PAYMENT') || rawType.includes('INVOICE') || rawType.includes('PAYOUT')) dType = 'payment';
-              else if (rawType.includes('APPROVAL') || rawType.includes('APPROVED')) dType = 'approved';
+              else if (
+                rawType.includes('PAYMENT') ||
+                rawType.includes('INVOICE') ||
+                rawType.includes('PAYOUT')
+              )
+                dType = 'payment';
+              else if (rawType.includes('APPROVAL') || rawType.includes('APPROVED'))
+                dType = 'approved';
               else if (rawType.includes('REVISION')) dType = 'revision';
 
               return {
@@ -583,7 +627,9 @@ export class NotificationsService {
             await this.db.insert(schema.designerNotifications).values(designerNotifEntries);
           }
         } catch (mirrorErr) {
-          this.logger.warn(`Failed to mirror notifications to designerNotifications: ${mirrorErr?.message}`);
+          this.logger.warn(
+            `Failed to mirror notifications to designerNotifications: ${mirrorErr?.message}`,
+          );
         }
       },
     };
@@ -628,7 +674,7 @@ export class NotificationsService {
         actionUrl: payload.actionUrl,
         senderId: payload.senderId,
         metadata: payload.metadata,
-      }))
+      })),
     );
 
     return { totalTargeted: admins.length, records };
@@ -652,7 +698,10 @@ export class NotificationsService {
     const cleanTitle = (request.title || '').replace(/\[\s*admin\s*copy\s*\]/gi, '').trim();
     const targetAudience = request.metadata?.targetAudience;
     const providers = this.getProvidersForType('announcement', senderId, { targetAudience });
-    const result = await sendSystemAnnouncement({ ...request, title: cleanTitle || 'Notification', senderFirstName }, providers);
+    const result = await sendSystemAnnouncement(
+      { ...request, title: cleanTitle || 'Notification', senderFirstName },
+      providers,
+    );
     return result;
   }
 
@@ -696,10 +745,18 @@ export class NotificationsService {
       if (f.status && f.status !== 'all' && DELIVERY_STATUS_VALUES.includes(f.status as any)) {
         conditions.push(eq(schema.notifications.status, f.status as any));
       }
-      if (f.channel && f.channel !== 'all' && NOTIFICATION_CHANNEL_VALUES.includes(f.channel as any)) {
+      if (
+        f.channel &&
+        f.channel !== 'all' &&
+        NOTIFICATION_CHANNEL_VALUES.includes(f.channel as any)
+      ) {
         conditions.push(eq(schema.notifications.channel, f.channel as any));
       }
-      if (f.priority && f.priority !== 'all' && NOTIFICATION_PRIORITY_VALUES.includes(f.priority as any)) {
+      if (
+        f.priority &&
+        f.priority !== 'all' &&
+        NOTIFICATION_PRIORITY_VALUES.includes(f.priority as any)
+      ) {
         conditions.push(eq(schema.notifications.priority, f.priority as any));
       }
       if (f.startDate && !isNaN(new Date(f.startDate).getTime())) {
@@ -718,7 +775,7 @@ export class NotificationsService {
           or(
             like(schema.notifications.title, `%${q}%`),
             like(schema.notifications.message, `%${q}%`),
-          )
+          ),
         );
       }
 
@@ -731,11 +788,22 @@ export class NotificationsService {
     const limit = Math.max(1, Math.min(100, filters.limit || 20));
     const skip = (page - 1) * limit;
 
-    const validSortColumns = ['createdAt', 'readAt', 'sentAt', 'updatedAt', 'title', 'type', 'status', 'priority'];
+    const validSortColumns = [
+      'createdAt',
+      'readAt',
+      'sentAt',
+      'updatedAt',
+      'title',
+      'type',
+      'status',
+      'priority',
+    ];
     const sortBy = validSortColumns.includes(filters.sortBy || '') ? filters.sortBy : 'createdAt';
     const sortOrder = filters.sortOrder === 'asc' ? 'asc' : 'desc';
 
-    const sortCol = schema.notifications[sortBy as keyof typeof schema.notifications] || schema.notifications.createdAt;
+    const sortCol =
+      schema.notifications[sortBy as keyof typeof schema.notifications] ||
+      schema.notifications.createdAt;
     const orderByClause = sortOrder === 'asc' ? [sortCol] : [desc(sortCol)];
 
     const [result, countResult] = await Promise.all([
@@ -761,7 +829,10 @@ export class NotificationsService {
           },
         },
       }),
-      this.db.select({ count: sql<number>`count(*)` }).from(schema.notifications).where(queryConditions),
+      this.db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.notifications)
+        .where(queryConditions),
     ]);
 
     return {
@@ -789,7 +860,12 @@ export class NotificationsService {
     const result = await sendPublishingNotification(request, providers);
 
     const notifType = request.isSuccess ? 'CONTENT_PUBLISHED' : 'CONTENT_PUBLISH_FAILED';
-    const existing = await this.findExistingNotification(request.customer.id, notifType, 'scheduled_post', request.postId);
+    const existing = await this.findExistingNotification(
+      request.customer.id,
+      notifType,
+      'scheduled_post',
+      request.postId,
+    );
     if (existing) return existing;
 
     if (result.userId) {
@@ -820,7 +896,12 @@ export class NotificationsService {
     calendarPostId?: string;
     downloadUrl?: string | null;
   }) {
-    const existing = await this.findExistingNotification(data.userId, 'CALENDAR_UPLOADED', 'calendar_generation_job', data.calendarJobId);
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'CALENDAR_UPLOADED',
+      'calendar_generation_job',
+      data.calendarJobId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -868,7 +949,11 @@ export class NotificationsService {
     });
   }
 
-  async triggerKycResubmissionRequired(data: { userId: string; businessName: string; reason?: string }) {
+  async triggerKycResubmissionRequired(data: {
+    userId: string;
+    businessName: string;
+    reason?: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'SERVICE_UPDATE',
@@ -878,7 +963,11 @@ export class NotificationsService {
       message: `Your business verification for "${data.businessName}" requires updated documentation.${data.reason ? ` Reason: ${data.reason}` : ''}`,
       relatedEntityType: 'kyc',
       actionUrl: '/dashboard/channels',
-      metadata: { businessName: data.businessName, status: 'resubmission_required', reason: data.reason },
+      metadata: {
+        businessName: data.businessName,
+        status: 'resubmission_required',
+        reason: data.reason,
+      },
     });
   }
 
@@ -914,7 +1003,11 @@ export class NotificationsService {
     });
   }
 
-  async triggerAccountDisconnected(data: { userId: string; platform: string; accountHandle: string }) {
+  async triggerAccountDisconnected(data: {
+    userId: string;
+    platform: string;
+    accountHandle: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'ACCOUNT_CONNECTION_DISCONNECTED',
@@ -932,7 +1025,11 @@ export class NotificationsService {
     });
   }
 
-  async triggerAccountReauthorizationRequired(data: { userId: string; platform: string; accountHandle: string }) {
+  async triggerAccountReauthorizationRequired(data: {
+    userId: string;
+    platform: string;
+    accountHandle: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'ACCOUNT_CONNECTION_REAUTHORIZATION_REQUIRED',
@@ -950,7 +1047,11 @@ export class NotificationsService {
     });
   }
 
-  async triggerAccountReconnected(data: { userId: string; platform: string; accountHandle: string }) {
+  async triggerAccountReconnected(data: {
+    userId: string;
+    platform: string;
+    accountHandle: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'ACCOUNT_CONNECTION_RECONNECTED',
@@ -968,8 +1069,18 @@ export class NotificationsService {
     });
   }
 
-  async triggerTicketReceived(data: { userId: string; ticketId: string; subject: string; category: string }) {
-    const existing = await this.findExistingNotification(data.userId, 'TICKET_RECEIVED', 'support_ticket', data.ticketId);
+  async triggerTicketReceived(data: {
+    userId: string;
+    ticketId: string;
+    subject: string;
+    category: string;
+  }) {
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'TICKET_RECEIVED',
+      'support_ticket',
+      data.ticketId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -990,8 +1101,18 @@ export class NotificationsService {
     });
   }
 
-  async triggerTicketAssigned(data: { userId: string; ticketId: string; subject: string; assignedToStaffName: string }) {
-    const existing = await this.findExistingNotification(data.userId, 'TICKET_ASSIGNED', 'support_ticket', data.ticketId);
+  async triggerTicketAssigned(data: {
+    userId: string;
+    ticketId: string;
+    subject: string;
+    assignedToStaffName: string;
+  }) {
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'TICKET_ASSIGNED',
+      'support_ticket',
+      data.ticketId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -1013,7 +1134,12 @@ export class NotificationsService {
   }
 
   async triggerTicketResponded(data: { userId: string; ticketId: string; subject: string }) {
-    const existing = await this.findExistingNotification(data.userId, 'TICKET_RESPONDED', 'support_ticket', data.ticketId);
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'TICKET_RESPONDED',
+      'support_ticket',
+      data.ticketId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -1034,7 +1160,12 @@ export class NotificationsService {
   }
 
   async triggerTicketResolved(data: { userId: string; ticketId: string; subject: string }) {
-    const existing = await this.findExistingNotification(data.userId, 'TICKET_RESOLVED', 'support_ticket', data.ticketId);
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'TICKET_RESOLVED',
+      'support_ticket',
+      data.ticketId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -1055,7 +1186,12 @@ export class NotificationsService {
   }
 
   async triggerTicketClosed(data: { userId: string; ticketId: string; subject: string }) {
-    const existing = await this.findExistingNotification(data.userId, 'TICKET_CLOSED', 'support_ticket', data.ticketId);
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'TICKET_CLOSED',
+      'support_ticket',
+      data.ticketId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -1075,7 +1211,13 @@ export class NotificationsService {
     });
   }
 
-  async triggerSubscriptionPaymentPending(data: { userId: string; subscriptionId?: string; paymentId?: string; amount: number; currency: string }) {
+  async triggerSubscriptionPaymentPending(data: {
+    userId: string;
+    subscriptionId?: string;
+    paymentId?: string;
+    amount: number;
+    currency: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'SUBSCRIPTION_PAYMENT_PENDING',
@@ -1095,7 +1237,11 @@ export class NotificationsService {
     });
   }
 
-  async triggerSubscriptionPlanChanged(data: { userId: string; subscriptionId?: string; planName: string }) {
+  async triggerSubscriptionPlanChanged(data: {
+    userId: string;
+    subscriptionId?: string;
+    planName: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'SUBSCRIPTION_PLAN_CHANGED',
@@ -1113,7 +1259,13 @@ export class NotificationsService {
     });
   }
 
-  async triggerSubscriptionPaymentSuccess(data: { userId: string; subscriptionId: string; paymentId: string; amount: number; currency: string }) {
+  async triggerSubscriptionPaymentSuccess(data: {
+    userId: string;
+    subscriptionId: string;
+    paymentId: string;
+    amount: number;
+    currency: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'SUBSCRIPTION_PAYMENT_SUCCESS',
@@ -1133,8 +1285,20 @@ export class NotificationsService {
     });
   }
 
-  async triggerSubscriptionPaymentFailed(data: { userId: string; subscriptionId: string; paymentId: string; amount: number; currency: string; reason?: string }) {
-    const existing = await this.findExistingNotification(data.userId, 'SUBSCRIPTION_PAYMENT_FAILED', 'payment', data.paymentId);
+  async triggerSubscriptionPaymentFailed(data: {
+    userId: string;
+    subscriptionId: string;
+    paymentId: string;
+    amount: number;
+    currency: string;
+    reason?: string;
+  }) {
+    const existing = await this.findExistingNotification(
+      data.userId,
+      'SUBSCRIPTION_PAYMENT_FAILED',
+      'payment',
+      data.paymentId,
+    );
     if (existing) return existing;
 
     return this.createNotification({
@@ -1157,7 +1321,15 @@ export class NotificationsService {
     });
   }
 
-  async triggerInvoiceAvailable(data: { userId: string; subscriptionId: string; invoiceId: string; invoiceNumber: string; amount: number; currency: string; pdfUrl?: string }) {
+  async triggerInvoiceAvailable(data: {
+    userId: string;
+    subscriptionId: string;
+    invoiceId: string;
+    invoiceNumber: string;
+    amount: number;
+    currency: string;
+    pdfUrl?: string;
+  }) {
     return this.createNotification({
       userId: data.userId,
       type: 'SUBSCRIPTION_INVOICE_AVAILABLE',
@@ -1196,7 +1368,12 @@ export class NotificationsService {
     });
   }
 
-  async triggerSubscriptionRenewalReminder(data: { userId: string; subscriptionId: string; daysToExpiry: number; expiryDate: Date }) {
+  async triggerSubscriptionRenewalReminder(data: {
+    userId: string;
+    subscriptionId: string;
+    daysToExpiry: number;
+    expiryDate: Date;
+  }) {
     const isExpired = data.daysToExpiry < 0;
     const absDays = Math.abs(data.daysToExpiry);
 
@@ -1222,7 +1399,12 @@ export class NotificationsService {
     });
   }
 
-  async triggerSecurityNotice(data: { userId?: string; title: string; message: string; broadcast?: boolean }) {
+  async triggerSecurityNotice(data: {
+    userId?: string;
+    title: string;
+    message: string;
+    broadcast?: boolean;
+  }) {
     let targets: any[] = [];
     if (data.userId) {
       targets = await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) });
@@ -1240,13 +1422,18 @@ export class NotificationsService {
         title: data.title,
         message: data.message,
         metadata: { broadcast: data.broadcast },
-      }))
+      })),
     );
 
     return { totalTargeted: targets.length, records };
   }
 
-  async triggerFeatureUpdate(data: { userId?: string; title: string; message: string; broadcast?: boolean }) {
+  async triggerFeatureUpdate(data: {
+    userId?: string;
+    title: string;
+    message: string;
+    broadcast?: boolean;
+  }) {
     let targets: any[] = [];
     if (data.userId) {
       targets = await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) });
@@ -1263,13 +1450,18 @@ export class NotificationsService {
         title: data.title,
         message: data.message,
         metadata: { broadcast: data.broadcast },
-      }))
+      })),
     );
 
     return { totalTargeted: targets.length, records };
   }
 
-  async triggerServiceUpdate(data: { userId?: string; title: string; message: string; broadcast?: boolean }) {
+  async triggerServiceUpdate(data: {
+    userId?: string;
+    title: string;
+    message: string;
+    broadcast?: boolean;
+  }) {
     let targets: any[] = [];
     if (data.userId) {
       targets = await this.db.query.users.findMany({ where: eq(schema.users.id, data.userId) });
@@ -1286,7 +1478,7 @@ export class NotificationsService {
         title: data.title,
         message: data.message,
         metadata: { broadcast: data.broadcast },
-      }))
+      })),
     );
 
     return { totalTargeted: targets.length, records };
@@ -1365,7 +1557,9 @@ export class NotificationsService {
         message,
       });
     } catch (err) {
-      this.logger.warn(`Could not mirror task notification to designer_notifications: ${err?.message}`);
+      this.logger.warn(
+        `Could not mirror task notification to designer_notifications: ${err?.message}`,
+      );
     }
 
     return created;
@@ -1446,7 +1640,9 @@ export class NotificationsService {
         message,
       });
     } catch (err) {
-      this.logger.warn(`Could not mirror submission notification to designer_notifications: ${err?.message}`);
+      this.logger.warn(
+        `Could not mirror submission notification to designer_notifications: ${err?.message}`,
+      );
     }
 
     return created;
@@ -1528,10 +1724,11 @@ export class NotificationsService {
         message,
       });
     } catch (err) {
-      this.logger.warn(`Could not mirror payment notification to designer_notifications: ${err?.message}`);
+      this.logger.warn(
+        `Could not mirror payment notification to designer_notifications: ${err?.message}`,
+      );
     }
 
     return created;
   }
 }
-

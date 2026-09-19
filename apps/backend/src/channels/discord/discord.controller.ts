@@ -11,12 +11,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Response } from 'express';
 import { DiscordService } from './discord.service';
 import { DiscordCallbackQueryDto } from './dto/discord-callback.query.dto';
@@ -57,9 +52,7 @@ export class DiscordController {
     const stateJwt = await this.discordService.generateStateJwt(user.userId);
 
     const clientId =
-      this.configService.get<string>('discord.clientId') ||
-      process.env.DISCORD_CLIENT_ID ||
-      '';
+      this.configService.get<string>('discord.clientId') || process.env.DISCORD_CLIENT_ID || '';
     const redirectUri =
       this.configService.get<string>('discord.redirectUri') ||
       process.env.DISCORD_REDIRECT_URI ||
@@ -109,10 +102,7 @@ export class DiscordController {
   @ApiQuery({ name: 'permissions', required: false })
   @ApiQuery({ name: 'error', required: false })
   @ApiQuery({ name: 'error_description', required: false })
-  async callback(
-    @Query() query: DiscordCallbackQueryDto,
-    @Res() res: Response,
-  ): Promise<void> {
+  async callback(@Query() query: DiscordCallbackQueryDto, @Res() res: Response): Promise<void> {
     const frontendUrl =
       this.configService.get<string>('frontendUrl') ||
       process.env.FRONTEND_URL ||
@@ -134,12 +124,7 @@ export class DiscordController {
       return;
     }
 
-    await this.discordService.handleCallback(
-      query.code,
-      query.state,
-      res,
-      query.guild_id,
-    );
+    await this.discordService.handleCallback(query.code, query.state, res, query.guild_id);
   }
 
   // ---------------------------------------------------------------------------
@@ -196,10 +181,7 @@ export class DiscordController {
   @ApiOperation({
     summary: 'Select target Discord guild and channel for posting',
   })
-  async selectTarget(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: SelectDiscordTargetDto,
-  ) {
+  async selectTarget(@CurrentUser() user: { userId: string }, @Body() dto: SelectDiscordTargetDto) {
     return this.discordService.selectTarget(user.userId, dto);
   }
 
@@ -225,14 +207,7 @@ export class DiscordController {
   @ApiOperation({
     summary: 'Send a message to a Discord channel',
   })
-  async sendMessage(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: SendDiscordMessageDto,
-  ) {
-    return this.discordService.sendMessage(
-      user.userId,
-      dto.channelId,
-      dto.content,
-    );
+  async sendMessage(@CurrentUser() user: { userId: string }, @Body() dto: SendDiscordMessageDto) {
+    return this.discordService.sendMessage(user.userId, dto.channelId, dto.content);
   }
 }

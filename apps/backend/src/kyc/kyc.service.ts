@@ -80,10 +80,7 @@ export class KycService {
 
     // Check if there is an in-progress review
     const pending = await this.db.query.kyc.findFirst({
-      where: and(
-        eq(schema.kyc.userId, userId),
-        eq(schema.kyc.status, 'pending'),
-      ),
+      where: and(eq(schema.kyc.userId, userId), eq(schema.kyc.status, 'pending')),
     });
     if (pending) {
       throw new BadRequestException('You already have a verification submission pending review.');
@@ -91,10 +88,7 @@ export class KycService {
 
     // Find if there is a previously approved profile
     const previouslyApproved = await this.db.query.kyc.findFirst({
-      where: and(
-        eq(schema.kyc.userId, userId),
-        eq(schema.kyc.status, 'approved'),
-      ),
+      where: and(eq(schema.kyc.userId, userId), eq(schema.kyc.status, 'approved')),
       orderBy: [desc(schema.kyc.submittedAt)],
     });
 
@@ -123,24 +117,27 @@ export class KycService {
         businessEmail: dto.businessEmail,
         businessPhone: dto.businessPhone,
         businessDescription: dto.businessDescription,
-        
+
         certOfRegistrationPath: cert,
-        certOfRegistrationOriginalName: certFile?.originalname || latest?.certOfRegistrationOriginalName || null,
-        certOfRegistrationMimeType: certFile?.mimetype || latest?.certOfRegistrationMimeType || null,
+        certOfRegistrationOriginalName:
+          certFile?.originalname || latest?.certOfRegistrationOriginalName || null,
+        certOfRegistrationMimeType:
+          certFile?.mimetype || latest?.certOfRegistrationMimeType || null,
         certOfRegistrationFileSize: certFile?.size || latest?.certOfRegistrationFileSize || null,
-        certOfRegistrationUploadedAt: certFile ? now : (latest?.certOfRegistrationUploadedAt || null),
+        certOfRegistrationUploadedAt: certFile ? now : latest?.certOfRegistrationUploadedAt || null,
 
         utilityBillPath: utility,
-        utilityBillOriginalName: utilityFile?.originalname || latest?.utilityBillOriginalName || null,
+        utilityBillOriginalName:
+          utilityFile?.originalname || latest?.utilityBillOriginalName || null,
         utilityBillMimeType: utilityFile?.mimetype || latest?.utilityBillMimeType || null,
         utilityBillFileSize: utilityFile?.size || latest?.utilityBillFileSize || null,
-        utilityBillUploadedAt: utilityFile ? now : (latest?.utilityBillUploadedAt || null),
+        utilityBillUploadedAt: utilityFile ? now : latest?.utilityBillUploadedAt || null,
 
         ownerIdPath: ownerId,
         ownerIdOriginalName: ownerIdFile?.originalname || latest?.ownerIdOriginalName || null,
         ownerIdMimeType: ownerIdFile?.mimetype || latest?.ownerIdMimeType || null,
         ownerIdFileSize: ownerIdFile?.size || latest?.ownerIdFileSize || null,
-        ownerIdUploadedAt: ownerIdFile ? now : (latest?.ownerIdUploadedAt || null),
+        ownerIdUploadedAt: ownerIdFile ? now : latest?.ownerIdUploadedAt || null,
 
         status: 'pending',
         isUpdateRequest: isUpdate,
@@ -166,7 +163,7 @@ export class KycService {
       userName: null,
       action: isUpdate ? 'KYC_UPDATE_REQUEST' : 'KYC_SUBMITTED',
       module: 'user_management',
-      description: isUpdate 
+      description: isUpdate
         ? `Submitted KYC update request for business: ${dto.businessName}`
         : `Submitted initial KYC verification for business: ${dto.businessName}`,
     });
@@ -198,7 +195,9 @@ export class KycService {
    * Returns the status string ('pending' | 'approved' | 'rejected' | 'resubmission_required') or null
    * when no KYC has been submitted yet.
    */
-  async getKycStatus(userId: string): Promise<'pending' | 'approved' | 'rejected' | 'resubmission_required' | null> {
+  async getKycStatus(
+    userId: string,
+  ): Promise<'pending' | 'approved' | 'rejected' | 'resubmission_required' | null> {
     const record = await this.db.query.kyc.findFirst({
       where: eq(schema.kyc.userId, userId),
       columns: { status: true },
@@ -272,7 +271,9 @@ export class KycService {
       reviewedBy: adminId,
       reviewedAt: new Date(),
       rejectionReason:
-        (dto.status === 'approved' || dto.status === 'pending') ? null : (dto.rejectionReason ?? null),
+        dto.status === 'approved' || dto.status === 'pending'
+          ? null
+          : (dto.rejectionReason ?? null),
       updatedAt: new Date(),
     };
 
@@ -301,15 +302,17 @@ export class KycService {
     // Log the review action
     await this.activityLogsService.record({
       userId: adminId,
-      action: dto.status === 'approved' 
-        ? 'KYC_APPROVED' 
-        : dto.status === 'rejected' 
-          ? 'KYC_REJECTED' 
-          : 'KYC_RESUBMISSION_REQUESTED',
+      action:
+        dto.status === 'approved'
+          ? 'KYC_APPROVED'
+          : dto.status === 'rejected'
+            ? 'KYC_REJECTED'
+            : 'KYC_RESUBMISSION_REQUESTED',
       module: 'user_management',
-      description: dto.status === 'approved'
-        ? `Approved KYC verification for user ${record.userId}`
-        : `Requested KYC change/resubmission for user ${record.userId}. Reason: ${dto.rejectionReason}`,
+      description:
+        dto.status === 'approved'
+          ? `Approved KYC verification for user ${record.userId}`
+          : `Requested KYC change/resubmission for user ${record.userId}. Reason: ${dto.rejectionReason}`,
     });
 
     // If approved, snapshot the fields to customer_company_profile
@@ -332,18 +335,16 @@ export class KycService {
           })
           .where(eq(schema.customerCompanyProfile.id, existingProfile.id));
       } else {
-        await this.db
-          .insert(schema.customerCompanyProfile)
-          .values({
-            userId: record.userId,
-            businessName: record.businessName,
-            businessDescription: record.businessDescription,
-            contactEmail: record.businessEmail,
-            contactPhone: record.businessPhone,
-            addressLine1: record.businessAddress,
-            country: record.country,
-            industry: 'Technology & SaaS', // Default placeholder
-          });
+        await this.db.insert(schema.customerCompanyProfile).values({
+          userId: record.userId,
+          businessName: record.businessName,
+          businessDescription: record.businessDescription,
+          contactEmail: record.businessEmail,
+          contactPhone: record.businessPhone,
+          addressLine1: record.businessAddress,
+          country: record.country,
+          industry: 'Technology & SaaS', // Default placeholder
+        });
       }
 
       // Also update the businessName in the users table
@@ -424,7 +425,13 @@ export class KycService {
     });
     if (!record) throw new NotFoundException('KYC record not found');
 
-    const docLabel = documentName || (docType === 'cert' ? 'Registration Cert' : docType === 'utility' ? 'Proof of Address' : 'Owner ID');
+    const docLabel =
+      documentName ||
+      (docType === 'cert'
+        ? 'Registration Cert'
+        : docType === 'utility'
+          ? 'Proof of Address'
+          : 'Owner ID');
     let finalReason = reason;
     if (!finalReason || !finalReason.trim()) {
       finalReason = `This KYC was rejected because the submitted ${docLabel} did not meet the verification requirements.`;

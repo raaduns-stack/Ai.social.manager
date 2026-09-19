@@ -11,7 +11,11 @@ export class CreatePayoutDto {
   @Min(100)
   amount: number;
 
-  @ApiProperty({ description: 'Payout type: manual or global', enum: ['manual', 'global'], default: 'manual' })
+  @ApiProperty({
+    description: 'Payout type: manual or global',
+    enum: ['manual', 'global'],
+    default: 'manual',
+  })
   @IsIn(['manual', 'global'])
   payoutType: 'manual' | 'global';
 
@@ -20,7 +24,10 @@ export class CreatePayoutDto {
   @IsOptional()
   period?: string;
 
-  @ApiPropertyOptional({ description: 'Related design work description', example: '3 approved graphics, 1 image-to-code' })
+  @ApiPropertyOptional({
+    description: 'Related design work description',
+    example: '3 approved graphics, 1 image-to-code',
+  })
   @IsString()
   @IsOptional()
   relatedWork?: string;

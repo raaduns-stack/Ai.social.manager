@@ -19,4 +19,3 @@ export const ALL_ADMIN_ROLES = [
 export const MANAGEMENT_ROLES = [UserRole.SUPER_ADMIN, UserRole.ACCOUNT_MANAGER];
 
 export const FINANCIAL_ROLES = [UserRole.SUPER_ADMIN];
-

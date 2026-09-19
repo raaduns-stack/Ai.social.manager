@@ -15,10 +15,7 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { Response } from 'express';
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
-import {
-  encryptSecret,
-  decryptSecret,
-} from '../../common/utils/encryption.util';
+import { encryptSecret, decryptSecret } from '../../common/utils/encryption.util';
 import { KycService } from '../../kyc/kyc.service';
 import { SelectDiscordTargetDto } from './dto/select-discord-target.dto';
 
@@ -213,8 +210,7 @@ export class DiscordService {
     }
 
     const handle =
-      userInfo.global_name ||
-      (userInfo.username ? `@${userInfo.username}` : userInfo.id);
+      userInfo.global_name || (userInfo.username ? `@${userInfo.username}` : userInfo.id);
 
     const guildId = callbackGuildId || tokenData.guild?.id || null;
     const guildName = tokenData.guild?.name || null;
@@ -294,9 +290,7 @@ export class DiscordService {
       throw new NotFoundException('No connected Discord account found.');
     }
 
-    await this.db
-      .delete(schema.social_accounts)
-      .where(eq(schema.social_accounts.id, account.id));
+    await this.db.delete(schema.social_accounts).where(eq(schema.social_accounts.id, account.id));
 
     return { success: true, message: 'Discord connection removed successfully.' };
   }
@@ -306,12 +300,9 @@ export class DiscordService {
     const userAccessToken = await this.getDecryptedAccessToken(userId);
 
     // Fetch guilds from user OAuth token
-    const userGuildsRes = await fetch(
-      'https://discord.com/api/v10/users/@me/guilds',
-      {
-        headers: { Authorization: `Bearer ${userAccessToken}` },
-      },
-    );
+    const userGuildsRes = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+      headers: { Authorization: `Bearer ${userAccessToken}` },
+    });
 
     if (!userGuildsRes.ok) {
       const errJson = await userGuildsRes.json().catch(() => ({}));
@@ -339,10 +330,7 @@ export class DiscordService {
   }
 
   /** Gets text channels for a specified guild. */
-  async getGuildChannels(
-    userId: string,
-    guildId: string,
-  ): Promise<DiscordChannelInfo[]> {
+  async getGuildChannels(userId: string, guildId: string): Promise<DiscordChannelInfo[]> {
     const botToken = this.configService.get<string>('discord.botToken');
     let authorizationHeader = '';
 
@@ -353,12 +341,9 @@ export class DiscordService {
       authorizationHeader = `Bearer ${userAccessToken}`;
     }
 
-    const res = await fetch(
-      `https://discord.com/api/v10/guilds/${guildId}/channels`,
-      {
-        headers: { Authorization: authorizationHeader },
-      },
-    );
+    const res = await fetch(`https://discord.com/api/v10/guilds/${guildId}/channels`, {
+      headers: { Authorization: authorizationHeader },
+    });
 
     if (!res.ok) {
       const errJson = await res.json().catch(() => ({}));
@@ -474,13 +459,9 @@ export class DiscordService {
   // ---------------------------------------------------------------------------
 
   /** Exchanges a Discord authorization code for access and refresh tokens. */
-  private async exchangeCodeForTokens(
-    code: string,
-  ): Promise<DiscordTokenResponse> {
+  private async exchangeCodeForTokens(code: string): Promise<DiscordTokenResponse> {
     const rawClientId =
-      this.configService.get<string>('discord.clientId') ||
-      process.env.DISCORD_CLIENT_ID ||
-      '';
+      this.configService.get<string>('discord.clientId') || process.env.DISCORD_CLIENT_ID || '';
     const rawClientSecret =
       this.configService.get<string>('discord.clientSecret') ||
       process.env.DISCORD_CLIENT_SECRET ||
@@ -492,7 +473,10 @@ export class DiscordService {
 
     // Sanitize credentials — strip surrounding quotes, carriage returns, or whitespace
     const clientId = rawClientId.trim().replace(/^["']|["']$/g, '');
-    const clientSecret = rawClientSecret.trim().replace(/^["']|["']$/g, '').replace(/\r|\n/g, '');
+    const clientSecret = rawClientSecret
+      .trim()
+      .replace(/^["']|["']$/g, '')
+      .replace(/\r|\n/g, '');
     const redirectUri = rawRedirectUri.trim().replace(/^["']|["']$/g, '');
 
     const tokenEndpoint = 'https://discord.com/api/v10/oauth2/token';
@@ -531,7 +515,7 @@ export class DiscordService {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': `Basic ${basicAuth}`,
+        Authorization: `Basic ${basicAuth}`,
       },
       body: params.toString(),
     });
@@ -539,11 +523,8 @@ export class DiscordService {
     const json: any = await response.json();
 
     if (!response.ok || !json.access_token) {
-      const errorMsg =
-        json.error_description || json.error || json.message || JSON.stringify(json);
-      this.logger.error(
-        `Discord token exchange HTTP ${response.status}: ${errorMsg}`,
-      );
+      const errorMsg = json.error_description || json.error || json.message || JSON.stringify(json);
+      this.logger.error(`Discord token exchange HTTP ${response.status}: ${errorMsg}`);
       throw new BadRequestException(
         `Discord token endpoint error (${response.status}): ${errorMsg}`,
       );
@@ -553,9 +534,7 @@ export class DiscordService {
   }
 
   /** Fetches Discord user profile using user access token. */
-  private async fetchDiscordUserProfile(
-    accessToken: string,
-  ): Promise<DiscordUserResponse> {
+  private async fetchDiscordUserProfile(accessToken: string): Promise<DiscordUserResponse> {
     const response = await fetch('https://discord.com/api/v10/users/@me', {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
@@ -583,12 +562,8 @@ export class DiscordService {
     guildName?: string;
   }): Promise<void> {
     const encryptedAccess = encryptSecret(params.accessToken);
-    const encryptedRefresh = params.refreshToken
-      ? encryptSecret(params.refreshToken)
-      : null;
-    const tokenExpiresAt = params.expiresIn
-      ? new Date(Date.now() + params.expiresIn * 1000)
-      : null;
+    const encryptedRefresh = params.refreshToken ? encryptSecret(params.refreshToken) : null;
+    const tokenExpiresAt = params.expiresIn ? new Date(Date.now() + params.expiresIn * 1000) : null;
     const now = new Date();
 
     const existing = await this.db.query.social_accounts.findFirst({
@@ -645,9 +620,7 @@ export class DiscordService {
     });
 
     if (!account?.accessToken) {
-      throw new BadRequestException(
-        'No connected Discord account found for this user.',
-      );
+      throw new BadRequestException('No connected Discord account found for this user.');
     }
 
     return decryptSecret(account.accessToken);

@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { desc, eq, and, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
@@ -49,9 +43,9 @@ export class ContentSuggestionsService {
         ...suggestion,
         feedback: feedback
           ? {
-            reaction: feedback.reaction,
-            rating: feedback.rating,
-          }
+              reaction: feedback.reaction,
+              rating: feedback.rating,
+            }
           : null,
       };
     });
@@ -65,11 +59,7 @@ export class ContentSuggestionsService {
     const typeStr = businessType || 'Business';
     const caption = `Grow your ${typeStr} with amazing content today!`;
 
-    const hashtags = [
-      '#AI',
-      '#Marketing',
-      `#${typeStr.replace(/\s+/g, '')}`,
-    ];
+    const hashtags = ['#AI', '#Marketing', `#${typeStr.replace(/\s+/g, '')}`];
 
     const [suggestion] = await this.db
       .insert(schema.contentSuggestions)
@@ -123,11 +113,7 @@ export class ContentSuggestionsService {
   ) {
     // Make sure the suggestion belongs to the logged-in user.
     const suggestion = await this.db.query.contentSuggestions.findFirst({
-      where: (fields, { and, eq }) =>
-        and(
-          eq(fields.id, suggestionId),
-          eq(fields.userId, userId),
-        ),
+      where: (fields, { and, eq }) => and(eq(fields.id, suggestionId), eq(fields.userId, userId)),
     });
 
     if (!suggestion) {
@@ -137,10 +123,7 @@ export class ContentSuggestionsService {
     // Check whether this user has already rated this suggestion.
     const existingFeedback = await this.db.query.contentFeedback.findFirst({
       where: (fields, { and, eq }) =>
-        and(
-          eq(fields.suggestionId, suggestionId),
-          eq(fields.userId, userId),
-        ),
+        and(eq(fields.suggestionId, suggestionId), eq(fields.userId, userId)),
     });
 
     if (existingFeedback) {
@@ -176,11 +159,7 @@ export class ContentSuggestionsService {
    */
   async findForPost(postId: string, userId: string) {
     const post = await this.db.query.contentCalendar.findFirst({
-      where: (fields, { and, eq }) =>
-        and(
-          eq(fields.id, postId),
-          eq(fields.userId, userId),
-        ),
+      where: (fields, { and, eq }) => and(eq(fields.id, postId), eq(fields.userId, userId)),
     });
 
     if (!post) {
@@ -205,9 +184,9 @@ export class ContentSuggestionsService {
           ...suggestion,
           feedback: feedback
             ? {
-              reaction: feedback.reaction,
-              rating: feedback.rating,
-            }
+                reaction: feedback.reaction,
+                rating: feedback.rating,
+              }
             : null,
         };
       });
@@ -222,11 +201,7 @@ export class ContentSuggestionsService {
   async regenerateForPost(postId: string, userId: string) {
     // Verify post exists and belongs to user
     const post = await this.db.query.contentCalendar.findFirst({
-      where: (fields, { and, eq }) =>
-        and(
-          eq(fields.id, postId),
-          eq(fields.userId, userId),
-        ),
+      where: (fields, { and, eq }) => and(eq(fields.id, postId), eq(fields.userId, userId)),
     });
 
     if (!post) {
@@ -247,10 +222,7 @@ export class ContentSuggestionsService {
    */
   async triggerN8nGeneration(postId: string, userId: string) {
     const post = await this.db.query.contentCalendar.findFirst({
-      where: and(
-        eq(schema.contentCalendar.id, postId),
-        eq(schema.contentCalendar.userId, userId),
-      ),
+      where: and(eq(schema.contentCalendar.id, postId), eq(schema.contentCalendar.userId, userId)),
     });
 
     if (!post) {
@@ -268,7 +240,9 @@ export class ContentSuggestionsService {
       userId: post.userId,
     };
 
-    this.logger.log(`Triggering n8n AI suggestion workflow at ${webhookUrl} for postId=${post.id}, userId=${userId}`);
+    this.logger.log(
+      `Triggering n8n AI suggestion workflow at ${webhookUrl} for postId=${post.id}, userId=${userId}`,
+    );
 
     try {
       const response = await global.fetch(webhookUrl, {
@@ -311,7 +285,9 @@ export class ContentSuggestionsService {
     if (newlySaved && newlySaved.length > 0) {
       return newlySaved.map((s) => ({
         ...s,
-        feedback: s.feedback?.[0] ? { reaction: s.feedback[0].reaction, rating: s.feedback[0].rating } : null,
+        feedback: s.feedback?.[0]
+          ? { reaction: s.feedback[0].reaction, rating: s.feedback[0].rating }
+          : null,
       }));
     }
 
@@ -401,8 +377,7 @@ export class ContentSuggestionsService {
    */
   async approveSuggestion(id: string, userId: string) {
     const suggestion = await this.db.query.contentSuggestions.findFirst({
-      where: (fields, { and, eq }) =>
-        and(eq(fields.id, id), eq(fields.userId, userId)),
+      where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.userId, userId)),
     });
 
     if (!suggestion) {
@@ -426,8 +401,8 @@ export class ContentSuggestionsService {
       .where(
         and(
           eq(schema.contentSuggestions.postId, suggestion.postId),
-          ne(schema.contentSuggestions.id, id)
-        )
+          ne(schema.contentSuggestions.id, id),
+        ),
       );
 
     return { success: true };
@@ -438,8 +413,7 @@ export class ContentSuggestionsService {
    */
   async requestRevision(id: string, userId: string, revisionNotes: string) {
     const suggestion = await this.db.query.contentSuggestions.findFirst({
-      where: (fields, { and, eq }) =>
-        and(eq(fields.id, id), eq(fields.userId, userId)),
+      where: (fields, { and, eq }) => and(eq(fields.id, id), eq(fields.userId, userId)),
       with: {
         post: true,
       },
@@ -506,8 +480,8 @@ export class ContentSuggestionsService {
       approvalStatus: 'PENDING_APPROVAL' as const,
     }));
 
-    // If parentVariationId exists, it denotes a revision response. 
-    // Since we don't have a parentVariationId field in the schema, 
+    // If parentVariationId exists, it denotes a revision response.
+    // Since we don't have a parentVariationId field in the schema,
     // we just store the new variations normally. They will be linked to the same post via postId.
     // The original variation remains in 'REVISION_REQUESTED' state.
 
@@ -552,7 +526,9 @@ export class ContentSuggestionsService {
         throw new NotFoundException(`Variation ${variationId} not found.`);
       }
       if (variation.postId && variation.postId !== postId) {
-        throw new BadRequestException(`Variation ${variationId} does not belong to post ${postId}.`);
+        throw new BadRequestException(
+          `Variation ${variationId} does not belong to post ${postId}.`,
+        );
       }
       contentToPublish = variation.content;
       resolvedVariationId = variation.id;

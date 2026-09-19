@@ -44,19 +44,13 @@ export class CustomerNotificationsController {
 
   @Patch(':id/read')
   @ApiOperation({ summary: 'Mark a specific notification as read' })
-  markAsRead(
-    @CurrentUser() user: { userId: string },
-    @Param('id') id: string,
-  ) {
+  markAsRead(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     return this.notificationsService.markAsRead(user.userId, id);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a notification' })
-  deleteNotification(
-    @CurrentUser() user: { userId: string },
-    @Param('id') id: string,
-  ) {
+  deleteNotification(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     return this.notificationsService.deleteNotification(user.userId, id);
   }
 }

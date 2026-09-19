@@ -15,7 +15,10 @@ export class NotificationSettingsService {
     return this.db.query.notificationTypeSettings.findMany();
   }
 
-  async updateNotificationSetting(notificationType: string, dto: UpdateNotificationTypeSettingsDto) {
+  async updateNotificationSetting(
+    notificationType: string,
+    dto: UpdateNotificationTypeSettingsDto,
+  ) {
     const existing = await this.db.query.notificationTypeSettings.findFirst({
       where: eq(schema.notificationTypeSettings.notificationType, notificationType),
     });

@@ -186,7 +186,9 @@ export class PaymentsService {
 
     if (!payment) {
       // Try by UUID id if transactionId looks like a UUID
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(transactionId);
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        transactionId,
+      );
       if (isUuid) {
         payment = await this.db.query.payments.findFirst({
           where: eq(schema.payments.id, transactionId),
@@ -243,7 +245,8 @@ export class PaymentsService {
     const isSuccessful = status === 'successful' && isAmountValid && isCurrencyValid;
 
     if (!isSuccessful) {
-      const reason = flwRes.data?.processor_response || flwRes.data?.message || `Payment status: ${status}`;
+      const reason =
+        flwRes.data?.processor_response || flwRes.data?.message || `Payment status: ${status}`;
       await this.markPaymentFailed(payment, reason);
 
       throw new BadRequestException(
@@ -407,16 +410,19 @@ export class PaymentsService {
 
     if (!existingInvoice) {
       invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-      const [inserted] = await this.db.insert(schema.invoices).values({
-        userId: payment.userId,
-        paymentId: payment.id,
-        subscriptionId: payment.subscriptionId,
-        invoiceNumber,
-        amount: payment.amount,
-        currency: payment.currency,
-        status: 'paid',
-        pdfUrl: null,
-      }).returning();
+      const [inserted] = await this.db
+        .insert(schema.invoices)
+        .values({
+          userId: payment.userId,
+          paymentId: payment.id,
+          subscriptionId: payment.subscriptionId,
+          invoiceNumber,
+          amount: payment.amount,
+          currency: payment.currency,
+          status: 'paid',
+          pdfUrl: null,
+        })
+        .returning();
       invoice = inserted;
 
       void this.notificationsService.triggerInvoiceAvailable({

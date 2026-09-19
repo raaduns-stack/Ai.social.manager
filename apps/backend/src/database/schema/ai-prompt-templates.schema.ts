@@ -5,22 +5,12 @@
 // these prompts from the Admin Panel.
 // ======================================================
 
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  boolean,
-  timestamp,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core';
 
 // Create a new database table called "ai_prompt_templates"
 export const aiPromptTemplates = pgTable('ai_prompt_templates', {
-
   // Unique ID for each prompt
-  id: uuid('id')
-    .primaryKey()
-    .defaultRandom(),
+  id: uuid('id').primaryKey().defaultRandom(),
 
   // Prompt name shown in the admin panel
   // Example: Instagram Caption Generator
@@ -40,25 +30,17 @@ export const aiPromptTemplates = pgTable('ai_prompt_templates', {
   // Determines whether this prompt is currently active
   // true = AI can use it
   // false = hidden/disabled
-  isActive: boolean('is_active')
-    .default(true)
-    .notNull(),
+  isActive: boolean('is_active').default(true).notNull(),
 
   // Date created
-  createdAt: timestamp('created_at')
-    .defaultNow()
-    .notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
 
   // Last updated date
-  updatedAt: timestamp('updated_at')
-    .defaultNow()
-    .notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
 
 // TypeScript type for reading prompt records
-export type AIPromptTemplate =
-  typeof aiPromptTemplates.$inferSelect;
+export type AIPromptTemplate = typeof aiPromptTemplates.$inferSelect;
 
 // TypeScript type for inserting new prompt records
-export type NewAIPromptTemplate =
-  typeof aiPromptTemplates.$inferInsert;
+export type NewAIPromptTemplate = typeof aiPromptTemplates.$inferInsert;

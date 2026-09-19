@@ -1,10 +1,4 @@
-import {
-  Inject,
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Inject, Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { and, desc, eq, gte, lte, ne } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { ConfigService } from '@nestjs/config';
@@ -26,7 +20,7 @@ export interface CreateCalendarPostDto {
   title: string;
   caption: string;
   platform: string;
-  scheduledAt?: string;   // ISO 8601 string
+  scheduledAt?: string; // ISO 8601 string
   mediaUrl?: string;
   hashtags?: string[];
   aiGenerated?: boolean;
@@ -80,7 +74,7 @@ export class CalendarService {
     private readonly configService: ConfigService,
     private readonly customerProfileService: CustomerProfileService,
     private readonly contentSuggestionsService: ContentSuggestionsService,
-  ) { }
+  ) {}
 
   getWeekRange(date: Date) {
     const d = new Date(date);
@@ -106,9 +100,7 @@ export class CalendarService {
         eq(schema.social_accounts.status, 'connected'),
       ),
     });
-    return accounts
-      .map(acc => normalizePlatformName(acc.platform))
-      .filter(Boolean);
+    return accounts.map((acc) => normalizePlatformName(acc.platform)).filter(Boolean);
   }
 
   async getConnectedAccountsForUser(userId: string) {
@@ -118,7 +110,7 @@ export class CalendarService {
         eq(schema.social_accounts.status, 'connected'),
       ),
     });
-    return accounts.map(acc => ({
+    return accounts.map((acc) => ({
       id: acc.id,
       platform: normalizePlatformName(acc.platform),
       accountHandle: acc.accountHandle,
@@ -154,7 +146,7 @@ export class CalendarService {
 
     if (posts.length >= 2) {
       throw new BadRequestException(
-        `Weekly post limit reached. Under the Free plan, you can schedule at most 2 posts per week.`
+        `Weekly post limit reached. Under the Free plan, you can schedule at most 2 posts per week.`,
       );
     }
   }
@@ -186,7 +178,15 @@ export class CalendarService {
     }
 
     const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     const posts = await this.db.query.contentCalendar.findMany({
       where: (fields, { and, eq, gte, lte, ne }) =>
@@ -200,7 +200,7 @@ export class CalendarService {
 
     if (posts.length >= limit) {
       throw new BadRequestException(
-        `Monthly post limit reached. Your plan (${planName}) allows a maximum of ${limit} posts per month. You currently have ${posts.length} scheduled/published in this month.`
+        `Monthly post limit reached. Your plan (${planName}) allows a maximum of ${limit} posts per month. You currently have ${posts.length} scheduled/published in this month.`,
       );
     }
   }
@@ -211,10 +211,7 @@ export class CalendarService {
    * Return all posts for the authenticated customer.
    * Optionally filter by status (DRAFT | SCHEDULED | PUBLISHED).
    */
-  async findAllForUser(
-    userId: string,
-    status?: string,
-  ): Promise<ContentCalendarPost[]> {
+  async findAllForUser(userId: string, status?: string): Promise<ContentCalendarPost[]> {
     const conditions = [eq(schema.contentCalendar.userId, userId)];
 
     if (status && status !== 'ALL') {
@@ -290,15 +287,9 @@ export class CalendarService {
   /**
    * Return a single post by id — validates the post belongs to the requesting user.
    */
-  async findOneForUser(
-    id: string,
-    userId: string,
-  ): Promise<ContentCalendarPost> {
+  async findOneForUser(id: string, userId: string): Promise<ContentCalendarPost> {
     const post = await this.db.query.contentCalendar.findFirst({
-      where: and(
-        eq(schema.contentCalendar.id, id),
-        eq(schema.contentCalendar.userId, userId),
-      ),
+      where: and(eq(schema.contentCalendar.id, id), eq(schema.contentCalendar.userId, userId)),
       with: {
         suggestions: {
           with: {
@@ -334,14 +325,13 @@ export class CalendarService {
   /**
    * Create a new calendar post for the authenticated customer.
    */
-  async createForUser(
-    userId: string,
-    dto: CreateCalendarPostDto,
-  ): Promise<ContentCalendarPost> {
+  async createForUser(userId: string, dto: CreateCalendarPostDto): Promise<ContentCalendarPost> {
     // Validate platform is connected
     const connected = await this.getConnectedPlatformsForUser(userId);
     const targetPlatform = normalizePlatformName(dto.platform);
-    const isConnected = connected.some(p => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase());
+    const isConnected = connected.some(
+      (p) => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase(),
+    );
     if (!isConnected) {
       throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
     }
@@ -384,7 +374,7 @@ export class CalendarService {
       const timeRemainingMs = new Date(post.scheduledAt).getTime() - Date.now();
       if (timeRemainingMs <= 5 * 60 * 1000) {
         throw new BadRequestException(
-          'This post can no longer be edited because it is within 5 minutes of its scheduled posting time.'
+          'This post can no longer be edited because it is within 5 minutes of its scheduled posting time.',
         );
       }
     }
@@ -392,7 +382,9 @@ export class CalendarService {
     if (dto.platform) {
       const connected = await this.getConnectedPlatformsForUser(userId);
       const targetPlatform = normalizePlatformName(dto.platform);
-      const isConnected = connected.some(p => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase());
+      const isConnected = connected.some(
+        (p) => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase(),
+      );
       if (!isConnected) {
         throw new BadRequestException(`Platform ${dto.platform} is not connected.`);
       }
@@ -401,13 +393,19 @@ export class CalendarService {
     // Determine target scheduledAt timestamp if date/time are updated
     let targetScheduledAt: string | null | undefined = dto.scheduledAt;
     if (dto.scheduledDate !== undefined || dto.scheduledTime !== undefined) {
-      const datePart = dto.scheduledDate !== undefined
-        ? dto.scheduledDate
-        : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[0] : null);
+      const datePart =
+        dto.scheduledDate !== undefined
+          ? dto.scheduledDate
+          : post.scheduledAt
+            ? new Date(post.scheduledAt).toISOString().split('T')[0]
+            : null;
       if (datePart) {
-        const timePart = dto.scheduledTime !== undefined && dto.scheduledTime
-          ? dto.scheduledTime
-          : (post.scheduledAt ? new Date(post.scheduledAt).toISOString().split('T')[1]?.substring(0, 5) : '12:00');
+        const timePart =
+          dto.scheduledTime !== undefined && dto.scheduledTime
+            ? dto.scheduledTime
+            : post.scheduledAt
+              ? new Date(post.scheduledAt).toISOString().split('T')[1]?.substring(0, 5)
+              : '12:00';
         const localDateObj = new Date(`${datePart}T${timePart}:00`);
         targetScheduledAt = !isNaN(localDateObj.getTime())
           ? localDateObj.toISOString()
@@ -419,7 +417,9 @@ export class CalendarService {
       const parsed = new Date(targetScheduledAt);
       targetScheduledAt = !isNaN(parsed.getTime())
         ? parsed.toISOString()
-        : (targetScheduledAt.includes('Z') ? targetScheduledAt : `${targetScheduledAt}.000Z`);
+        : targetScheduledAt.includes('Z')
+          ? targetScheduledAt
+          : `${targetScheduledAt}.000Z`;
     }
 
     // Validate scheduled date/time format if updated (editing existing post does NOT consume post creation limit)
@@ -436,7 +436,7 @@ export class CalendarService {
           const startStr = originalWeek.start.toISOString().split('T')[0];
           const endStr = originalWeek.end.toISOString().split('T')[0];
           throw new BadRequestException(
-            `You can only reschedule this post to another date within the same week (${startStr} to ${endStr}).`
+            `You can only reschedule this post to another date within the same week (${startStr} to ${endStr}).`,
           );
         }
       }
@@ -462,7 +462,7 @@ export class CalendarService {
       const userRating = suggestion.feedback?.[0];
       if (userRating && userRating.rating >= 1 && userRating.rating <= 2) {
         throw new BadRequestException(
-          'This suggestion is not eligible for posting due to a low rating (1-2 stars).'
+          'This suggestion is not eligible for posting due to a low rating (1-2 stars).',
         );
       }
     }
@@ -474,13 +474,15 @@ export class CalendarService {
         .where(eq(schema.contentSuggestions.postId, id));
     }
 
-    const newScheduledAt = targetScheduledAt !== undefined
-      ? (targetScheduledAt ? new Date(targetScheduledAt) : null)
-      : post.scheduledAt;
+    const newScheduledAt =
+      targetScheduledAt !== undefined
+        ? targetScheduledAt
+          ? new Date(targetScheduledAt)
+          : null
+        : post.scheduledAt;
 
-    const newStatus = targetScheduledAt !== undefined
-      ? (targetScheduledAt ? 'SCHEDULED' : 'DRAFT')
-      : post.status;
+    const newStatus =
+      targetScheduledAt !== undefined ? (targetScheduledAt ? 'SCHEDULED' : 'DRAFT') : post.status;
 
     const [updated] = await this.db
       .update(schema.contentCalendar)
@@ -492,12 +494,16 @@ export class CalendarService {
         status: newStatus,
         mediaUrl: dto.mediaUrl !== undefined ? dto.mediaUrl : post.mediaUrl,
         hashtags: dto.hashtags !== undefined ? dto.hashtags : post.hashtags,
-        selectedSuggestionId: dto.selectedSuggestionId !== undefined
-          ? dto.selectedSuggestionId
-          : post.selectedSuggestionId,
-        aiGenerated: dto.selectedSuggestionId !== undefined
-          ? true
-          : (dto.aiGenerated !== undefined ? dto.aiGenerated : post.aiGenerated),
+        selectedSuggestionId:
+          dto.selectedSuggestionId !== undefined
+            ? dto.selectedSuggestionId
+            : post.selectedSuggestionId,
+        aiGenerated:
+          dto.selectedSuggestionId !== undefined
+            ? true
+            : dto.aiGenerated !== undefined
+              ? dto.aiGenerated
+              : post.aiGenerated,
         updatedAt: new Date(),
       })
       .where(eq(schema.contentCalendar.id, id))
@@ -505,10 +511,7 @@ export class CalendarService {
 
     // If selecting a suggestion, trigger unified approval & scheduling
     if (dto.selectedSuggestionId) {
-      await this.contentSuggestionsService.scheduleApprovedPost(
-        id,
-        dto.selectedSuggestionId,
-      );
+      await this.contentSuggestionsService.scheduleApprovedPost(id, dto.selectedSuggestionId);
     }
 
     // Re-fetch to return fully-populated relations
@@ -520,9 +523,7 @@ export class CalendarService {
    */
   async removeForUser(id: string, userId: string): Promise<{ success: boolean }> {
     const post = await this.findOneForUser(id, userId);
-    await this.db
-      .delete(schema.contentCalendar)
-      .where(eq(schema.contentCalendar.id, post.id));
+    await this.db.delete(schema.contentCalendar).where(eq(schema.contentCalendar.id, post.id));
     return { success: true };
   }
 
@@ -532,10 +533,7 @@ export class CalendarService {
    * Return all posts for a specific user (admin view).
    * Optionally filter by approvalStatus.
    */
-  async findAllForAdmin(
-    userId?: string,
-    approvalStatus?: string,
-  ): Promise<ContentCalendarPost[]> {
+  async findAllForAdmin(userId?: string, approvalStatus?: string): Promise<ContentCalendarPost[]> {
     const conditions: ReturnType<typeof eq>[] = [];
 
     if (userId) {
@@ -550,11 +548,7 @@ export class CalendarService {
       conditions.push(
         eq(
           schema.contentCalendar.approvalStatus,
-          approvalStatus.toUpperCase() as
-          | 'PENDING'
-          | 'APPROVED'
-          | 'REJECTED'
-          | 'REVISION_REQUIRED',
+          approvalStatus.toUpperCase() as 'PENDING' | 'APPROVED' | 'REJECTED' | 'REVISION_REQUIRED',
         ),
       );
     }
@@ -585,7 +579,14 @@ export class CalendarService {
     // Deduplicate by userId
     const map = new Map<
       string,
-      { userId: string; fullName: string; businessName: string | null; email: string; postCount: number; pendingCount: number }
+      {
+        userId: string;
+        fullName: string;
+        businessName: string | null;
+        email: string;
+        postCount: number;
+        pendingCount: number;
+      }
     >();
 
     for (const post of posts) {
@@ -679,13 +680,13 @@ export class CalendarService {
       throw new BadRequestException('At least one platform must be requested.');
     }
     const connectedPlatforms = await this.getConnectedPlatformsForUser(userId);
-    const normalizedRequestedPlatforms = dto.platforms.map(p => normalizePlatformName(p));
+    const normalizedRequestedPlatforms = dto.platforms.map((p) => normalizePlatformName(p));
     const missingPlatforms = normalizedRequestedPlatforms.filter(
-      p => !connectedPlatforms.some(c => c.toLowerCase() === p.toLowerCase())
+      (p) => !connectedPlatforms.some((c) => c.toLowerCase() === p.toLowerCase()),
     );
     if (missingPlatforms.length > 0) {
       throw new BadRequestException(
-        `No connected social account found for platform(s): ${missingPlatforms.join(', ')}.`
+        `No connected social account found for platform(s): ${missingPlatforms.join(', ')}.`,
       );
     }
 
@@ -703,7 +704,7 @@ export class CalendarService {
       }
       if (connectedPlatforms.length > 2) {
         throw new BadRequestException(
-          'Free plan only allows up to 2 connected social channels. Please disconnect channels to meet the limit.'
+          'Free plan only allows up to 2 connected social channels. Please disconnect channels to meet the limit.',
         );
       }
     }
@@ -714,7 +715,7 @@ export class CalendarService {
     const { limit, currentCount } = await this.getMonthlyLimitAndUsage(userId, targetMonthDate);
     if (currentCount >= limit) {
       throw new BadRequestException(
-        `Monthly post limit reached. Your plan allows a maximum of ${limit} posts per month. You currently have ${currentCount} scheduled/published.`
+        `Monthly post limit reached. Your plan allows a maximum of ${limit} posts per month. You currently have ${currentCount} scheduled/published.`,
       );
     }
 
@@ -748,7 +749,9 @@ export class CalendarService {
           updatedAt: new Date(),
         })
         .where(eq(schema.calendarGenerationJobs.id, job.id));
-      throw new BadRequestException('AI Calendar generation is temporarily unavailable: webhook not configured.');
+      throw new BadRequestException(
+        'AI Calendar generation is temporarily unavailable: webhook not configured.',
+      );
     }
 
     try {
@@ -813,13 +816,14 @@ export class CalendarService {
           .update(schema.calendarGenerationJobs)
           .set({
             status: 'TIMED_OUT',
-            errorInfo: 'Generation timed out: no response received from n8n within the allowed window.',
+            errorInfo:
+              'Generation timed out: no response received from n8n within the allowed window.',
             updatedAt: new Date(),
           })
           .where(eq(schema.calendarGenerationJobs.id, jobId));
 
         this.logger.warn(
-          `[CalendarGeneration] jobId=${jobId} action=TIMED_OUT elapsed=${Math.round(elapsed / 1000)}s`
+          `[CalendarGeneration] jobId=${jobId} action=TIMED_OUT elapsed=${Math.round(elapsed / 1000)}s`,
         );
 
         return {
@@ -857,8 +861,13 @@ export class CalendarService {
     });
 
     const businessProfile = await this.customerProfileService.getCompanyProfile(customerId);
-    const targetMonth = latestJob?.month || `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
-    const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(customerId, new Date(`${targetMonth}-01`));
+    const targetMonth =
+      latestJob?.month ||
+      `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+    const { slug, limit, currentCount } = await this.getMonthlyLimitAndUsage(
+      customerId,
+      new Date(`${targetMonth}-01`),
+    );
     const connectedAccounts = await this.getConnectedAccountsForUser(customerId);
 
     return {
@@ -877,7 +886,10 @@ export class CalendarService {
     };
   }
 
-  async handleN8nResult(jobId: string, dto: { customerId: string; month: string; expectedPostCount?: number; posts: any[] }) {
+  async handleN8nResult(
+    jobId: string,
+    dto: { customerId: string; month: string; expectedPostCount?: number; posts: any[] },
+  ) {
     let statusBefore = 'UNKNOWN';
     try {
       return await this.db.transaction(async (tx) => {
@@ -901,7 +913,7 @@ export class CalendarService {
         // If job is already in status GENERATED, return the existing result.
         if (job.status === 'GENERATED') {
           this.logger.log(
-            `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=SKIPPED_ALREADY_COMPLETED inserted=0 statusAfter=GENERATED`
+            `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=SKIPPED_ALREADY_COMPLETED inserted=0 statusAfter=GENERATED`,
           );
           return {
             success: true,
@@ -913,7 +925,7 @@ export class CalendarService {
 
         if (job.status === 'FAILED' || job.status === 'TIMED_OUT') {
           this.logger.log(
-            `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=SKIPPED_TERMINAL_STATE inserted=0 statusAfter=${statusBefore}`
+            `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=SKIPPED_TERMINAL_STATE inserted=0 statusAfter=${statusBefore}`,
           );
           return {
             success: false,
@@ -929,7 +941,9 @@ export class CalendarService {
         }
 
         if (job.month !== dto.month) {
-          throw new BadRequestException(`Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`);
+          throw new BadRequestException(
+            `Month mismatch. Job requested ${job.month}, but payload has ${dto.month}.`,
+          );
         }
 
         const rawPosts = dto.posts || [];
@@ -949,15 +963,16 @@ export class CalendarService {
 
           const isVariation = Boolean(raw.isVariation || raw.isSuggestion || raw.parentId);
 
-          const logicalId = raw.generationItemId !== undefined && raw.generationItemId !== null
-            ? String(raw.generationItemId)
-            : raw.postIndex !== undefined && raw.postIndex !== null
-              ? String(raw.postIndex)
-              : raw.id !== undefined && raw.id !== null
-                ? String(raw.id)
-                : raw.itemIndex !== undefined && raw.itemIndex !== null
-                  ? String(raw.itemIndex)
-                  : null;
+          const logicalId =
+            raw.generationItemId !== undefined && raw.generationItemId !== null
+              ? String(raw.generationItemId)
+              : raw.postIndex !== undefined && raw.postIndex !== null
+                ? String(raw.postIndex)
+                : raw.id !== undefined && raw.id !== null
+                  ? String(raw.id)
+                  : raw.itemIndex !== undefined && raw.itemIndex !== null
+                    ? String(raw.itemIndex)
+                    : null;
 
           if (logicalId !== null) {
             const fullKey = `${jobId}:${logicalId}`;
@@ -985,13 +1000,13 @@ export class CalendarService {
 
         if (duplicateLogicalIds.length > 0) {
           throw new BadRequestException(
-            `Generation rejected: duplicate logical post detected (${duplicateLogicalIds.join(', ')}).`
+            `Generation rejected: duplicate logical post detected (${duplicateLogicalIds.join(', ')}).`,
           );
         }
 
         if (duplicatePayloads.length > 0) {
           throw new BadRequestException(
-            `Generation rejected: duplicate post payload detected (${duplicatePayloads.join(', ')}).`
+            `Generation rejected: duplicate post payload detected (${duplicatePayloads.join(', ')}).`,
           );
         }
 
@@ -1032,9 +1047,13 @@ export class CalendarService {
         const expectedCount = dto.expectedPostCount ?? job.expectedPostCount;
 
         // ── Validate expected vs received count ──────────────────────────────
-        if (expectedCount !== undefined && expectedCount !== null && primaryCount !== expectedCount) {
+        if (
+          expectedCount !== undefined &&
+          expectedCount !== null &&
+          primaryCount !== expectedCount
+        ) {
           throw new BadRequestException(
-            `Generation rejected: expected ${expectedCount} posts but received ${primaryCount}.`
+            `Generation rejected: expected ${expectedCount} posts but received ${primaryCount}.`,
           );
         }
 
@@ -1043,11 +1062,15 @@ export class CalendarService {
         // ── Enforce monthly quota inside transaction ─────────────────────────
         const [jobYStr, jobMStr] = job.month.split('-');
         const jobMonthDate = new Date(parseInt(jobYStr, 10), parseInt(jobMStr, 10) - 1, 1);
-        const { limit, currentCount } = await this.getMonthlyLimitAndUsageTx(tx, job.userId, jobMonthDate);
+        const { limit, currentCount } = await this.getMonthlyLimitAndUsageTx(
+          tx,
+          job.userId,
+          jobMonthDate,
+        );
 
         if (currentCount + newPostsCount > limit) {
           throw new BadRequestException(
-            `Saving these posts would exceed your monthly limit of ${limit} posts. Current posts: ${currentCount}, attempted to add: ${newPostsCount}.`
+            `Saving these posts would exceed your monthly limit of ${limit} posts. Current posts: ${currentCount}, attempted to add: ${newPostsCount}.`,
           );
         }
 
@@ -1094,7 +1117,10 @@ export class CalendarService {
 
             const dayStart = new Date(post.scheduledAt);
             dayStart.setHours(0, 0, 0, 0);
-            existingPostsByDay.set(dayStart.getTime(), (existingPostsByDay.get(dayStart.getTime()) || 0) + 1);
+            existingPostsByDay.set(
+              dayStart.getTime(),
+              (existingPostsByDay.get(dayStart.getTime()) || 0) + 1,
+            );
           }
         }
 
@@ -1109,7 +1135,7 @@ export class CalendarService {
         }
 
         const weeks: WeekData[] = [];
-        let currentWeekStart = new Date(firstWeekStart);
+        const currentWeekStart = new Date(firstWeekStart);
 
         while (currentWeekStart <= lastDay) {
           const start = new Date(currentWeekStart);
@@ -1144,7 +1170,7 @@ export class CalendarService {
 
         if (isFree && primaryItems.length > totalCapacity) {
           throw new BadRequestException(
-            `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${primaryItems.length}.`
+            `Saving these posts would exceed the weekly limit of ${weeklyLimit} posts. Available slots: ${totalCapacity}, attempted to add: ${primaryItems.length}.`,
           );
         }
 
@@ -1166,7 +1192,7 @@ export class CalendarService {
 
           if (!bestWeek) {
             throw new BadRequestException(
-              'Could not find a valid week to schedule all generated posts under the weekly limit constraint.'
+              'Could not find a valid week to schedule all generated posts under the weekly limit constraint.',
             );
           }
 
@@ -1179,7 +1205,10 @@ export class CalendarService {
           dayCounts.set(dayTime, count);
         }
 
-        const scheduledGroups: { group: { primary: any; suggestions: any[] }; scheduledDate: string }[] = [];
+        const scheduledGroups: {
+          group: { primary: any; suggestions: any[] };
+          scheduledDate: string;
+        }[] = [];
 
         for (const w of weeks) {
           const k = w.assigned.length;
@@ -1189,7 +1218,7 @@ export class CalendarService {
 
           for (let i = 0; i < k; i++) {
             const group = w.assigned[i];
-            const prefIndex = Math.floor((i + 0.5) * Dw / k);
+            const prefIndex = Math.floor(((i + 0.5) * Dw) / k);
 
             let bestDay: Date | null = null;
             let minDayCount = Infinity;
@@ -1237,8 +1266,10 @@ export class CalendarService {
 
         let eligibleAccounts = userAccounts;
         if (job.platforms && job.platforms.length > 0) {
-          const filtered = userAccounts.filter(acc =>
-            job.platforms.some(p => normalizePlatformName(p).toLowerCase() === acc.platform.toLowerCase())
+          const filtered = userAccounts.filter((acc) =>
+            job.platforms.some(
+              (p) => normalizePlatformName(p).toLowerCase() === acc.platform.toLowerCase(),
+            ),
           );
           if (filtered.length > 0) {
             eligibleAccounts = filtered;
@@ -1262,12 +1293,15 @@ export class CalendarService {
           }
 
           if (!scheduledDate || !scheduledDate.startsWith(job.month)) {
-            throw new BadRequestException(`Scheduled date ${scheduledDate} does not belong to the requested month ${job.month}.`);
+            throw new BadRequestException(
+              `Scheduled date ${scheduledDate} does not belong to the requested month ${job.month}.`,
+            );
           }
 
-          const timeStr = (post.scheduledTime && /^\d{2}:\d{2}$/.test(post.scheduledTime))
-            ? post.scheduledTime
-            : timeSlots[i % timeSlots.length];
+          const timeStr =
+            post.scheduledTime && /^\d{2}:\d{2}$/.test(post.scheduledTime)
+              ? post.scheduledTime
+              : timeSlots[i % timeSlots.length];
 
           const scheduledAt = new Date(`${scheduledDate}T${timeStr}:00`);
           const finalScheduledAt = isNaN(scheduledAt.getTime())
@@ -1317,15 +1351,19 @@ export class CalendarService {
           .where(eq(schema.calendarGenerationJobs.id, job.id));
 
         this.logger.log(
-          `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=PROCESSING expected=${expectedCount ?? '?'} received=${primaryCount} inserted=${savedPostIds.length} statusAfter=GENERATED`
+          `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=PROCESSING expected=${expectedCount ?? '?'} received=${primaryCount} inserted=${savedPostIds.length} statusAfter=GENERATED`,
         );
 
         // ── Trigger AI suggestion generation in background ───────────────────
         if (this.contentSuggestionsService && savedPostIds.length > 0) {
           for (const pId of savedPostIds) {
-            void this.contentSuggestionsService.triggerN8nGeneration(pId, job.userId).catch(err => {
-              this.logger.error(`[CalendarService] Background AI suggestion trigger error for postId=${pId}: ${err.message}`);
-            });
+            void this.contentSuggestionsService
+              .triggerN8nGeneration(pId, job.userId)
+              .catch((err) => {
+                this.logger.error(
+                  `[CalendarService] Background AI suggestion trigger error for postId=${pId}: ${err.message}`,
+                );
+              });
           }
         }
 
@@ -1348,7 +1386,7 @@ export class CalendarService {
         .catch(() => null);
 
       this.logger.error(
-        `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=FAILED error=${err.message}`
+        `[CalendarGeneration] jobId=${jobId} statusBefore=${statusBefore} action=FAILED error=${err.message}`,
       );
 
       throw err;
@@ -1374,9 +1412,10 @@ export class CalendarService {
         enterprise: 300,
         'brand-domination': 300,
       };
-      limit = typeof subscription.plan.monthlyPostLimit === 'number'
-        ? subscription.plan.monthlyPostLimit
-        : (slugMap[subscription.plan.slug || 'free'] || 8);
+      limit =
+        typeof subscription.plan.monthlyPostLimit === 'number'
+          ? subscription.plan.monthlyPostLimit
+          : slugMap[subscription.plan.slug || 'free'] || 8;
       slug = subscription.plan.slug || 'free';
     } else {
       limit = 8;
@@ -1384,7 +1423,15 @@ export class CalendarService {
     }
 
     const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     const posts = await tx.query.contentCalendar.findMany({
       where: (fields: any, { and, eq, gte, lte }: any) =>
@@ -1421,9 +1468,10 @@ export class CalendarService {
         enterprise: 300,
         'brand-domination': 300,
       };
-      limit = typeof subscription.plan.monthlyPostLimit === 'number'
-        ? subscription.plan.monthlyPostLimit
-        : (slugMap[subscription.plan.slug || 'free'] || 8);
+      limit =
+        typeof subscription.plan.monthlyPostLimit === 'number'
+          ? subscription.plan.monthlyPostLimit
+          : slugMap[subscription.plan.slug || 'free'] || 8;
       slug = subscription.plan.slug || 'free';
     } else {
       limit = 8;
@@ -1440,7 +1488,15 @@ export class CalendarService {
     }
 
     const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
-    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0, 23, 59, 59, 999);
+    const endOfMonth = new Date(
+      targetDate.getFullYear(),
+      targetDate.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    );
 
     const posts = await this.db.query.contentCalendar.findMany({
       where: (fields, { and, eq, gte, lte }) =>
@@ -1461,7 +1517,7 @@ export class CalendarService {
   async getUsageForUser(userId: string, monthStr?: string) {
     let targetDate = new Date();
     if (monthStr && /^\d{4}-\d{2}$/.test(monthStr)) {
-      const [year, month] = monthStr.split('-').map(v => parseInt(v, 10));
+      const [year, month] = monthStr.split('-').map((v) => parseInt(v, 10));
       targetDate = new Date(year, month - 1, 1);
     }
 

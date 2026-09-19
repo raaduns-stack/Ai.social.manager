@@ -10,7 +10,7 @@ import * as schema from '../database/schema';
 
 describe('ContentSuggestionsController (e2e) - Approve Variation', () => {
   let app: INestApplication;
-  
+
   // In-memory test stores
   let contentSuggestionsStore: any[] = [];
   let scheduledPostsStore: any[] = [];
@@ -23,7 +23,8 @@ describe('ContentSuggestionsController (e2e) - Approve Variation', () => {
     postId: '8a290b4f-2b00-4182-a6af-814bf001ed5d',
     title: 'Summer is in Full Swing!',
     type: 'caption',
-    content: 'The summer season has officially begun! Follow us for updates on our summer projects, events, and more! #summervibes #TEEshub #SummerVibesOnly',
+    content:
+      'The summer season has officially begun! Follow us for updates on our summer projects, events, and more! #summervibes #TEEshub #SummerVibesOnly',
     hashtags: [],
     approvalStatus: 'PENDING_APPROVAL',
     revisionNotes: null,
@@ -85,7 +86,9 @@ describe('ContentSuggestionsController (e2e) - Approve Variation', () => {
         scheduledPosts: {
           findFirst: jest.fn().mockImplementation((config) => {
             // Find matched scheduled post by variationId
-            const match = scheduledPostsStore.find(x => x.variationId === mockVariationFixture.id);
+            const match = scheduledPostsStore.find(
+              (x) => x.variationId === mockVariationFixture.id,
+            );
             return Promise.resolve(match || null);
           }),
         },
@@ -96,7 +99,9 @@ describe('ContentSuggestionsController (e2e) - Approve Variation', () => {
             return {
               returning: jest.fn().mockImplementation(() => {
                 // If it is a duplicate insert on variationId, reject it
-                const duplicate = scheduledPostsStore.some(x => x.variationId === values.variationId);
+                const duplicate = scheduledPostsStore.some(
+                  (x) => x.variationId === values.variationId,
+                );
                 if (duplicate) {
                   const error = new Error('Unique constraint violation');
                   (error as any).code = '23505';
@@ -218,7 +223,9 @@ describe('ContentSuggestionsController (e2e) - Approve Variation', () => {
     (app.get(DATABASE_CONNECTION).insert as jest.Mock).mockImplementationOnce(() => ({
       values: () => ({
         returning: () => {
-          const err: any = new Error('duplicate key value violates unique constraint "scheduled_posts_calendar_post_id_unique"');
+          const err: any = new Error(
+            'duplicate key value violates unique constraint "scheduled_posts_calendar_post_id_unique"',
+          );
           err.code = '23505';
           return Promise.reject(err);
         },

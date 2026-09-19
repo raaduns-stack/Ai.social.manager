@@ -84,10 +84,7 @@ export class SupportService {
 
   async getTicketDetailsForUser(userId: string, ticketId: string) {
     const ticket = await this.db.query.supportTickets.findFirst({
-      where: and(
-        eq(schema.supportTickets.id, ticketId),
-        eq(schema.supportTickets.userId, userId),
-      ),
+      where: and(eq(schema.supportTickets.id, ticketId), eq(schema.supportTickets.userId, userId)),
       with: {
         messages: {
           orderBy: [schema.ticketMessages.createdAt],
@@ -109,10 +106,7 @@ export class SupportService {
   async addMessageAsUser(userId: string, ticketId: string, dto: CreateMessageDto) {
     // Verify ownership and that ticket is not closed/resolved (or let them reply anyway, standard support allows replying)
     const ticket = await this.db.query.supportTickets.findFirst({
-      where: and(
-        eq(schema.supportTickets.id, ticketId),
-        eq(schema.supportTickets.userId, userId),
-      ),
+      where: and(eq(schema.supportTickets.id, ticketId), eq(schema.supportTickets.userId, userId)),
     });
 
     if (!ticket) {
@@ -155,9 +149,7 @@ export class SupportService {
   // ---------------------------------------------------------------------------
 
   async getAllTickets(statusFilter?: 'open' | 'in_progress' | 'resolved' | 'closed') {
-    const whereClause = statusFilter
-      ? eq(schema.supportTickets.status, statusFilter)
-      : undefined;
+    const whereClause = statusFilter ? eq(schema.supportTickets.status, statusFilter) : undefined;
 
     return await this.db.query.supportTickets.findMany({
       where: whereClause,
@@ -212,7 +204,11 @@ export class SupportService {
     return ticket;
   }
 
-  async assignTicket(admin: { userId: string; role: string }, ticketId: string, assigneeId: string) {
+  async assignTicket(
+    admin: { userId: string; role: string },
+    ticketId: string,
+    assigneeId: string,
+  ) {
     const currentTicket = await this.db.query.supportTickets.findFirst({
       where: eq(schema.supportTickets.id, ticketId),
     });
@@ -272,7 +268,10 @@ export class SupportService {
     return ticket;
   }
 
-  async updateTicketStatus(ticketId: string, status: 'open' | 'in_progress' | 'resolved' | 'closed') {
+  async updateTicketStatus(
+    ticketId: string,
+    status: 'open' | 'in_progress' | 'resolved' | 'closed',
+  ) {
     const updateData: any = {
       status,
       updatedAt: new Date(),
@@ -323,10 +322,10 @@ export class SupportService {
     return await this.db.transaction(async (tx) => {
       // Update updatedAt timestamp and ensure status isn't closed if replying
       const newStatus = ticket.status === 'open' ? 'in_progress' : ticket.status;
-      
+
       await tx
         .update(schema.supportTickets)
-        .set({ 
+        .set({
           status: newStatus,
           updatedAt: new Date(),
         })

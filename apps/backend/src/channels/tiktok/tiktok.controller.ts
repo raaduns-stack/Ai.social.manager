@@ -11,12 +11,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiQuery,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { TikTokService } from './tiktok.service';
 import { TikTokCallbackQueryDto } from './dto/tiktok-callback.query.dto';
@@ -88,21 +83,14 @@ export class TikTokController {
   @ApiQuery({ name: 'scopes', required: false })
   @ApiQuery({ name: 'error', required: false })
   @ApiQuery({ name: 'error_description', required: false })
-  async callback(
-    @Query() query: TikTokCallbackQueryDto,
-    @Res() res: Response,
-  ): Promise<void> {
+  async callback(@Query() query: TikTokCallbackQueryDto, @Res() res: Response): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://raasocial.io';
     const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
 
     // Handle user-denied / TikTok-level errors
     if (query.error) {
-      this.logger.warn(
-        `TikTok callback error: ${query.error} — ${query.error_description}`,
-      );
-      res.redirect(
-        `${errorBase}&reason=${encodeURIComponent(query.error)}`,
-      );
+      this.logger.warn(`TikTok callback error: ${query.error} — ${query.error_description}`);
+      res.redirect(`${errorBase}&reason=${encodeURIComponent(query.error)}`);
       return;
     }
 
@@ -139,10 +127,7 @@ export class TikTokController {
       'The endpoint always returns 200 OK to acknowledge receipt. ' +
       'Signature validation uses TIKTOK_CLIENT_SECRET.',
   })
-  webhook(
-    @Headers() headers: Record<string, string>,
-    @Req() req: Request,
-  ): { message: string } {
+  webhook(@Headers() headers: Record<string, string>, @Req() req: Request): { message: string } {
     // Use the raw body buffer if available (set by a rawBody middleware),
     // otherwise fall back to the JSON-stringified parsed body.
     // For correct HMAC validation, configure express rawBody middleware in main.ts.

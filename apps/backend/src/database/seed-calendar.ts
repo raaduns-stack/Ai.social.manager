@@ -34,59 +34,64 @@ async function main() {
       {
         user_id: testUser.id,
         title: '5 Steps to Automate Your Workflow',
-        caption: "Efficiency isn't just about doing more; it's about doing what matters. Check out these 5 automation hacks that saved our team 20+ hours a week.",
+        caption:
+          "Efficiency isn't just about doing more; it's about doing what matters. Check out these 5 automation hacks that saved our team 20+ hours a week.",
         platform: 'Instagram',
         status: 'SCHEDULED',
         approval_status: 'APPROVED',
         scheduled_at: new Date('2026-08-15T10:00:00Z'),
         hashtags: JSON.stringify(['#productivity', '#SaaS', '#WorkflowAutomation']),
-        ai_generated: true
+        ai_generated: true,
       },
       {
         user_id: testUser.id,
         title: 'The Future of AI in Content Creation',
-        caption: "AI isn't replacing creators; it's empowering them. 🚀 We analyzed the latest engagement data—here's what you need to know.",
+        caption:
+          "AI isn't replacing creators; it's empowering them. 🚀 We analyzed the latest engagement data—here's what you need to know.",
         platform: 'X / Twitter',
         status: 'PUBLISHED',
         approval_status: 'APPROVED',
         published_at: new Date('2026-08-08T14:30:00Z'),
         hashtags: JSON.stringify(['#AI', '#ContentStrategy', '#SocialMediaTrends']),
-        ai_generated: true
+        ai_generated: true,
       },
       {
         user_id: testUser.id,
         title: 'Behind the Scenes at Product Launch',
-        caption: "Behind every 'perfect' post is a whole lot of chaos. ☕️ Tag someone who needs to see the unedited version of building a startup!",
+        caption:
+          "Behind every 'perfect' post is a whole lot of chaos. ☕️ Tag someone who needs to see the unedited version of building a startup!",
         platform: 'TikTok',
         status: 'SCHEDULED',
         approval_status: 'PENDING',
         scheduled_at: new Date('2026-08-20T16:00:00Z'),
         hashtags: JSON.stringify(['#BTS', '#StartupLife', '#CreativeProcess']),
-        ai_generated: false
+        ai_generated: false,
       },
       {
         user_id: testUser.id,
         title: "Why 'Quantity' is No Longer King in B2B",
-        caption: "Stop chasing the algorithm and start chasing your audience's needs. 🎯 In 2026, one 'perfect' post is worth 100 'good enough' ones.",
+        caption:
+          "Stop chasing the algorithm and start chasing your audience's needs. 🎯 In 2026, one 'perfect' post is worth 100 'good enough' ones.",
         platform: 'LinkedIn',
         status: 'SCHEDULED',
         approval_status: 'APPROVED',
         scheduled_at: new Date('2026-08-22T09:15:00Z'),
         hashtags: JSON.stringify(['#LinkedInTips', '#ThoughtLeadership', '#MarketingStrategy']),
-        ai_generated: true
+        ai_generated: true,
       },
       {
         user_id: testUser.id,
         title: 'Transforming Social Analytics into Real ROI',
-        caption: 'Turn raw data into real ROI. 📊 Our latest dashboard update gives you real-time insights with zero noise.',
+        caption:
+          'Turn raw data into real ROI. 📊 Our latest dashboard update gives you real-time insights with zero noise.',
         platform: 'Instagram',
         status: 'SCHEDULED',
         approval_status: 'REVISION_REQUIRED',
         admin_notes: 'Please refine the CTA link wording to match the latest summer campaign.',
         scheduled_at: new Date('2026-08-18T11:00:00Z'),
         hashtags: JSON.stringify(['#SocialMediaTools', '#Analytics', '#Growth']),
-        ai_generated: true
-      }
+        ai_generated: true,
+      },
     ];
 
     for (const post of posts) {

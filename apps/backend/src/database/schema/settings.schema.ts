@@ -1,4 +1,14 @@
-import { pgTable, uuid, varchar, text, integer, boolean, timestamp, jsonb, unique } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  integer,
+  boolean,
+  timestamp,
+  jsonb,
+  unique,
+} from 'drizzle-orm/pg-core';
 import { users } from './users.schema';
 
 // 1. company_profile (singleton — only one row will ever exist)
@@ -49,20 +59,24 @@ export const notificationTypeSettings = pgTable('notification_type_settings', {
 });
 
 // 4. notification_preferences (per customer user — one row per user per type)
-export const notificationPreferences = pgTable('notification_preferences', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  notificationType: varchar('notification_type', { length: 60 }).notNull(),
-  emailEnabled: boolean('email_enabled').notNull().default(true),
-  inAppEnabled: boolean('in_app_enabled').notNull().default(true),
-  whatsappEnabled: boolean('whatsapp_enabled').notNull().default(false),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-  updatedAt: timestamp('updated_at').notNull().defaultNow(),
-}, (t) => ({
-  unq: unique('notification_pref_user_type_idx').on(t.userId, t.notificationType),
-}));
+export const notificationPreferences = pgTable(
+  'notification_preferences',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    notificationType: varchar('notification_type', { length: 60 }).notNull(),
+    emailEnabled: boolean('email_enabled').notNull().default(true),
+    inAppEnabled: boolean('in_app_enabled').notNull().default(true),
+    whatsappEnabled: boolean('whatsapp_enabled').notNull().default(false),
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (t) => ({
+    unq: unique('notification_pref_user_type_idx').on(t.userId, t.notificationType),
+  }),
+);
 
 // 5. email_config (singleton)
 export const emailConfig = pgTable('email_config', {

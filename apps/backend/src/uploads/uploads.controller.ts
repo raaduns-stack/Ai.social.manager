@@ -28,18 +28,15 @@ import { join } from 'path';
 
 // Groups all endpoints under the "uploads" section in Swagger
 @ApiTags('uploads')
-
 // Indicates that these endpoints require Bearer Token authentication
 @ApiBearerAuth()
-
 // Protects all routes in this controller using JWT authentication
 @UseGuards(JwtAuthGuard)
-
 // Base route: /uploads
 @Controller('uploads')
 export class UploadsController {
   // Inject the UploadsService for handling business logic
-  constructor(private readonly uploadsService: UploadsService) { }
+  constructor(private readonly uploadsService: UploadsService) {}
 
   // =========================
   // Upload File
@@ -152,10 +149,7 @@ export class UploadsController {
   // =========================
   @Delete(':id')
   @ApiOperation({ summary: 'Delete an upload and remove it from local storage' })
-  async deleteUpload(
-    @CurrentUser() user: { userId: string },
-    @Param('id') id: string,
-  ) {
+  async deleteUpload(@CurrentUser() user: { userId: string }, @Param('id') id: string) {
     return this.uploadsService.deleteUpload(id, user.userId);
   }
 }

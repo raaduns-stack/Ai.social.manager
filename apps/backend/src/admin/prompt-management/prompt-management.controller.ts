@@ -22,9 +22,7 @@ import { RequirePermission } from '../../auth/decorators/require-permission.deco
 @Controller('admin/prompt-management')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PromptManagementController {
-  constructor(
-    private readonly promptManagementService: PromptManagementService,
-  ) {}
+  constructor(private readonly promptManagementService: PromptManagementService) {}
 
   // ==========================================
   // Get all AI Prompt Templates
@@ -55,10 +53,7 @@ export class PromptManagementController {
   @Get('customer-feedback')
   @RequirePermission('content_creation', 'view')
   @ApiOperation({ summary: 'Get feedback analysis grouped by customer' })
-  getCustomerFeedbackAnalytics(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-  ) {
+  getCustomerFeedbackAnalytics(@Query('page') page?: string, @Query('limit') limit?: string) {
     const pageNum = page ? parseInt(page, 10) : 1;
     const limitNum = limit ? parseInt(limit, 10) : 20;
     return this.promptManagementService.getCustomerFeedbackAnalytics(pageNum, limitNum);
@@ -71,14 +66,8 @@ export class PromptManagementController {
   @Patch(':id')
   @RequirePermission('content_creation', 'edit')
   @ApiOperation({ summary: 'Update a prompt template' })
-  updatePrompt(
-    @Param('id') id: string,
-    @Body() updatePromptDto: UpdatePromptDto,
-  ) {
-    return this.promptManagementService.updatePrompt(
-      id,
-      updatePromptDto,
-    );
+  updatePrompt(@Param('id') id: string, @Body() updatePromptDto: UpdatePromptDto) {
+    return this.promptManagementService.updatePrompt(id, updatePromptDto);
   }
 
   // ==================================================
@@ -110,9 +99,7 @@ export class PromptManagementController {
   @Post()
   @RequirePermission('content_creation', 'create')
   @ApiOperation({ summary: 'Create a new prompt template' })
-  createPrompt(
-    @Body() createPromptDto: CreatePromptDto,
-  ) {
+  createPrompt(@Body() createPromptDto: CreatePromptDto) {
     return this.promptManagementService.createPrompt(createPromptDto);
   }
 }

@@ -1,4 +1,9 @@
-import { NotificationType, NotificationChannel, DeliveryStatus, NotificationPriority } from '../../common/enums';
+import {
+  NotificationType,
+  NotificationChannel,
+  DeliveryStatus,
+  NotificationPriority,
+} from '../../common/enums';
 
 export interface HistoryQueryFilters {
   page?: number;
@@ -18,17 +23,13 @@ export interface HistoryQueryFilters {
 }
 
 export interface HistoryRepository {
-  findNotifications: (
-    filters: HistoryQueryFilters,
-    skip: number,
-    limit: number
-  ) => Promise<any[]>;
+  findNotifications: (filters: HistoryQueryFilters, skip: number, limit: number) => Promise<any[]>;
   countNotifications: (filters: HistoryQueryFilters) => Promise<number>;
 }
 
 export async function getNotificationHistory(
   filters: HistoryQueryFilters = {},
-  repository: HistoryRepository
+  repository: HistoryRepository,
 ) {
   const page = Math.max(1, filters.page || 1);
   const limit = Math.max(1, Math.min(100, filters.limit || 20));

@@ -1,7 +1,5 @@
 // revenue-breakdown.ts//
 
-
-
 export type BreakdownDimension = 'plan' | 'payment_method' | 'billing_period' | 'revenue_source';
 
 export interface RevenueBreakdownQuery {
@@ -41,12 +39,13 @@ export class RevenueBreakdownService {
       if (query.endDate) matchFilter.createdAt.$lte = query.endDate;
     }
 
-    const [bySubscriptionPlan, byPaymentMethod, byBillingPeriod, byRevenueSource] = await Promise.all([
-      this.aggregateByDimension(matchFilter, '$planId', '$planName'),
-      this.aggregateByDimension(matchFilter, '$paymentMethod', '$paymentMethod'),
-      this.aggregateByDimension(matchFilter, '$billingPeriod', '$billingPeriod'),
-      this.aggregateByDimension(matchFilter, '$revenueSource', '$revenueSource'),
-    ]);
+    const [bySubscriptionPlan, byPaymentMethod, byBillingPeriod, byRevenueSource] =
+      await Promise.all([
+        this.aggregateByDimension(matchFilter, '$planId', '$planName'),
+        this.aggregateByDimension(matchFilter, '$paymentMethod', '$paymentMethod'),
+        this.aggregateByDimension(matchFilter, '$billingPeriod', '$billingPeriod'),
+        this.aggregateByDimension(matchFilter, '$revenueSource', '$revenueSource'),
+      ]);
 
     const totalRevenue = bySubscriptionPlan.reduce((acc, item) => acc + item.totalRevenue, 0);
 
@@ -64,7 +63,7 @@ export class RevenueBreakdownService {
   private async aggregateByDimension(
     matchFilter: Record<string, any>,
     groupField: string,
-    labelField: string
+    labelField: string,
   ): Promise<BreakdownItem[]> {
     const pipeline = [
       { $match: matchFilter },
@@ -87,7 +86,8 @@ export class RevenueBreakdownService {
       label: item.label || item._id || 'Unspecified',
       totalRevenue: item.totalRevenue,
       transactionCount: item.transactionCount,
-      percentage: overallTotal > 0 ? Number(((item.totalRevenue / overallTotal) * 100).toFixed(2)) : 0,
+      percentage:
+        overallTotal > 0 ? Number(((item.totalRevenue / overallTotal) * 100).toFixed(2)) : 0,
     }));
   }
 }

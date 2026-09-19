@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  BadRequestException,
-  NotFoundException,
-  Logger,
-  Inject,
-} from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { eq, and } from 'drizzle-orm';
@@ -37,9 +31,7 @@ export class TumblrService {
     private readonly socialAccountsService: SocialAccountsService,
   ) {
     const consumerKey =
-      this.configService.get<string>('tumblr.consumerKey') ||
-      process.env.TUMBLR_CONSUMER_KEY ||
-      '';
+      this.configService.get<string>('tumblr.consumerKey') || process.env.TUMBLR_CONSUMER_KEY || '';
     const consumerSecret =
       this.configService.get<string>('tumblr.consumerSecret') ||
       process.env.TUMBLR_CONSUMER_SECRET ||
@@ -52,10 +44,7 @@ export class TumblrService {
       },
       signature_method: 'HMAC-SHA1',
       hash_function(base_string, key) {
-        return crypto
-          .createHmac('sha1', key)
-          .update(base_string)
-          .digest('base64');
+        return crypto.createHmac('sha1', key).update(base_string).digest('base64');
       },
     });
   }
@@ -102,9 +91,7 @@ export class TumblrService {
       process.env.BACKEND_URL ||
       'http://localhost:4000';
     const apiPrefix =
-      this.configService.get<string>('apiPrefix') ||
-      process.env.API_PREFIX ||
-      'api';
+      this.configService.get<string>('apiPrefix') || process.env.API_PREFIX || 'api';
 
     const callbackUrl =
       this.configService.get<string>('tumblr.callbackUrl') ||
@@ -132,12 +119,8 @@ export class TumblrService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      this.logger.error(
-        `Failed to obtain Tumblr request token (${response.status}): ${errorText}`,
-      );
-      throw new BadRequestException(
-        `Failed to obtain request token from Tumblr: ${errorText}`,
-      );
+      this.logger.error(`Failed to obtain Tumblr request token (${response.status}): ${errorText}`);
+      throw new BadRequestException(`Failed to obtain request token from Tumblr: ${errorText}`);
     }
 
     const responseData = await response.text();
@@ -147,9 +130,7 @@ export class TumblrService {
     const oauth_token_secret = params.get('oauth_token_secret');
 
     if (!oauth_token || !oauth_token_secret) {
-      throw new BadRequestException(
-        'Tumblr did not return oauth_token or oauth_token_secret.',
-      );
+      throw new BadRequestException('Tumblr did not return oauth_token or oauth_token_secret.');
     }
 
     return { oauth_token, oauth_token_secret };
@@ -192,9 +173,7 @@ export class TumblrService {
       this.logger.error(
         `Failed to exchange access token with Tumblr (${response.status}): ${errorText}`,
       );
-      throw new BadRequestException(
-        `Failed to exchange access token with Tumblr: ${errorText}`,
-      );
+      throw new BadRequestException(`Failed to exchange access token with Tumblr: ${errorText}`);
     }
 
     const responseData = await response.text();
@@ -215,7 +194,10 @@ export class TumblrService {
   // ---------------------------------------------------------------------------
   // Profile & Blogs
   // ---------------------------------------------------------------------------
-  async getUserProfileAndBlogs(token: string, tokenSecret: string): Promise<{
+  async getUserProfileAndBlogs(
+    token: string,
+    tokenSecret: string,
+  ): Promise<{
     user: any;
     blogs: TumblrBlogInfo[];
     primaryBlogName: string;
@@ -232,9 +214,7 @@ export class TumblrService {
       secret: tokenSecret,
     };
 
-    const headers = this.oauth.toHeader(
-      this.oauth.authorize(requestData, tokenOptions),
-    );
+    const headers = this.oauth.toHeader(this.oauth.authorize(requestData, tokenOptions));
 
     const response = await fetch(userInfoUrl, {
       method: 'GET',
@@ -243,12 +223,8 @@ export class TumblrService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      this.logger.error(
-        `Failed to fetch Tumblr user info (${response.status}): ${errorText}`,
-      );
-      throw new BadRequestException(
-        `Failed to retrieve user profile from Tumblr: ${errorText}`,
-      );
+      this.logger.error(`Failed to fetch Tumblr user info (${response.status}): ${errorText}`);
+      throw new BadRequestException(`Failed to retrieve user profile from Tumblr: ${errorText}`);
     }
 
     const json: any = await response.json();
@@ -312,9 +288,7 @@ export class TumblrService {
       throw new NotFoundException('No connected Tumblr account found.');
     }
 
-    await this.db
-      .delete(schema.social_accounts)
-      .where(eq(schema.social_accounts.id, account.id));
+    await this.db.delete(schema.social_accounts).where(eq(schema.social_accounts.id, account.id));
 
     return { success: true, message: 'Tumblr connection removed successfully.' };
   }
@@ -358,10 +332,7 @@ export class TumblrService {
       throw new NotFoundException('No connected Tumblr credentials found.');
     }
 
-    const { blogs } = await this.getUserProfileAndBlogs(
-      account.accessToken,
-      account.tokenSecret,
-    );
+    const { blogs } = await this.getUserProfileAndBlogs(account.accessToken, account.tokenSecret);
 
     return blogs;
   }
@@ -393,9 +364,7 @@ export class TumblrService {
     const targetBlog = params.blogName || account.accountHandle;
 
     if (!targetBlog) {
-      throw new BadRequestException(
-        'No target Tumblr blog specified or configured for this user.',
-      );
+      throw new BadRequestException('No target Tumblr blog specified or configured for this user.');
     }
 
     const postUrl = `https://api.tumblr.com/v2/blog/${targetBlog}/post`;

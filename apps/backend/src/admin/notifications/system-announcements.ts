@@ -35,7 +35,7 @@ export interface NotificationProviders {
 
 export async function sendSystemAnnouncement(
   request: AnnouncementRequest,
-  providers: NotificationProviders
+  providers: NotificationProviders,
 ) {
   const { title, message, targetUserIds, channel, actionUrl, senderFirstName, metadata } = request;
   const users = await providers.getCustomers(targetUserIds);
@@ -51,7 +51,7 @@ export async function sendSystemAnnouncement(
         await providers.sendEmail(
           user.email,
           title,
-          `<p>Dear ${user.name},</p><p>${message}</p>${senderFirstName ? `<p>Best regards,<br/>${senderFirstName}</p>` : ''}`
+          `<p>Dear ${user.name},</p><p>${message}</p>${senderFirstName ? `<p>Best regards,<br/>${senderFirstName}</p>` : ''}`,
         );
       }
 
@@ -86,4 +86,4 @@ export async function sendSystemAnnouncement(
   }
 
   return { totalTargeted: users.length, records: notificationRecords };
-}
+}

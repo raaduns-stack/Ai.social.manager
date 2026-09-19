@@ -17,7 +17,7 @@ export interface ContentApprovalProviders {
 
 export async function sendContentApprovalNotification(
   request: ContentApprovalRequest,
-  providers: ContentApprovalProviders
+  providers: ContentApprovalProviders,
 ) {
   const { customer, contentId, contentTitle, reviewUrl } = request;
   const title = 'New Content Ready for Review';
@@ -31,7 +31,7 @@ export async function sendContentApprovalNotification(
       await providers.sendEmail(
         customer.email,
         title,
-        `<p>Hi ${customer.name},</p><p>${message}</p><p><a href="${reviewUrl}">Click here to review and approve</a></p>`
+        `<p>Hi ${customer.name},</p><p>${message}</p><p><a href="${reviewUrl}">Click here to review and approve</a></p>`,
       );
     }
 
@@ -50,17 +50,17 @@ export async function sendContentApprovalNotification(
     error = err?.message || 'Content approval notification failed';
   }
 
-    const record = {
-      userId: customer.id,
-      type: 'CONTENT_APPROVAL',
-      title: contentTitle,
-      message,
-      channel: 'IN_APP',
-      status: 'SENT',
-      error,
-      metadata: { contentId, reviewUrl },
-      createdAt: new Date(),
-    };
+  const record = {
+    userId: customer.id,
+    type: 'CONTENT_APPROVAL',
+    title: contentTitle,
+    message,
+    channel: 'IN_APP',
+    status: 'SENT',
+    error,
+    metadata: { contentId, reviewUrl },
+    createdAt: new Date(),
+  };
 
   if (providers.saveNotificationLog) {
     await providers.saveNotificationLog(record);

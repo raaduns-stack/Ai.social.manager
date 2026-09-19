@@ -11,9 +11,7 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
 
 @Injectable()
 export class DesignReportsService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   // ---------------------------------------------------------------------------
   // Date Range Helper
@@ -100,14 +98,18 @@ export class DesignReportsService {
     let pendingReviewsCount = 0;
     let draftCount = 0;
 
-    const categoryMap: Record<string, { total: number; approved: number; pending: number; revisions: number }> = {};
+    const categoryMap: Record<
+      string,
+      { total: number; approved: number; pending: number; revisions: number }
+    > = {};
 
     for (const sub of allSubmissions) {
       const st = sub.status;
       if (st === 'completed') completedCount++;
       if (st === 'approved') approvedCount++;
       if (st === 'revision_required') revisionCount++;
-      if (['submitted', 'received', 'under_review', 'resubmitted'].includes(st)) pendingReviewsCount++;
+      if (['submitted', 'received', 'under_review', 'resubmitted'].includes(st))
+        pendingReviewsCount++;
       if (st === 'draft') draftCount++;
 
       const cat = sub.category || 'General Graphics';
@@ -116,7 +118,8 @@ export class DesignReportsService {
       }
       categoryMap[cat].total++;
       if (['approved', 'completed'].includes(st)) categoryMap[cat].approved++;
-      else if (['submitted', 'received', 'under_review', 'resubmitted'].includes(st)) categoryMap[cat].pending++;
+      else if (['submitted', 'received', 'under_review', 'resubmitted'].includes(st))
+        categoryMap[cat].pending++;
       else if (st === 'revision_required') categoryMap[cat].revisions++;
     }
 
@@ -124,21 +127,28 @@ export class DesignReportsService {
     const rejectedActivities = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(schema.submissionActivities)
-      .where(sql`lower(${schema.submissionActivities.type}) like '%reject%' or lower(${schema.submissionActivities.title}) like '%reject%'`);
+      .where(
+        sql`lower(${schema.submissionActivities.type}) like '%reject%' or lower(${schema.submissionActivities.title}) like '%reject%'`,
+      );
 
     const rejectionCount = Number(rejectedActivities[0]?.count || 0);
 
-    const categoriesList = Object.entries(categoryMap).map(([category, stats]) => ({
-      category,
-      total: stats.total,
-      approved: stats.approved,
-      pending: stats.pending,
-      revisions: stats.revisions,
-      percentage: totalSubmissions > 0 ? Math.round((stats.total / totalSubmissions) * 100) : 0,
-    })).sort((a, b) => b.total - a.total);
+    const categoriesList = Object.entries(categoryMap)
+      .map(([category, stats]) => ({
+        category,
+        total: stats.total,
+        approved: stats.approved,
+        pending: stats.pending,
+        revisions: stats.revisions,
+        percentage: totalSubmissions > 0 ? Math.round((stats.total / totalSubmissions) * 100) : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
 
     // Timeline trend (grouped by date)
-    const trendMap: Record<string, { date: string; submitted: number; approved: number; revisions: number }> = {};
+    const trendMap: Record<
+      string,
+      { date: string; submitted: number; approved: number; revisions: number }
+    > = {};
     for (const sub of allSubmissions) {
       const dateKey = sub.createdAt ? sub.createdAt.toISOString().slice(0, 10) : 'unknown';
       if (!trendMap[dateKey]) {
@@ -156,8 +166,10 @@ export class DesignReportsService {
     const timeline = Object.values(trendMap).sort((a, b) => a.date.localeCompare(b.date));
 
     const totalApprovedOrCompleted = approvedCount + completedCount;
-    const approvalRate = totalSubmissions > 0 ? Math.round((totalApprovedOrCompleted / totalSubmissions) * 100) : 0;
-    const revisionRate = totalSubmissions > 0 ? Math.round((revisionCount / totalSubmissions) * 100) : 0;
+    const approvalRate =
+      totalSubmissions > 0 ? Math.round((totalApprovedOrCompleted / totalSubmissions) * 100) : 0;
+    const revisionRate =
+      totalSubmissions > 0 ? Math.round((revisionCount / totalSubmissions) * 100) : 0;
 
     return {
       summary: {
@@ -184,7 +196,7 @@ export class DesignReportsService {
     const { start, end } = this.getDateBounds(query);
 
     // Get settings for earnings computation
-    let settings = await this.db.query.designerPaymentSettings.findFirst();
+    const settings = await this.db.query.designerPaymentSettings.findFirst();
     const perImageAmount = settings?.perImageAmount || 500000; // ₦5,000
     const perImageToCodeAmount = settings?.perImageToCodeAmount || 1000000; // ₦10,000
 
@@ -209,7 +221,10 @@ export class DesignReportsService {
       .orderBy(schema.users.fullName);
 
     if (designers.length === 0) {
-      return { designers: [], totals: { totalDesigners: 0, totalAssigned: 0, totalCompleted: 0, totalEarned: 0 } };
+      return {
+        designers: [],
+        totals: { totalDesigners: 0, totalAssigned: 0, totalCompleted: 0, totalEarned: 0 },
+      };
     }
 
     const designerIds = designers.map((d) => d.id);
@@ -285,7 +300,8 @@ export class DesignReportsService {
       const currentWorkload = activeTasks + pendingCount + revisionCount;
 
       // Earnings
-      const totalEarned = (approvedImagesCount * perImageAmount) + (acceptedI2cCount * perImageToCodeAmount);
+      const totalEarned =
+        approvedImagesCount * perImageAmount + acceptedI2cCount * perImageToCodeAmount;
       const paidEarnings = dPayments
         .filter((p) => ['paid', 'successful'].includes(p.status))
         .reduce((sum, p) => sum + p.amount, 0);
@@ -297,8 +313,10 @@ export class DesignReportsService {
       const outstandingBalance = Math.max(0, totalEarned - paidEarnings);
 
       const totalApprovedWork = approvedCount + completedCount;
-      const approvalRate = submissionsCount > 0 ? Math.round((totalApprovedWork / submissionsCount) * 100) : 0;
-      const completionRate = assignmentsCount > 0 ? Math.round((totalApprovedWork / assignmentsCount) * 100) : 0;
+      const approvalRate =
+        submissionsCount > 0 ? Math.round((totalApprovedWork / submissionsCount) * 100) : 0;
+      const completionRate =
+        assignmentsCount > 0 ? Math.round((totalApprovedWork / assignmentsCount) * 100) : 0;
 
       return {
         designerId: designer.id,
@@ -380,7 +398,8 @@ export class DesignReportsService {
 
     // 3. Fetch submission activities conducted by staff
     const activityConditions = [];
-    if (staffIds.length > 0) activityConditions.push(inArray(schema.submissionActivities.userId, staffIds));
+    if (staffIds.length > 0)
+      activityConditions.push(inArray(schema.submissionActivities.userId, staffIds));
     if (start) activityConditions.push(gte(schema.submissionActivities.createdAt, start));
     if (end) activityConditions.push(lte(schema.submissionActivities.createdAt, end));
 
@@ -402,7 +421,8 @@ export class DesignReportsService {
         const title = (a.title || '').toLowerCase();
         if (t.includes('approv') || title.includes('approv')) approvalsCount++;
         else if (t.includes('revis') || title.includes('revis')) revisionsRequested++;
-        else if (t.includes('review') || title.includes('review') || t.includes('submit')) reviewsCount++;
+        else if (t.includes('review') || title.includes('review') || t.includes('submit'))
+          reviewsCount++;
       }
 
       const totalActions = sTasks.length + sActivities.length;
@@ -446,7 +466,7 @@ export class DesignReportsService {
     const { start, end } = this.getDateBounds(query);
 
     // Fetch payment settings
-    let settings = await this.db.query.designerPaymentSettings.findFirst();
+    const settings = await this.db.query.designerPaymentSettings.findFirst();
     const perImageAmount = settings?.perImageAmount || 500000;
     const perImageToCodeAmount = settings?.perImageToCodeAmount || 1000000;
 
@@ -469,7 +489,10 @@ export class DesignReportsService {
     });
 
     // Payout Status Distribution
-    const statusCounts: Record<string, { count: number; amount: number; netAmount: number; fee: number }> = {
+    const statusCounts: Record<
+      string,
+      { count: number; amount: number; netAmount: number; fee: number }
+    > = {
       pending: { count: 0, amount: 0, netAmount: 0, fee: 0 },
       approved: { count: 0, amount: 0, netAmount: 0, fee: 0 },
       processing: { count: 0, amount: 0, netAmount: 0, fee: 0 },
@@ -489,16 +512,19 @@ export class DesignReportsService {
       }
       statusCounts[st].count++;
       statusCounts[st].amount += p.amount;
-      statusCounts[st].netAmount += p.netAmount || (p.amount - (p.fee || 0));
+      statusCounts[st].netAmount += p.netAmount || p.amount - (p.fee || 0);
       statusCounts[st].fee += p.fee || 0;
 
       totalAmount += p.amount;
-      totalNetAmount += p.netAmount || (p.amount - (p.fee || 0));
+      totalNetAmount += p.netAmount || p.amount - (p.fee || 0);
       totalFees += p.fee || 0;
     }
 
     // Payout Timeline (grouped by date)
-    const timelineMap: Record<string, { date: string; amount: number; count: number; status: string }> = {};
+    const timelineMap: Record<
+      string,
+      { date: string; amount: number; count: number; status: string }
+    > = {};
     for (const p of payments) {
       const d = p.createdAt ? p.createdAt.toISOString().slice(0, 10) : 'unknown';
       if (!timelineMap[d]) {
@@ -517,7 +543,10 @@ export class DesignReportsService {
       financials: {
         totalDesignerEarnings: designerStats.totals.totalEarned,
         processedPayments: statusCounts.successful.amount,
-        pendingPayments: statusCounts.pending.amount + statusCounts.approved.amount + statusCounts.processing.amount,
+        pendingPayments:
+          statusCounts.pending.amount +
+          statusCounts.approved.amount +
+          statusCounts.processing.amount,
         outstandingPayments: designerStats.totals.totalOutstanding,
         totalFeesGenerated: totalFees,
         totalPayoutRecords: payments.length,
@@ -530,7 +559,7 @@ export class DesignReportsService {
         designerName: p.designer?.fullName,
         designerEmail: p.designer?.email,
         amount: p.amount,
-        netAmount: p.netAmount || (p.amount - (p.fee || 0)),
+        netAmount: p.netAmount || p.amount - (p.fee || 0),
         fee: p.fee || 0,
         status: p.status,
         payoutType: p.payoutType,
@@ -584,21 +613,51 @@ export class DesignReportsService {
     });
 
     const drafts = submissions.filter((s) => s.status === 'draft').length;
-    const awaitingReview = submissions.filter((s) => ['submitted', 'received', 'under_review', 'resubmitted'].includes(s.status)).length;
+    const awaitingReview = submissions.filter((s) =>
+      ['submitted', 'received', 'under_review', 'resubmitted'].includes(s.status),
+    ).length;
     const inRevision = submissions.filter((s) => s.status === 'revision_required').length;
-    const approvedSubmissions = submissions.filter((s) => ['approved', 'completed'].includes(s.status)).length;
+    const approvedSubmissions = submissions.filter((s) =>
+      ['approved', 'completed'].includes(s.status),
+    ).length;
 
     // Pipeline funnel stages
     const funnel = [
-      { stage: 'Open Requests', count: openTasks, color: '#3B82F6', description: 'Assigned tasks not yet started' },
-      { stage: 'Work in Progress', count: inProgressTasks + drafts, color: '#F59E0B', description: 'Tasks underway and draft submissions' },
-      { stage: 'Awaiting Review', count: awaitingReview, color: '#8B5CF6', description: 'Designs submitted and awaiting staff review' },
-      { stage: 'Revision Required', count: inRevision, color: '#EC4899', description: 'Designs needing adjustments' },
-      { stage: 'Approved & Completed', count: approvedSubmissions, color: '#10B981', description: 'Designs approved for production' },
+      {
+        stage: 'Open Requests',
+        count: openTasks,
+        color: '#3B82F6',
+        description: 'Assigned tasks not yet started',
+      },
+      {
+        stage: 'Work in Progress',
+        count: inProgressTasks + drafts,
+        color: '#F59E0B',
+        description: 'Tasks underway and draft submissions',
+      },
+      {
+        stage: 'Awaiting Review',
+        count: awaitingReview,
+        color: '#8B5CF6',
+        description: 'Designs submitted and awaiting staff review',
+      },
+      {
+        stage: 'Revision Required',
+        count: inRevision,
+        color: '#EC4899',
+        description: 'Designs needing adjustments',
+      },
+      {
+        stage: 'Approved & Completed',
+        count: approvedSubmissions,
+        color: '#10B981',
+        description: 'Designs approved for production',
+      },
     ];
 
     const totalWorkItems = tasks.length + submissions.length;
-    const throughputRate = totalWorkItems > 0 ? Math.round((approvedSubmissions / totalWorkItems) * 100) : 0;
+    const throughputRate =
+      totalWorkItems > 0 ? Math.round((approvedSubmissions / totalWorkItems) * 100) : 0;
 
     return {
       funnel,
@@ -633,7 +692,10 @@ export class DesignReportsService {
         totalSubmissions: designPerf.summary.totalSubmissions,
         approvedDesigns: designPerf.summary.totalApproved,
         pendingReviews: designPerf.summary.pendingReviews,
-        activeWorkload: operational.metrics.openTasks + operational.metrics.inProgressTasks + operational.metrics.awaitingReview,
+        activeWorkload:
+          operational.metrics.openTasks +
+          operational.metrics.inProgressTasks +
+          operational.metrics.awaitingReview,
         approvalRate: designPerf.summary.approvalRate,
         totalDesigners: designerPerf.totals.totalDesigners,
         totalEarned: paymentEarnings.financials.totalDesignerEarnings,

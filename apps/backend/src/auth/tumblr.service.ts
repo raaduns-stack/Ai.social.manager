@@ -13,11 +13,15 @@ export class TumblrService {
     private readonly configService: ConfigService,
     private readonly socialAccountsService: SocialAccountsService,
   ) {
-    const consumerKey = this.configService.get<string>('tumblr.consumerKey') || process.env.TUMBLR_CONSUMER_KEY;
-    const consumerSecret = this.configService.get<string>('tumblr.consumerSecret') || process.env.TUMBLR_CONSUMER_SECRET;
+    const consumerKey =
+      this.configService.get<string>('tumblr.consumerKey') || process.env.TUMBLR_CONSUMER_KEY;
+    const consumerSecret =
+      this.configService.get<string>('tumblr.consumerSecret') || process.env.TUMBLR_CONSUMER_SECRET;
 
     if (!consumerKey || !consumerSecret) {
-      this.logger.warn('TUMBLR_CONSUMER_KEY or TUMBLR_CONSUMER_SECRET is missing from environmental variables.');
+      this.logger.warn(
+        'TUMBLR_CONSUMER_KEY or TUMBLR_CONSUMER_SECRET is missing from environmental variables.',
+      );
       this.oauth = null;
     } else {
       this.oauth = new OAuth({
@@ -27,10 +31,7 @@ export class TumblrService {
         },
         signature_method: 'HMAC-SHA1',
         hash_function(base_string: string, key: string) {
-          return crypto
-            .createHmac('sha1', key)
-            .update(base_string)
-            .digest('base64');
+          return crypto.createHmac('sha1', key).update(base_string).digest('base64');
         },
       });
     }
@@ -38,11 +39,17 @@ export class TumblrService {
 
   async getRequestToken(): Promise<{ oauth_token: string; oauth_token_secret: string }> {
     if (!this.oauth) {
-      throw new BadRequestException('Tumblr integration is not configured. Please set TUMBLR_CONSUMER_KEY and TUMBLR_CONSUMER_SECRET.');
+      throw new BadRequestException(
+        'Tumblr integration is not configured. Please set TUMBLR_CONSUMER_KEY and TUMBLR_CONSUMER_SECRET.',
+      );
     }
     const requestTokenUrl = 'https://www.tumblr.com/oauth/request_token';
-    const backendUrl = this.configService.get<string>('backendUrl') || process.env.BACKEND_URL || 'http://localhost:4000';
-    const apiPrefix = this.configService.get<string>('apiPrefix') || process.env.API_PREFIX || 'api';
+    const backendUrl =
+      this.configService.get<string>('backendUrl') ||
+      process.env.BACKEND_URL ||
+      'http://localhost:4000';
+    const apiPrefix =
+      this.configService.get<string>('apiPrefix') || process.env.API_PREFIX || 'api';
     const callbackUrl =
       this.configService.get<string>('tumblr.callbackUrl') ||
       process.env.TUMBLR_CALLBACK_URL ||
@@ -69,7 +76,9 @@ export class TumblrService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      this.logger.error(`Failed to obtain request token: Status ${response.status}, Body: ${errorText}`);
+      this.logger.error(
+        `Failed to obtain request token: Status ${response.status}, Body: ${errorText}`,
+      );
       throw new BadRequestException(`Failed to obtain request token from Tumblr: ${errorText}`);
     }
 
@@ -92,7 +101,9 @@ export class TumblrService {
     oauthVerifier: string,
   ): Promise<{ token: string; tokenSecret: string; blogName: string }> {
     if (!this.oauth) {
-      throw new BadRequestException('Tumblr integration is not configured. Please set TUMBLR_CONSUMER_KEY and TUMBLR_CONSUMER_SECRET.');
+      throw new BadRequestException(
+        'Tumblr integration is not configured. Please set TUMBLR_CONSUMER_KEY and TUMBLR_CONSUMER_SECRET.',
+      );
     }
     const accessTokenUrl = 'https://www.tumblr.com/oauth/access_token';
 
@@ -128,7 +139,9 @@ export class TumblrService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      this.logger.error(`Failed to exchange access token: Status ${response.status}, Body: ${errorText}`);
+      this.logger.error(
+        `Failed to exchange access token: Status ${response.status}, Body: ${errorText}`,
+      );
       throw new BadRequestException(`Failed to exchange access token with Tumblr: ${errorText}`);
     }
 
@@ -139,7 +152,9 @@ export class TumblrService {
     const tokenSecret = params.get('oauth_token_secret');
 
     if (!token || !tokenSecret) {
-      throw new BadRequestException('Tumblr did not return access oauth_token or oauth_token_secret.');
+      throw new BadRequestException(
+        'Tumblr did not return access oauth_token or oauth_token_secret.',
+      );
     }
 
     const blogName = await this.fetchBlogName(token, tokenSecret);
@@ -172,20 +187,25 @@ export class TumblrService {
 
     if (!response.ok) {
       const errorText = await response.text();
-      this.logger.error(`Failed to fetch Tumblr user info: Status ${response.status}, Body: ${errorText}`);
+      this.logger.error(
+        `Failed to fetch Tumblr user info: Status ${response.status}, Body: ${errorText}`,
+      );
       throw new BadRequestException(`Failed to retrieve user profile from Tumblr: ${errorText}`);
     }
 
     const json: any = await response.json();
     const blogName =
-      json.response?.user?.name ||
-      json.response?.user?.blogs?.[0]?.name ||
-      'tumblr_blog';
+      json.response?.user?.name || json.response?.user?.blogs?.[0]?.name || 'tumblr_blog';
 
     return blogName;
   }
 
-  async connectAccount(userId: string, token: string, tokenSecret: string, blogName: string): Promise<void> {
+  async connectAccount(
+    userId: string,
+    token: string,
+    tokenSecret: string,
+    blogName: string,
+  ): Promise<void> {
     await this.socialAccountsService.upsertTumblr(userId, blogName, token, tokenSecret);
   }
 }

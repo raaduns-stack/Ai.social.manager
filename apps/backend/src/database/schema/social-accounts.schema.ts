@@ -57,4 +57,3 @@ export const socialAccountsRelations = relations(social_accounts, ({ one }) => (
 
 export type SocialAccount = typeof social_accounts.$inferSelect;
 export type NewSocialAccount = typeof social_accounts.$inferInsert;
-

@@ -1,4 +1,14 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional, IsInt, Min, IsIn, IsArray, IsUUID } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsDateString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsIn,
+  IsArray,
+  IsUUID,
+} from 'class-validator';
 import { NotificationPriority, NOTIFICATION_PRIORITY_VALUES } from '../../common/enums';
 
 export class CreateMaintenanceDto {

@@ -10,7 +10,7 @@ import { DashboardService } from './dashboard.service';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('admin')
 export class AdminDashboardController {
-  constructor(private readonly dashboardService: DashboardService) { }
+  constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('dashboard-summary')
   @RequirePermission('dashboard', 'view')

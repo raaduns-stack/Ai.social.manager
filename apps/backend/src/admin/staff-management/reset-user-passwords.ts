@@ -39,7 +39,10 @@ export class ResetUserPasswordService {
     const forceChange = options.requirePasswordChangeOnNextLogin ?? isTemporary;
 
     await this.providers.updatePassword(options.userId, hashedPassword, forceChange);
-    await this.providers.sendPasswordResetNotification(user.email, isTemporary ? rawPassword : undefined);
+    await this.providers.sendPasswordResetNotification(
+      user.email,
+      isTemporary ? rawPassword : undefined,
+    );
 
     return {
       userId: user.id,

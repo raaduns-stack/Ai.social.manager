@@ -20,4 +20,4 @@ import { NotificationsModule } from '../notifications/notifications.module';
   ],
   exports: [SchedulingService],
 })
-export class SchedulingModule { }
+export class SchedulingModule {}

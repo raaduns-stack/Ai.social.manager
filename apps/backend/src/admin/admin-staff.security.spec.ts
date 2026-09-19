@@ -57,7 +57,10 @@ describe('AdminStaffSecurity - Staff Account Creation', () => {
         },
         {
           provide: AuthService,
-          useValue: { register: jest.fn(), applyUserStatusTransition: jest.fn().mockResolvedValue(true) },
+          useValue: {
+            register: jest.fn(),
+            applyUserStatusTransition: jest.fn().mockResolvedValue(true),
+          },
         },
       ],
     }).compile();

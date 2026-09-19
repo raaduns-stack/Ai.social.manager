@@ -65,7 +65,7 @@
 //     }).compile();
 
 //     job = module.get<DispatchDuePostsJob>(DispatchDuePostsJob);
-    
+
 //     jest.clearAllMocks();
 //     (global.fetch as jest.Mock).mockReset();
 //   });
@@ -136,7 +136,7 @@
 
 //   it('should handle webhook errors gracefully and not stop dispatching other posts', async () => {
 //     mockSchedulingService.findDuePosts.mockResolvedValue([mockDuePost1, mockDuePost2]);
-    
+
 //     // First call fails, second succeeds
 //     (global.fetch as jest.Mock)
 //       .mockResolvedValueOnce({

@@ -1,6 +1,24 @@
-import { IsOptional, IsString, IsIn, IsDateString, IsInt, IsBooleanString, Min, Max } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsIn,
+  IsDateString,
+  IsInt,
+  IsBooleanString,
+  Min,
+  Max,
+} from 'class-validator';
 import { Type } from 'class-transformer';
-import { NotificationType, NotificationChannel, DeliveryStatus, NotificationPriority, NOTIFICATION_TYPE_VALUES, NOTIFICATION_CHANNEL_VALUES, DELIVERY_STATUS_VALUES, NOTIFICATION_PRIORITY_VALUES } from '../../common/enums';
+import {
+  NotificationType,
+  NotificationChannel,
+  DeliveryStatus,
+  NotificationPriority,
+  NOTIFICATION_TYPE_VALUES,
+  NOTIFICATION_CHANNEL_VALUES,
+  DELIVERY_STATUS_VALUES,
+  NOTIFICATION_PRIORITY_VALUES,
+} from '../../common/enums';
 
 export class NotificationHistoryQueryDto {
   @IsOptional()
@@ -64,4 +82,3 @@ export class NotificationHistoryQueryDto {
   @Max(100)
   limit?: number;
 }
-

@@ -12,11 +12,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { TumblrService } from './tumblr.service';
 import { SendTumblrPostDto } from './dto/send-tumblr-post.dto';
@@ -42,13 +38,11 @@ export class TumblrController {
   @ApiBearerAuth()
   @ApiOperation({
     summary: 'Begin Tumblr OAuth flow — returns the Tumblr authorization URL',
-    description:
-      'The frontend should redirect the user to the returned `authUrl`.',
+    description: 'The frontend should redirect the user to the returned `authUrl`.',
   })
   async connect(@CurrentUser() user: { userId: string }, @Res() res: Response) {
     try {
-      const { oauth_token, oauth_token_secret } =
-        await this.tumblrService.getRequestToken();
+      const { oauth_token, oauth_token_secret } = await this.tumblrService.getRequestToken();
 
       const stateJwt = await this.tumblrService.generateStateJwt(user.userId);
 
@@ -130,19 +124,18 @@ export class TumblrController {
       );
 
       // Save connection
-      await this.tumblrService.connectAccount(
-        userId,
-        token,
-        tokenSecret,
-        primaryBlogName,
-      );
+      await this.tumblrService.connectAccount(userId, token, tokenSecret, primaryBlogName);
 
-      this.logger.log(`Tumblr connected successfully for user ${userId} (blog: ${primaryBlogName})`);
+      this.logger.log(
+        `Tumblr connected successfully for user ${userId} (blog: ${primaryBlogName})`,
+      );
 
       return res.redirect(`${frontendUrl}/dashboard/channels?tumblr=success`);
     } catch (err: any) {
       this.logger.error(`Tumblr OAuth callback failed: ${err.message}`, err.stack);
-      return res.redirect(`${frontendUrl}/dashboard/channels?tumblr=error&message=${encodeURIComponent(err.message)}`);
+      return res.redirect(
+        `${frontendUrl}/dashboard/channels?tumblr=error&message=${encodeURIComponent(err.message)}`,
+      );
     }
   }
 
@@ -186,10 +179,7 @@ export class TumblrController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Select target Tumblr blog name for posting' })
-  async selectBlog(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: SelectTumblrBlogDto,
-  ) {
+  async selectBlog(@CurrentUser() user: { userId: string }, @Body() dto: SelectTumblrBlogDto) {
     return this.tumblrService.selectTargetBlog(user.userId, dto.blogName);
   }
 
@@ -200,10 +190,7 @@ export class TumblrController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Post content directly to a Tumblr blog' })
-  async sendPost(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: SendTumblrPostDto,
-  ) {
+  async sendPost(@CurrentUser() user: { userId: string }, @Body() dto: SendTumblrPostDto) {
     return this.tumblrService.sendPost(user.userId, {
       blogName: dto.blogName,
       content: dto.content,

@@ -92,4 +92,3 @@ export type DesignerPaymentMethod = typeof designerPaymentMethods.$inferSelect;
 export type NewDesignerPaymentMethod = typeof designerPaymentMethods.$inferInsert;
 export type DesignerPaymentSettings = typeof designerPaymentSettings.$inferSelect;
 export type NewDesignerPaymentSettings = typeof designerPaymentSettings.$inferInsert;
-

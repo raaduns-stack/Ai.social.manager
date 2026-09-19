@@ -34,15 +34,12 @@ export const calendarGenerationJobs = pgTable('calendar_generation_jobs', {
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const calendarGenerationJobsRelations = relations(
-  calendarGenerationJobs,
-  ({ one }) => ({
-    user: one(users, {
-      fields: [calendarGenerationJobs.userId],
-      references: [users.id],
-    }),
+export const calendarGenerationJobsRelations = relations(calendarGenerationJobs, ({ one }) => ({
+  user: one(users, {
+    fields: [calendarGenerationJobs.userId],
+    references: [users.id],
   }),
-);
+}));
 
 export type CalendarGenerationJob = typeof calendarGenerationJobs.$inferSelect;
 export type NewCalendarGenerationJob = typeof calendarGenerationJobs.$inferInsert;

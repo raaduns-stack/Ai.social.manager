@@ -34,13 +34,14 @@ export class CustomerProfileService {
   private async enforceKycApproved(userId: string) {
     const kycStatus = await this.kycService.getKycStatus(userId);
     if (kycStatus !== 'approved') {
-      const codeStatus = kycStatus === 'pending'
-        ? 'PENDING_REVIEW'
-        : kycStatus === 'rejected'
-        ? 'REJECTED'
-        : kycStatus === 'resubmission_required'
-        ? 'RESUBMISSION_REQUIRED'
-        : 'NOT_STARTED';
+      const codeStatus =
+        kycStatus === 'pending'
+          ? 'PENDING_REVIEW'
+          : kycStatus === 'rejected'
+            ? 'REJECTED'
+            : kycStatus === 'resubmission_required'
+              ? 'RESUBMISSION_REQUIRED'
+              : 'NOT_STARTED';
       throw new ForbiddenException({
         statusCode: 403,
         error: 'KYC_REQUIRED',
@@ -125,7 +126,7 @@ export class CustomerProfileService {
         'addressLine1',
         'country',
       ];
-      
+
       const changedLinkedFields = kycLinkedFields.filter(
         (field) => sanitizedDto[field] !== undefined && sanitizedDto[field] !== existing[field],
       );

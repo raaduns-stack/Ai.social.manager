@@ -2,7 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { ScheduledNotificationsService } from '../../notifications/scheduled-notifications.service';
 import { NotificationsService } from '../../notifications/notifications.service';
-import { ScheduledNotificationStatus, NotificationChannel, NotificationType } from '../../common/enums';
+import {
+  ScheduledNotificationStatus,
+  NotificationChannel,
+  NotificationType,
+} from '../../common/enums';
 
 @Injectable()
 export class DispatchScheduledNotificationsJob {
@@ -43,7 +47,9 @@ export class DispatchScheduledNotificationsJob {
           });
 
           await this.scheduledNotificationsService.markDispatched(scheduled.id);
-          this.logger.log(`Successfully dispatched scheduled notification ${scheduled.id} for user ${scheduled.userId}.`);
+          this.logger.log(
+            `Successfully dispatched scheduled notification ${scheduled.id} for user ${scheduled.userId}.`,
+          );
         } catch (error) {
           this.logger.error(`Failed to dispatch scheduled notification ${scheduled.id}`, error);
           await this.scheduledNotificationsService.markFailed(scheduled.id);

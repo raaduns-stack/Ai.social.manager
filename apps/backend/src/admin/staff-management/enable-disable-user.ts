@@ -21,7 +21,7 @@ export class EnableDisableUserService {
     userId: string,
     targetStatus: AccountStatus,
     reason: string,
-    adminId: string
+    adminId: string,
   ): Promise<UserStatusChangeRecord> {
     const user = await this.repo.findUserById(userId);
     if (!user) {

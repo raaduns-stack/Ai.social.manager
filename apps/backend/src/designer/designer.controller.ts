@@ -24,6 +24,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { CreateDesignerPayoutRequestDto } from './dto/create-designer-payout-request.dto';
 import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 import { UpdateImageToCodeDto } from './dto/update-image-to-code.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -95,10 +96,7 @@ export class DesignerController {
     },
   })
   @UseInterceptors(FileInterceptor('cover'))
-  uploadCover(
-    @CurrentUser() user: { userId: string },
-    @UploadedFile() file?: Express.Multer.File,
-  ) {
+  uploadCover(@CurrentUser() user: { userId: string }, @UploadedFile() file?: Express.Multer.File) {
     return this.designerService.uploadCover(user.userId, file);
   }
 
@@ -193,6 +191,23 @@ export class DesignerController {
   @ApiOperation({ summary: 'List payout history' })
   getPayments(@CurrentUser() user: { userId: string }) {
     return this.designerService.getPayments(user.userId);
+  }
+
+  @Get('payments/overview')
+  @ApiOperation({
+    summary: 'Get live payment overview, available earnings and scheduled payout info',
+  })
+  getPaymentOverview(@CurrentUser() user: { userId: string }) {
+    return this.designerService.getPaymentOverview(user.userId);
+  }
+
+  @Post('payments/payout-request')
+  @ApiOperation({ summary: 'Submit an explicit designer payout request' })
+  requestPayout(
+    @CurrentUser() user: { userId: string },
+    @Body() dto: CreateDesignerPayoutRequestDto,
+  ) {
+    return this.designerService.requestPayout(user.userId, dto);
   }
 
   @Get('payments/method')

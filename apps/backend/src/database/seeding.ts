@@ -146,7 +146,10 @@ export async function seedSingletons(db: Database, configService: any) {
   if (!profile) {
     await db.insert(schema.companyProfile).values({
       companyName: 'Raasocial',
-      contactEmail: configService.get('mail.senderEmail') || configService.get('mail.mailFrom') || 'info@raasocial.io',
+      contactEmail:
+        configService.get('mail.senderEmail') ||
+        configService.get('mail.mailFrom') ||
+        'info@raasocial.io',
       website: 'raasocial.io',
     });
   }
@@ -173,7 +176,10 @@ export async function seedSingletons(db: Database, configService: any) {
     const smtpPassword = configService.get('mail.smtpPassword') || '';
     const smtpPasswordEncrypted = smtpPassword ? encryptSecret(smtpPassword) : '';
     const senderName = configService.get('mail.senderName') || 'RaaSocial';
-    const senderEmail = configService.get('mail.senderEmail') || configService.get('mail.mailFrom') || 'noreply@raasocial.io';
+    const senderEmail =
+      configService.get('mail.senderEmail') ||
+      configService.get('mail.mailFrom') ||
+      'noreply@raasocial.io';
 
     await db.insert(schema.emailConfig).values({
       smtpHost,
@@ -389,4 +395,3 @@ Include a clean list of hashtags at the end.`,
     }
   }
 }
-

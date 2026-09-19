@@ -127,7 +127,8 @@ export class DesignManagementService {
     if (dto.brief !== undefined) updatePayload.brief = dto.brief;
     if (dto.priority !== undefined) updatePayload.priority = dto.priority;
     if (dto.status !== undefined) updatePayload.status = dto.status;
-    if (dto.dueDate !== undefined) updatePayload.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
+    if (dto.dueDate !== undefined)
+      updatePayload.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     if (dto.assignedTo !== undefined) updatePayload.assignedTo = dto.assignedTo;
 
     const [updated] = await this.db
@@ -275,8 +276,8 @@ export class DesignManagementService {
       dto.status === 'approved'
         ? `Submission approved${dto.notes ? `: ${dto.notes}` : ''}`
         : dto.status === 'revision_required'
-        ? `Revision requested: ${dto.notes || 'Please make adjustments'}`
-        : `Status set to ${dto.status}${dto.notes ? `: ${dto.notes}` : ''}`;
+          ? `Revision requested: ${dto.notes || 'Please make adjustments'}`
+          : `Status set to ${dto.status}${dto.notes ? `: ${dto.notes}` : ''}`;
 
     await this.db.insert(schema.submissionActivities).values({
       submissionId: id,
@@ -298,7 +299,8 @@ export class DesignManagementService {
 
     // Trigger notification to designer
     try {
-      let notifEventType: 'submitted' | 'reviewed' | 'revision_required' | 'rejected' | 'approved' = 'reviewed';
+      let notifEventType: 'submitted' | 'reviewed' | 'revision_required' | 'rejected' | 'approved' =
+        'reviewed';
       if (dto.status === 'approved') notifEventType = 'approved';
       else if (dto.status === 'revision_required') notifEventType = 'revision_required';
 

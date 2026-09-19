@@ -55,4 +55,3 @@ export class CompanyProfileController {
     return this.companyProfileService.updateCompanyProfile(dto);
   }
 }
-

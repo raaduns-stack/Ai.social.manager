@@ -1,12 +1,4 @@
-import {
-  Body,
-  Controller,
-  Get,
-  Param,
-  Post,
-  UseGuards,
-  ParseUUIDPipe,
-} from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiTags } from '@nestjs/swagger';
 
 import { ContentSuggestionsService } from './content-suggestions.service';
@@ -30,9 +22,7 @@ import { CurrentUser } from '../auth/decorators/current-user.decorator';
 @ApiTags('content-suggestions')
 @Controller('content-suggestions')
 export class ContentSuggestionsController {
-  constructor(
-    private readonly contentSuggestionsService: ContentSuggestionsService,
-  ) { }
+  constructor(private readonly contentSuggestionsService: ContentSuggestionsService) {}
 
   /**
    * Retrieves all content suggestions created by or assigned to the authenticated user.
@@ -41,9 +31,7 @@ export class ContentSuggestionsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Get all suggestions for the current user' })
-  findAll(
-    @CurrentUser() user: { userId: string },
-  ) {
+  findAll(@CurrentUser() user: { userId: string }) {
     return this.contentSuggestionsService.findAll(user.userId);
   }
 
@@ -82,14 +70,8 @@ export class ContentSuggestionsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Generate a caption' })
-  generateCaption(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: GenerateCaptionDto,
-  ) {
-    return this.contentSuggestionsService.generateCaption(
-      user.userId,
-      dto.businessType,
-    );
+  generateCaption(@CurrentUser() user: { userId: string }, @Body() dto: GenerateCaptionDto) {
+    return this.contentSuggestionsService.generateCaption(user.userId, dto.businessType);
   }
 
   /**
@@ -99,14 +81,8 @@ export class ContentSuggestionsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Generate a content idea' })
-  generateIdea(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: GenerateIdeaDto,
-  ) {
-    return this.contentSuggestionsService.generateIdea(
-      user.userId,
-      dto.businessType,
-    );
+  generateIdea(@CurrentUser() user: { userId: string }, @Body() dto: GenerateIdeaDto) {
+    return this.contentSuggestionsService.generateIdea(user.userId, dto.businessType);
   }
 
   /**
@@ -121,12 +97,7 @@ export class ContentSuggestionsController {
     @CurrentUser() user: { userId: string },
     @Body() dto: CreateFeedbackDto,
   ) {
-    return this.contentSuggestionsService.saveFeedback(
-      id,
-      user.userId,
-      dto.reaction,
-      dto.rating,
-    );
+    return this.contentSuggestionsService.saveFeedback(id, user.userId, dto.reaction, dto.rating);
   }
 
   /**

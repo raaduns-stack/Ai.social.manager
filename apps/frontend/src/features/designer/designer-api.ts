@@ -97,6 +97,41 @@ export async function getDesignerPayments(): Promise<DesignerPayment[]> {
   return response.data
 }
 
+export interface DesignerPaymentOverview {
+  approvedImagesCount: number;
+  acceptedImageToCodeCount: number;
+  approvedEarnings: number;
+  paidEarnings: number;
+  pendingPayouts: number;
+  outstandingBalance: number;
+  availableBalance: number;
+  perImageAmount: number;
+  perImageToCodeAmount: number;
+  payoutSchedule: string;
+  payoutDayOfWeek: number;
+  payoutDayOfMonth: number;
+  manualPayoutFeePercent: number;
+  isTodayGlobalPayout: boolean;
+  nextScheduledDate: string;
+  nextScheduledDescription: string;
+  hasValidPaymentMethod: boolean;
+  paymentMethod: DesignerPaymentMethod | null;
+}
+
+export async function getDesignerPaymentOverview(): Promise<DesignerPaymentOverview> {
+  const response = await api.get<DesignerPaymentOverview>('/designer/payments/overview')
+  return response.data
+}
+
+export async function requestDesignerPayout(payload: {
+  amount: number;
+  payoutType?: 'manual' | 'global';
+  notes?: string;
+}): Promise<DesignerPayment> {
+  const response = await api.post<DesignerPayment>('/designer/payments/payout-request', payload)
+  return response.data
+}
+
 export async function getPaymentMethod(): Promise<DesignerPaymentMethod | null> {
   const response = await api.get<DesignerPaymentMethod | null>('/designer/payments/method')
   return response.data

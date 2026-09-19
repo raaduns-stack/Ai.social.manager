@@ -17,13 +17,14 @@ export interface MaintenanceProviders {
 
 export async function sendMaintenanceNotification(
   request: MaintenanceNotificationRequest,
-  providers: MaintenanceProviders
+  providers: MaintenanceProviders,
 ) {
   const { startTime, endTime, description, priority, targetAudience, targetUserIds } = request;
 
-  const customers = targetAudience === 'selected' && targetUserIds && targetUserIds.length > 0
-    ? await providers.getCustomers(targetUserIds)
-    : await providers.getAllCustomers();
+  const customers =
+    targetAudience === 'selected' && targetUserIds && targetUserIds.length > 0
+      ? await providers.getCustomers(targetUserIds)
+      : await providers.getAllCustomers();
 
   const title = 'Scheduled System Maintenance Notice';
   const message = `Please be advised that system maintenance is scheduled from ${startTime.toUTCString()} to ${endTime.toUTCString()}. ${description}`;
@@ -39,7 +40,7 @@ export async function sendMaintenanceNotification(
         await providers.sendEmail(
           customer.email,
           title,
-          `<p>Hi ${customer.name},</p><p>${message}</p>`
+          `<p>Hi ${customer.name},</p><p>${message}</p>`,
         );
       }
 

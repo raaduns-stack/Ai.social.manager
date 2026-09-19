@@ -30,4 +30,3 @@ export class NotificationSettingsController {
     return this.notificationSettingsService.updateNotificationSetting(notificationType, dto);
   }
 }
-

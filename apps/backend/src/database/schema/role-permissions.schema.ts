@@ -6,17 +6,19 @@ export const permissionLevelEnum = pgEnum('permission_level', [
   'manage',
   'view',
   'own_only',
-  'none'
+  'none',
 ]);
 
-export const rolePermissions = pgTable('role_permissions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  role: roleEnum('role').notNull(),
-  module: varchar('module', { length: 255 }).notNull(),
-  accessLevel: permissionLevelEnum('access_level').notNull(),
-}, (t) => [
-  unique('role_module_unique').on(t.role, t.module),
-]);
+export const rolePermissions = pgTable(
+  'role_permissions',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    role: roleEnum('role').notNull(),
+    module: varchar('module', { length: 255 }).notNull(),
+    accessLevel: permissionLevelEnum('access_level').notNull(),
+  },
+  (t) => [unique('role_module_unique').on(t.role, t.module)],
+);
 
 export type RolePermission = typeof rolePermissions.$inferSelect;
 export type NewRolePermission = typeof rolePermissions.$inferInsert;

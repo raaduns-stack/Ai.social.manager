@@ -4,11 +4,7 @@ import { Pool } from '@neondatabase/serverless';
 export const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 });
-export type SubscriptionEventType =
-  | 'new_subscription'
-  | 'renewal'
-  | 'upgrade'
-  | 'downgrade';
+export type SubscriptionEventType = 'new_subscription' | 'renewal' | 'upgrade' | 'downgrade';
 
 export interface SubscriptionRevenueQuery {
   startDate?: Date;
@@ -41,10 +37,12 @@ export interface SubscriptionRevenueResponse {
 export class SubscriptionRevenueService {
   constructor(
     private readonly subscriptionLogModel: any,
-    private readonly activeSubscriptionsModel: any
+    private readonly activeSubscriptionsModel: any,
   ) {}
 
-  async getSubscriptionRevenue(query: SubscriptionRevenueQuery): Promise<SubscriptionRevenueResponse> {
+  async getSubscriptionRevenue(
+    query: SubscriptionRevenueQuery,
+  ): Promise<SubscriptionRevenueResponse> {
     const currency = 'USD';
     const matchFilter: Record<string, any> = {};
 
@@ -105,7 +103,8 @@ export class SubscriptionRevenueService {
     const arr = mrr * 12;
     const activeCount = activeStats.activeCount;
 
-    const newMrr = revenueByEventType.new_subscription.totalRevenue + revenueByEventType.upgrade.totalRevenue;
+    const newMrr =
+      revenueByEventType.new_subscription.totalRevenue + revenueByEventType.upgrade.totalRevenue;
     const contractionMrr = Math.abs(revenueByEventType.downgrade.totalRevenue);
     const netNewMrr = newMrr - contractionMrr;
 

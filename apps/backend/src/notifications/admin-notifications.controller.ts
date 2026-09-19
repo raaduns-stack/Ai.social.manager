@@ -1,4 +1,14 @@
-import { Controller, Post, Get, Body, Query, Param, Patch, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  Param,
+  Patch,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
 import { ScheduledNotificationsService } from './scheduled-notifications.service';
@@ -13,7 +23,16 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermission } from '../auth/decorators/require-permission.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { NotificationType, NOTIFICATION_TYPE_VALUES, DeliveryStatus, DELIVERY_STATUS_VALUES, NotificationChannel, NOTIFICATION_CHANNEL_VALUES, NotificationPriority, NOTIFICATION_PRIORITY_VALUES } from '../common/enums';
+import {
+  NotificationType,
+  NOTIFICATION_TYPE_VALUES,
+  DeliveryStatus,
+  DELIVERY_STATUS_VALUES,
+  NotificationChannel,
+  NOTIFICATION_CHANNEL_VALUES,
+  NotificationPriority,
+  NOTIFICATION_PRIORITY_VALUES,
+} from '../common/enums';
 
 @ApiTags('admin/notifications')
 @ApiBearerAuth()
@@ -28,7 +47,10 @@ export class AdminNotificationsController {
   @Post('system-announcement')
   @RequirePermission('notification_management', 'edit')
   @ApiOperation({ summary: 'Send system announcement to users' })
-  async sendSystemAnnouncement(@Body() dto: CreateSystemAnnouncementDto, @CurrentUser() user: { userId: string }) {
+  async sendSystemAnnouncement(
+    @Body() dto: CreateSystemAnnouncementDto,
+    @CurrentUser() user: { userId: string },
+  ) {
     if (dto.targetUserIds && dto.targetUserIds.length > 0) {
       const customers = await this.notificationsService.validateCustomerUserIds(dto.targetUserIds);
       if (customers.invalid.length > 0) {
@@ -39,14 +61,17 @@ export class AdminNotificationsController {
       }
     }
 
-    const result = await this.notificationsService.dispatchSystemAnnouncement({
-      title: dto.title,
-      message: dto.message,
-      targetUserIds: dto.targetUserIds,
-      channel: dto.channel as any,
-      actionUrl: dto.actionUrl,
-      metadata: dto.metadata,
-    }, user.userId);
+    const result = await this.notificationsService.dispatchSystemAnnouncement(
+      {
+        title: dto.title,
+        message: dto.message,
+        targetUserIds: dto.targetUserIds,
+        channel: dto.channel as any,
+        actionUrl: dto.actionUrl,
+        metadata: dto.metadata,
+      },
+      user.userId,
+    );
 
     return result;
   }
@@ -54,7 +79,10 @@ export class AdminNotificationsController {
   @Post('maintenance')
   @RequirePermission('notification_management', 'edit')
   @ApiOperation({ summary: 'Send system maintenance notification to users' })
-  async sendMaintenanceNotification(@Body() dto: CreateMaintenanceDto, @CurrentUser() user: { userId: string }) {
+  async sendMaintenanceNotification(
+    @Body() dto: CreateMaintenanceDto,
+    @CurrentUser() user: { userId: string },
+  ) {
     if (dto.targetAudience === 'selected' && dto.targetUserIds && dto.targetUserIds.length > 0) {
       const customers = await this.notificationsService.validateCustomerUserIds(dto.targetUserIds);
       if (customers.invalid.length > 0) {
@@ -65,20 +93,26 @@ export class AdminNotificationsController {
       }
     }
 
-    return this.notificationsService.dispatchMaintenance({
-      startTime: new Date(dto.startTime),
-      endTime: new Date(dto.endTime),
-      description: dto.message,
-      priority: dto.priority,
-      targetAudience: dto.targetAudience || 'all',
-      targetUserIds: dto.targetUserIds,
-    }, user.userId);
+    return this.notificationsService.dispatchMaintenance(
+      {
+        startTime: new Date(dto.startTime),
+        endTime: new Date(dto.endTime),
+        description: dto.message,
+        priority: dto.priority,
+        targetAudience: dto.targetAudience || 'all',
+        targetUserIds: dto.targetUserIds,
+      },
+      user.userId,
+    );
   }
 
   @Post('content-approval')
   @RequirePermission('notification_management', 'edit')
   @ApiOperation({ summary: 'Notify customer when content is ready for review' })
-  async sendContentApproval(@Body() dto: CreateContentApprovalDto, @CurrentUser() user: { userId: string }) {
+  async sendContentApproval(
+    @Body() dto: CreateContentApprovalDto,
+    @CurrentUser() user: { userId: string },
+  ) {
     const customers = await this.notificationsService.validateCustomerUserIds([dto.userId]);
     if (customers.invalid.length > 0) {
       throw new BadRequestException({
@@ -87,18 +121,24 @@ export class AdminNotificationsController {
       });
     }
 
-    return this.notificationsService.dispatchContentApproval({
-      customer: { id: dto.userId, email: '', name: '' },
-      contentId: dto.calendarPostId,
-      contentTitle: dto.title,
-      reviewUrl: dto.contentLink || '/dashboard/content-calendar',
-    }, user.userId);
+    return this.notificationsService.dispatchContentApproval(
+      {
+        customer: { id: dto.userId, email: '', name: '' },
+        contentId: dto.calendarPostId,
+        contentTitle: dto.title,
+        reviewUrl: dto.contentLink || '/dashboard/content-calendar',
+      },
+      user.userId,
+    );
   }
 
   @Post('content-published')
   @RequirePermission('notification_management', 'edit')
   @ApiOperation({ summary: 'Notify customer when content is published or fails' })
-  async sendContentPublished(@Body() dto: CreateContentPublishedDto, @CurrentUser() user: { userId: string }) {
+  async sendContentPublished(
+    @Body() dto: CreateContentPublishedDto,
+    @CurrentUser() user: { userId: string },
+  ) {
     const customers = await this.notificationsService.validateCustomerUserIds([dto.userId]);
     if (customers.invalid.length > 0) {
       throw new BadRequestException({
@@ -107,20 +147,26 @@ export class AdminNotificationsController {
       });
     }
 
-    return this.notificationsService.dispatchPublishing({
-      customer: { id: dto.userId, email: '', name: '' },
-      postId: dto.scheduledPostId,
-      postTitle: dto.title,
-      platform: dto.platform || 'Unknown',
-      isSuccess: dto.status === 'PUBLISHED',
-      publishErrorMessage: dto.failureReason,
-    }, user.userId);
+    return this.notificationsService.dispatchPublishing(
+      {
+        customer: { id: dto.userId, email: '', name: '' },
+        postId: dto.scheduledPostId,
+        postTitle: dto.title,
+        platform: dto.platform || 'Unknown',
+        isSuccess: dto.status === 'PUBLISHED',
+        publishErrorMessage: dto.failureReason,
+      },
+      user.userId,
+    );
   }
 
   @Post('subscription-reminder')
   @RequirePermission('notification_management', 'edit')
   @ApiOperation({ summary: 'Send subscription reminder to a customer' })
-  async sendSubscriptionReminder(@Body() dto: CreateSubscriptionReminderDto, @CurrentUser() user: { userId: string }) {
+  async sendSubscriptionReminder(
+    @Body() dto: CreateSubscriptionReminderDto,
+    @CurrentUser() user: { userId: string },
+  ) {
     const customers = await this.notificationsService.validateCustomerUserIds([dto.userId]);
     if (customers.invalid.length > 0) {
       throw new BadRequestException({
@@ -129,11 +175,14 @@ export class AdminNotificationsController {
       });
     }
 
-    return this.notificationsService.dispatchSubscriptionReminder({
-      user: { id: dto.userId, email: '', name: '' },
-      daysToExpiry: 0,
-      expiryDate: new Date(),
-    }, user.userId);
+    return this.notificationsService.dispatchSubscriptionReminder(
+      {
+        user: { id: dto.userId, email: '', name: '' },
+        daysToExpiry: 0,
+        expiryDate: new Date(),
+      },
+      user.userId,
+    );
   }
 
   @Post('task-event')
@@ -152,7 +201,10 @@ export class AdminNotificationsController {
   ) {
     const designer = await this.notificationsService.validateCustomerUserIds([body.designerId]);
     if (designer.invalid.length > 0) {
-      throw new BadRequestException({ message: 'Invalid designer ID', invalidUserIds: designer.invalid });
+      throw new BadRequestException({
+        message: 'Invalid designer ID',
+        invalidUserIds: designer.invalid,
+      });
     }
 
     return this.notificationsService.triggerTaskEvent({
@@ -181,7 +233,10 @@ export class AdminNotificationsController {
   ) {
     const designer = await this.notificationsService.validateCustomerUserIds([body.designerId]);
     if (designer.invalid.length > 0) {
-      throw new BadRequestException({ message: 'Invalid designer ID', invalidUserIds: designer.invalid });
+      throw new BadRequestException({
+        message: 'Invalid designer ID',
+        invalidUserIds: designer.invalid,
+      });
     }
 
     return this.notificationsService.triggerSubmissionEvent({
@@ -211,7 +266,10 @@ export class AdminNotificationsController {
   ) {
     const designer = await this.notificationsService.validateCustomerUserIds([body.designerId]);
     if (designer.invalid.length > 0) {
-      throw new BadRequestException({ message: 'Invalid designer ID', invalidUserIds: designer.invalid });
+      throw new BadRequestException({
+        message: 'Invalid designer ID',
+        invalidUserIds: designer.invalid,
+      });
     }
 
     return this.notificationsService.triggerDesignerPaymentEvent({
@@ -228,7 +286,10 @@ export class AdminNotificationsController {
   @Post('scheduled')
   @RequirePermission('notification_management', 'edit')
   @ApiOperation({ summary: 'Schedule a notification for future delivery' })
-  scheduleNotification(@Body() dto: CreateScheduledNotificationDto, @CurrentUser() user: { userId: string }) {
+  scheduleNotification(
+    @Body() dto: CreateScheduledNotificationDto,
+    @CurrentUser() user: { userId: string },
+  ) {
     return this.scheduledNotificationsService.create({
       userId: dto.userId,
       createdById: user.userId,

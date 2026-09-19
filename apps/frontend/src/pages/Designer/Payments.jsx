@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Wallet, CreditCard, Landmark, ShieldCheck, AlertCircle, Download, TrendingUp, Clock } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { Wallet, CreditCard, Landmark, ShieldCheck, AlertCircle, Download, TrendingUp, Clock, X, Calendar, Check } from "lucide-react";
 import { AreaChart, Area, ResponsiveContainer } from "recharts";
 import Badge from "../../components/ui/Badge";
 import Button from "../../components/ui/Button";
@@ -8,6 +8,8 @@ import PageHeader from "../../components/layout/PageHeader";
 import PremiumCard from "../../components/designer/premium/PremiumCard";
 import {
   getDesignerPayments,
+  getDesignerPaymentOverview,
+  requestDesignerPayout,
   getPaymentMethod,
   updatePaymentMethod,
 } from "../../features/designer/designer-api";
@@ -94,12 +96,24 @@ export default function DesignerPayments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const [overview, setOverview] = useState(null);
+  const [requestModalOpen, setRequestModalOpen] = useState(false);
+  const [requestAmountNaira, setRequestAmountNaira] = useState("");
+  const [requestNotes, setRequestNotes] = useState("");
+  const [submittingRequest, setSubmittingRequest] = useState(false);
+  const [requestError, setRequestError] = useState(null);
+
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const [list, savedMethod] = await Promise.all([getDesignerPayments(), getPaymentMethod()]);
+      const [list, savedMethod, ov] = await Promise.all([
+        getDesignerPayments(),
+        getPaymentMethod(),
+        getDesignerPaymentOverview(),
+      ]);
       setPayouts(list || []);
+      setOverview(ov || null);
       if (savedMethod && savedMethod.bankName && savedMethod.accountNumber) {
         setMethod({
           accountName: savedMethod.accountName || "",
@@ -123,6 +137,96 @@ export default function DesignerPayments() {
   useEffect(() => {
     load();
   }, []);
+
+  const availableNaira = useMemo(() => {
+    return (overview?.availableBalance || 0) / 100;
+  }, [overview]);
+
+  const liveRequestCalculation = useMemo(() => {
+    const grossKobo = Math.round(Number(requestAmountNaira || 0) * 100);
+    if (grossKobo <= 0) return { gross: 0, fee: 0, net: 0, feePercent: 0, isScheduled: false };
+
+    const isScheduled = Boolean(overview?.isTodayGlobalPayout);
+    let feePercent = 0;
+    if (!isScheduled) {
+      feePercent = overview?.manualPayoutFeePercent || 2;
+    }
+    const fee = Math.round(grossKobo * (feePercent / 100));
+    const net = Math.max(0, grossKobo - fee);
+    return { gross: grossKobo, fee, net, feePercent, isScheduled };
+  }, [requestAmountNaira, overview]);
+
+  const openRequestModal = () => {
+    if (!hasMethod || !method.bankName?.trim() || !method.accountNumber?.trim() || !method.accountName?.trim()) {
+      window.dispatchEvent(
+        new CustomEvent("app-toast", {
+          detail: {
+            message: "Please complete and save your bank payment details below before requesting a payout.",
+            type: "error",
+          },
+        })
+      );
+      setEditing(true);
+      setTimeout(() => {
+        document.getElementById("payout-method-card")?.scrollIntoView({ behavior: "smooth" });
+      }, 100);
+      return;
+    }
+
+    if (availableNaira <= 0) {
+      window.dispatchEvent(
+        new CustomEvent("app-toast", {
+          detail: {
+            message: "You have no eligible approved earnings available to request payment.",
+            type: "error",
+          },
+        })
+      );
+      return;
+    }
+
+    setRequestAmountNaira(String(availableNaira));
+    setRequestNotes("");
+    setRequestError(null);
+    setRequestModalOpen(true);
+  };
+
+  const handleRequestPayout = async (e) => {
+    e.preventDefault();
+    const amtKobo = Math.round(Number(requestAmountNaira) * 100);
+    if (isNaN(amtKobo) || amtKobo <= 0) {
+      setRequestError("Please enter a valid payout amount greater than ₦0.");
+      return;
+    }
+    if (amtKobo > (overview?.availableBalance || 0)) {
+      setRequestError(`Requested amount exceeds your eligible available balance of ${naira(overview?.availableBalance || 0)}.`);
+      return;
+    }
+
+    setSubmittingRequest(true);
+    setRequestError(null);
+    try {
+      await requestDesignerPayout({
+        amount: amtKobo,
+        payoutType: overview?.isTodayGlobalPayout ? 'global' : 'manual',
+        notes: requestNotes || undefined,
+      });
+      setRequestModalOpen(false);
+      await load();
+      window.dispatchEvent(
+        new CustomEvent("app-toast", {
+          detail: {
+            message: `Payout request for ${naira(amtKobo)} submitted successfully. Admin will review and process payment.`,
+            type: "success",
+          },
+        })
+      );
+    } catch (err) {
+      setRequestError(err?.response?.data?.message || "Failed to submit payout request. Please try again.");
+    } finally {
+      setSubmittingRequest(false);
+    }
+  };
 
   const handleSave = async () => {
     if (!method.accountName.trim() || !method.accountNumber.trim() || !method.bankName.trim()) {
@@ -227,55 +331,92 @@ export default function DesignerPayments() {
         variant="premium"
         eyebrow="Account — Payments"
         title="Payments"
-        description="Track earnings, manage payout method and download statements."
-        action={<Button variant="outline" onClick={downloadStatement} className="rounded-lg gap-2 text-xs font-semibold"><Download size={14} /> Statement</Button>}
+        description="Track earnings, manage payout method and download statements. Payouts run every Tuesday."
+        action={
+          <Button variant="outline" onClick={downloadStatement} className="rounded-lg gap-2 text-xs font-semibold">
+            <Download size={14} /> Statement
+          </Button>
+        }
       />
+
+      {/* Scheduled Payout Policy Banner */}
+      <div className="bg-gradient-to-r from-primary-50 via-white to-accent-50 border border-primary-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-sm">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary flex items-center justify-center shrink-0">
+            <Calendar size={20} />
+          </div>
+          <div>
+            <div className="font-bold text-ink flex items-center gap-2">
+              <span>Scheduled Payout Cycle: Every Tuesday</span>
+              {overview?.isTodayGlobalPayout && (
+                <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                  TODAY IS SCHEDULED PAYOUT DAY
+                </span>
+              )}
+            </div>
+            <p className="text-xs text-ink-muted mt-0.5">
+              Normal payout cycle for eligible designer earnings occurs every Tuesday. Need payment before the scheduled date? You can submit an early payout request.
+            </p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={openRequestModal}
+          className="shrink-0 text-xs font-semibold border-primary/30 text-primary hover:bg-primary-50"
+        >
+          Request Early Payout
+        </Button>
+      </div>
 
       {/* Summary bento */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <PremiumCard className="p-5 bg-gradient-to-br from-white to-primary-50 border-primary-100 overflow-hidden">
-          <p className="dp-mono text-ink-muted flex items-center gap-1.5"><Wallet size={12} /> Total earned</p>
-          <p className="dp-display text-[26px] leading-none text-ink mt-1">{naira(totalEarned)}</p>
-          <p className="text-xs text-ink-muted">{paid.length} paid • {payouts.length} records</p>
-          <div className="h-12 mt-3 -mx-2">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={spark}>
-                <defs>
-                  <linearGradient id="payG" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#111827" stopOpacity={0.15} />
-                    <stop offset="100%" stopColor="#111827" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <Area dataKey="v" type="monotone" stroke="#111827" strokeWidth={1.5} fill="url(#payG)" dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
+        {/* Card 1: Available for Payout */}
+        <PremiumCard className="p-5 bg-gradient-to-br from-white to-primary-50 border-primary-100 overflow-hidden flex flex-col justify-between">
+          <div>
+            <p className="dp-mono text-ink-muted flex items-center gap-1.5"><Wallet size={12} className="text-primary" /> Available for payout</p>
+            <p className="dp-display text-[26px] leading-none text-primary mt-1">{naira(overview?.availableBalance ?? Math.max(0, totalEarned - pendingTotal))}</p>
+            <p className="text-xs text-ink-muted mt-1.5">
+              {overview?.approvedImagesCount || 0} approved graphics • {overview?.acceptedImageToCodeCount || 0} code accepted
+            </p>
+          </div>
+          <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs text-ink-muted">
+            <span className="text-[11px] font-medium flex items-center gap-1.5">
+              <Calendar size={12} className="text-primary" /> Auto-disbursed on {overview?.nextScheduledDescription || "scheduled cycle"}
+            </span>
           </div>
         </PremiumCard>
+
+        {/* Card 2: Pending Payouts in Queue */}
         <PremiumCard className="p-5 flex flex-col justify-between">
           <div>
-            <p className="dp-mono text-ink-muted">Pending</p>
-            <p className="text-[26px] font-extrabold text-warning leading-none mt-1">{naira(pendingTotal)}</p>
-            <p className="text-xs text-ink-muted">{pending.length} pending payout{pending.length === 1 ? "" : "s"}</p>
+            <p className="dp-mono text-ink-muted flex items-center gap-1.5"><Clock size={12} className="text-warning" /> Pending in queue</p>
+            <p className="text-[26px] font-extrabold text-warning leading-none mt-1">{naira(overview?.pendingPayouts ?? pendingTotal)}</p>
+            <p className="text-xs text-ink-muted mt-1.5">{pending.length} pending request{pending.length === 1 ? "" : "s"} awaiting Admin review</p>
           </div>
           <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-amber-700 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
-            <Clock size={14} /> {pending.length > 0 ? `${pending[0].period || "Current period"} • in queue` : "No pending payouts in queue"}
+            <Clock size={14} /> {pending.length > 0 ? `${pending[0].period || "Current period"} • in review` : "No pending payouts in queue"}
           </div>
         </PremiumCard>
+
+        {/* Card 3: Total Paid Out */}
         <PremiumCard className="p-5 flex flex-col justify-between bg-ink border-ink text-white overflow-hidden">
           <div>
-            <p className="dp-mono text-white/60">Last paid</p>
-            <p className="text-[26px] font-extrabold leading-none mt-1">{lastPaid ? naira(lastPaid.amount) : "—"}</p>
-            <p className="text-xs text-white/60">{lastPaid ? `${lastPaid.period || ""} — paid ${timeAgo(lastPaid.paidAt || lastPaid.createdAt)}${lastPaid.bankName ? ` via Bank Transfer (${lastPaid.bankName})` : " via Bank Transfer"}` : "No payouts yet"}</p>
+            <p className="dp-mono text-white/60">Total paid out</p>
+            <p className="text-[26px] font-extrabold leading-none mt-1">{naira(overview?.paidEarnings ?? totalEarned)}</p>
+            <p className="text-xs text-white/60 mt-1.5">{lastPaid ? `Last: ${naira(lastPaid.amount)} paid ${timeAgo(lastPaid.paidAt || lastPaid.createdAt)}` : "No payouts completed yet"}</p>
           </div>
-          <div className="mt-4 h-2 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-success rounded-full" style={{ width: payouts.length > 0 ? `${Math.round((paid.length / payouts.length) * 100)}%` : "0%" }} />
+          <div className="mt-4">
+            <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-success rounded-full" style={{ width: payouts.length > 0 ? `${Math.round((paid.length / payouts.length) * 100)}%` : "0%" }} />
+            </div>
+            <p className="text-[11px] text-white/60 mt-1.5 flex items-center gap-1"><TrendingUp size={12} /> {paid.length} of {payouts.length} payouts completed</p>
           </div>
-          <p className="text-[11px] text-white/60 mt-1.5 flex items-center gap-1"><TrendingUp size={12} /> {paid.length} of {payouts.length} payouts completed</p>
         </PremiumCard>
       </div>
 
       {/* Payout method */}
-      <PremiumCard className="p-6 space-y-4">
+      <PremiumCard id="payout-method-card" className="p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-bold text-ink flex items-center gap-2"><Landmark size={18} className="text-primary" /> Payment information</h3>
           <div className="flex items-center gap-2">
@@ -354,6 +495,134 @@ export default function DesignerPayments() {
         <AlertCircle size={14} className="shrink-0 mt-0.5" />
         <span>Statuses: <span className="font-semibold text-ink">pending</span> → <span className="font-semibold text-ink">processing</span> → <span className="font-semibold text-ink">paid</span>. Contact support if a payment stays in processing longer than expected.</span>
       </div>
+
+      {/* REQUEST PAYOUT MODAL */}
+      {requestModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white border border-border rounded-2xl max-w-md w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary flex items-center justify-center">
+                  <Wallet size={18} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-ink">Request Designer Payout</h3>
+                  <p className="text-xs text-ink-muted">Submit an early payment request for Admin review.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRequestModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-canvas text-ink-muted hover:text-ink cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleRequestPayout} className="p-5 space-y-4">
+              {requestError && (
+                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
+                  {requestError}
+                </div>
+              )}
+
+              {/* Eligible Balance Preview */}
+              <div className="p-3.5 bg-canvas border border-border rounded-xl flex justify-between items-center text-xs">
+                <span className="text-ink-muted">Available Eligible Balance:</span>
+                <span className="font-extrabold text-primary text-base">{naira(overview?.availableBalance || 0)}</span>
+              </div>
+
+              {/* Bank Destination */}
+              <div className="p-3 bg-primary-50/50 border border-primary-100 rounded-xl text-xs space-y-0.5">
+                <div className="font-semibold text-ink flex items-center gap-1">
+                  <Landmark size={13} className="text-primary" /> Destination Bank Account
+                </div>
+                <div className="text-ink-muted">
+                  {method.bankName} • <span className="font-mono">{method.accountNumber}</span> ({method.accountName})
+                </div>
+              </div>
+
+              {/* Amount input */}
+              <div>
+                <label className="block text-xs font-semibold text-ink-muted mb-1">Requested Amount (₦)</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">₦</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={availableNaira}
+                    step="1"
+                    value={requestAmountNaira}
+                    onChange={(e) => setRequestAmountNaira(e.target.value)}
+                    className="h-10 w-full rounded-lg border border-border bg-white pl-8 pr-3 text-sm text-ink font-bold focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+                <p className="text-[11px] text-ink-muted mt-1">
+                  Maximum available: {naira(overview?.availableBalance || 0)}
+                </p>
+              </div>
+
+              {/* Live Fee Breakdown */}
+              {liveRequestCalculation.gross > 0 && (
+                <div className="p-3 bg-canvas rounded-xl border border-border space-y-1.5 text-xs">
+                  <div className="flex justify-between text-ink-muted">
+                    <span>Gross Requested:</span>
+                    <span className="font-semibold text-ink">{naira(liveRequestCalculation.gross)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-ink-muted">
+                    <span>
+                      {liveRequestCalculation.isScheduled
+                        ? 'Scheduled Cycle Fee:'
+                        : `Early Manual Processing Fee (${liveRequestCalculation.feePercent}%):`}
+                    </span>
+                    <span className={`font-semibold ${liveRequestCalculation.fee > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
+                      {liveRequestCalculation.fee > 0 ? `-${naira(liveRequestCalculation.fee)}` : '₦0 (Tuesday normal cycle)'}
+                    </span>
+                  </div>
+                  <div className="border-t border-border pt-1.5 flex justify-between items-center text-sm font-bold text-ink">
+                    <span>Net Amount You Receive:</span>
+                    <span className="text-primary text-base font-extrabold">{naira(liveRequestCalculation.net)}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Notes */}
+              <div>
+                <label className="block text-xs font-semibold text-ink-muted mb-1">Notes (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Early payout request for completed design tasks"
+                  value={requestNotes}
+                  onChange={(e) => setRequestNotes(e.target.value)}
+                  className="h-9 w-full rounded-lg border border-border bg-white px-3 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-xl text-[11px] text-amber-900 leading-relaxed">
+                Submitting this sends an early payout request to Admin. Admin will review the request, coordinate the external transfer to your bank account, and update the status to paid once sent.
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex justify-end gap-3 pt-3 border-t border-border">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setRequestModalOpen(false)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={submittingRequest}
+                  className="bg-primary text-white text-xs px-4 py-2 gap-2 font-semibold"
+                >
+                  {submittingRequest ? "Submitting..." : `Confirm Request (${naira(liveRequestCalculation.net)})`}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

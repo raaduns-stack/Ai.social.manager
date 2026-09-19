@@ -27,4 +27,3 @@ export class AdminLoginHistoryController {
     return this.loginHistoryService.findByUser(userId);
   }
 }
-

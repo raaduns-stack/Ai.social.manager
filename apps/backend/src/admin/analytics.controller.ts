@@ -16,7 +16,6 @@ export class AnalyticsController {
 
   @Get('analytics')
   @RequirePermission('analytics', 'view')
-
   @ApiOperation({
     summary: 'Get analytics data for the Admin Analytics page',
     description:
@@ -24,17 +23,16 @@ export class AnalyticsController {
       'Sections without a backing DB table return { dataAvailable: false } rather than mock data.',
   })
   @ApiQuery({
-    name:        'period',
-    required:    false,
-    enum:        ['day', 'week', 'month'],
+    name: 'period',
+    required: false,
+    enum: ['day', 'week', 'month'],
     description: 'Aggregation window. Defaults to "month".',
   })
   getAnalytics(@Query('period') period?: string) {
     // Validate and default — avoids leaking arbitrary strings into SQL expressions
-    const safePeriod: AnalyticsPeriod =
-      VALID_PERIODS.includes(period as AnalyticsPeriod)
-        ? (period as AnalyticsPeriod)
-        : 'month';
+    const safePeriod: AnalyticsPeriod = VALID_PERIODS.includes(period as AnalyticsPeriod)
+      ? (period as AnalyticsPeriod)
+      : 'month';
 
     return this.analyticsService.getAnalytics(safePeriod);
   }

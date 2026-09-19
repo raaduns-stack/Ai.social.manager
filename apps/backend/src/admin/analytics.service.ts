@@ -17,7 +17,7 @@ interface PeriodWindow {
 
 @Injectable()
 export class AnalyticsService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) { }
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   // ─────────────────────────────────────────────────────────────────────────────
   // Public entry point — assembles the full analytics response in one call.
@@ -26,19 +26,14 @@ export class AnalyticsService {
   async getAnalytics(period: AnalyticsPeriod = 'month') {
     const window = this.buildPeriodWindow(period);
 
-    const [
-      customerGrowth,
-      revenueGrowth,
-      revenueTimeSeries,
-      socialPerformance,
-      planDistribution,
-    ] = await Promise.all([
-      this.getCustomerGrowthKpi(window),
-      this.getRevenueKpi(window),
-      this.getRevenueTimeSeries(period, window),
-      this.getSocialPerformance(),
-      this.getPlanDistribution(),
-    ]);
+    const [customerGrowth, revenueGrowth, revenueTimeSeries, socialPerformance, planDistribution] =
+      await Promise.all([
+        this.getCustomerGrowthKpi(window),
+        this.getRevenueKpi(window),
+        this.getRevenueTimeSeries(period, window),
+        this.getSocialPerformance(),
+        this.getPlanDistribution(),
+      ]);
 
     return {
       period,
@@ -141,8 +136,7 @@ export class AnalyticsService {
 
     const current = Number(currentRes[0]?.val ?? 0);
     const previous = Number(previousRes[0]?.val ?? 0);
-    const trendPercent =
-      previous > 0 ? ((current - previous) / previous) * 100 : 0;
+    const trendPercent = previous > 0 ? ((current - previous) / previous) * 100 : 0;
 
     return {
       dataAvailable: true,
@@ -187,9 +181,7 @@ export class AnalyticsService {
     const currentNaira = currentKobo / 100;
     const previousNaira = previousKobo / 100;
     const trendPercent =
-      previousNaira > 0
-        ? ((currentNaira - previousNaira) / previousNaira) * 100
-        : 0;
+      previousNaira > 0 ? ((currentNaira - previousNaira) / previousNaira) * 100 : 0;
 
     return {
       dataAvailable: true,
@@ -338,9 +330,7 @@ export class AnalyticsService {
   // reach / engagement / conversion are null until a posts table exists.
   // ─────────────────────────────────────────────────────────────────────────────
   private async getSocialPerformance() {
-    const ALL_PLATFORMS = [
-      'facebook', 'instagram', 'tiktok', 'x', 'youtube', 'linkedin',
-    ] as const;
+    const ALL_PLATFORMS = ['facebook', 'instagram', 'tiktok', 'x', 'youtube', 'linkedin'] as const;
 
     const rows = await this.db
       .select({

@@ -146,7 +146,7 @@ export class EmailConfigService {
     // Create a one-shot transporter using the stored config values
     const transporter = nodemailer.createTransport({
       host: config.smtpHost,
-      port: config.smtpPort || 587,       // fall back to standard TLS submission port
+      port: config.smtpPort || 587, // fall back to standard TLS submission port
       secure: config.smtpSecure || false, // true = SSL on port 465, false = STARTTLS
       auth: {
         user: config.smtpUsername,

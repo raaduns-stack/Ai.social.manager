@@ -1,4 +1,10 @@
-import { Inject, Injectable, NotFoundException, BadRequestException, forwardRef } from '@nestjs/common';
+import {
+  Inject,
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  forwardRef,
+} from '@nestjs/common';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { eq, and, inArray, desc, sql, or, ilike } from 'drizzle-orm';
 import { DATABASE_CONNECTION } from '../../database/database.module';
@@ -69,7 +75,10 @@ export class DesignerPaymentsService {
     }
   }
 
-  getNextGlobalPayoutDate(settings: schema.DesignerPaymentSettings): { date: string; description: string } {
+  getNextGlobalPayoutDate(settings: schema.DesignerPaymentSettings): {
+    date: string;
+    description: string;
+  } {
     const now = new Date();
     const next = new Date(now);
 
@@ -145,7 +154,7 @@ export class DesignerPaymentsService {
 
     const submissionIds = allSubmissions.map((s) => s.id);
 
-    let fileCountMap: Record<string, number> = {};
+    const fileCountMap: Record<string, number> = {};
     if (submissionIds.length > 0) {
       const filesCounts = await this.db
         .select({
@@ -234,6 +243,22 @@ export class DesignerPaymentsService {
         .reduce((sum, p) => sum + p.amount, 0);
 
       const outstandingBalance = Math.max(0, approvedEarnings - paidEarnings);
+      const availableBalance = Math.max(0, approvedEarnings - (paidEarnings + pendingPayouts));
+
+      // Determine payout request status for admin visibility
+      let payoutRequestStatus:
+        'pending_request' | 'processing' | 'settled' | 'available' | 'no_earnings' = 'no_earnings';
+      const activePending = designerPays.find((p) =>
+        ['pending', 'approved', 'processing'].includes(p.status),
+      );
+      if (activePending) {
+        payoutRequestStatus =
+          activePending.status === 'processing' ? 'processing' : 'pending_request';
+      } else if (availableBalance > 0) {
+        payoutRequestStatus = 'available';
+      } else if (approvedEarnings > 0 && availableBalance === 0) {
+        payoutRequestStatus = 'settled';
+      }
 
       const defaultMethod = methodMap.get(designer.id);
 
@@ -257,6 +282,13 @@ export class DesignerPaymentsService {
         paidEarnings,
         pendingPayouts,
         outstandingBalance,
+        availableBalance,
+
+        ratePerImage: settings.perImageAmount,
+        ratePerImageToCode: settings.perImageToCodeAmount,
+        payoutRequestStatus,
+        activePendingAmount: activePending ? activePending.amount : 0,
+        activePendingReference: activePending ? activePending.reference : null,
 
         paymentMethod: defaultMethod
           ? {
@@ -340,11 +372,7 @@ export class DesignerPaymentsService {
   // PAYMENT RECORDS (LIST, FILTER, PROCESS, CREATE)
   // ---------------------------------------------------------------------------
 
-  async getPaymentRecords(filters?: {
-    status?: string;
-    search?: string;
-    designerId?: string;
-  }) {
+  async getPaymentRecords(filters?: { status?: string; search?: string; designerId?: string }) {
     const conditions = [];
 
     if (filters?.designerId) {
@@ -529,7 +557,8 @@ export class DesignerPaymentsService {
 
     // Send designer notification and record in admin notification history
     try {
-      const mappedStatus: 'pending' | 'approved' | 'processing' | 'successful' | 'failed' | 'declined' =
+      const mappedStatus:
+        'pending' | 'approved' | 'processing' | 'successful' | 'failed' | 'declined' =
         dto.status === 'paid' ? 'successful' : (dto.status as any);
 
       await this.notificationsService.triggerDesignerPaymentEvent({

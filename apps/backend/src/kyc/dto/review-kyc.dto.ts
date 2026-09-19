@@ -18,13 +18,15 @@ export enum KycReviewAction {
 export class ReviewKycDto {
   @ApiProperty({
     enum: KycReviewAction,
-    description: 'Decision: "approved" grants access; "rejected" or "resubmission_required" blocks and requires correction',
+    description:
+      'Decision: "approved" grants access; "rejected" or "resubmission_required" blocks and requires correction',
   })
   @IsEnum(KycReviewAction)
   status: KycReviewAction;
 
   @ApiPropertyOptional({
-    example: 'The certificate of registration document appears to be unreadable. Please resubmit a clearer image.',
+    example:
+      'The certificate of registration document appears to be unreadable. Please resubmit a clearer image.',
     description: 'Optional reason when status is "rejected" or "resubmission_required".',
   })
   @IsOptional()

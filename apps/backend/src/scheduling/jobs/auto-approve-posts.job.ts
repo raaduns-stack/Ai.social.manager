@@ -28,7 +28,9 @@ export class AutoApprovePostsJob {
       const windowHours = settings?.autoApproveWindowHours ?? 24;
 
       if (!autoApproveEnabled) {
-        this.logger.log('[AutoApprove] Auto-approval is disabled in system settings. Skipping job.');
+        this.logger.log(
+          '[AutoApprove] Auto-approval is disabled in system settings. Skipping job.',
+        );
         return;
       }
 
@@ -54,9 +56,9 @@ export class AutoApprovePostsJob {
       const existingScheduled = await this.db
         .select({ calendarPostId: schema.scheduledPosts.calendarPostId })
         .from(schema.scheduledPosts);
-      const scheduledCalendarPostIds = new Set(existingScheduled.map(s => s.calendarPostId));
+      const scheduledCalendarPostIds = new Set(existingScheduled.map((s) => s.calendarPostId));
 
-      const postsToApprove = pendingPosts.filter(p => !scheduledCalendarPostIds.has(p.id));
+      const postsToApprove = pendingPosts.filter((p) => !scheduledCalendarPostIds.has(p.id));
 
       if (postsToApprove.length === 0) {
         this.logger.debug('[AutoApprove] All candidate posts already have scheduled post records.');
@@ -64,11 +66,11 @@ export class AutoApprovePostsJob {
       }
 
       this.logger.log(
-        `[AutoApprove] Found ${postsToApprove.length} candidate post(s) within the ${windowHours}h grace window. Processing auto-approval...`
+        `[AutoApprove] Found ${postsToApprove.length} candidate post(s) within the ${windowHours}h grace window. Processing auto-approval...`,
       );
 
       let approvedCount = 0;
-      let skippedCount = 0;
+      const skippedCount = 0;
 
       for (const post of postsToApprove) {
         try {
@@ -83,14 +85,11 @@ export class AutoApprovePostsJob {
 
           const targetVariationId = suggestions.length > 0 ? suggestions[0].id : undefined;
 
-          await this.contentSuggestionsService.scheduleApprovedPost(
-            post.id,
-            targetVariationId,
-          );
+          await this.contentSuggestionsService.scheduleApprovedPost(post.id, targetVariationId);
 
           approvedCount++;
           this.logger.log(
-            `[AutoApprove] Successfully auto-approved post ID=${post.id}${targetVariationId ? ` using suggestion ID=${targetVariationId}` : ' using calendar post content'}`
+            `[AutoApprove] Successfully auto-approved post ID=${post.id}${targetVariationId ? ` using suggestion ID=${targetVariationId}` : ' using calendar post content'}`,
           );
         } catch (postErr: any) {
           this.logger.error(
@@ -100,11 +99,12 @@ export class AutoApprovePostsJob {
         }
       }
 
-      this.logger.log(
-        `[AutoApprove] Finished job run. Approved: ${approvedCount}.`
-      );
+      this.logger.log(`[AutoApprove] Finished job run. Approved: ${approvedCount}.`);
     } catch (err: any) {
-      this.logger.error('[AutoApprove] Unhandled error during auto-approve job execution', err.stack);
+      this.logger.error(
+        '[AutoApprove] Unhandled error during auto-approve job execution',
+        err.stack,
+      );
     }
   }
 }

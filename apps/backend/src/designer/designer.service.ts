@@ -17,6 +17,7 @@ import { CreateSubmissionDto } from './dto/create-submission.dto';
 import { UpdateSubmissionDto } from './dto/update-submission.dto';
 import { UpdateTaskStatusDto } from './dto/update-task-status.dto';
 import { UpdatePaymentMethodDto } from './dto/update-payment-method.dto';
+import { CreateDesignerPayoutRequestDto } from './dto/create-designer-payout-request.dto';
 import { UpdateNotificationPrefsDto } from './dto/update-notification-prefs.dto';
 import { UpdateImageToCodeDto } from './dto/update-image-to-code.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
@@ -145,7 +146,7 @@ export class DesignerService {
 
     const lastPaid = earnings
       .filter((e) => e.status === 'paid')
-      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
 
     const monthlyEarnings = this.getMonthlyEarnings(earnings);
 
@@ -160,7 +161,7 @@ export class DesignerService {
       recentSubmissions: recentSubmissions.map((s) => ({
         ...s,
         progress: this.getProgressPercent(s.status),
-        updated: s.updatedAt.toISOString(),
+        updated: s.updatedAt ? new Date(s.updatedAt).toISOString() : new Date().toISOString(),
       })),
       attentionItems: attentionItems.map((a) => ({
         id: a.id,
@@ -170,14 +171,14 @@ export class DesignerService {
       upcomingTasks: upcomingTasks.map((t) => ({
         id: t.id,
         title: t.title,
-        dueDate: t.dueDate?.toISOString() ?? null,
+        dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
         priority: t.priority,
       })),
     };
   }
 
   private getMonthlyEarnings(
-    earnings: Array<{ amount: number; status: string; createdAt: Date }>,
+    earnings: Array<{ amount: number; status: string; createdAt: Date | string }>,
   ): Array<{ m: string; v: number }> {
     const buckets = new Map<string, number>();
     const now = new Date();
@@ -190,7 +191,8 @@ export class DesignerService {
     }
     for (const e of earnings) {
       if (e.status !== 'paid') continue;
-      const key = `${e.createdAt.getFullYear()}-${e.createdAt.getMonth()}`;
+      const cDate = new Date(e.createdAt);
+      const key = `${cDate.getFullYear()}-${cDate.getMonth()}`;
       if (buckets.has(key)) {
         buckets.set(key, (buckets.get(key) ?? 0) + e.amount);
       }
@@ -640,6 +642,235 @@ export class DesignerService {
       .values({ ...dto, designerId })
       .returning();
     return created;
+  }
+  async getPaymentOverview(designerId: string) {
+    let settings = await this.db.query.designerPaymentSettings.findFirst();
+    if (!settings) {
+      settings = {
+        id: 'default',
+        perImageAmount: 6000,
+        perImageToCodeAmount: 12000,
+        payoutSchedule: 'weekly',
+        payoutDayOfWeek: 2,
+        payoutDayOfMonth: 28,
+        manualPayoutFeePercent: 2,
+        updatedAt: new Date(),
+      } as any;
+    }
+
+    const [approvedSubs, acceptedI2c, allPayments, method] = await Promise.all([
+      this.db
+        .select({ id: schema.submissions.id })
+        .from(schema.submissions)
+        .where(
+          and(
+            eq(schema.submissions.designerId, designerId),
+            inArray(schema.submissions.status, ['approved', 'completed']),
+          ),
+        ),
+      this.db
+        .select({ id: schema.imageToCode.id })
+        .from(schema.imageToCode)
+        .where(
+          and(
+            eq(schema.imageToCode.designerId, designerId),
+            eq(schema.imageToCode.status, 'accepted'),
+          ),
+        ),
+      this.db
+        .select()
+        .from(schema.designerPayments)
+        .where(eq(schema.designerPayments.designerId, designerId)),
+      this.getPaymentMethod(designerId),
+    ]);
+
+    let approvedImagesCount = 0;
+    if (approvedSubs.length > 0) {
+      const subIds = approvedSubs.map((s) => s.id);
+      const files = await this.db
+        .select({ submissionId: schema.submissionFiles.submissionId })
+        .from(schema.submissionFiles)
+        .where(inArray(schema.submissionFiles.submissionId, subIds));
+      const fileCountMap: Record<string, number> = {};
+      for (const f of files) {
+        fileCountMap[f.submissionId] = (fileCountMap[f.submissionId] || 0) + 1;
+      }
+      for (const s of approvedSubs) {
+        approvedImagesCount += Math.max(1, fileCountMap[s.id] || 1);
+      }
+    }
+
+    const acceptedImageToCodeCount = acceptedI2c.length;
+
+    const approvedEarnings =
+      approvedImagesCount * settings.perImageAmount +
+      acceptedImageToCodeCount * settings.perImageToCodeAmount;
+
+    const paidEarnings = allPayments
+      .filter((p) => ['paid', 'successful'].includes(p.status))
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const pendingPayouts = allPayments
+      .filter((p) => ['pending', 'approved', 'processing'].includes(p.status))
+      .reduce((sum, p) => sum + p.amount, 0);
+
+    const outstandingBalance = Math.max(0, approvedEarnings - paidEarnings);
+    const availableBalance = Math.max(0, approvedEarnings - (paidEarnings + pendingPayouts));
+
+    const isTodayGlobalPayout = this.isGlobalPayoutDay(settings);
+    const nextScheduled = this.getNextGlobalPayoutDate(settings);
+
+    return {
+      approvedImagesCount,
+      acceptedImageToCodeCount,
+      approvedEarnings,
+      paidEarnings,
+      pendingPayouts,
+      outstandingBalance,
+      availableBalance,
+      perImageAmount: settings.perImageAmount,
+      perImageToCodeAmount: settings.perImageToCodeAmount,
+      payoutSchedule: settings.payoutSchedule,
+      payoutDayOfWeek: settings.payoutDayOfWeek,
+      payoutDayOfMonth: settings.payoutDayOfMonth,
+      manualPayoutFeePercent: Number(settings.manualPayoutFeePercent) || 2,
+      isTodayGlobalPayout,
+      nextScheduledDate: nextScheduled.date,
+      nextScheduledDescription: nextScheduled.description,
+      hasValidPaymentMethod: Boolean(
+        method &&
+        method.bankName?.trim() &&
+        method.accountNumber?.trim() &&
+        method.accountName?.trim(),
+      ),
+      paymentMethod: method
+        ? {
+            bankName: method.bankName,
+            accountNumber: method.accountNumber,
+            accountName: method.accountName,
+          }
+        : null,
+    };
+  }
+
+  async requestPayout(designerId: string, dto: CreateDesignerPayoutRequestDto) {
+    const method = await this.getPaymentMethod(designerId);
+    if (
+      !method ||
+      !method.bankName?.trim() ||
+      !method.accountNumber?.trim() ||
+      !method.accountName?.trim()
+    ) {
+      throw new BadRequestException(
+        'You must have valid bank payment information saved before submitting a payout request. Please complete and save your payment details first.',
+      );
+    }
+
+    const overview = await this.getPaymentOverview(designerId);
+    if (overview.availableBalance <= 0) {
+      throw new BadRequestException(
+        'You do not have eligible approved earnings available to request payment.',
+      );
+    }
+
+    const requestedAmount = Math.round(Number(dto.amount) || 0);
+    if (requestedAmount <= 0) {
+      throw new BadRequestException('Payout request amount must be greater than ₦0.');
+    }
+
+    if (requestedAmount > overview.availableBalance) {
+      throw new BadRequestException(
+        `Requested amount of ₦${(requestedAmount / 100).toLocaleString()} exceeds your eligible available balance of ₦${(overview.availableBalance / 100).toLocaleString()}.`,
+      );
+    }
+
+    const isScheduledDay = overview.isTodayGlobalPayout;
+    const isManual = dto.payoutType === 'manual' || (!dto.payoutType && !isScheduledDay);
+
+    let fee = 0;
+    if (isManual && !isScheduledDay) {
+      const feePercent = Number(overview.manualPayoutFeePercent) || 2;
+      fee = Math.round(requestedAmount * (feePercent / 100));
+    }
+    const netAmount = Math.max(0, requestedAmount - fee);
+
+    const refDate = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const randPart = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const reference = `PAY-${refDate}-${randPart}`;
+
+    const [created] = await this.db
+      .insert(schema.designerPayments)
+      .values({
+        designerId,
+        amount: requestedAmount,
+        status: 'pending',
+        period: `Requested ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+        reference,
+        payoutType: isManual ? 'manual' : 'global',
+        fee,
+        netAmount,
+        relatedWork: 'Approved earnings payout request',
+        notes: dto.notes || undefined,
+        bankName: method.bankName,
+        accountNumber: method.accountNumber,
+        accountName: method.accountName,
+      })
+      .returning();
+
+    try {
+      await this.notificationsService.triggerDesignerPaymentEvent({
+        paymentId: created.id,
+        designerId,
+        amount: netAmount,
+        reference,
+        status: 'pending',
+        notes: dto.notes,
+      });
+    } catch (err) {
+      console.warn('Could not dispatch payment notification for payout request:', err);
+    }
+
+    return created;
+  }
+
+  private isGlobalPayoutDay(settings: schema.DesignerPaymentSettings, date = new Date()): boolean {
+    if (settings.payoutSchedule === 'weekly') {
+      const jsDay = date.getDay(); // 0 Sunday, 1 Monday, 2 Tuesday, ...
+      const configuredDay = Number(settings.payoutDayOfWeek) ?? 2;
+      return jsDay === configuredDay;
+    } else {
+      const dayOfMonth = date.getDate();
+      const configuredDom = Number(settings.payoutDayOfMonth) ?? 28;
+      return dayOfMonth === configuredDom;
+    }
+  }
+
+  private getNextGlobalPayoutDate(settings: schema.DesignerPaymentSettings): {
+    date: string;
+    description: string;
+  } {
+    const now = new Date();
+    if (settings.payoutSchedule === 'weekly') {
+      const targetDay = Number(settings.payoutDayOfWeek) ?? 2; // Default Tuesday
+      const currentDay = now.getDay();
+      let diff = targetDay - currentDay;
+      if (diff <= 0) diff += 7;
+      const next = new Date(now);
+      next.setDate(now.getDate() + diff);
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      return {
+        date: next.toISOString(),
+        description: `Every ${days[targetDay]}`,
+      };
+    } else {
+      const targetDom = Number(settings.payoutDayOfMonth) ?? 28;
+      const next = new Date(now.getFullYear(), now.getMonth(), targetDom);
+      if (next <= now) next.setMonth(next.getMonth() + 1);
+      return {
+        date: next.toISOString(),
+        description: `${targetDom}th of each month`,
+      };
+    }
   }
 
   // ---------------------------------------------------------------------------

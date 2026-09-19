@@ -22,24 +22,31 @@ export class SubscriptionRemindersJob {
       const reminderWindow = new Date();
       reminderWindow.setDate(reminderWindow.getDate() + daysBeforeExpiry);
 
-      const expiringSubscriptions = await this.subscriptionsService.findExpiringWithin(reminderWindow);
+      const expiringSubscriptions =
+        await this.subscriptionsService.findExpiringWithin(reminderWindow);
 
       if (expiringSubscriptions.length === 0) {
         this.logger.debug('No subscriptions expiring within the reminder window.');
         return;
       }
 
-      this.logger.log(`Found ${expiringSubscriptions.length} subscription(s) expiring within ${daysBeforeExpiry} days.`);
+      this.logger.log(
+        `Found ${expiringSubscriptions.length} subscription(s) expiring within ${daysBeforeExpiry} days.`,
+      );
 
       for (const subscription of expiringSubscriptions) {
         try {
           if (!subscription.currentPeriodEnd) {
-            this.logger.warn(`Subscription ${subscription.id} has no currentPeriodEnd, skipping reminder.`);
+            this.logger.warn(
+              `Subscription ${subscription.id} has no currentPeriodEnd, skipping reminder.`,
+            );
             continue;
           }
 
           const expiryDate = new Date(subscription.currentPeriodEnd);
-          const daysToExpiry = Math.ceil((expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+          const daysToExpiry = Math.ceil(
+            (expiryDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24),
+          );
 
           const existing = await this.notificationsService.findExistingNotification(
             subscription.userId,
@@ -60,9 +67,14 @@ export class SubscriptionRemindersJob {
             expiryDate,
           });
 
-          this.logger.log(`Sent renewal reminder for subscription ${subscription.id} (${daysToExpiry} days remaining).`);
+          this.logger.log(
+            `Sent renewal reminder for subscription ${subscription.id} (${daysToExpiry} days remaining).`,
+          );
         } catch (error) {
-          this.logger.error(`Failed to process reminder for subscription ${subscription.id}`, error);
+          this.logger.error(
+            `Failed to process reminder for subscription ${subscription.id}`,
+            error,
+          );
         }
       }
     } catch (error) {

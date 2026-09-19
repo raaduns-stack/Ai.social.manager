@@ -19,7 +19,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
   let existingPosts: any[] = [];
   let insertedPosts: any[] = [];
-  let jobMock: any = {
+  const jobMock: any = {
     id: 'job-id',
     userId: 'user-id',
     month: '2026-08',
@@ -66,9 +66,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
           if (startVal && endVal) {
             const allPosts = [...existingPosts, ...insertedPosts];
-            return allPosts.filter(
-              (p) => p.scheduledAt >= startVal! && p.scheduledAt <= endVal!
-            );
+            return allPosts.filter((p) => p.scheduledAt >= startVal! && p.scheduledAt <= endVal!);
           }
 
           return existingPosts;
@@ -143,7 +141,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
           if (startVal && endVal) {
             return existingPosts.filter(
-              (p) => p.scheduledAt >= startVal! && p.scheduledAt <= endVal!
+              (p) => p.scheduledAt >= startVal! && p.scheduledAt <= endVal!,
             );
           }
           return existingPosts;
@@ -488,7 +486,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         customerId: 'user-id',
         month: '2026-08',
         posts: postsPayload,
-      })
+      }),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -535,7 +533,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         customerId: 'user-id',
         month: '2026-08',
         posts: postsPayload,
-      })
+      }),
     ).rejects.toThrow(BadRequestException);
   });
 
@@ -601,10 +599,10 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
     for (const post of insertedPosts) {
       // Must be between Aug 1 and Aug 31, 2026
       expect(post.scheduledAt.getTime()).toBeGreaterThanOrEqual(
-        new Date('2026-08-01T00:00:00').getTime()
+        new Date('2026-08-01T00:00:00').getTime(),
       );
       expect(post.scheduledAt.getTime()).toBeLessThanOrEqual(
-        new Date('2026-08-31T23:59:59').getTime()
+        new Date('2026-08-31T23:59:59').getTime(),
       );
     }
   });
@@ -625,7 +623,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         customerId: 'user-id',
         month: '2026-08',
         posts: duplicatePostsPayload,
-      })
+      }),
     ).rejects.toThrow(BadRequestException);
 
     expect(jobMock.status).toBe('FAILED');
@@ -815,7 +813,7 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
         month: '2026-08',
         expectedPostCount: 8,
         posts: postsPayload,
-      })
+      }),
     ).rejects.toThrow(BadRequestException);
 
     expect(jobMock.status).toBe('FAILED');

@@ -26,7 +26,7 @@ export class RolePermissionsService {
   async updateRolePermissions(
     roleId: string,
     roleName: string,
-    permissionIds: string[]
+    permissionIds: string[],
   ): Promise<RolePermissionsConfig> {
     const isValid = await this.repo.validatePermissionIds(permissionIds);
     if (!isValid) {

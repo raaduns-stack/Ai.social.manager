@@ -8,16 +8,9 @@ import { CustomerNotificationsController } from './customer-notifications.contro
 import { ActivityLogsModule } from '../activity-logs/activity-logs.module';
 
 @Module({
-  imports: [
-    DatabaseModule,
-    MailerModule,
-    ActivityLogsModule,
-  ],
+  imports: [DatabaseModule, MailerModule, ActivityLogsModule],
   providers: [NotificationsService, ScheduledNotificationsService],
-  controllers: [
-    AdminNotificationsController,
-    CustomerNotificationsController,
-  ],
+  controllers: [AdminNotificationsController, CustomerNotificationsController],
   exports: [NotificationsService, ScheduledNotificationsService],
 })
 export class NotificationsModule {}

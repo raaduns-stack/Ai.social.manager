@@ -25,7 +25,7 @@ export interface LoginHistoryRepository {
   findHistory(
     filters: LoginHistoryQueryFilters,
     skip: number,
-    limit: number
+    limit: number,
   ): Promise<{ data: LoginHistoryRecord[]; total: number }>;
 }
 
@@ -33,7 +33,7 @@ export class LoginHistoryService {
   constructor(private readonly repo: LoginHistoryRepository) {}
 
   async logLoginAttempt(
-    data: Omit<LoginHistoryRecord, 'id' | 'loggedAt'>
+    data: Omit<LoginHistoryRecord, 'id' | 'loggedAt'>,
   ): Promise<LoginHistoryRecord> {
     return this.repo.recordLogin(data);
   }

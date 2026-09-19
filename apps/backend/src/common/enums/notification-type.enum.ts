@@ -30,4 +30,3 @@ export enum NotificationType {
 }
 
 export const NOTIFICATION_TYPE_VALUES = Object.values(NotificationType);
-

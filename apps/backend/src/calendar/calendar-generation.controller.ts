@@ -1,12 +1,4 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Param,
-  UseGuards,
-  ParseUUIDPipe,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -139,13 +131,13 @@ export class CalendarGenerationController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: '[Customer] Request AI content calendar generation' })
-  @ApiResponse({ status: 201, description: 'Generation job created and n8n triggered successfully.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Generation job created and n8n triggered successfully.',
+  })
   @ApiResponse({ status: 400, description: 'Invalid input or monthly limits exceeded.' })
   @ApiResponse({ status: 401, description: 'Unauthorized.' })
-  async generate(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: GenerateCalendarRequestDto,
-  ) {
+  async generate(@CurrentUser() user: { userId: string }, @Body() dto: GenerateCalendarRequestDto) {
     return this.calendarService.createGenerationJob(user.userId, dto);
   }
 
@@ -169,9 +161,7 @@ export class CalendarGenerationController {
   @ApiResponse({ status: 200, description: 'Business description, requested month & platforms.' })
   @ApiResponse({ status: 401, description: 'Unauthorized internal token.' })
   @ApiResponse({ status: 404, description: 'Customer not found.' })
-  async getContext(
-    @Param('customerId', ParseUUIDPipe) customerId: string,
-  ) {
+  async getContext(@Param('customerId', ParseUUIDPipe) customerId: string) {
     return this.calendarService.getGenerationContext(customerId);
   }
 
@@ -179,7 +169,10 @@ export class CalendarGenerationController {
   @UseGuards(N8nInternalAuthGuard)
   @ApiHeader({ name: 'X-N8N-API-KEY', description: 'Internal n8n API Key' })
   @ApiOperation({ summary: '[Internal n8n] Submit generated content calendar posts for saving' })
-  @ApiResponse({ status: 201, description: 'Posts successfully validated and saved to content calendar.' })
+  @ApiResponse({
+    status: 201,
+    description: 'Posts successfully validated and saved to content calendar.',
+  })
   @ApiResponse({ status: 400, description: 'Validation failed or limits exceeded.' })
   @ApiResponse({ status: 401, description: 'Unauthorized internal token.' })
   @ApiResponse({ status: 404, description: 'Job not found.' })

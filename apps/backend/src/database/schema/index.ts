@@ -39,5 +39,3 @@ export * from './designer-notifications.schema';
 export * from './image-to-code.schema';
 export * from './designer-invitations.schema';
 export * from './relations';
-
-

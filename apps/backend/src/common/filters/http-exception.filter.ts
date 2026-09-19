@@ -22,9 +22,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const request = ctx.getRequest<Request>();
 
     const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+      exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
     let errorCode = ErrorCode.BAD_REQUEST;
     let message = 'An unexpected error occurred';
@@ -35,7 +33,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
         message = responseContent;
       } else if (typeof responseContent === 'object' && responseContent !== null) {
         const resObj = responseContent as any;
-        
+
         // Handle array validation messages from NestJS ValidationPipe
         if (Array.isArray(resObj.message)) {
           message = `Validation failed: ${resObj.message.join(', ')}`;
@@ -72,4 +70,3 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(status).json(responsePayload);
   }
 }
-

@@ -10,4 +10,4 @@ import { NotificationsModule } from '../notifications/notifications.module';
   providers: [SocialAccountsService],
   exports: [SocialAccountsService],
 })
-export class SocialAccountsModule { }
+export class SocialAccountsModule {}

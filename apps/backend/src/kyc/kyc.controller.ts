@@ -27,13 +27,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
-import {
-  ApiTags,
-  ApiOperation,
-  ApiBearerAuth,
-  ApiConsumes,
-  ApiBody,
-} from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
 import { Response } from 'express';
 import { existsSync } from 'fs';
 import { join, extname } from 'path';
@@ -105,13 +99,11 @@ export class KycController {
     },
   })
   @UseInterceptors(
-    FileFieldsInterceptor(
-      [
-        { name: 'certOfRegistration', maxCount: 1 },
-        { name: 'utilityBill', maxCount: 1 },
-        { name: 'ownerId', maxCount: 1 },
-      ],
-    ),
+    FileFieldsInterceptor([
+      { name: 'certOfRegistration', maxCount: 1 },
+      { name: 'utilityBill', maxCount: 1 },
+      { name: 'ownerId', maxCount: 1 },
+    ]),
   )
   async submitKyc(
     @CurrentUser() user: { userId: string },
@@ -230,7 +222,13 @@ export class AdminKycController {
     @CurrentUser() admin: { userId: string },
     @Body() dto: { reason?: string; documentName?: string },
   ) {
-    return this.kycService.rejectDocument(id, docType as any, admin.userId, dto.reason, dto.documentName);
+    return this.kycService.rejectDocument(
+      id,
+      docType as any,
+      admin.userId,
+      dto.reason,
+      dto.documentName,
+    );
   }
 
   /**

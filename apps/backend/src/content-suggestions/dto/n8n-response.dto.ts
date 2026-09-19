@@ -16,12 +16,18 @@ export class SuggestionVariationDto {
   @IsOptional()
   title?: string;
 
-  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...', required: false })
+  @ApiProperty({
+    example: 'Want to master workflow automation? Here are 5 simple steps...',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   caption?: string;
 
-  @ApiProperty({ example: 'Want to master workflow automation? Here are 5 simple steps...', required: false })
+  @ApiProperty({
+    example: 'Want to master workflow automation? Here are 5 simple steps...',
+    required: false,
+  })
   @IsString()
   @IsOptional()
   content?: string;

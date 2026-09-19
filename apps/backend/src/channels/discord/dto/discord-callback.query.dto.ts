@@ -7,12 +7,16 @@ export class DiscordCallbackQueryDto {
   @IsOptional()
   code?: string;
 
-  @ApiPropertyOptional({ description: 'Signed state JWT to verify request integrity and user session' })
+  @ApiPropertyOptional({
+    description: 'Signed state JWT to verify request integrity and user session',
+  })
   @IsString()
   @IsOptional()
   state?: string;
 
-  @ApiPropertyOptional({ description: 'Guild ID if bot was added to a server during authorization' })
+  @ApiPropertyOptional({
+    description: 'Guild ID if bot was added to a server during authorization',
+  })
   @IsString()
   @IsOptional()
   guild_id?: string;

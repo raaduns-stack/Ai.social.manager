@@ -42,4 +42,3 @@ export class FaqsAdminController {
     return this.faqsService.deleteFaq(id);
   }
 }
-

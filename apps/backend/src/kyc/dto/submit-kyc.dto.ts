@@ -16,7 +16,10 @@ export class SubmitKycDto {
   @MaxLength(255)
   businessName: string;
 
-  @ApiPropertyOptional({ example: 'RC12345678', description: 'Business registration number (optional)' })
+  @ApiPropertyOptional({
+    example: 'RC12345678',
+    description: 'Business registration number (optional)',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(100)
@@ -28,7 +31,10 @@ export class SubmitKycDto {
   @MaxLength(100)
   businessType: string;
 
-  @ApiProperty({ example: '12 Commerce Street, Lagos Island', description: 'Full business address' })
+  @ApiProperty({
+    example: '12 Commerce Street, Lagos Island',
+    description: 'Full business address',
+  })
   @IsString()
   @IsNotEmpty()
   businessAddress: string;

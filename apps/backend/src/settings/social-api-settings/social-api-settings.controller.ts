@@ -30,4 +30,3 @@ export class SocialApiSettingsController {
     return this.socialApiSettingsService.updateSocialApiSetting(platform, dto);
   }
 }
-

@@ -39,7 +39,8 @@ export default () => ({
     mailFrom: process.env.MAIL_FROM ?? 'noreply@raasocial.io',
     smtpHost: process.env.SMTP_HOST,
     smtpPort: process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : undefined,
-    smtpSecure: process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === undefined ? true : false,
+    smtpSecure:
+      process.env.SMTP_SECURE === 'true' || process.env.SMTP_SECURE === undefined ? true : false,
     smtpUsername: process.env.SMTP_USERNAME,
     smtpPassword: process.env.SMTP_PASSWORD,
     senderName: process.env.SMTP_SENDER_NAME ?? 'RaaSocial',
@@ -58,15 +59,21 @@ export default () => ({
 
   n8n: {
     webhookUrl: process.env.N8N_CALENDAR_GENERATION_WEBHOOK_URL,
-    suggestionsWebhookUrl: process.env.N8N_CONTENT_SUGGESTIONS_WEBHOOK_URL ?? 'https://n8n.raasocial.io/webhook/content-suggestions/generate',
+    suggestionsWebhookUrl:
+      process.env.N8N_CONTENT_SUGGESTIONS_WEBHOOK_URL ??
+      'https://n8n.raasocial.io/webhook/content-suggestions/generate',
     internalApiKey: process.env.N8N_INTERNAL_API_KEY,
-    publishingWebhookUrl: process.env.N8N_PUBLISHING_WEBHOOK_URL ?? 'https://n8n.raasocial.io/webhook/publishing/dispatch',
+    publishingWebhookUrl:
+      process.env.N8N_PUBLISHING_WEBHOOK_URL ??
+      'https://n8n.raasocial.io/webhook/publishing/dispatch',
   },
 
   tiktok: {
     clientKey: process.env.TIKTOK_CLIENT_KEY,
     clientSecret: process.env.TIKTOK_CLIENT_SECRET,
-    redirectUri: process.env.TIKTOK_REDIRECT_URI ?? `${defaultBackendUrl}/${defaultApiPrefix}/channels/tiktok/callback`,
+    redirectUri:
+      process.env.TIKTOK_REDIRECT_URI ??
+      `${defaultBackendUrl}/${defaultApiPrefix}/channels/tiktok/callback`,
     // webhookVerifyToken is an optional shared secret you can use for an
     // additional layer of webhook verification if TikTok supports it in future.
     webhookVerifyToken: process.env.TIKTOK_WEBHOOK_VERIFY_TOKEN,
@@ -75,14 +82,18 @@ export default () => ({
   discord: {
     clientId: process.env.DISCORD_CLIENT_ID,
     clientSecret: process.env.DISCORD_CLIENT_SECRET,
-    redirectUri: process.env.DISCORD_REDIRECT_URI ?? `${defaultBackendUrl}/${defaultApiPrefix}/channels/discord/callback`,
+    redirectUri:
+      process.env.DISCORD_REDIRECT_URI ??
+      `${defaultBackendUrl}/${defaultApiPrefix}/channels/discord/callback`,
     botToken: process.env.DISCORD_BOT_TOKEN,
   },
 
   tumblr: {
     consumerKey: process.env.TUMBLR_CONSUMER_KEY,
     consumerSecret: process.env.TUMBLR_CONSUMER_SECRET,
-    callbackUrl: process.env.TUMBLR_CALLBACK_URL ?? `${defaultBackendUrl}/${defaultApiPrefix}/auth/tumblr/callback`,
+    callbackUrl:
+      process.env.TUMBLR_CALLBACK_URL ??
+      `${defaultBackendUrl}/${defaultApiPrefix}/auth/tumblr/callback`,
   },
 
   snapchat: {
@@ -92,12 +103,9 @@ export default () => ({
       process.env.SNAPCHAT_REDIRECT_URI ??
       'http://localhost:4000/api/social-accounts/snapchat/callback',
     authUrl:
-      process.env.SNAPCHAT_AUTH_URL ??
-      'https://accounts.snapchat.com/login/oauth2/authorize',
+      process.env.SNAPCHAT_AUTH_URL ?? 'https://accounts.snapchat.com/login/oauth2/authorize',
     tokenUrl:
-      process.env.SNAPCHAT_TOKEN_URL ??
-      'https://accounts.snapchat.com/login/oauth2/access_token',
+      process.env.SNAPCHAT_TOKEN_URL ?? 'https://accounts.snapchat.com/login/oauth2/access_token',
     scope: process.env.SNAPCHAT_SCOPES ?? 'snapchat-profile-api',
   },
 });
-

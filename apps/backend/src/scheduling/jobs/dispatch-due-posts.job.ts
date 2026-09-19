@@ -29,7 +29,9 @@ export class DispatchDuePostsJob {
         return;
       }
 
-      this.logger.log(`Found ${duePosts.length} due post(s) to dispatch. Sending to n8n webhook...`);
+      this.logger.log(
+        `Found ${duePosts.length} due post(s) to dispatch. Sending to n8n webhook...`,
+      );
 
       for (const post of duePosts) {
         try {
@@ -52,15 +54,17 @@ export class DispatchDuePostsJob {
           if (!response.ok) {
             const errText = await response.text();
             this.logger.error(
-              `Failed to dispatch scheduled post ${post.scheduledPostId}. Webhook returned status ${response.status}: ${errText}`
+              `Failed to dispatch scheduled post ${post.scheduledPostId}. Webhook returned status ${response.status}: ${errText}`,
             );
           } else {
-            this.logger.log(`Successfully dispatched scheduled post ${post.scheduledPostId} to webhook.`);
+            this.logger.log(
+              `Successfully dispatched scheduled post ${post.scheduledPostId} to webhook.`,
+            );
           }
         } catch (error) {
           this.logger.error(
             `Failed to dispatch scheduled post ${post.scheduledPostId} due to connection error`,
-            error
+            error,
           );
         }
       }

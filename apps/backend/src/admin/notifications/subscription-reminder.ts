@@ -15,7 +15,7 @@ export interface SubscriptionReminderProviders {
 
 export async function sendSubscriptionReminder(
   request: SubscriptionReminderRequest,
-  providers: SubscriptionReminderProviders
+  providers: SubscriptionReminderProviders,
 ) {
   const { user, daysToExpiry, expiryDate } = request;
   const isExpired = daysToExpiry < 0;
@@ -33,11 +33,7 @@ export async function sendSubscriptionReminder(
   let error: string | null = null;
 
   try {
-    await providers.sendEmail(
-      user.email,
-      title,
-      `<p>Hi ${user.name},</p><p>${message}</p>`
-    );
+    await providers.sendEmail(user.email, title, `<p>Hi ${user.name},</p><p>${message}</p>`);
   } catch (err: any) {
     status = 'FAILED';
     error = err?.message || 'Failed to dispatch subscription reminder email';

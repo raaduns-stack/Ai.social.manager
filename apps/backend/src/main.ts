@@ -23,32 +23,27 @@ async function bootstrap() {
   app.use('/uploads', express.static(join(process.cwd(), 'uploads')));
 
   console.log('THE TOKEN IS:', process.env.NESTJS_SERVICE_TOKEN);
-  
+
   const frontendDir = join(process.cwd(), 'public');
 
   app.use(express.static(frontendDir));
 
-  app.use(
-    (
-      req: express.Request,
-      res: express.Response,
-      next: express.NextFunction,
-    ) => {
-      if (req.method !== 'GET') return next();
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    if (req.method !== 'GET') return next();
 
-      if (
-        req.path.startsWith(`/${apiPrefix}`) ||
-        req.path.startsWith('/uploads') ||
-        req.path.startsWith('/auth/tumblr')
-      ) {
-        return next();
-      }
+    if (
+      req.path.startsWith(`/${apiPrefix}`) ||
+      req.path.startsWith('/uploads') ||
+      req.path.startsWith('/auth/tumblr')
+    ) {
+      return next();
+    }
 
-      res.sendFile(join(frontendDir, 'index.html'));
-    },
-  );
+    res.sendFile(join(frontendDir, 'index.html'));
+  });
 
-  const jwtAccessSecret = config.get<string>('auth.accessSecret') || 'tumblr_cookie_secret_fallback';
+  const jwtAccessSecret =
+    config.get<string>('auth.accessSecret') || 'tumblr_cookie_secret_fallback';
   app.use(cookieParser(jwtAccessSecret));
 
   const corsOrigin = config.get<string>('CORS_ORIGIN', 'http://localhost:5173');
@@ -76,15 +71,9 @@ async function bootstrap() {
   app.useGlobalInterceptors(new LoggingInterceptor());
 
   // Swagger docs — protected with username + password
-  const swaggerUsername = config.get<string>(
-    'SWAGGER_USERNAME',
-    'admin',
-  );
+  const swaggerUsername = config.get<string>('SWAGGER_USERNAME', 'admin');
 
-  const swaggerPassword = config.get<string>(
-    'SWAGGER_PASSWORD',
-    '',
-  );
+  const swaggerPassword = config.get<string>('SWAGGER_PASSWORD', '');
 
   app.use(
     `/${apiPrefix}/docs`,
@@ -103,30 +92,19 @@ async function bootstrap() {
     .addBearerAuth()
     .build();
 
-  const document = SwaggerModule.createDocument(
-    app,
-    swaggerConfig,
-  );
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
 
-  SwaggerModule.setup(
-    `${apiPrefix}/docs`,
-    app,
-    document,
-  );
+  SwaggerModule.setup(`${apiPrefix}/docs`, app, document);
 
   const port = config.get<number>('PORT', 4000);
 
   await app.listen(port, '0.0.0.0');
 
   // eslint-disable-next-line no-console
-  console.log(
-    `RaaSocial backend running on http://localhost:${port}/${apiPrefix}`,
-  );
+  console.log(`RaaSocial backend running on http://localhost:${port}/${apiPrefix}`);
 
   // eslint-disable-next-line no-console
-  console.log(
-    `Swagger docs available at http://localhost:${port}/${apiPrefix}/docs`,
-  );
+  console.log(`Swagger docs available at http://localhost:${port}/${apiPrefix}/docs`);
 }
 
 bootstrap();

@@ -28,7 +28,9 @@ export const users = pgTable('users', {
   country: varchar('country', { length: 100 }),
   profileImage: varchar('profile_image', { length: 500 }),
   role: roleEnum('role').notNull().default(UserRole.USER),
-  accountStatus: accountStatusEnum('account_status').notNull().default('EMAIL_VERIFICATION_PENDING'),
+  accountStatus: accountStatusEnum('account_status')
+    .notNull()
+    .default('EMAIL_VERIFICATION_PENDING'),
   isActive: boolean('is_active').notNull().default(true),
   isEmailVerified: boolean('is_email_verified').notNull().default(false),
   emailVerificationCode: varchar('email_verification_code', { length: 6 }),
@@ -48,4 +50,3 @@ export const users = pgTable('users', {
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
-

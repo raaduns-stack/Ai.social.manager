@@ -27,4 +27,3 @@ export class PaymentGatewaySettingsController {
     return this.paymentGatewaySettingsService.updatePaymentGatewaySettings(dto);
   }
 }
-

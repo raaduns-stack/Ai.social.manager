@@ -27,4 +27,3 @@ export class SystemSettingsController {
     return this.systemSettingsService.updateSystemSettings(dto);
   }
 }
-

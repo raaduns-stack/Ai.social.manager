@@ -1,6 +1,6 @@
 declare module 'passport-tumblr' {
   import { Strategy as PassportStrategy } from 'passport';
-  
+
   export interface StrategyOptions {
     consumerKey: string;
     consumerSecret: string;
@@ -16,8 +16,8 @@ declare module 'passport-tumblr' {
         token: string,
         tokenSecret: string,
         profile: any,
-        done: (err: any, user?: any, info?: any) => void
-      ) => void
+        done: (err: any, user?: any, info?: any) => void,
+      ) => void,
     );
     constructor(
       options: StrategyOptions,
@@ -26,8 +26,8 @@ declare module 'passport-tumblr' {
         token: string,
         tokenSecret: string,
         profile: any,
-        done: (err: any, user?: any, info?: any) => void
-      ) => void
+        done: (err: any, user?: any, info?: any) => void,
+      ) => void,
     );
   }
 }

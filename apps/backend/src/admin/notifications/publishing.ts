@@ -19,7 +19,7 @@ export interface PublishingProviders {
 
 export async function sendPublishingNotification(
   request: PublishingNotificationRequest,
-  providers: PublishingProviders
+  providers: PublishingProviders,
 ) {
   const { customer, postId, postTitle, platform, isSuccess, publishErrorMessage } = request;
 
@@ -41,7 +41,7 @@ export async function sendPublishingNotification(
       await providers.sendEmail(
         customer.email,
         title,
-        `<p>Hi ${customer.name},</p><p>${message}</p>`
+        `<p>Hi ${customer.name},</p><p>${message}</p>`,
       );
     }
 

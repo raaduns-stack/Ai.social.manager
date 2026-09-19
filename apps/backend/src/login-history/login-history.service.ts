@@ -27,9 +27,7 @@ export interface CreateLoginHistoryPayload {
 
 @Injectable()
 export class LoginHistoryService {
-  constructor(
-    @Inject(DATABASE_CONNECTION) private readonly db: Database,
-  ) {}
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /**
    * Records a single login attempt.
@@ -110,10 +108,7 @@ export class LoginHistoryService {
         .limit(limit)
         .offset(offset),
 
-      this.db
-        .select({ total: count() })
-        .from(schema.loginHistory)
-        .where(whereClause),
+      this.db.select({ total: count() }).from(schema.loginHistory).where(whereClause),
     ]);
 
     const total = totalResult[0]?.total ?? 0;

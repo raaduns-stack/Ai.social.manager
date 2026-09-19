@@ -1,17 +1,7 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  text,
-  timestamp,
-  pgEnum,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { scheduledPosts } from './scheduled-posts.schema';
 
-export const publishingLogStatusEnum = pgEnum('publishing_log_status', [
-  'PUBLISHED',
-  'FAILED',
-]);
+export const publishingLogStatusEnum = pgEnum('publishing_log_status', ['PUBLISHED', 'FAILED']);
 
 export const publishingLogs = pgTable('publishing_logs', {
   id: uuid('id').primaryKey().defaultRandom(),

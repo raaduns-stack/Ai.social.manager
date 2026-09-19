@@ -20,9 +20,7 @@ export class AdminSupportController {
   @Get()
   @RequirePermission('support', 'view')
   @ApiOperation({ summary: 'Get all support tickets (optional status filter)' })
-  getTickets(
-    @Query('status') status?: 'open' | 'in_progress' | 'resolved' | 'closed',
-  ) {
+  getTickets(@Query('status') status?: 'open' | 'in_progress' | 'resolved' | 'closed') {
     return this.supportService.getAllTickets(status);
   }
 

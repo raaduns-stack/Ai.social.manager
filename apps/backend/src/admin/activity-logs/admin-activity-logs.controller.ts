@@ -20,4 +20,3 @@ export class AdminActivityLogsController {
     return this.activityLogsService.findAll(query);
   }
 }
-

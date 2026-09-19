@@ -22,8 +22,7 @@ export interface GeoLocation {
 }
 
 /** Regex covering all RFC-1918 / loopback / link-local IPv4 + IPv6 loopback. */
-const PRIVATE_IP_RE =
-  /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|fc|fd|fe80)/i;
+const PRIVATE_IP_RE = /^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|fc|fd|fe80)/i;
 
 function isPrivateOrLocalhost(ip: string): boolean {
   return !ip || ip === 'unknown' || PRIVATE_IP_RE.test(ip.trim());

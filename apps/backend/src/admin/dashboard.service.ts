@@ -22,7 +22,7 @@ type CustomerPlanRow = {
 
 @Injectable()
 export class DashboardService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) { }
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /**
    * Free = current Plan slug is `free`, or the customer has no active subscription.
@@ -554,7 +554,9 @@ export class DashboardService {
       planName: row.planName,
       count: Number(row.val),
       percent:
-        totalActivePlanSubs > 0 ? Math.round((Number(row.val) / totalActivePlanSubs) * 1000) / 10 : 0,
+        totalActivePlanSubs > 0
+          ? Math.round((Number(row.val) / totalActivePlanSubs) * 1000) / 10
+          : 0,
     }));
 
     return {

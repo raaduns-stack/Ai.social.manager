@@ -58,13 +58,20 @@ export class DesignerPaymentsController {
   }
 
   @Patch('records/:id/status')
-  @ApiOperation({ summary: 'Update status of a designer payment record (approve, decline, process, mark successful/failed)' })
+  @ApiOperation({
+    summary:
+      'Update status of a designer payment record (approve, decline, process, mark successful/failed)',
+  })
   async updatePaymentStatus(
     @Param('id') id: string,
     @Body() dto: UpdatePayoutStatusDto,
     @Request() req: any,
   ) {
-    return this.designerPaymentsService.updatePaymentStatus(id, dto, req.user?.userId || req.user?.id);
+    return this.designerPaymentsService.updatePaymentStatus(
+      id,
+      dto,
+      req.user?.userId || req.user?.id,
+    );
   }
 
   @Delete('records/:id')

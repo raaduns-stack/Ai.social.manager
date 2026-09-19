@@ -9,7 +9,7 @@ type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
 export class AdminDesignerManagementService {
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) { }
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /**
    * Helper to get start date for daily/weekly/monthly filters
@@ -39,12 +39,12 @@ export class AdminDesignerManagementService {
     const allDesigners = await this.db.query.users.findMany({
       where: and(
         eq(schema.users.role, UserRole.DESIGNER as any),
-        ne(schema.users.accountStatus, 'DELETED')
+        ne(schema.users.accountStatus, 'DELETED'),
       ),
     });
 
     const totalDesigners = allDesigners.length;
-    const activeDesigners = allDesigners.filter(d => d.accountStatus === 'ACTIVE').length;
+    const activeDesigners = allDesigners.filter((d) => d.accountStatus === 'ACTIVE').length;
 
     // 2. Tasks Stats
     const tasksQuery = this.db.select().from(schema.tasks);
@@ -125,12 +125,12 @@ export class AdminDesignerManagementService {
       where: whereClause,
       with: {
         assignee: { columns: { fullName: true, email: true } },
-        assigner: { columns: { fullName: true } }
+        assigner: { columns: { fullName: true } },
       },
-      orderBy: [desc(schema.tasks.createdAt)]
+      orderBy: [desc(schema.tasks.createdAt)],
     });
 
-    return taskList.map(t => ({
+    return taskList.map((t) => ({
       id: t.id,
       title: t.title,
       priority: t.priority,
@@ -154,12 +154,12 @@ export class AdminDesignerManagementService {
       where: whereClause,
       with: {
         designer: { columns: { fullName: true, email: true } },
-        task: { columns: { title: true } }
+        task: { columns: { title: true } },
       },
-      orderBy: [desc(schema.submissions.createdAt)]
+      orderBy: [desc(schema.submissions.createdAt)],
     });
 
-    return subList.map(s => ({
+    return subList.map((s) => ({
       id: s.id,
       title: s.title,
       category: s.category,
@@ -183,10 +183,10 @@ export class AdminDesignerManagementService {
       with: {
         designer: { columns: { fullName: true, email: true } },
       },
-      orderBy: [desc(schema.designerPayments.createdAt)]
+      orderBy: [desc(schema.designerPayments.createdAt)],
     });
 
-    return payList.map(p => ({
+    return payList.map((p) => ({
       id: p.id,
       amount: p.amount,
       status: p.status,
@@ -204,7 +204,7 @@ export class AdminDesignerManagementService {
       whereClause = gte(schema.activityLogs.createdAt, startDate);
     }
 
-    // Since we don't have a strict designer_management module in activity logs, 
+    // Since we don't have a strict designer_management module in activity logs,
     // we fetch logs where the action indicates designer activity.
     // In a real app we'd filter by module. For now we fetch recent general logs.
     const acts = await this.db.query.activityLogs.findMany({
@@ -213,7 +213,7 @@ export class AdminDesignerManagementService {
       limit: 50,
     });
 
-    return acts.map(a => ({
+    return acts.map((a) => ({
       id: a.id,
       action: a.action,
       description: a.description,
@@ -226,30 +226,36 @@ export class AdminDesignerManagementService {
     const designers = await this.db.query.users.findMany({
       where: and(
         eq(schema.users.role, UserRole.DESIGNER as any),
-        ne(schema.users.accountStatus, 'DELETED')
+        ne(schema.users.accountStatus, 'DELETED'),
       ),
-      orderBy: [desc(schema.users.createdAt)]
+      orderBy: [desc(schema.users.createdAt)],
     });
 
     const result = [];
     for (const d of designers) {
       // Calculate workload (tasks not done)
-      const pendingTasks = await this.db.select({ count: count() })
+      const pendingTasks = await this.db
+        .select({ count: count() })
         .from(schema.tasks)
         .where(and(eq(schema.tasks.assignedTo, d.id), ne(schema.tasks.status, 'done')));
 
-      const completedTasks = await this.db.select({ count: count() })
+      const completedTasks = await this.db
+        .select({ count: count() })
         .from(schema.tasks)
         .where(and(eq(schema.tasks.assignedTo, d.id), eq(schema.tasks.status, 'done')));
 
-      const approvedSubmissions = await this.db.select({ count: count() })
+      const approvedSubmissions = await this.db
+        .select({ count: count() })
         .from(schema.submissions)
-        .where(and(eq(schema.submissions.designerId, d.id), eq(schema.submissions.status, 'approved')));
+        .where(
+          and(eq(schema.submissions.designerId, d.id), eq(schema.submissions.status, 'approved')),
+        );
 
       const totalTasksCount = (pendingTasks[0]?.count || 0) + (completedTasks[0]?.count || 0);
-      const approvalRate = totalTasksCount > 0
-        ? Math.round(((approvedSubmissions[0]?.count || 0) / totalTasksCount) * 100)
-        : 0;
+      const approvalRate =
+        totalTasksCount > 0
+          ? Math.round(((approvedSubmissions[0]?.count || 0) / totalTasksCount) * 100)
+          : 0;
 
       result.push({
         id: d.id,
@@ -292,12 +298,16 @@ export class AdminDesignerManagementService {
       orderBy: [desc(schema.designerPayments.createdAt)],
     });
 
-    const activeTasks = tasks.filter(t => t.status !== 'done').length;
-    const completedTasksCount = tasks.filter(t => t.status === 'done').length;
-    const approvedSubmissions = submissions.filter(s => s.status === 'approved').length;
+    const activeTasks = tasks.filter((t) => t.status !== 'done').length;
+    const completedTasksCount = tasks.filter((t) => t.status === 'done').length;
+    const approvedSubmissions = submissions.filter((s) => s.status === 'approved').length;
 
-    const totalEarnings = payments.filter(p => p.status === 'paid').reduce((acc, p) => acc + p.amount, 0);
-    const pendingEarnings = payments.filter(p => p.status === 'pending' || p.status === 'processing').reduce((acc, p) => acc + p.amount, 0);
+    const totalEarnings = payments
+      .filter((p) => p.status === 'paid')
+      .reduce((acc, p) => acc + p.amount, 0);
+    const pendingEarnings = payments
+      .filter((p) => p.status === 'pending' || p.status === 'processing')
+      .reduce((acc, p) => acc + p.amount, 0);
 
     return {
       personalInfo: {
@@ -325,10 +335,25 @@ export class AdminDesignerManagementService {
         pendingAmount: pendingEarnings,
       },
       history: {
-        tasks: tasks.map(t => ({ id: t.id, title: t.title, status: t.status, date: t.createdAt })),
-        submissions: submissions.map(s => ({ id: s.id, title: s.title, status: s.status, date: s.createdAt })),
-        payments: payments.map(p => ({ id: p.id, amount: p.amount, status: p.status, date: p.createdAt })),
-      }
+        tasks: tasks.map((t) => ({
+          id: t.id,
+          title: t.title,
+          status: t.status,
+          date: t.createdAt,
+        })),
+        submissions: submissions.map((s) => ({
+          id: s.id,
+          title: s.title,
+          status: s.status,
+          date: s.createdAt,
+        })),
+        payments: payments.map((p) => ({
+          id: p.id,
+          amount: p.amount,
+          status: p.status,
+          date: p.createdAt,
+        })),
+      },
     };
   }
 }

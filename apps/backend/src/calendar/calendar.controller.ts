@@ -36,10 +36,7 @@ export class CalendarController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '[Customer] Get all calendar posts for the current user' })
   @ApiQuery({ name: 'status', required: false, enum: ['ALL', 'DRAFT', 'SCHEDULED', 'PUBLISHED'] })
-  findAll(
-    @CurrentUser() user: { userId: string },
-    @Query('status') status?: string,
-  ) {
+  findAll(@CurrentUser() user: { userId: string }, @Query('status') status?: string) {
     return this.calendarService.findAllForUser(user.userId, status);
   }
 
@@ -47,10 +44,7 @@ export class CalendarController {
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '[Customer] Get monthly post limit and usage stats' })
   @ApiQuery({ name: 'month', required: false, description: 'Target month in YYYY-MM format' })
-  getUsage(
-    @CurrentUser() user: { userId: string },
-    @Query('month') month?: string,
-  ) {
+  getUsage(@CurrentUser() user: { userId: string }, @Query('month') month?: string) {
     return this.calendarService.getUsageForUser(user.userId, month);
   }
 
@@ -71,7 +65,11 @@ export class CalendarController {
   @Get('posts/:id')
   @UseGuards(JwtOrN8nAuthGuard)
   @ApiOperation({ summary: '[Customer/n8n] Get a single post by ID' })
-  @ApiQuery({ name: 'userId', required: false, description: 'Optional userId for ownership verification when called by internal services' })
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    description: 'Optional userId for ownership verification when called by internal services',
+  })
   findOne(
     @Param('id', ParseUUIDPipe) id: string,
     @CurrentUser() user?: { userId: string },
@@ -88,11 +86,12 @@ export class CalendarController {
   @UseGuards(N8nInternalAuthGuard)
   @ApiHeader({ name: 'X-N8N-API-KEY', description: 'Internal n8n API Key' })
   @ApiOperation({ summary: '[Internal n8n] Get a single post by ID' })
-  @ApiQuery({ name: 'userId', required: false, description: 'Optional userId for ownership verification' })
-  findInternal(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Query('userId') userId?: string,
-  ) {
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    description: 'Optional userId for ownership verification',
+  })
+  findInternal(@Param('id', ParseUUIDPipe) id: string, @Query('userId') userId?: string) {
     if (userId) {
       return this.calendarService.findOneForUser(id, userId);
     }
@@ -102,10 +101,7 @@ export class CalendarController {
   @Post('posts')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '[Customer] Schedule a new content calendar post' })
-  create(
-    @CurrentUser() user: { userId: string },
-    @Body() dto: CreateCalendarPostDto,
-  ) {
+  create(@CurrentUser() user: { userId: string }, @Body() dto: CreateCalendarPostDto) {
     return this.calendarService.createForUser(user.userId, dto);
   }
 
@@ -123,10 +119,7 @@ export class CalendarController {
   @Delete('posts/:id')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '[Customer] Delete a calendar post' })
-  remove(
-    @Param('id', ParseUUIDPipe) id: string,
-    @CurrentUser() user: { userId: string },
-  ) {
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: { userId: string }) {
     return this.calendarService.removeForUser(id, user.userId);
   }
 
@@ -143,13 +136,16 @@ export class CalendarController {
   @Get('admin/posts')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'account_manager')
-  @ApiOperation({ summary: '[Admin] Get all posts, optionally filtered by userId and/or approvalStatus' })
+  @ApiOperation({
+    summary: '[Admin] Get all posts, optionally filtered by userId and/or approvalStatus',
+  })
   @ApiQuery({ name: 'userId', required: false, description: 'Filter by customer UUID' })
-  @ApiQuery({ name: 'approvalStatus', required: false, enum: ['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'REVISION_REQUIRED'] })
-  findAllAdmin(
-    @Query('userId') userId?: string,
-    @Query('approvalStatus') approvalStatus?: string,
-  ) {
+  @ApiQuery({
+    name: 'approvalStatus',
+    required: false,
+    enum: ['ALL', 'PENDING', 'APPROVED', 'REJECTED', 'REVISION_REQUIRED'],
+  })
+  findAllAdmin(@Query('userId') userId?: string, @Query('approvalStatus') approvalStatus?: string) {
     return this.calendarService.findAllForAdmin(userId, approvalStatus);
   }
 
@@ -166,10 +162,7 @@ export class CalendarController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('super_admin', 'account_manager', 'designer', 'reviewer')
   @ApiOperation({ summary: '[Admin] Update approval status and leave notes on a post' })
-  updateApproval(
-    @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: UpdateApprovalDto,
-  ) {
+  updateApproval(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateApprovalDto) {
     return this.calendarService.updateApproval(id, dto);
   }
 }

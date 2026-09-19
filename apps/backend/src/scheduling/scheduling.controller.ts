@@ -18,10 +18,7 @@ export class SchedulingController {
 
   @Patch(':id/claim')
   @ApiOperation({ summary: 'Atomically claim a scheduled post for processing' })
-  claim(
-    @Param('id') id: string,
-    @Body() body: { idempotencyKey?: string | null },
-  ) {
+  claim(@Param('id') id: string, @Body() body: { idempotencyKey?: string | null }) {
     return this.schedulingService.claimPost(id, body.idempotencyKey || null);
   }
 

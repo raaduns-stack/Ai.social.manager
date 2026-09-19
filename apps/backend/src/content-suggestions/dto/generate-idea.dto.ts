@@ -17,4 +17,4 @@ export class GenerateIdeaDto {
   @IsString()
   @IsOptional()
   postId?: string;
-}
+}

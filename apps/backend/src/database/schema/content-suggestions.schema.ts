@@ -1,22 +1,11 @@
-import {
-  pgTable,
-  uuid,
-  varchar,
-  timestamp,
-  json,
-  pgEnum,
-  text,
-} from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, timestamp, json, pgEnum, text } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
 import { contentFeedback } from './content-feedback.schema';
 /**
  * PostgreSQL Enum defining allowable types of generated content suggestions.
  */
-export const suggestionTypeEnum = pgEnum('suggestion_type', [
-  'caption',
-  'idea',
-]);
+export const suggestionTypeEnum = pgEnum('suggestion_type', ['caption', 'idea']);
 
 /**
  * PostgreSQL Enum defining variation approval status states.
@@ -39,7 +28,7 @@ export const contentSuggestions = pgTable('content_suggestions', {
   /** Primary key generated automatically as a random v4 UUID. */
   id: uuid('id').primaryKey().defaultRandom(),
 
-  /** 
+  /**
    * Foreign key linking the suggestion to a user.
    * Cascade deletes all suggestions if the referenced user is deleted.
    */
@@ -48,8 +37,7 @@ export const contentSuggestions = pgTable('content_suggestions', {
     .references(() => users.id, { onDelete: 'cascade' }),
 
   /** Optional foreign key linking the suggestion to a specific calendar post. */
-  postId: uuid('post_id')
-    .references(() => contentCalendar.id, { onDelete: 'cascade' }),
+  postId: uuid('post_id').references(() => contentCalendar.id, { onDelete: 'cascade' }),
 
   /** Title / headline of the suggestion. */
   title: varchar('title', { length: 255 }),
@@ -72,22 +60,19 @@ export const contentSuggestions = pgTable('content_suggestions', {
 /**
  * Defines Drizzle ORM relational mappings for `contentSuggestions`.
  */
-export const contentSuggestionsRelations = relations(
-  contentSuggestions,
-  ({ one, many }) => ({
-    user: one(users, {
-      fields: [contentSuggestions.userId],
-      references: [users.id],
-    }),
-
-    feedback: many(contentFeedback),
-
-    post: one(contentCalendar, {
-      fields: [contentSuggestions.postId],
-      references: [contentCalendar.id],
-    }),
+export const contentSuggestionsRelations = relations(contentSuggestions, ({ one, many }) => ({
+  user: one(users, {
+    fields: [contentSuggestions.userId],
+    references: [users.id],
   }),
-);
+
+  feedback: many(contentFeedback),
+
+  post: one(contentCalendar, {
+    fields: [contentSuggestions.postId],
+    references: [contentCalendar.id],
+  }),
+}));
 /** TypeScript type inferred for reading/selecting records from the `content_suggestions` table. */
 export type ContentSuggestion = typeof contentSuggestions.$inferSelect;
 /** TypeScript type inferred for inserting new records into the `content_suggestions` table. */

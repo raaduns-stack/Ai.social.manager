@@ -32,7 +32,9 @@ export const usersRelations = relations(users, ({ many, one }) => ({
   notifications: many(notifications),
   sentNotifications: many(notifications, { relationName: 'senderNotifications' }),
   scheduledNotifications: many(scheduledNotifications),
-  createdScheduledNotifications: many(scheduledNotifications, { relationName: 'creatorScheduledNotifications' }),
+  createdScheduledNotifications: many(scheduledNotifications, {
+    relationName: 'creatorScheduledNotifications',
+  }),
 }));
 
 export const supportTicketsRelations = relations(supportTickets, ({ one, many }) => ({
@@ -111,4 +113,3 @@ export const scheduledNotificationsRelations = relations(scheduledNotifications,
     relationName: 'creatorScheduledNotifications',
   }),
 }));
-

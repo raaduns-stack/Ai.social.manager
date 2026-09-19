@@ -69,4 +69,4 @@ import { NotificationsModule } from '../notifications/notifications.module';
     AdminDesignerManagementService,
   ],
 })
-export class AdminModule { }
+export class AdminModule {}

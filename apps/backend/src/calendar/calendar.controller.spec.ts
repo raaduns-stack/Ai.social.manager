@@ -79,33 +79,21 @@ describe('CalendarController', () => {
 
   describe('findOne', () => {
     it('should call findOneForUser when user context is present from JWT', async () => {
-      const result = await controller.findOne(
-        mockPost.id,
-        { userId: mockPost.userId },
-        undefined,
-      );
+      const result = await controller.findOne(mockPost.id, { userId: mockPost.userId }, undefined);
 
       expect(service.findOneForUser).toHaveBeenCalledWith(mockPost.id, mockPost.userId);
       expect(result).toEqual(mockPost);
     });
 
     it('should call findOneForUser when queryUserId is provided (n8n mode)', async () => {
-      const result = await controller.findOne(
-        mockPost.id,
-        undefined,
-        mockPost.userId,
-      );
+      const result = await controller.findOne(mockPost.id, undefined, mockPost.userId);
 
       expect(service.findOneForUser).toHaveBeenCalledWith(mockPost.id, mockPost.userId);
       expect(result).toEqual(mockPost);
     });
 
     it('should call findOneById when neither user JWT nor queryUserId is present', async () => {
-      const result = await controller.findOne(
-        mockPost.id,
-        undefined,
-        undefined,
-      );
+      const result = await controller.findOne(mockPost.id, undefined, undefined);
 
       expect(service.findOneById).toHaveBeenCalledWith(mockPost.id);
       expect(result).toEqual(mockPost);

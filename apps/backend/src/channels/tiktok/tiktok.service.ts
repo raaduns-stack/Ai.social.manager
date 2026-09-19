@@ -14,10 +14,7 @@ import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { Response } from 'express';
 import { DATABASE_CONNECTION } from '../../database/database.module';
 import * as schema from '../../database/schema';
-import {
-  encryptSecret,
-  decryptSecret,
-} from '../../common/utils/encryption.util';
+import { encryptSecret, decryptSecret } from '../../common/utils/encryption.util';
 import { KycService } from '../../kyc/kyc.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
@@ -133,11 +130,7 @@ export class TikTokService {
    * @param state  Signed JWT containing the authenticated RaaSocial userId.
    * @param res    Express response — used to perform the browser redirect.
    */
-  async handleCallback(
-    code: string,
-    state: string,
-    res: Response,
-  ): Promise<void> {
+  async handleCallback(code: string, state: string, res: Response): Promise<void> {
     const frontendUrl = this.configService.get<string>('frontendUrl');
     const successUrl = `${frontendUrl}/settings?tab=channels&tiktok=connected`;
     const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
@@ -173,9 +166,7 @@ export class TikTokService {
     try {
       tokenData = await this.exchangeCodeForTokens(code);
     } catch (err) {
-      this.logger.error(
-        `TikTok callback: token exchange failed — ${err.message}`,
-      );
+      this.logger.error(`TikTok callback: token exchange failed — ${err.message}`);
       res.redirect(`${errorBase}&reason=token_exchange_failed`);
       return;
     }
@@ -183,10 +174,7 @@ export class TikTokService {
     // 4. Fetch user info
     let displayName: string;
     try {
-      displayName = await this.fetchTikTokDisplayName(
-        tokenData.access_token,
-        tokenData.open_id,
-      );
+      displayName = await this.fetchTikTokDisplayName(tokenData.access_token, tokenData.open_id);
     } catch (err) {
       this.logger.warn(
         `TikTok callback: user info fetch failed, using openId as handle — ${err.message}`,
@@ -205,17 +193,12 @@ export class TikTokService {
         expiresIn: tokenData.expires_in,
       });
     } catch (err) {
-      this.logger.error(
-        `TikTok callback: DB upsert failed — ${err.message}`,
-        err.stack,
-      );
+      this.logger.error(`TikTok callback: DB upsert failed — ${err.message}`, err.stack);
       res.redirect(`${errorBase}&reason=db_error`);
       return;
     }
 
-    this.logger.log(
-      `TikTok account connected for user ${userId} (openId=${tokenData.open_id})`,
-    );
+    this.logger.log(`TikTok account connected for user ${userId} (openId=${tokenData.open_id})`);
     res.redirect(successUrl);
   }
 
@@ -267,9 +250,7 @@ export class TikTokService {
    *
    * Reference: https://developers.tiktok.com/doc/oauth-user-access-token-management
    */
-  private async exchangeCodeForTokens(
-    code: string,
-  ): Promise<TikTokTokenResponse> {
+  private async exchangeCodeForTokens(code: string): Promise<TikTokTokenResponse> {
     const clientKey = this.configService.get<string>('tiktok.clientKey');
     const clientSecret = this.configService.get<string>('tiktok.clientSecret');
     const redirectUri = this.configService.get<string>('tiktok.redirectUri');
@@ -288,14 +269,11 @@ export class TikTokService {
       redirect_uri: redirectUri,
     });
 
-    const response = await fetch(
-      'https://open.tiktokapis.com/v2/oauth/token/',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: params.toString(),
-      },
-    );
+    const response = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params.toString(),
+    });
 
     const json: any = await response.json();
 
@@ -313,10 +291,7 @@ export class TikTokService {
    *
    * Reference: https://developers.tiktok.com/doc/tiktok-api-v2-get-user-info
    */
-  private async fetchTikTokDisplayName(
-    accessToken: string,
-    openId: string,
-  ): Promise<string> {
+  private async fetchTikTokDisplayName(accessToken: string, openId: string): Promise<string> {
     const response = await fetch(
       'https://open.tiktokapis.com/v2/user/info/?fields=open_id,display_name,username',
       {
@@ -327,16 +302,10 @@ export class TikTokService {
     const json: TikTokUserInfoResponse = await response.json();
 
     if (json.error?.code !== 'ok' && json.error?.code) {
-      throw new BadRequestException(
-        `TikTok user info error: ${json.error.message}`,
-      );
+      throw new BadRequestException(`TikTok user info error: ${json.error.message}`);
     }
 
-    return (
-      json.data?.user?.username ||
-      json.data?.user?.display_name ||
-      openId
-    );
+    return json.data?.user?.username || json.data?.user?.display_name || openId;
   }
 
   /**
@@ -412,9 +381,7 @@ export class TikTokService {
   ): void {
     const clientSecret = this.configService.get<string>('tiktok.clientSecret');
     if (!clientSecret) {
-      this.logger.warn(
-        'TIKTOK_CLIENT_SECRET is not set — webhook signature validation skipped.',
-      );
+      this.logger.warn('TIKTOK_CLIENT_SECRET is not set — webhook signature validation skipped.');
       return;
     }
 
@@ -423,9 +390,7 @@ export class TikTokService {
     const nonce = this.getHeader(headers, 'x-tiktok-nonce');
 
     if (!signature || !timestamp || !nonce) {
-      throw new UnauthorizedException(
-        'Missing TikTok webhook signature headers.',
-      );
+      throw new UnauthorizedException('Missing TikTok webhook signature headers.');
     }
 
     // Reject requests older than 5 minutes to prevent replay attacks
@@ -439,17 +404,9 @@ export class TikTokService {
 
     const bodyString = rawBody.toString('utf8');
     const message = `${timestamp}${nonce}${bodyString}`;
-    const expected = crypto
-      .createHmac('sha256', clientSecret)
-      .update(message)
-      .digest('hex');
+    const expected = crypto.createHmac('sha256', clientSecret).update(message).digest('hex');
 
-    if (
-      !crypto.timingSafeEqual(
-        Buffer.from(signature, 'hex'),
-        Buffer.from(expected, 'hex'),
-      )
-    ) {
+    if (!crypto.timingSafeEqual(Buffer.from(signature, 'hex'), Buffer.from(expected, 'hex'))) {
       throw new UnauthorizedException('TikTok webhook signature mismatch.');
     }
   }
@@ -478,9 +435,7 @@ export class TikTokService {
     });
 
     if (!account?.accessToken) {
-      throw new BadRequestException(
-        'No connected TikTok account found for this user.',
-      );
+      throw new BadRequestException('No connected TikTok account found for this user.');
     }
 
     return decryptSecret(account.accessToken);

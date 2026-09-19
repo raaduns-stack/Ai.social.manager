@@ -25,4 +25,3 @@ import { SocialAccountsModule } from '../social-accounts/social-accounts.module'
   exports: [AuthService],
 })
 export class AuthModule {}
-

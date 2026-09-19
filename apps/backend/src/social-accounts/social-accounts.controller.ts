@@ -63,10 +63,30 @@ export class SocialAccountsController {
   @ApiOperation({
     summary: 'Snapchat OAuth 2.0 Redirect/Callback receiver endpoint',
   })
-  @ApiQuery({ name: 'code', required: false, type: String, description: 'Snapchat authorization code' })
-  @ApiQuery({ name: 'state', required: false, type: String, description: 'Encrypted OAuth state parameter' })
-  @ApiQuery({ name: 'error', required: false, type: String, description: 'OAuth error code if denied' })
-  @ApiQuery({ name: 'error_description', required: false, type: String, description: 'Error description if denied' })
+  @ApiQuery({
+    name: 'code',
+    required: false,
+    type: String,
+    description: 'Snapchat authorization code',
+  })
+  @ApiQuery({
+    name: 'state',
+    required: false,
+    type: String,
+    description: 'Encrypted OAuth state parameter',
+  })
+  @ApiQuery({
+    name: 'error',
+    required: false,
+    type: String,
+    description: 'OAuth error code if denied',
+  })
+  @ApiQuery({
+    name: 'error_description',
+    required: false,
+    type: String,
+    description: 'Error description if denied',
+  })
   async snapchatCallback(
     @Query('code') code?: string,
     @Query('state') state?: string,
@@ -74,8 +94,7 @@ export class SocialAccountsController {
     @Query('error_description') errorDescription?: string,
     @Res() res?: Response,
   ) {
-    const frontendUrl =
-      this.configService.get<string>('frontendUrl') || 'http://localhost:5173';
+    const frontendUrl = this.configService.get<string>('frontendUrl') || 'http://localhost:5173';
     const channelsUrl = `${frontendUrl}/dashboard/channels`;
 
     try {
@@ -89,7 +108,9 @@ export class SocialAccountsController {
       if (res) {
         if (!result.success) {
           // OAuth was cancelled/denied — redirect with error
-          const errMsg = encodeURIComponent(result.errorDescription || result.error || 'Connection cancelled.');
+          const errMsg = encodeURIComponent(
+            result.errorDescription || result.error || 'Connection cancelled.',
+          );
           return res.redirect(`${channelsUrl}?snapchat_error=${errMsg}`);
         }
         // Success — redirect back to channels page with success indicator

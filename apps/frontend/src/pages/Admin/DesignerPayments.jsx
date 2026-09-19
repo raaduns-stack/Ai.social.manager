@@ -29,6 +29,7 @@ import {
   Info,
   ExternalLink,
   Trash2,
+  Copy,
 } from 'lucide-react';
 import PageHeader from '../../components/layout/PageHeader';
 import Card from '../../components/ui/Card';
@@ -40,7 +41,6 @@ import {
   getDesignerPaymentDashboard,
   getDesignerEarnings,
   getDesignerPaymentRecords,
-  createDesignerPayout,
   updateDesignerPaymentStatus,
   deleteDesignerPaymentRecord,
   getDesignerPaymentSettings,
@@ -125,18 +125,8 @@ export default function DesignerPayments() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState(null);
 
-  // New Payout Modal state
-  const [payoutModalOpen, setPayoutModalOpen] = useState(false);
-  const [payoutForm, setPayoutForm] = useState({
-    designerId: '',
-    amountNaira: '',
-    payoutType: 'manual', // 'manual' | 'global'
-    period: '',
-    relatedWork: '',
-    notes: '',
-  });
-  const [submittingPayout, setSubmittingPayout] = useState(false);
-  const [payoutModalError, setPayoutModalError] = useState(null);
+  // Copy to clipboard state for bank details
+  const [copiedKey, setCopiedKey] = useState(null);
 
   // Status Action Modal state
   const [actionModal, setActionModal] = useState({
@@ -263,106 +253,17 @@ export default function DesignerPayments() {
     }
   };
 
-  // Open payout modal for specific designer
-  const openPayoutModalForDesigner = (designer) => {
-    const outstandingNaira = (designer.outstandingBalance || 0) / 100;
-    setPayoutForm({
-      designerId: designer.designerId,
-      amountNaira: outstandingNaira > 0 ? String(outstandingNaira) : '',
-      payoutType: 'manual',
-      period: `Payout ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-      relatedWork:
-        (designer.approvedImagesCount > 0 || designer.acceptedImageToCodeCount > 0)
-          ? `${designer.approvedImagesCount} approved graphics, ${designer.acceptedImageToCodeCount} image-to-code`
-          : '',
-      notes: '',
-    });
-    setPayoutModalError(null);
-    setPayoutModalOpen(true);
-  };
-
-  // Live fee calculator for payout creation modal
-  const selectedDesignerForPayout = useMemo(() => {
-    return earnings.find((d) => d.designerId === payoutForm.designerId);
-  }, [earnings, payoutForm.designerId]);
-
-  const livePayoutCalculation = useMemo(() => {
-    const grossAmount = Math.round(Number(payoutForm.amountNaira || 0) * 100);
-    if (grossAmount <= 0) return { gross: 0, fee: 0, net: 0, feePercent: 0, isGlobal: false };
-
-    const isGlobalType = payoutForm.payoutType === 'global';
-    const isTodayGlobalPayout = stats?.schedule?.isTodayGlobalPayout;
-
-    let feePercent = 0;
-    if (!isGlobalType && !isTodayGlobalPayout) {
-      feePercent = settingsForm.manualPayoutFeePercent || 2;
-    }
-
-    const fee = Math.round(grossAmount * (feePercent / 100));
-    const net = Math.max(0, grossAmount - fee);
-
-    return {
-      gross: grossAmount,
-      fee,
-      net,
-      feePercent,
-      isGlobal: isGlobalType,
-      isTodayGlobalPayout,
-    };
-  }, [payoutForm.amountNaira, payoutForm.payoutType, stats, settingsForm.manualPayoutFeePercent]);
-
-  // Handle submit payout
-  const handleSubmitPayout = async (e) => {
-    e.preventDefault();
-    if (!payoutForm.designerId) {
-      setPayoutModalError('Please select a designer.');
-      return;
-    }
-    const amountKobo = Math.round(Number(payoutForm.amountNaira) * 100);
-    if (isNaN(amountKobo) || amountKobo <= 0) {
-      setPayoutModalError('Please enter a valid payout amount greater than ₦0.');
-      return;
-    }
-
-    setSubmittingPayout(true);
-    setPayoutModalError(null);
-    try {
-      const payload = {
-        designerId: payoutForm.designerId,
-        amount: amountKobo,
-        payoutType: payoutForm.payoutType,
-        period: payoutForm.period,
-        relatedWork: payoutForm.relatedWork,
-        notes: payoutForm.notes,
-      };
-
-      const created = await createDesignerPayout(payload);
-
-      // Refresh records and dashboard stats
-      const [refreshedRecords, refreshedStats, refreshedEarnings] = await Promise.all([
-        getDesignerPaymentRecords(),
-        getDesignerPaymentDashboard(),
-        getDesignerEarnings(),
-      ]);
-      setRecords(refreshedRecords);
-      setStats(refreshedStats);
-      setEarnings(refreshedEarnings);
-
-      setPayoutModalOpen(false);
-      window.dispatchEvent(
-        new CustomEvent('app-toast', {
-          detail: {
-            message: `Payout initiated for ${created.accountName || 'designer'} (${formatNaira(created.netAmount)} net).`,
-            type: 'success',
-          },
-        })
-      );
-    } catch (err) {
-      console.error(err);
-      setPayoutModalError(err?.response?.data?.message || 'Failed to create payout record.');
-    } finally {
-      setSubmittingPayout(false);
-    }
+  // Copy bank details helper for Admin external payment coordination
+  const copyToClipboard = (text, key) => {
+    if (!text) return;
+    navigator.clipboard.writeText(String(text));
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+    window.dispatchEvent(
+      new CustomEvent('app-toast', {
+        detail: { message: `Copied: ${text}`, type: 'success' },
+      })
+    );
   };
 
   // Open status action confirmation modal
@@ -481,32 +382,13 @@ export default function DesignerPayments() {
             >
               <RefreshCw size={14} /> Refresh
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() => {
-                setPayoutForm({
-                  designerId: earnings[0]?.designerId || '',
-                  amountNaira: '',
-                  payoutType: 'manual',
-                  period: `Payout ${new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
-                  relatedWork: '',
-                  notes: '',
-                });
-                setPayoutModalError(null);
-                setPayoutModalOpen(true);
-              }}
-              className="gap-2 bg-primary text-white"
-            >
-              <Plus size={16} /> Initiate Payout
-            </Button>
           </div>
         }
       />
 
       {error && <ErrorBanner error={error} onDismiss={() => setError(null)} />}
 
-      {/* Global Schedule Banner */}
+      {/* Payout Schedule Banner */}
       {stats?.schedule && (
         <div className="bg-gradient-to-r from-primary-50 via-surface to-accent-50 border border-primary-200 rounded-xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 text-sm">
           <div className="flex items-center gap-3">
@@ -515,7 +397,7 @@ export default function DesignerPayments() {
             </div>
             <div>
               <div className="font-semibold text-ink flex items-center gap-2">
-                <span>Global Payout Schedule: {stats.schedule.description}</span>
+                <span>Scheduled Payout Cycle: {stats.schedule.description}</span>
                 {stats.schedule.isTodayGlobalPayout && (
                   <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-xs font-bold">
                     TODAY IS PAYOUT DAY
@@ -523,8 +405,8 @@ export default function DesignerPayments() {
                 )}
               </div>
               <p className="text-xs text-ink-muted mt-0.5">
-                Next scheduled global payout: <span className="font-medium text-ink">{formatDate(stats.schedule.nextDate)}</span> (0% fee).
-                Manual payouts requested before scheduled day have a <span className="font-bold text-amber-700">{settingsForm.manualPayoutFeePercent}% charge</span>.
+                Next scheduled payout: <span className="font-medium text-ink">{formatDate(stats.schedule.nextDate)}</span>.
+                Manual early payout charge: <span className="font-bold text-amber-700">{settingsForm.manualPayoutFeePercent}%</span>.
               </p>
             </div>
           </div>
@@ -596,7 +478,7 @@ export default function DesignerPayments() {
       <div className="border-b border-border flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">
           {[
-            { id: 'records', label: 'Payment Records', count: records.length },
+            { id: 'records', label: 'Pending Payouts', count: records.length },
             { id: 'earnings', label: 'Designer Earnings', count: earnings.length },
             { id: 'settings', label: 'Global Settings' },
           ].map((tab) => (
@@ -627,7 +509,7 @@ export default function DesignerPayments() {
         </div>
       </div>
 
-      {/* TAB 1: Payment Records */}
+      {/* TAB 1: Pending Payouts */}
       {activeTab === 'records' && (
         <div className="space-y-4">
           {/* Filters Bar */}
@@ -669,9 +551,9 @@ export default function DesignerPayments() {
                     <th className="p-4">Reference & Type</th>
                     <th className="p-4">Designer</th>
                     <th className="p-4">Gross Amount</th>
-                    <th className="p-4">Fee (2%)</th>
+                    <th className="p-4">Early Fee</th>
                     <th className="p-4">Net Payout</th>
-                    <th className="p-4">Bank Details</th>
+                    <th className="p-4">Bank Details (Copy)</th>
                     <th className="p-4">Related Work</th>
                     <th className="p-4">Status</th>
                     <th className="p-4">Date</th>
@@ -683,10 +565,10 @@ export default function DesignerPayments() {
                     <tr>
                       <td colSpan={10} className="p-8 text-center text-ink-muted">
                         <Wallet size={28} className="mx-auto mb-2 opacity-40" />
-                        <p className="font-semibold text-ink">No payment records found</p>
+                        <p className="font-semibold text-ink">No pending payouts found</p>
                         <p className="text-xs text-ink-muted mt-0.5">
                           {records.length === 0
-                            ? 'Initiate your first designer payout using the button above.'
+                            ? 'Payout requests submitted by designers awaiting Admin review will appear here.'
                             : 'Try adjusting your status filter or search query.'}
                         </p>
                       </td>
@@ -705,7 +587,7 @@ export default function DesignerPayments() {
                                   isManual ? 'bg-amber-100 text-amber-800' : 'bg-blue-100 text-blue-800'
                                 }`}
                               >
-                                {isManual ? 'Manual Payout' : 'Global Payout'}
+                                {isManual ? 'Manual Payout' : 'Scheduled Payout'}
                               </span>
                             </div>
                           </td>
@@ -721,16 +603,52 @@ export default function DesignerPayments() {
                                 <span className="text-[10px] text-amber-600 block">({settings?.manualPayoutFeePercent ?? 2}% early fee)</span>
                               </span>
                             ) : (
-                              <span className="text-xs text-ink-muted">₦0 (Free)</span>
+                              <span className="text-xs text-ink-muted">₦0</span>
                             )}
                           </td>
                           <td className="p-4 font-bold text-primary text-base">
                             {formatNaira(record.netAmount || record.amount - (record.fee || 0))}
                           </td>
                           <td className="p-4 text-xs">
-                            <div className="font-medium text-ink">{record.bankName || 'Bank Transfer'}</div>
-                            <div className="font-mono text-ink-muted">{record.accountNumber || '—'}</div>
-                            {record.accountName && <div className="text-ink-muted text-[11px]">{record.accountName}</div>}
+                            <div className="flex items-center gap-1.5 font-medium text-ink">
+                              <span>{record.bankName || 'Bank Transfer'}</span>
+                              {record.bankName && (
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(record.bankName, `bank-${record.id}`)}
+                                  className="text-ink-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+                                  title="Copy Bank Name"
+                                >
+                                  {copiedKey === `bank-${record.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1.5 font-mono text-ink-muted mt-0.5">
+                              <span>{record.accountNumber || '—'}</span>
+                              {record.accountNumber && (
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(record.accountNumber, `acc-${record.id}`)}
+                                  className="text-ink-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+                                  title="Copy Account Number"
+                                >
+                                  {copiedKey === `acc-${record.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                </button>
+                              )}
+                            </div>
+                            {record.accountName && (
+                              <div className="flex items-center gap-1.5 text-ink-muted text-[11px] mt-0.5">
+                                <span className="truncate max-w-[140px]">{record.accountName}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(record.accountName, `name-${record.id}`)}
+                                  className="text-ink-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+                                  title="Copy Account Name"
+                                >
+                                  {copiedKey === `name-${record.id}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                </button>
+                              </div>
+                            )}
                           </td>
                           <td className="p-4 text-xs max-w-[200px]">
                             <div className="font-medium text-ink truncate">{record.relatedWork || '—'}</div>
@@ -920,9 +838,9 @@ export default function DesignerPayments() {
                     <th className="p-4">Approved Earnings</th>
                     <th className="p-4">Pending Work</th>
                     <th className="p-4">Paid Out</th>
-                    <th className="p-4">Outstanding Balance</th>
-                    <th className="p-4">Bank Payout Info</th>
-                    <th className="p-4 text-right">Action</th>
+                    <th className="p-4">Available Earnings</th>
+                    <th className="p-4">Bank Payout Info (Copy)</th>
+                    <th className="p-4">Payout Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
@@ -981,30 +899,71 @@ export default function DesignerPayments() {
                         <td className="p-4">
                           <span
                             className={`font-black text-base ${
-                              designer.outstandingBalance > 0 ? 'text-primary' : 'text-ink-muted'
+                              (designer.availableBalance ?? designer.outstandingBalance) > 0 ? 'text-primary' : 'text-ink-muted'
                             }`}
                           >
-                            {formatNaira(designer.outstandingBalance)}
+                            {formatNaira(designer.availableBalance ?? designer.outstandingBalance)}
                           </span>
                         </td>
                         <td className="p-4 text-xs">
                           {designer.paymentMethod ? (
                             <div>
-                              <div className="font-medium text-ink">{designer.paymentMethod.bankName}</div>
-                              <div className="font-mono text-ink-muted">{designer.paymentMethod.accountNumber}</div>
+                              <div className="flex items-center gap-1.5 font-medium text-ink">
+                                <span>{designer.paymentMethod.bankName}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(designer.paymentMethod.bankName, `d-bank-${designer.designerId}`)}
+                                  className="text-ink-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+                                  title="Copy Bank Name"
+                                >
+                                  {copiedKey === `d-bank-${designer.designerId}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                </button>
+                              </div>
+                              <div className="flex items-center gap-1.5 font-mono text-ink-muted mt-0.5">
+                                <span>{designer.paymentMethod.accountNumber}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => copyToClipboard(designer.paymentMethod.accountNumber, `d-acc-${designer.designerId}`)}
+                                  className="text-ink-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+                                  title="Copy Account Number"
+                                >
+                                  {copiedKey === `d-acc-${designer.designerId}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                </button>
+                              </div>
+                              {designer.paymentMethod.accountName && (
+                                <div className="flex items-center gap-1.5 text-ink-muted text-[11px] mt-0.5">
+                                  <span className="truncate max-w-[130px]">{designer.paymentMethod.accountName}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => copyToClipboard(designer.paymentMethod.accountName, `d-name-${designer.designerId}`)}
+                                    className="text-ink-muted hover:text-primary transition-colors cursor-pointer p-0.5"
+                                    title="Copy Account Name"
+                                  >
+                                    {copiedKey === `d-name-${designer.designerId}` ? <Check size={12} className="text-emerald-600" /> : <Copy size={12} />}
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           ) : (
                             <span className="text-amber-600 text-xs italic">No bank details</span>
                           )}
                         </td>
-                        <td className="p-4 text-right">
-                          <Button
-                            size="sm"
-                            onClick={() => openPayoutModalForDesigner(designer)}
-                            className="bg-primary text-white text-xs px-3 py-1.5 gap-1"
-                          >
-                            <Plus size={14} /> Payout
-                          </Button>
+                        <td className="p-4">
+                          {designer.pendingPayouts > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">
+                              <Clock size={12} /> Pending Request ({formatNaira(designer.pendingPayouts)})
+                            </span>
+                          ) : (designer.availableBalance ?? designer.outstandingBalance) > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                              <CheckCircle2 size={12} /> Eligible ({formatNaira(designer.availableBalance ?? designer.outstandingBalance)})
+                            </span>
+                          ) : designer.approvedEarnings > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                              <Check size={12} /> All Settled
+                            </span>
+                          ) : (
+                            <span className="text-xs text-ink-muted">No Earnings</span>
+                          )}
                         </td>
                       </tr>
                     ))
@@ -1073,15 +1032,6 @@ export default function DesignerPayments() {
                   </p>
                 </div>
 
-                <div className="p-3.5 bg-canvas rounded-lg border border-border text-xs text-ink-muted space-y-1">
-                  <div className="font-semibold text-ink flex items-center gap-1.5">
-                    <Info size={14} className="text-primary" /> Live Dynamic Calculation
-                  </div>
-                  <p>
-                    Updating these rates immediately affects total earnings, pending calculations, and outstanding
-                    balances across all designers.
-                  </p>
-                </div>
               </form>
             </div>
 
@@ -1112,14 +1062,14 @@ export default function DesignerPayments() {
                   <Calendar size={20} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-ink">Global Payout Settings</h3>
+                  <h3 className="text-base font-bold text-ink">Payout Schedule Settings</h3>
                   <p className="text-xs text-ink-muted">Configure automated schedule and manual payout fee policies.</p>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-ink-muted mb-1.5">Global Payout Frequency</label>
+                  <label className="block text-xs font-semibold text-ink-muted mb-1.5">Payout Frequency</label>
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
@@ -1148,7 +1098,7 @@ export default function DesignerPayments() {
 
                 {settingsForm.payoutSchedule === 'weekly' ? (
                   <div>
-                    <label className="block text-xs font-semibold text-ink-muted mb-1">Global Payout Day of Week</label>
+                    <label className="block text-xs font-semibold text-ink-muted mb-1">Scheduled Day of Week</label>
                     <select
                       value={settingsForm.payoutDayOfWeek}
                       onChange={(e) => setSettingsForm((f) => ({ ...f, payoutDayOfWeek: Number(e.target.value) }))}
@@ -1163,7 +1113,7 @@ export default function DesignerPayments() {
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-xs font-semibold text-ink-muted mb-1">Global Payout Day of Month</label>
+                    <label className="block text-xs font-semibold text-ink-muted mb-1">Scheduled Day of Month</label>
                     <select
                       value={settingsForm.payoutDayOfMonth}
                       onChange={(e) => setSettingsForm((f) => ({ ...f, payoutDayOfMonth: Number(e.target.value) }))}
@@ -1180,7 +1130,7 @@ export default function DesignerPayments() {
 
                 <div>
                   <label className="block text-xs font-semibold text-ink-muted mb-1">
-                    Manual Payout Early Charge (%)
+                    Manual Early Payout Charge (%)
                   </label>
                   <div className="relative">
                     <input
@@ -1193,20 +1143,7 @@ export default function DesignerPayments() {
                     />
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">%</span>
                   </div>
-                  <p className="text-[11px] text-ink-muted mt-1">Default 2% charge for manual payouts requested before global payout day.</p>
-                </div>
-
-                <div className="p-3.5 bg-amber-50 rounded-lg border border-amber-200 text-xs text-amber-900 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5 text-amber-800">
-                    <ShieldCheck size={14} /> Fee Rules Policy
-                  </div>
-                  <p>
-                    • <strong>Global scheduled payouts:</strong> 0% fee (Free for designers).
-                  </p>
-                  <p>
-                    • <strong>Manual payouts requested before payout day:</strong> {settingsForm.manualPayoutFeePercent}% charge
-                    automatically deducted from gross amount.
-                  </p>
+                  <p className="text-[11px] text-ink-muted mt-1">Charge deducted when a payout is requested before the scheduled payout day.</p>
                 </div>
               </div>
             </div>
@@ -1229,216 +1166,6 @@ export default function DesignerPayments() {
               </Button>
             </div>
           </Card>
-        </div>
-      )}
-
-      {/* MODAL: Initiate Payout */}
-      {payoutModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
-          <div className="bg-surface rounded-xl shadow-2xl w-full max-w-lg border border-border overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="flex items-center justify-between p-5 border-b border-border bg-canvas/40">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary flex items-center justify-center">
-                  <Wallet size={18} />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-ink">Initiate Designer Payout</h3>
-                  <p className="text-xs text-ink-muted">Create a verified payout record for a designer.</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPayoutModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-canvas text-ink-muted hover:text-ink cursor-pointer"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitPayout} className="p-5 space-y-4">
-              {payoutModalError && (
-                <div className="p-3 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">
-                  {payoutModalError}
-                </div>
-              )}
-
-              {/* Designer Select */}
-              <div>
-                <label className="block text-xs font-semibold text-ink-muted mb-1">Target Designer</label>
-                <select
-                  value={payoutForm.designerId}
-                  onChange={(e) => {
-                    const dId = e.target.value;
-                    const found = earnings.find((d) => d.designerId === dId);
-                    const bal = found ? (found.outstandingBalance || 0) / 100 : 0;
-                    setPayoutForm((f) => ({
-                      ...f,
-                      designerId: dId,
-                      amountNaira: bal > 0 ? String(bal) : f.amountNaira,
-                    }));
-                  }}
-                  className="h-10 w-full rounded-lg border border-border bg-surface px-3 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="">Select Designer...</option>
-                  {earnings.map((d) => (
-                    <option key={d.designerId} value={d.designerId}>
-                      {d.fullName} ({d.email}) — Outstanding: {formatNaira(d.outstandingBalance)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Outstanding balance preview */}
-              {selectedDesignerForPayout && (
-                <div className="p-3 bg-canvas border border-border rounded-lg text-xs flex justify-between items-center">
-                  <div>
-                    <span className="text-ink-muted">Approved Balance:</span>{' '}
-                    <span className="font-bold text-ink">{formatNaira(selectedDesignerForPayout.approvedEarnings)}</span>
-                  </div>
-                  <div>
-                    <span className="text-ink-muted">Outstanding:</span>{' '}
-                    <span className="font-extrabold text-primary">
-                      {formatNaira(selectedDesignerForPayout.outstandingBalance)}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Payout Type Selection */}
-              <div>
-                <label className="block text-xs font-semibold text-ink-muted mb-1.5">Payout Type</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setPayoutForm((f) => ({ ...f, payoutType: 'manual' }))}
-                    className={`py-2 px-3 text-xs font-semibold rounded-lg border text-center cursor-pointer ${
-                      payoutForm.payoutType === 'manual'
-                        ? 'bg-amber-500 text-white border-amber-500'
-                        : 'bg-surface text-ink border-border hover:bg-canvas'
-                    }`}
-                  >
-                    Manual Payout
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setPayoutForm((f) => ({ ...f, payoutType: 'global' }))}
-                    className={`py-2 px-3 text-xs font-semibold rounded-lg border text-center cursor-pointer ${
-                      payoutForm.payoutType === 'global'
-                        ? 'bg-primary text-white border-primary'
-                        : 'bg-surface text-ink border-border hover:bg-canvas'
-                    }`}
-                  >
-                    Global Cycle Payout (0% fee)
-                  </button>
-                </div>
-              </div>
-
-              {/* Amount input */}
-              <div>
-                <label className="block text-xs font-semibold text-ink-muted mb-1">Gross Payout Amount (₦)</label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-bold text-ink-muted">₦</span>
-                  <input
-                    type="number"
-                    min="1"
-                    step="1"
-                    placeholder="e.g. 25000"
-                    value={payoutForm.amountNaira}
-                    onChange={(e) => setPayoutForm((f) => ({ ...f, amountNaira: e.target.value }))}
-                    className="h-10 w-full rounded-lg border border-border bg-surface pl-8 pr-3 text-sm text-ink font-semibold focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Fee Breakdown Box */}
-              {livePayoutCalculation.gross > 0 && (
-                <div className="p-3.5 bg-canvas rounded-lg border border-border space-y-1.5 text-xs">
-                  <div className="flex justify-between text-ink-muted">
-                    <span>Gross Amount:</span>
-                    <span className="font-semibold text-ink">{formatNaira(livePayoutCalculation.gross)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-ink-muted">
-                    <span>
-                      {livePayoutCalculation.isGlobal
-                        ? 'Global Payout Fee (0%):'
-                        : livePayoutCalculation.isTodayGlobalPayout
-                        ? 'Requested on Global Payout Day (0%):'
-                        : `Early Manual Payout Fee (${livePayoutCalculation.feePercent}%):`}
-                    </span>
-                    <span className={`font-semibold ${livePayoutCalculation.fee > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>
-                      {livePayoutCalculation.fee > 0 ? `-${formatNaira(livePayoutCalculation.fee)}` : '₦0 (Free)'}
-                    </span>
-                  </div>
-                  <div className="border-t border-border pt-1.5 flex justify-between items-center text-sm font-bold text-ink">
-                    <span>Net Designer Receives:</span>
-                    <span className="text-primary text-base">{formatNaira(livePayoutCalculation.net)}</span>
-                  </div>
-                </div>
-              )}
-
-              {/* Period & Related Work */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-ink-muted mb-1">Period Reference</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Sep 1 - Sep 15"
-                    value={payoutForm.period}
-                    onChange={(e) => setPayoutForm((f) => ({ ...f, period: e.target.value }))}
-                    className="h-9 w-full rounded-lg border border-border bg-surface px-3 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-ink-muted mb-1">Related Design Work</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 5 approved graphics"
-                    value={payoutForm.relatedWork}
-                    onChange={(e) => setPayoutForm((f) => ({ ...f, relatedWork: e.target.value }))}
-                    className="h-9 w-full rounded-lg border border-border bg-surface px-3 text-xs text-ink focus:outline-none focus:ring-2 focus:ring-primary"
-                  />
-                </div>
-              </div>
-
-              {/* Bank destination preview */}
-              {selectedDesignerForPayout?.paymentMethod && (
-                <div className="p-3 bg-primary-50/50 border border-primary-100 rounded-lg text-xs space-y-0.5">
-                  <div className="font-semibold text-ink flex items-center gap-1">
-                    <Building2 size={13} className="text-primary" /> Destination Bank
-                  </div>
-                  <div className="text-ink-muted">
-                    {selectedDesignerForPayout.paymentMethod.bankName} • {selectedDesignerForPayout.paymentMethod.accountNumber} ({selectedDesignerForPayout.paymentMethod.accountName})
-                  </div>
-                </div>
-              )}
-
-              {/* Modal Footer Buttons */}
-              <div className="flex justify-end gap-3 pt-3 border-t border-border">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setPayoutModalOpen(false)}
-                  className="text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submittingPayout}
-                  className="bg-primary text-white text-xs px-4 py-2 gap-2"
-                >
-                  {submittingPayout ? (
-                    <>
-                      <RefreshCw size={14} className="animate-spin" /> Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Check size={14} /> Confirm Payout ({formatNaira(livePayoutCalculation.net)})
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
 

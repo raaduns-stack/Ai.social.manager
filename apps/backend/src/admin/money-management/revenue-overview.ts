@@ -40,11 +40,21 @@ export class RevenueOverviewService {
     const previousRange = this.getPreviousDateRange(startDate, endDate);
 
     // Aggregation for Current Period
-    const currentResults = await this.aggregateRevenue(startDate, endDate, query.timeframe, currency);
+    const currentResults = await this.aggregateRevenue(
+      startDate,
+      endDate,
+      query.timeframe,
+      currency,
+    );
     const totalRevenue = currentResults.reduce((acc, point) => acc + point.amount, 0);
 
     // Aggregation for Previous Period (for Growth Metric)
-    const previousResults = await this.aggregateRevenue(previousRange.start, previousRange.end, query.timeframe, currency);
+    const previousResults = await this.aggregateRevenue(
+      previousRange.start,
+      previousRange.end,
+      query.timeframe,
+      currency,
+    );
     const previousPeriodTotal = previousResults.reduce((acc, point) => acc + point.amount, 0);
 
     const growthPercentage = this.calculateGrowth(totalRevenue, previousPeriodTotal);
@@ -64,7 +74,7 @@ export class RevenueOverviewService {
     startDate: Date,
     endDate: Date,
     timeframe: Timeframe,
-    currency: string
+    currency: string,
   ): Promise<RevenueDataPoint[]> {
     const groupFormat = this.getDateFormatByTimeframe(timeframe);
 
@@ -125,10 +135,14 @@ export class RevenueOverviewService {
 
   private getDateFormatByTimeframe(timeframe: Timeframe): string {
     switch (timeframe) {
-      case 'daily': return '%Y-%m-%d %H:00';
-      case 'weekly': return '%Y-%m-%d';
-      case 'monthly': return '%Y-%m';
-      case 'annual': return '%Y';
+      case 'daily':
+        return '%Y-%m-%d %H:00';
+      case 'weekly':
+        return '%Y-%m-%d';
+      case 'monthly':
+        return '%Y-%m';
+      case 'annual':
+        return '%Y';
     }
   }
 }

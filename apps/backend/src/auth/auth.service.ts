@@ -47,7 +47,7 @@ export class AuthService {
     private readonly mailerService: MailerService,
     private readonly loginHistoryService: LoginHistoryService,
     private readonly activityLogsService: ActivityLogsService,
-  ) { }
+  ) {}
 
   /**
    * Registers a new user.
@@ -236,7 +236,10 @@ export class AuthService {
       device: ua.device,
     };
 
-    console.log('[DEBUG Auth] Login Attempt:', { email: dto.email, passwordLength: dto.password?.length });
+    console.log('[DEBUG Auth] Login Attempt:', {
+      email: dto.email,
+      passwordLength: dto.password?.length,
+    });
 
     const user = await this.db.query.users.findFirst({
       where: eq(schema.users.email, dto.email),
@@ -676,7 +679,8 @@ export class AuthService {
     return this.issueTokens(user);
   }
 
-  async changePassword(userId: string, dto: import('./dto/change-password.dto').ChangePasswordDto) {    const user = await this.db.query.users.findFirst({
+  async changePassword(userId: string, dto: import('./dto/change-password.dto').ChangePasswordDto) {
+    const user = await this.db.query.users.findFirst({
       where: eq(schema.users.id, userId),
     });
     if (!user) {
@@ -713,7 +717,7 @@ export class AuthService {
 
       // 2. Generate new tokens
       const newPayload = { sub: payload.sub, email: payload.email, role: payload.role };
-      
+
       const newAccessToken = await this.jwtService.signAsync(newPayload, {
         secret: this.configService.get<string>('auth.accessSecret'),
         expiresIn: this.configService.get<string>('auth.accessExpiresIn'),
@@ -726,7 +730,7 @@ export class AuthService {
 
       return {
         accessToken: newAccessToken,
-        newRefreshToken: newRefreshToken
+        newRefreshToken: newRefreshToken,
       };
     } catch (e) {
       throw new UnauthorizedException({
@@ -829,7 +833,7 @@ export class AuthService {
       activeSub = await this.db.query.subscriptions.findFirst({
         where: and(
           eq(schema.subscriptions.userId, user.id),
-          eq(schema.subscriptions.status, 'active')
+          eq(schema.subscriptions.status, 'active'),
         ),
         with: { plan: true },
         orderBy: [desc(schema.subscriptions.updatedAt)],
@@ -879,7 +883,12 @@ export class AuthService {
 
   async applyUserStatusTransition(
     userId: string,
-    newStatus: 'EMAIL_VERIFICATION_PENDING' | 'REGISTRATION_IN_PROGRESS' | 'ACTIVE' | 'SUSPENDED' | 'DELETED',
+    newStatus:
+      | 'EMAIL_VERIFICATION_PENDING'
+      | 'REGISTRATION_IN_PROGRESS'
+      | 'ACTIVE'
+      | 'SUSPENDED'
+      | 'DELETED',
     tx?: any,
     isLogin = false,
   ): Promise<schema.User> {
@@ -950,4 +959,3 @@ export class AuthService {
     return updatedUser;
   }
 }
-

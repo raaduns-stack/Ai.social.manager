@@ -5,9 +5,9 @@ import { PLAN_TIERS_KEY } from '../decorators/plan-tiers.decorator';
 
 /**
  * Guard that restricts endpoint access based on the user's active subscription plan.
- * 
- * It reads the required plan tiers (e.g. ['growth', 'enterprise']) specified by the 
- * @PlanTiers() decorator. It then queries the database via SubscriptionsService to 
+ *
+ * It reads the required plan tiers (e.g. ['growth', 'enterprise']) specified by the
+ * @PlanTiers() decorator. It then queries the database via SubscriptionsService to
  * verify the user has an active subscription matching one of the required tiers.
  */
 @Injectable()
@@ -19,7 +19,7 @@ export class PlanTierGuard implements CanActivate {
 
   /**
    * Determines if the current request is allowed based on the user's plan.
-   * 
+   *
    * @param context ExecutionContext containing request metadata
    * @returns boolean indicating if the request is authorized
    * @throws ForbiddenException with 'UPGRADE_REQUIRED' code if the plan does not meet requirements
@@ -49,7 +49,7 @@ export class PlanTierGuard implements CanActivate {
     try {
       // Live DB query for active subscription
       const subscription = await this.subscriptionsService.findByUserId(user.userId);
-      
+
       // If the subscription is not 'active', reject access
       if (!subscription || subscription.status !== 'active') {
         throw new ForbiddenException({

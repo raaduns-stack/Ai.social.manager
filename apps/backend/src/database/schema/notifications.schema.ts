@@ -1,4 +1,13 @@
-import { pgTable, uuid, varchar, text, boolean, timestamp, jsonb, pgEnum } from 'drizzle-orm/pg-core';
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  timestamp,
+  jsonb,
+  pgEnum,
+} from 'drizzle-orm/pg-core';
 import { users } from './users.schema';
 import { NotificationType } from '../../common/enums/notification-type.enum';
 import { NotificationChannel } from '../../common/enums/notification-channel.enum';
@@ -18,8 +27,7 @@ export const notifications = pgTable('notifications', {
   userId: uuid('user_id')
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
-  senderId: uuid('sender_id')
-    .references(() => users.id, { onDelete: 'set null' }),
+  senderId: uuid('sender_id').references(() => users.id, { onDelete: 'set null' }),
   type: notificationTypeEnum('type').notNull(),
   channel: notificationChannelEnum('channel').notNull(),
   status: deliveryStatusEnum('status').notNull().default(DeliveryStatus.SENT),

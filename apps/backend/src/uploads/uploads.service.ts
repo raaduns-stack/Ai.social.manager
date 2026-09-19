@@ -19,16 +19,12 @@ type Database = PostgresJsDatabase<typeof schema>;
 @Injectable()
 export class UploadsService {
   // Inject the database connection
-  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) { }
+  constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   /**
    * Upload a file and save its metadata to the database.
    */
-  async uploadFile(
-    userId: string,
-    file: any,
-    createUploadDto: CreateUploadDto,
-  ): Promise<Upload> {
+  async uploadFile(userId: string, file: any, createUploadDto: CreateUploadDto): Promise<Upload> {
     // Generate the file URL for accessing the uploaded file
     const fileUrl = `/uploads/${file.filename}`;
 
@@ -101,10 +97,7 @@ export class UploadsService {
    */
   async getUploadById(id: string, userId: string): Promise<Upload> {
     const upload = await this.db.query.uploads.findFirst({
-      where: and(
-        eq(schema.uploads.id, id),
-        eq(schema.uploads.userId, userId),
-      ),
+      where: and(eq(schema.uploads.id, id), eq(schema.uploads.userId, userId)),
     });
 
     // Throw an error if the upload doesn't exist
@@ -129,12 +122,7 @@ export class UploadsService {
         category: updateUploadDto.category,
         updatedAt: new Date(), // Record the update time
       })
-      .where(
-        and(
-          eq(schema.uploads.id, id),
-          eq(schema.uploads.userId, userId),
-        ),
-      )
+      .where(and(eq(schema.uploads.id, id), eq(schema.uploads.userId, userId)))
       .returning();
 
     // Throw an error if the upload doesn't exist
@@ -152,12 +140,7 @@ export class UploadsService {
     // Remove the upload record from the database
     const [deleted] = await this.db
       .delete(schema.uploads)
-      .where(
-        and(
-          eq(schema.uploads.id, id),
-          eq(schema.uploads.userId, userId),
-        ),
-      )
+      .where(and(eq(schema.uploads.id, id), eq(schema.uploads.userId, userId)))
       .returning();
 
     // Throw an error if the upload doesn't exist

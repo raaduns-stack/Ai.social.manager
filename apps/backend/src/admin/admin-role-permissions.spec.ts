@@ -15,9 +15,7 @@ describe('AdminController - Role Permissions Roundtrip', () => {
   let dbStore: any[];
 
   beforeEach(async () => {
-    dbStore = [
-      { id: '1', role: 'reviewer', module: 'billing', accessLevel: 'none' },
-    ];
+    dbStore = [{ id: '1', role: 'reviewer', module: 'billing', accessLevel: 'none' }];
 
     const dbMock = {
       query: {
@@ -96,9 +94,7 @@ describe('AdminController - Role Permissions Roundtrip', () => {
       // 2. Perform PATCH update to change it to 'full'
       const dto: UpdateRolePermissionsDto = {
         role: 'reviewer',
-        permissions: [
-          { module: 'billing', accessLevel: 'full' },
-        ],
+        permissions: [{ module: 'billing', accessLevel: 'full' }],
       };
       await controller.updateRolePermissions(dto);
 

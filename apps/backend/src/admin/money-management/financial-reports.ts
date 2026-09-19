@@ -42,7 +42,7 @@ export interface FinancialReportResponse {
  */
 export async function getFinancialReport(
   filters: FinancialReportFilter,
-  transactions: RawTransactionInput[] = []
+  transactions: RawTransactionInput[] = [],
 ): Promise<FinancialReportResponse> {
   const { startDate, endDate, period } = filters;
 
@@ -91,8 +91,7 @@ export async function getFinancialReport(
   const revenueBySource = Object.entries(sourceMap).map(([source, sourceRevenue]) => ({
     source,
     totalRevenue: Number(sourceRevenue.toFixed(2)),
-    percentage:
-      totalRevenue > 0 ? Number(((sourceRevenue / totalRevenue) * 100).toFixed(2)) : 0,
+    percentage: totalRevenue > 0 ? Number(((sourceRevenue / totalRevenue) * 100).toFixed(2)) : 0,
   }));
 
   // 3. Format Top Plans breakdown

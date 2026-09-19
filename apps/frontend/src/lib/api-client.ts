@@ -72,6 +72,18 @@ apiClient.interceptors.request.use(
         const { accessToken } = useAuthStore.getState();
         if (accessToken && config.headers) {
           config.headers.Authorization = `Bearer ${accessToken}`;
+        } else {
+          const designerSessionStr = localStorage.getItem('designer_session');
+          if (designerSessionStr && config.headers) {
+            try {
+              const designerSession = JSON.parse(designerSessionStr);
+              if (designerSession?.accessToken) {
+                config.headers.Authorization = `Bearer ${designerSession.accessToken}`;
+              }
+            } catch (e) {
+              // ignore
+            }
+          }
         }
       }
     }
@@ -118,7 +130,11 @@ apiClient.interceptors.response.use(
 
       const url = originalRequest.url || '';
       const isAdminRequest = url.startsWith('/admin') || url.startsWith('/api/admin') || window.location.pathname.startsWith('/admin');
-      const isDesignerRequest = url.startsWith('/designer') || url.startsWith('/api/designer') || window.location.pathname.startsWith('/designer');
+      const isDesignerRequest =
+        url.startsWith('/designer') ||
+        url.startsWith('/api/designer') ||
+        window.location.pathname.startsWith('/designer') ||
+        (!isAdminRequest && !useAuthStore.getState().refreshToken && Boolean(localStorage.getItem('designer_session')));
 
       if (isDesignerRequest) {
         let designerRefreshToken: string | null = null;
