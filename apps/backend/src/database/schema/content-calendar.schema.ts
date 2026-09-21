@@ -16,8 +16,9 @@ import { users } from './users.schema';
  * - DRAFT      : not yet scheduled
  * - SCHEDULED  : approved and queued for future publish
  * - PUBLISHED  : already published on the social platform
+ * - FAILED     : publishing failed after retries exhausted
  */
-export const postStatusEnum = pgEnum('post_status', ['DRAFT', 'SCHEDULED', 'PUBLISHED']);
+export const postStatusEnum = pgEnum('post_status', ['DRAFT', 'SCHEDULED', 'PUBLISHED', 'FAILED']);
 
 /**
  * Admin approval status of a content calendar post.

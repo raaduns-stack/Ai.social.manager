@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { pgTable, uuid, varchar, text, timestamp, pgEnum, integer } from 'drizzle-orm/pg-core';
 
 export const scheduledPostStatusEnum = pgEnum('scheduled_post_status', [
   'SCHEDULED',
@@ -19,6 +19,7 @@ export const scheduledPosts = pgTable('scheduled_posts', {
   scheduledAt: timestamp('scheduled_at').notNull(),
   status: scheduledPostStatusEnum('status').notNull().default('SCHEDULED'),
   idempotencyKey: varchar('idempotency_key', { length: 255 }),
+  retryCount: integer('retry_count').notNull().default(0),
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
