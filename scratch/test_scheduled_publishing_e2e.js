@@ -1,10 +1,11 @@
-require('./apps/backend/node_modules/dotenv').config({ path: './apps/backend/.env' });
-const { NestFactory } = require('./apps/backend/node_modules/@nestjs/core');
-const { AppModule } = require('./apps/backend/dist/app.module');
-const { PublishingService } = require('./apps/backend/dist/publishing/publishing.service');
-const { SchedulingService } = require('./apps/backend/dist/scheduling/scheduling.service');
-const { NotificationsService } = require('./apps/backend/dist/notifications/notifications.service');
-const postgres = require('./node_modules/postgres');
+const path = require('path');
+require('dotenv').config({ path: path.resolve(process.cwd(), 'apps/backend/.env') });
+const { NestFactory } = require(path.resolve(process.cwd(), 'apps/backend/node_modules/@nestjs/core'));
+const { AppModule } = require(path.resolve(process.cwd(), 'apps/backend/dist/app.module'));
+const { PublishingService } = require(path.resolve(process.cwd(), 'apps/backend/dist/publishing/publishing.service'));
+const { SchedulingService } = require(path.resolve(process.cwd(), 'apps/backend/dist/scheduling/scheduling.service'));
+const { NotificationsService } = require(path.resolve(process.cwd(), 'apps/backend/dist/notifications/notifications.service'));
+const postgres = require('postgres');
 
 const sql = postgres(process.env.DATABASE_URL, { ssl: 'require' });
 
