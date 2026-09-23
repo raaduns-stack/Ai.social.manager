@@ -10,6 +10,15 @@ import { N8nResponseDto } from './dto/n8n-response.dto';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
+export function toSocialAccountPlatform(platform: string): string {
+  if (!platform) return platform;
+  const lower = platform.trim().toLowerCase();
+  if (lower === 'x / twitter' || lower === 'twitter' || lower === 'x') {
+    return 'x';
+  }
+  return lower;
+}
+
 @Injectable()
 export class ContentSuggestionsService {
   private readonly logger = new Logger(ContentSuggestionsService.name);
@@ -555,7 +564,7 @@ export class ContentSuggestionsService {
     }
 
     // 4. Verify connected social account exists for post.platform on this user
-    const normalizedPlatform = post.platform.toLowerCase();
+    const normalizedPlatform = toSocialAccountPlatform(post.platform);
     const socialAccount = await this.db.query.social_accounts.findFirst({
       where: and(
         eq(schema.social_accounts.userId, post.userId),

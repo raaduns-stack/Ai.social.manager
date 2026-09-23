@@ -22,4 +22,9 @@ export class CreateSubmissionDto {
   @IsString()
   @ApiPropertyOptional()
   taskId?: string;
+
+  @IsOptional()
+  @IsString()
+  @ApiPropertyOptional()
+  calendarPostId?: string;
 }

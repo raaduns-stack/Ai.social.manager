@@ -49,6 +49,7 @@ import {
   getUpcomingPosts,
   getPublishedPosts,
   updateCalendarPost,
+  schedulePostIn5Min,
   generateAICalendar,
   getGenerationJobStatus,
   getCalendarUsage,
@@ -543,6 +544,20 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
   const [editDate, setEditDate] = useState('')
   const [editTime, setEditTime] = useState('')
   const [isSaving, setIsSaving] = useState(false)
+  const [isPostingIn5, setIsPostingIn5] = useState(false)
+
+  async function handlePostIn5Minutes() {
+    if (!post) return
+    setIsPostingIn5(true)
+    try {
+      const updated = await schedulePostIn5Min(post.id)
+      onUpdated(updated)
+    } catch (err) {
+      alert(err.response?.data?.message || err.message || 'Failed to schedule post for 5 minutes.')
+    } finally {
+      setIsPostingIn5(false)
+    }
+  }
 
   // Suggestions states
   const [suggestions, setSuggestions] = useState([])
@@ -862,13 +877,34 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
             </div>
           </div>
 
-          <div className="pt-4 border-t border-border flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" disabled={isSaving || isLocked}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
+          <div className="pt-4 border-t border-border flex justify-between items-center gap-2">
+            <div>
+              {post.status !== 'PUBLISHED' && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={async () => {
+                    await handlePostIn5Minutes()
+                    setIsEditing(false)
+                  }}
+                  disabled={isSaving || isPostingIn5}
+                  className="gap-1.5 font-semibold text-xs border-primary-300 text-primary-700 hover:bg-primary-50"
+                  title="Schedule this post to publish in approximately 5 minutes"
+                >
+                  <Clock size={12} className={isPostingIn5 ? 'animate-spin' : ''} />
+                  <span>{isPostingIn5 ? 'Scheduling...' : 'Post in 5 Minutes'}</span>
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" onClick={() => setIsEditing(false)} disabled={isSaving || isPostingIn5}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" disabled={isSaving || isLocked || isPostingIn5}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+            </div>
           </div>
         </form>
       </Modal>
@@ -971,6 +1007,19 @@ function PostDetailModal({ post, onClose, onUpdated, connectedPlatforms = [] }) 
           ) : (
             <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="font-semibold text-xs">
               Edit Post
+            </Button>
+          )}
+          {post.status !== 'PUBLISHED' && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handlePostIn5Minutes}
+              disabled={isPostingIn5}
+              className="gap-1.5 font-semibold text-xs border-primary-300 text-primary-700 hover:bg-primary-50"
+              title="Schedule this post to publish in approximately 5 minutes"
+            >
+              <Clock size={12} className={isPostingIn5 ? 'animate-spin' : ''} />
+              <span>{isPostingIn5 ? 'Scheduling...' : 'Post in 5 Minutes'}</span>
             </Button>
           )}
           <Button

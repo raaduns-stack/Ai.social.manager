@@ -151,6 +151,9 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
       social_accounts: {
         findMany: jest.fn().mockImplementation(() => socialAccountsMock),
       },
+      scheduledPosts: {
+        findFirst: jest.fn().mockImplementation(() => Promise.resolve(null)),
+      },
     },
     transaction: jest.fn().mockImplementation((cb) => cb(mockTx)),
     delete: jest.fn().mockImplementation(() => ({
@@ -727,9 +730,9 @@ describe('CalendarService - AI Calendar Generation Result Scheduling', () => {
 
   // 13. TEST 5 & TEST 6: User edits post A's date and title -> post A changes; post B remains completely unchanged
   it('TEST 5 & TEST 6: should edit post A by ID without cloning, creating duplicates, or affecting post B', async () => {
-    // Setup existing posts in db
-    const futureDateA = new Date(Date.now() + 86400000 * 10);
-    const futureDateB = new Date(Date.now() + 86400000 * 12);
+    // Setup existing posts in db (fixed Monday/Wednesday in same week to avoid weekend boundary flakiness)
+    const futureDateA = new Date('2026-11-02T10:00:00.000Z');
+    const futureDateB = new Date('2026-11-04T10:00:00.000Z');
     const postA = {
       id: 'post-uuid-a',
       userId: 'user-id',

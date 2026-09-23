@@ -6,6 +6,8 @@ import * as schema from '../database/schema';
 import { CreateScheduledPostDto } from './dto/create-scheduled-post.dto';
 import * as crypto from 'crypto';
 
+import { toSocialAccountPlatform } from '../content-suggestions/content-suggestions.service';
+
 type Database = PostgresJsDatabase<typeof schema>;
 
 @Injectable()
@@ -61,7 +63,7 @@ export class SchedulingService {
     }
 
     // 2. Find customer's connected social account for platform
-    const normalizedPlatform = platform.toLowerCase();
+    const normalizedPlatform = toSocialAccountPlatform(platform);
     const socialAccount = await this.db.query.social_accounts.findFirst({
       where: and(
         eq(schema.social_accounts.userId, customerId),

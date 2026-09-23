@@ -495,6 +495,16 @@ export class DesignerService {
     dto: CreateSubmissionDto,
     files?: Express.Multer.File[],
   ) {
+    let calendarPostId = dto.calendarPostId || null;
+    if (!calendarPostId && dto.taskId) {
+      const task = await this.db.query.tasks.findFirst({
+        where: eq(schema.tasks.id, dto.taskId),
+      });
+      if (task?.calendarPostId) {
+        calendarPostId = task.calendarPostId;
+      }
+    }
+
     const [submission] = await this.db
       .insert(schema.submissions)
       .values({
@@ -502,6 +512,7 @@ export class DesignerService {
         category: dto.category ?? 'General Graphics',
         description: dto.description,
         taskId: dto.taskId,
+        calendarPostId,
         designerId,
         status: 'draft',
       })

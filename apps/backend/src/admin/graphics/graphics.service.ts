@@ -13,7 +13,7 @@
  * existing `image_to_code.reviewer_note` column.
  * ---------------------------------------------------------------------------
  */
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { eq, and, desc, sql, inArray, ilike, or, SQL } from 'drizzle-orm';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 import { DATABASE_CONNECTION } from '../../database/database.module';
@@ -45,6 +45,8 @@ const SUBMISSION_REVIEW_LABELS: Record<string, string> = {
 
 @Injectable()
 export class AdminGraphicsService {
+  private readonly logger = new Logger(AdminGraphicsService.name);
+
   constructor(@Inject(DATABASE_CONNECTION) private readonly db: Database) {}
 
   // -------------------------------------------------------------------------
@@ -225,6 +227,7 @@ export class AdminGraphicsService {
         brief: dto.brief,
         priority: (dto.priority ?? 'medium') as any,
         dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        calendarPostId: dto.calendarPostId || null,
         assignedTo: dto.designerId,
         assignedBy: adminId,
         status: 'open' as any,
@@ -260,6 +263,7 @@ export class AdminGraphicsService {
       patch.dueDate = dto.dueDate ? new Date(dto.dueDate) : null;
     }
     if (dto.designerId !== undefined) patch.assignedTo = dto.designerId;
+    if (dto.calendarPostId !== undefined) patch.calendarPostId = dto.calendarPostId || null;
     void adminId;
 
     const [updated] = await this.db
@@ -444,9 +448,88 @@ export class AdminGraphicsService {
     // stays empty because nothing else inserts into `image_to_code`.
     if (dto.status === 'approved') {
       await this.ensureConversion(sub.designerId, submissionId);
+      await this.propagateApprovedAsset(sub);
     }
 
     return updated;
+  }
+
+  /**
+   * Propagate the approved designer asset to the associated content_calendar post
+   * and any corresponding scheduled_posts queue record.
+   */
+  private async propagateApprovedAsset(sub: typeof schema.submissions.$inferSelect) {
+    let calendarPostId = sub.calendarPostId;
+
+    if (!calendarPostId && sub.taskId) {
+      const task = await this.db.query.tasks.findFirst({
+        where: eq(schema.tasks.id, sub.taskId),
+      });
+      if (task?.calendarPostId) {
+        calendarPostId = task.calendarPostId;
+      }
+    }
+
+    if (!calendarPostId) {
+      this.logger.log(
+        `Submission ${sub.id} has no linked calendar post; skipping mediaUrl propagation.`,
+      );
+      return;
+    }
+
+    const calPost = await this.db.query.contentCalendar.findFirst({
+      where: eq(schema.contentCalendar.id, calendarPostId),
+    });
+
+    if (!calPost) {
+      this.logger.warn(
+        `Calendar post ${calendarPostId} linked to submission ${sub.id} was not found; skipping mediaUrl propagation.`,
+      );
+      return;
+    }
+
+    // Find the primary approved image file from this submission
+    const files = await this.db
+      .select()
+      .from(schema.submissionFiles)
+      .where(eq(schema.submissionFiles.submissionId, sub.id))
+      .orderBy(schema.submissionFiles.createdAt);
+
+    const approvedImage = files.find((f) => f.mimeType?.toLowerCase().startsWith('image/'));
+    if (!approvedImage) {
+      this.logger.warn(
+        `No image file found for approved submission ${sub.id}; skipping mediaUrl propagation.`,
+      );
+      return;
+    }
+
+    const mediaUrl = approvedImage.fileUrl;
+
+    // Update content_calendar
+    await this.db
+      .update(schema.contentCalendar)
+      .set({ mediaUrl, updatedAt: new Date() })
+      .where(eq(schema.contentCalendar.id, calPost.id));
+
+    this.logger.log(
+      `Propagated approved designer image from submission ${sub.id} to calendar post ${calPost.id}: ${mediaUrl}`,
+    );
+
+    // If scheduled_posts record exists, update mediaUrl as well
+    const scheduledPost = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.calendarPostId, calPost.id),
+    });
+
+    if (scheduledPost) {
+      await this.db
+        .update(schema.scheduledPosts)
+        .set({ mediaUrl, updatedAt: new Date() })
+        .where(eq(schema.scheduledPosts.scheduledPostId, scheduledPost.scheduledPostId));
+
+      this.logger.log(
+        `Propagated approved designer image to scheduled_posts ${scheduledPost.scheduledPostId}: ${mediaUrl}`,
+      );
+    }
   }
 
   // -------------------------------------------------------------------------

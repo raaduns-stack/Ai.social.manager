@@ -25,4 +25,9 @@ export class CreateGraphicsTaskDto {
   @ApiProperty({ description: 'Designer (users.id) this task is assigned to' })
   @IsUUID()
   designerId: string;
+
+  @ApiPropertyOptional({ description: 'Content calendar post ID (content_calendar.id) this design is created for' })
+  @IsOptional()
+  @IsUUID()
+  calendarPostId?: string;
 }

@@ -121,6 +121,8 @@ export const contentCalendar = pgTable('content_calendar', {
  * Drizzle ORM relational mapping: each post belongs to one user.
  */
 import { contentSuggestions } from './content-suggestions.schema';
+import { tasks } from './tasks.schema';
+import { submissions } from './submissions.schema';
 
 export const contentCalendarRelations = relations(contentCalendar, ({ one, many }) => ({
   user: one(users, {
@@ -132,6 +134,8 @@ export const contentCalendarRelations = relations(contentCalendar, ({ one, many 
     references: [contentSuggestions.id],
   }),
   suggestions: many(contentSuggestions),
+  tasks: many(tasks),
+  submissions: many(submissions),
 }));
 
 /** TypeScript type for reading a row from content_calendar. */

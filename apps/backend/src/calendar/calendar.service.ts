@@ -8,7 +8,10 @@ import * as schema from '../database/schema';
 import { ContentCalendarPost } from '../database/schema/content-calendar.schema';
 import { SubscriptionsService } from '../subscriptions/subscriptions.service';
 import { CustomerProfileService } from '../settings/customer-profile/customer-profile.service';
-import { ContentSuggestionsService } from '../content-suggestions/content-suggestions.service';
+import {
+  ContentSuggestionsService,
+  toSocialAccountPlatform,
+} from '../content-suggestions/content-suggestions.service';
 
 type Database = PostgresJsDatabase<typeof schema>;
 
@@ -512,6 +515,86 @@ export class CalendarService {
     // If selecting a suggestion, trigger unified approval & scheduling
     if (dto.selectedSuggestionId) {
       await this.contentSuggestionsService.scheduleApprovedPost(id, dto.selectedSuggestionId);
+    } else {
+      // Synchronize scheduled_posts if the post is already in the publishing queue
+      const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+        where: eq(schema.scheduledPosts.calendarPostId, id),
+      });
+
+      if (existingScheduled) {
+        const scheduledPatch: Record<string, any> = { updatedAt: new Date() };
+        if (newScheduledAt !== undefined && newScheduledAt) {
+          scheduledPatch.scheduledAt = newScheduledAt;
+        }
+        if (dto.caption !== undefined) {
+          scheduledPatch.content = dto.caption;
+        }
+        if (dto.mediaUrl !== undefined) {
+          scheduledPatch.mediaUrl = dto.mediaUrl;
+        }
+        if (dto.platform !== undefined) {
+          scheduledPatch.platform = toSocialAccountPlatform(dto.platform);
+        }
+        await this.db
+          .update(schema.scheduledPosts)
+          .set(scheduledPatch)
+          .where(eq(schema.scheduledPosts.scheduledPostId, existingScheduled.scheduledPostId));
+      }
+    }
+
+    // Re-fetch to return fully-populated relations
+    return this.findOneForUser(updated.id, userId);
+  }
+
+  /**
+   * Schedule a post to publish in approximately 5 minutes.
+   * Dedicated action that sets the publishing time to now + 5 minutes,
+   * ensures the post is approved/scheduled, and updates or enters
+   * the scheduled_posts publishing pipeline.
+   *
+   * Bypasses the 5-minute edit lock rule because it explicitly targets
+   * immediate 5-minute publishing.
+   */
+  async schedulePostIn5Minutes(id: string, userId: string): Promise<ContentCalendarPost> {
+    const post = await this.findOneForUser(id, userId);
+
+    const targetTime = new Date(Date.now() + 5 * 60 * 1000);
+
+    // 1. Update content_calendar
+    const [updated] = await this.db
+      .update(schema.contentCalendar)
+      .set({
+        scheduledAt: targetTime,
+        status: 'SCHEDULED',
+        approvalStatus: 'APPROVED',
+        updatedAt: new Date(),
+      })
+      .where(eq(schema.contentCalendar.id, id))
+      .returning();
+
+    // 2. Check if a scheduled_posts row already exists for this post
+    const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.calendarPostId, id),
+    });
+
+    if (existingScheduled) {
+      // Update existing scheduled post: set new time and reset execution state for clean dispatch
+      await this.db
+        .update(schema.scheduledPosts)
+        .set({
+          scheduledAt: targetTime,
+          status: 'SCHEDULED',
+          idempotencyKey: null,
+          retryCount: 0,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.scheduledPosts.scheduledPostId, existingScheduled.scheduledPostId));
+    } else {
+      // Enter the existing scheduling pipeline
+      await this.contentSuggestionsService.scheduleApprovedPost(
+        id,
+        post.selectedSuggestionId || undefined,
+      );
     }
 
     // Re-fetch to return fully-populated relations

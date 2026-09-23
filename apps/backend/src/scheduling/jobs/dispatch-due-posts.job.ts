@@ -35,6 +35,18 @@ export class DispatchDuePostsJob {
 
       for (const post of duePosts) {
         try {
+          const claimResult = await this.schedulingService.claimPost(
+            post.scheduledPostId,
+            `dispatch-cron-${Date.now()}`,
+          );
+
+          if (!claimResult.claimed) {
+            this.logger.debug(
+              `Post ${post.scheduledPostId} already claimed or processing. Skipping.`,
+            );
+            continue;
+          }
+
           const payload = {
             scheduledPostId: post.scheduledPostId,
             platform: post.platform,

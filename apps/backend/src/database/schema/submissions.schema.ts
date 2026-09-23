@@ -2,6 +2,7 @@ import { pgTable, uuid, varchar, text, timestamp, integer, pgEnum } from 'drizzl
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
 import { tasks } from './tasks.schema';
+import { contentCalendar } from './content-calendar.schema';
 
 export const submissionStatusEnum = pgEnum('submission_status', [
   'draft',
@@ -23,6 +24,10 @@ export const submissions = pgTable('submissions', {
   status: submissionStatusEnum('status').notNull().default('draft'),
 
   taskId: uuid('task_id').references(() => tasks.id, { onDelete: 'set null' }),
+
+  calendarPostId: uuid('calendar_post_id').references(() => contentCalendar.id, {
+    onDelete: 'set null',
+  }),
 
   designerId: uuid('designer_id')
     .notNull()
@@ -73,6 +78,10 @@ export const submissionsRelations = relations(submissions, ({ one, many }) => ({
   task: one(tasks, {
     fields: [submissions.taskId],
     references: [tasks.id],
+  }),
+  calendarPost: one(contentCalendar, {
+    fields: [submissions.calendarPostId],
+    references: [contentCalendar.id],
   }),
   files: many(submissionFiles),
   activities: many(submissionActivities),

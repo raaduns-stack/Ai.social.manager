@@ -32,4 +32,9 @@ export class UpdateGraphicsTaskDto {
   @IsOptional()
   @IsUUID()
   designerId?: string;
+
+  @ApiPropertyOptional({ description: 'Link to a content calendar post (content_calendar.id)' })
+  @IsOptional()
+  @IsUUID()
+  calendarPostId?: string;
 }
