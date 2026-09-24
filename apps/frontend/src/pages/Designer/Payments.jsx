@@ -107,17 +107,6 @@ export default function DesignerPayments() {
     setLoading(true);
     setError(null);
     try {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
-<<<<<<< HEAD
-      const [list, savedMethod] = await Promise.all([getDesignerPayments(), getPaymentMethod()]);
-      setPayouts(list);
-      if (savedMethod) {
-=======
->>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
-=======
->>>>>>> 74ef423 (feat: add backend publishing and social accounts services with Snapchat integration and frontend payments page)
       const [list, savedMethod, ov] = await Promise.all([
         getDesignerPayments(),
         getPaymentMethod(),
@@ -126,13 +115,6 @@ export default function DesignerPayments() {
       setPayouts(list || []);
       setOverview(ov || null);
       if (savedMethod && savedMethod.bankName && savedMethod.accountNumber) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 0ea8411 (feat: initialize backend modules, services, controllers, and database schemas)
->>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
-=======
->>>>>>> 74ef423 (feat: add backend publishing and social accounts services with Snapchat integration and frontend payments page)
         setMethod({
           accountName: savedMethod.accountName || "",
           accountNumber: savedMethod.accountNumber || "",

@@ -10,13 +10,13 @@ import {
   Logger,
   HttpCode,
   HttpStatus,
-  InternalServerErrorException,
 } from '@nestjs/common';
-<<<<<<< HEAD
-import { ConfigService } from '@nestjs/config';
-=======
->>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
+import {
+  ApiTags,
+  ApiOperation,
+  ApiBearerAuth,
+  ApiQuery,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { TikTokService } from './tiktok.service';
 import { TikTokCallbackQueryDto } from './dto/tiktok-callback.query.dto';
@@ -28,10 +28,7 @@ import { CurrentUser } from '../../auth/decorators/current-user.decorator';
 export class TikTokController {
   private readonly logger = new Logger(TikTokController.name);
 
-  constructor(
-    private readonly tiktokService: TikTokService,
-    private readonly configService: ConfigService,
-  ) {}
+  constructor(private readonly tiktokService: TikTokService) {}
 
   // ---------------------------------------------------------------------------
   // GET /api/channels/tiktok/connect
@@ -52,34 +49,15 @@ export class TikTokController {
       'TikTok account with the correct RaaSocial user without server-side sessions.',
   })
   async connect(@CurrentUser() user: { userId: string }) {
-    const rawClientKey =
-      this.configService.get<string>('tiktok.clientKey') || process.env.TIKTOK_CLIENT_KEY || '';
-    const clientKey = rawClientKey.trim().replace(/^["']|["']$/g, '');
-
-    if (!clientKey) {
-      this.logger.error(
-        `TikTok connect failed for user ${user.userId}: TIKTOK_CLIENT_KEY is not configured on this server.`,
-      );
-      throw new InternalServerErrorException(
-        'TikTok OAuth is not configured on this server. Missing TIKTOK_CLIENT_KEY.',
-      );
-    }
-
     const stateJwt = await this.tiktokService.generateStateJwt(user.userId);
-
-    const rawRedirectUri =
-      this.configService.get<string>('tiktok.redirectUri') ||
-      process.env.TIKTOK_REDIRECT_URI ||
-      'http://localhost:4000/api/channels/tiktok/callback';
-    const redirectUri = rawRedirectUri.trim().replace(/^["']|["']$/g, '');
 
     // Build the TikTok authorization URL.
     // Scopes granted in the TikTok Developer Portal: user.info.basic, video.upload
     const params = new URLSearchParams({
-      client_key: clientKey,
+      client_key: process.env.TIKTOK_CLIENT_KEY ?? '',
       scope: 'user.info.basic,video.upload',
       response_type: 'code',
-      redirect_uri: redirectUri,
+      redirect_uri: process.env.TIKTOK_REDIRECT_URI ?? '',
       state: stateJwt,
     });
 
@@ -110,23 +88,21 @@ export class TikTokController {
   @ApiQuery({ name: 'scopes', required: false })
   @ApiQuery({ name: 'error', required: false })
   @ApiQuery({ name: 'error_description', required: false })
-  async callback(@Query() query: TikTokCallbackQueryDto, @Res() res: Response): Promise<void> {
-<<<<<<< HEAD
-    const frontendUrl =
-      this.configService.get<string>('frontendUrl') ||
-      process.env.FRONTEND_URL ||
-      process.env.CORS_ORIGIN ||
-      'http://localhost:5173';
-    const errorBase = `${frontendUrl}/dashboard/channels?tiktok=error`;
-=======
+  async callback(
+    @Query() query: TikTokCallbackQueryDto,
+    @Res() res: Response,
+  ): Promise<void> {
     const frontendUrl = process.env.FRONTEND_URL ?? 'https://raasocial.io';
     const errorBase = `${frontendUrl}/settings?tab=channels&tiktok=error`;
->>>>>>> 8ac6cbc (feat: initialize backend modules, services, controllers, and database schemas)
 
     // Handle user-denied / TikTok-level errors
     if (query.error) {
-      this.logger.warn(`TikTok callback error: ${query.error} — ${query.error_description}`);
-      res.redirect(`${errorBase}&reason=${encodeURIComponent(query.error)}`);
+      this.logger.warn(
+        `TikTok callback error: ${query.error} — ${query.error_description}`,
+      );
+      res.redirect(
+        `${errorBase}&reason=${encodeURIComponent(query.error)}`,
+      );
       return;
     }
 
@@ -163,7 +139,10 @@ export class TikTokController {
       'The endpoint always returns 200 OK to acknowledge receipt. ' +
       'Signature validation uses TIKTOK_CLIENT_SECRET.',
   })
-  webhook(@Headers() headers: Record<string, string>, @Req() req: Request): { message: string } {
+  webhook(
+    @Headers() headers: Record<string, string>,
+    @Req() req: Request,
+  ): { message: string } {
     // Use the raw body buffer if available (set by a rawBody middleware),
     // otherwise fall back to the JSON-stringified parsed body.
     // For correct HMAC validation, configure express rawBody middleware in main.ts.
