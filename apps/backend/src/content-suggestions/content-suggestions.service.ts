@@ -531,13 +531,11 @@ export class ContentSuggestionsService {
     }
 
     // Idempotent re-approve check
-    if (variation.approvalStatus === 'APPROVED') {
-      const existingScheduled = await this.db.query.scheduledPosts.findFirst({
-        where: eq(schema.scheduledPosts.variationId, variationId),
-      });
-      if (existingScheduled) {
-        return existingScheduled;
-      }
+    const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.variationId, variationId),
+    });
+    if (existingScheduled) {
+      return existingScheduled;
     }
 
     // 2. Fetch the parent calendar post
