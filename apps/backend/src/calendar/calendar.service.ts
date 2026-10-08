@@ -516,6 +516,50 @@ export class CalendarService {
   }
 
   /**
+   * Schedule a post to publish in approximately 5 minutes.
+   * Reuses the existing scheduled publishing pipeline.
+   */
+  async postIn5Minutes(id: string, userId: string): Promise<ContentCalendarPost> {
+    const post = await this.findOneForUser(id, userId);
+
+    if (post.status === 'PUBLISHED') {
+      throw new BadRequestException('This post has already been published.');
+    }
+
+    // Verify post is not currently being processed by the worker
+    const existingScheduled = await this.db.query.scheduledPosts.findFirst({
+      where: eq(schema.scheduledPosts.calendarPostId, post.id),
+    });
+    if (existingScheduled && existingScheduled.status === 'PROCESSING') {
+      throw new BadRequestException('This post is currently being processed for publishing.');
+    }
+
+    // Verify connected social account exists
+    const connected = await this.getConnectedPlatformsForUser(userId);
+    const targetPlatform = normalizePlatformName(post.platform);
+    const isConnected = connected.some(
+      (p) => normalizePlatformName(p).toLowerCase() === targetPlatform.toLowerCase(),
+    );
+    if (!isConnected) {
+      throw new BadRequestException(
+        `Platform ${post.platform} is not connected. Please connect your account first.`,
+      );
+    }
+
+    // Target publishing time: approximately 5 minutes from now
+    const targetTime = new Date(Date.now() + 5 * 60 * 1000);
+
+    // Persist into ContentCalendar and trigger unified scheduled publishing
+    await this.contentSuggestionsService.scheduleApprovedPost(
+      id,
+      post.selectedSuggestionId || undefined,
+      targetTime,
+    );
+
+    return this.findOneForUser(id, userId);
+  }
+
+  /**
    * Delete a post — validates ownership before deletion.
    */
   async removeForUser(id: string, userId: string): Promise<{ success: boolean }> {

@@ -182,6 +182,14 @@ export async function updateCalendarPost(id: string, dto: Partial<CalendarPost>)
 }
 
 /**
+ * Schedule an approved post to publish in approximately 5 minutes.
+ */
+export async function postIn5Minutes(id: string): Promise<CalendarPost> {
+  const res = await api.post<CalendarPost>(`/calendar/posts/${id}/post-in-5-minutes`)
+  return res.data
+}
+
+/**
  * Trigger the AI calendar generation workflow for the authenticated user.
  * The backend creates a generation job and fires the n8n webhook — no secrets
  * are ever passed through the browser.

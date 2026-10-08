@@ -120,6 +120,16 @@ export class CalendarController {
     return this.calendarService.updateForUser(id, user.userId, dto);
   }
 
+  @Post('posts/:id/post-in-5-minutes')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: '[Customer] Schedule a post to publish in 5 minutes' })
+  postIn5Minutes(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: { userId: string },
+  ) {
+    return this.calendarService.postIn5Minutes(id, user.userId);
+  }
+
   @Delete('posts/:id')
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: '[Customer] Delete a calendar post' })

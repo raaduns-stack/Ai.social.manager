@@ -5,7 +5,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { desc, eq, and, ne } from 'drizzle-orm';
+import { desc, eq, and, ne, or, inArray } from 'drizzle-orm';
 import { ConfigService } from '@nestjs/config';
 import { PostgresJsDatabase } from 'drizzle-orm/postgres-js';
 
@@ -525,7 +525,7 @@ export class ContentSuggestionsService {
    * 3. Set content_suggestions.approval_status = 'APPROVED' (if variationId passed or created fallback variation)
    * 4. Insert row into scheduled_posts (or return existing row if already scheduled)
    */
-  async scheduleApprovedPost(postId: string, variationId?: string) {
+  async scheduleApprovedPost(postId: string, variationId?: string, scheduledAtOverride?: Date) {
     // 1. Fetch parent calendar post
     const post = await this.db.query.contentCalendar.findFirst({
       where: eq(schema.contentCalendar.id, postId),
@@ -534,15 +534,82 @@ export class ContentSuggestionsService {
       throw new NotFoundException(`Calendar post ${postId} not found.`);
     }
 
-    // 2. Idempotency guard: check if scheduled_posts already has a row for this calendarPostId
+    const scheduledAt = scheduledAtOverride || post.scheduledAt || new Date();
+
+    // 2. Resolve approved designer asset (if any)
+    let resolvedDesignerSubmissionId = post.designerSubmissionId;
+    let resolvedMediaUrl = post.mediaUrl;
+
+    if (!resolvedDesignerSubmissionId) {
+      // Look for a task belonging to this calendar post and this customer
+      const task = await this.db.query.tasks.findFirst({
+        where: and(
+          eq(schema.tasks.calendarPostId, post.id),
+          eq(schema.tasks.customerId, post.userId),
+        ),
+      });
+      if (task) {
+        const approvedSub = await this.db.query.submissions.findFirst({
+          where: and(
+            eq(schema.submissions.taskId, task.id),
+            or(
+              eq(schema.submissions.status, 'approved'),
+              eq(schema.submissions.status, 'completed'),
+            ),
+          ),
+        });
+        if (approvedSub) {
+          resolvedDesignerSubmissionId = approvedSub.id;
+        }
+      }
+    }
+
+    if (resolvedDesignerSubmissionId) {
+      const files = await this.db.query.submissionFiles.findMany({
+        where: eq(schema.submissionFiles.submissionId, resolvedDesignerSubmissionId),
+      });
+      const imageFile = files.find((f) => f.mimeType?.startsWith('image/')) || files[0];
+      if (imageFile) {
+        resolvedMediaUrl = imageFile.fileUrl;
+      }
+    }
+
+    const hasDesignerAsset = Boolean(resolvedDesignerSubmissionId);
+
+    // 3. Idempotency guard / Update existing if present
     const existingScheduled = await this.db.query.scheduledPosts.findFirst({
       where: eq(schema.scheduledPosts.calendarPostId, postId),
     });
     if (existingScheduled) {
-      return existingScheduled;
+      const [updatedScheduled] = await this.db
+        .update(schema.scheduledPosts)
+        .set({
+          scheduledAt,
+          status: 'SCHEDULED',
+          mediaUrl: resolvedMediaUrl || existingScheduled.mediaUrl,
+          designerSubmissionId: resolvedDesignerSubmissionId || existingScheduled.designerSubmissionId,
+          hasDesignerAsset: hasDesignerAsset || existingScheduled.hasDesignerAsset,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.scheduledPosts.scheduledPostId, existingScheduled.scheduledPostId))
+        .returning();
+
+      await this.db
+        .update(schema.contentCalendar)
+        .set({
+          approvalStatus: 'APPROVED',
+          status: 'SCHEDULED',
+          scheduledAt,
+          designerSubmissionId: resolvedDesignerSubmissionId || post.designerSubmissionId,
+          mediaUrl: resolvedMediaUrl || post.mediaUrl,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contentCalendar.id, post.id));
+
+      return updatedScheduled;
     }
 
-    // 3. Determine content & resolvedVariationId
+    // 4. Determine content & resolvedVariationId
     let contentToPublish = post.caption;
     let resolvedVariationId = variationId || post.selectedSuggestionId || undefined;
 
@@ -568,7 +635,7 @@ export class ContentSuggestionsService {
       }
     }
 
-    // 4. Verify connected social account exists for post.platform on this user
+    // 5. Verify connected social account exists for post.platform on this user
     const normalizedPlatform = post.platform.toLowerCase();
     const socialAccount = await this.db.query.social_accounts.findFirst({
       where: and(
@@ -584,9 +651,7 @@ export class ContentSuggestionsService {
       );
     }
 
-    const scheduledAt = post.scheduledAt || new Date();
-
-    // 5. Execute everything inside a single DB transaction (with fallback for mock DBs in tests)
+    // 6. Execute everything inside a single DB transaction (with fallback for mock DBs in tests)
     const runTx = this.db.transaction
       ? (cb: (tx: Database) => Promise<any>) => this.db.transaction(cb)
       : (cb: (tx: Database) => Promise<any>) => cb(this.db);
@@ -623,7 +688,9 @@ export class ContentSuggestionsService {
             socialAccountId: socialAccount.id,
             platform: normalizedPlatform,
             content: contentToPublish || post.title,
-            mediaUrl: post.mediaUrl || null,
+            mediaUrl: resolvedMediaUrl || post.mediaUrl || null,
+            designerSubmissionId: resolvedDesignerSubmissionId || null,
+            hasDesignerAsset,
             scheduledAt,
             status: 'SCHEDULED',
           })
@@ -651,7 +718,10 @@ export class ContentSuggestionsService {
         .set({
           approvalStatus: 'APPROVED',
           status: 'SCHEDULED',
+          scheduledAt,
           selectedSuggestionId: resolvedVariationId,
+          designerSubmissionId: resolvedDesignerSubmissionId || post.designerSubmissionId || null,
+          mediaUrl: resolvedMediaUrl || post.mediaUrl || null,
           updatedAt: new Date(),
         })
         .where(eq(schema.contentCalendar.id, post.id));

@@ -452,14 +452,72 @@ export class PublishingService {
         attemptedAt: new Date(entry.attemptedAt),
       });
 
-      // 2. Update the corresponding ScheduledPost's status
-      await tx
-        .update(schema.scheduledPosts)
-        .set({
-          status: entry.status,
-          updatedAt: new Date(),
-        })
-        .where(eq(schema.scheduledPosts.scheduledPostId, entry.scheduledPostId));
+      // 2. Fetch the corresponding ScheduledPost
+      const scheduledPost = await tx.query.scheduledPosts.findFirst({
+        where: eq(schema.scheduledPosts.scheduledPostId, entry.scheduledPostId),
+      });
+
+      if (!scheduledPost) {
+        throw new NotFoundException(`Scheduled post ${entry.scheduledPostId} not found`);
+      }
+
+      if (entry.status === 'PUBLISHED') {
+        // Update ScheduledPost's status to PUBLISHED
+        await tx
+          .update(schema.scheduledPosts)
+          .set({
+            status: 'PUBLISHED',
+            updatedAt: new Date(),
+          })
+          .where(eq(schema.scheduledPosts.scheduledPostId, entry.scheduledPostId));
+
+        // Update the ContentCalendar post status to PUBLISHED and record publishedAt
+        if (scheduledPost.calendarPostId) {
+          await tx
+            .update(schema.contentCalendar)
+            .set({
+              status: 'PUBLISHED',
+              publishedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.contentCalendar.id, scheduledPost.calendarPostId));
+        }
+      } else {
+        // Handling FAILED status with retry tracking
+        const currentRetry = scheduledPost.retryCount || 0;
+        const maxRetries = 3;
+
+        const isPermanentError =
+          Boolean(entry.error?.toLowerCase().includes('unauthorized')) ||
+          Boolean(entry.error?.toLowerCase().includes('reconnect')) ||
+          Boolean(entry.error?.toLowerCase().includes('forbidden')) ||
+          Boolean(entry.error?.toLowerCase().includes('invalid token')) ||
+          Boolean(entry.error?.toLowerCase().includes('kyc gate'));
+
+        if (!isPermanentError && currentRetry < maxRetries) {
+          // Retryable: backoff 5 minutes and set status back to SCHEDULED
+          const retryScheduledAt = new Date(Date.now() + 5 * 60 * 1000);
+          await tx
+            .update(schema.scheduledPosts)
+            .set({
+              status: 'SCHEDULED',
+              retryCount: currentRetry + 1,
+              scheduledAt: retryScheduledAt,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.scheduledPosts.scheduledPostId, entry.scheduledPostId));
+        } else {
+          // Permanent failure or max retries reached
+          await tx
+            .update(schema.scheduledPosts)
+            .set({
+              status: 'FAILED',
+              retryCount: currentRetry + 1,
+              updatedAt: new Date(),
+            })
+            .where(eq(schema.scheduledPosts.scheduledPostId, entry.scheduledPostId));
+        }
+      }
 
       return { success: true };
     });

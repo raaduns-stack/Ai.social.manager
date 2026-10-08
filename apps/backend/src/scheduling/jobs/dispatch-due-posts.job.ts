@@ -33,6 +33,19 @@ export class DispatchDuePostsJob {
 
       for (const post of duePosts) {
         try {
+          const idempotencyKey = `dispatch-${post.scheduledPostId}-${Date.now()}`;
+          const claimResult = await this.schedulingService.claimPost(
+            post.scheduledPostId,
+            idempotencyKey,
+          );
+
+          if (!claimResult.claimed) {
+            this.logger.debug(
+              `Post ${post.scheduledPostId} was already claimed by another process. Skipping.`,
+            );
+            continue;
+          }
+
           const payload = {
             scheduledPostId: post.scheduledPostId,
             platform: post.platform,
@@ -41,6 +54,9 @@ export class DispatchDuePostsJob {
             socialAccountId: post.socialAccountId,
             calendarPostId: post.calendarPostId,
             variationId: post.variationId,
+            idempotencyKey,
+            designerSubmissionId: post.designerSubmissionId || null,
+            hasDesignerAsset: post.hasDesignerAsset || false,
           };
 
           const response = await fetch(webhookUrl, {

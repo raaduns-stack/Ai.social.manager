@@ -222,6 +222,20 @@ export class AdminGraphicsService {
   async createTask(adminId: string, dto: CreateGraphicsTaskDto) {
     await this.requireDesigner(dto.designerId);
 
+    let customerId = dto.customerId;
+    if (dto.calendarPostId) {
+      const calPost = await this.db.query.contentCalendar.findFirst({
+        where: eq(schema.contentCalendar.id, dto.calendarPostId),
+      });
+      if (!calPost) {
+        throw new NotFoundException(`Calendar post ${dto.calendarPostId} not found`);
+      }
+      if (customerId && calPost.userId !== customerId) {
+        throw new BadRequestException('Customer ID does not match the owner of the calendar post');
+      }
+      customerId = calPost.userId;
+    }
+
     const [task] = await this.db
       .insert(schema.tasks)
       .values({
@@ -232,8 +246,20 @@ export class AdminGraphicsService {
         assignedTo: dto.designerId,
         assignedBy: adminId,
         status: 'open' as any,
+        calendarPostId: dto.calendarPostId || null,
+        customerId: customerId || null,
       })
       .returning();
+
+    if (dto.calendarPostId) {
+      await this.db
+        .update(schema.contentCalendar)
+        .set({
+          designerTaskId: task.id,
+          updatedAt: new Date(),
+        })
+        .where(eq(schema.contentCalendar.id, dto.calendarPostId));
+    }
 
     await this.notifyDesigner(
       dto.designerId,
@@ -448,6 +474,47 @@ export class AdminGraphicsService {
     // stays empty because nothing else inserts into `image_to_code`.
     if (dto.status === 'approved') {
       await this.ensureConversion(sub.designerId, submissionId);
+
+      // Link approved designer asset to calendar post if task is linked to calendar post
+      if (sub.taskId) {
+        const task = await this.db.query.tasks.findFirst({
+          where: eq(schema.tasks.id, sub.taskId),
+        });
+        if (task?.calendarPostId) {
+          const calPost = await this.db.query.contentCalendar.findFirst({
+            where: eq(schema.contentCalendar.id, task.calendarPostId),
+          });
+          // Ensure ownership match: task customer matches calendar post user
+          if (calPost && (!task.customerId || task.customerId === calPost.userId)) {
+            const files = await this.db.query.submissionFiles.findMany({
+              where: eq(schema.submissionFiles.submissionId, submissionId),
+            });
+            const imageFile = files.find((f) => f.mimeType?.startsWith('image/')) || files[0];
+            if (imageFile) {
+              await this.db
+                .update(schema.contentCalendar)
+                .set({
+                  designerSubmissionId: sub.id,
+                  designerTaskId: task.id,
+                  mediaUrl: imageFile.fileUrl,
+                  updatedAt: new Date(),
+                })
+                .where(eq(schema.contentCalendar.id, calPost.id));
+
+              // Also update scheduled_posts if it exists
+              await this.db
+                .update(schema.scheduledPosts)
+                .set({
+                  designerSubmissionId: sub.id,
+                  hasDesignerAsset: true,
+                  mediaUrl: imageFile.fileUrl,
+                  updatedAt: new Date(),
+                })
+                .where(eq(schema.scheduledPosts.calendarPostId, calPost.id));
+            }
+          }
+        }
+      }
     }
 
     return updated;
