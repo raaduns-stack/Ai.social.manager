@@ -1,6 +1,7 @@
 import { pgTable, uuid, varchar, text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 import { users } from './users.schema';
+import { contentCalendar } from './content-calendar.schema';
 
 export const taskPriorityEnum = pgEnum('task_priority', ['high', 'medium', 'low']);
 
@@ -23,6 +24,14 @@ export const tasks = pgTable('tasks', {
     onDelete: 'set null',
   }),
 
+  calendarPostId: uuid('calendar_post_id').references(() => contentCalendar.id, {
+    onDelete: 'set null',
+  }),
+
+  customerId: uuid('customer_id').references(() => users.id, {
+    onDelete: 'set null',
+  }),
+
   createdAt: timestamp('created_at').notNull().defaultNow(),
   updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
@@ -35,6 +44,14 @@ export const tasksRelations = relations(tasks, ({ one }) => ({
   assigner: one(users, {
     fields: [tasks.assignedBy],
     references: [users.id],
+  }),
+  customer: one(users, {
+    fields: [tasks.customerId],
+    references: [users.id],
+  }),
+  calendarPost: one(contentCalendar, {
+    fields: [tasks.calendarPostId],
+    references: [contentCalendar.id],
   }),
 }));
 

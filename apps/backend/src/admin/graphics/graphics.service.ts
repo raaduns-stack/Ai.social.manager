@@ -113,6 +113,8 @@ export class AdminGraphicsService {
         dueDate: schema.tasks.dueDate,
         designerId: schema.tasks.assignedTo,
         designerName: schema.users.fullName,
+        calendarPostId: schema.tasks.calendarPostId,
+        customerId: schema.tasks.customerId,
         createdAt: schema.tasks.createdAt,
         updatedAt: schema.tasks.updatedAt,
       })
@@ -157,6 +159,8 @@ export class AdminGraphicsService {
         designerId: schema.tasks.assignedTo,
         designerName: schema.users.fullName,
         designerEmail: schema.users.email,
+        calendarPostId: schema.tasks.calendarPostId,
+        customerId: schema.tasks.customerId,
         createdAt: schema.tasks.createdAt,
         updatedAt: schema.tasks.updatedAt,
       })

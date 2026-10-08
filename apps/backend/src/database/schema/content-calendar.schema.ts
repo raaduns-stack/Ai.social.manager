@@ -120,6 +120,16 @@ export const contentCalendar = pgTable('content_calendar', {
   /** The suggestion selected by the user for this post. */
   selectedSuggestionId: uuid('selected_suggestion_id'),
 
+  /** Designer Portal task associated with this calendar post. */
+  designerTaskId: uuid('designer_task_id').references(() => tasks.id, {
+    onDelete: 'set null',
+  }),
+
+  /** Approved Designer Portal submission associated with this calendar post. */
+  designerSubmissionId: uuid('designer_submission_id').references(() => submissions.id, {
+    onDelete: 'set null',
+  }),
+
   /** Record creation timestamp. */
   createdAt: timestamp('created_at').notNull().defaultNow(),
 
@@ -131,6 +141,8 @@ export const contentCalendar = pgTable('content_calendar', {
  * Drizzle ORM relational mapping: each post belongs to one user.
  */
 import { contentSuggestions } from './content-suggestions.schema';
+import { tasks } from './tasks.schema';
+import { submissions } from './submissions.schema';
 
 export const contentCalendarRelations = relations(
   contentCalendar,
@@ -142,6 +154,14 @@ export const contentCalendarRelations = relations(
     selectedSuggestion: one(contentSuggestions, {
       fields: [contentCalendar.selectedSuggestionId],
       references: [contentSuggestions.id],
+    }),
+    designerTask: one(tasks, {
+      fields: [contentCalendar.designerTaskId],
+      references: [tasks.id],
+    }),
+    designerSubmission: one(submissions, {
+      fields: [contentCalendar.designerSubmissionId],
+      references: [submissions.id],
     }),
     suggestions: many(contentSuggestions),
   }),

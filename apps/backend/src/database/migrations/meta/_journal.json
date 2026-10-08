@@ -190,6 +190,13 @@
       "when": 1788951000000,
       "tag": "0025_scheduled_posts_calendar_post_id_unique",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1788952000000,
+      "tag": "0026_scheduled_publishing_designer_integration",
+      "breakpoints": true
     }
   ]
 }
